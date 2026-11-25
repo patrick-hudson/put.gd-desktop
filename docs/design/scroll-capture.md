@@ -384,14 +384,19 @@ region** (which is Done during a capture) are the controls.
 
 | State | Says | Then |
 | --- | --- | --- |
-| `waiting` | Scroll the page | Select Done, or press the key |
-| `following` | Following | Select Done, or press the key |
+| `waiting` | Scroll the page | The finish hint (below) |
+| `following` | Following | The finish hint (below) |
 | `lost` | Lost the page (Auto-scroll lost the page, after it gave up) | Scroll back a little |
 | `scrollingToTop` | Scrolling to the top… | Move the mouse to pause |
 | `autoScrolling` | Auto-scrolling | Move the mouse to pause |
 | `paused` | Paused (mouse moved) / Paused (scrolled) / Found the page again / Nothing scrolled here | Scroll, or select Auto-scroll / Scroll the page yourself |
 | `resuming` | Auto-scroll in a moment… | Let go of the mouse |
 | `finishing` | Saving… | |
+
+The finish hint names the keys the bar knows about (`finishKey`, one per line). With none it
+says "Select Done to finish", with one key "Select Done, or press %1" and with two or more
+"Select Done, or press %1 or %2" (three or more: "press %1, %2 or %3"). On X11 the keys are Esc
+and then the `scroll` hotkey where one is bound.
 
 Beside them, the height so far. Buttons: **Auto-scroll** (a toggle), **Done** (enabled
 from the first frame on, so in every state) and **Cancel**. One size for all states,
@@ -484,11 +489,12 @@ or for Done. The resident refuses a result that breaks these promises:
 `top_not_reached` without `topReached: false`; `lost_track` without `endedLost`;
 `truncated` other than the table says; no frame placed.
 
-`height_cap`, `top_not_reached` and `lost_track` raise a warning notification ("put.gd —
-scrolling capture stopped" or "… incomplete") and put a note on the History row: "Stopped
+`height_cap`, `top_not_reached` and `lost_track` raise a warning notification (titled
+**Scrolling capture stopped** for `height_cap` and **Scrolling capture incomplete** for the
+other two) and put a note on the History row: "Stopped
 at 30,000 px. The page continues below.", "Could not reach the top of the page. The image
-starts partway down." and "Finished while put.gd had lost its place. The image ends where
-it last found the page." The idle bound puts "Finished by itself after 10 minutes without
+starts partway down." and "Lost track of the page before finishing. The image ends where
+it last matched." The idle bound puts "Finished by itself after 10 minutes without
 scrolling." on the row with no notification (a capture in which nothing ever moved has no
 row: it ends like Cancel). When the upload or the local save failed, the
 row's status shows that first and the note follows after a `·`. No confirmation dialog is

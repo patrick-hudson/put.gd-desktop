@@ -1640,7 +1640,7 @@ other tool active it does not. The user's side is in the
       `/home/patrick/project` is covered entirely, not only `patrick`. A sub-box estimated from
       character counts could leave part of a name visible in a proportional font, so none is made.
     - **No list saved.** "My redaction list" is disabled in the menu with the tooltip "Add words
-      or patterns in Settings → Capture → Text recognition." when the saved words and patterns are
+      or patterns in Settings → Capture → Text recognition" when the saved words and patterns are
       both empty. A `redactText` whose `categories` is `list` alone with nothing to match (no
       saved list, no `terms`, no `patterns`) answers `created: []` and `counts: {list: 0}`
       at once, without starting recognition, so it cannot fail for lack of a recognizer. The
@@ -2118,7 +2118,7 @@ stays available from version 22.
 
 | Surface | Control |
 | --- | --- |
-| Command band | **Copy text**, at the far end of the band's second group, before Upload clipboard; its label never shortens. The glyph `copy-text` is a letter T inside selection corners. Its tooltip says "Select a screen region and copy the text in it." It shows no output line, and its unavailable badge follows `text.sources.region` |
+| Command band | **Copy text**, at the far end of the band's second group, before Upload clipboard; its label never shortens. The glyph `copy-text` is a letter T inside selection corners. Its tooltip says "Select a screen region and copy the text in it". It shows no output line, and its unavailable badge follows `text.sources.region` |
 | Tray, both implementations | **Copy text from region**, in the last command group before Upload clipboard. Native menu ID 41, with no output row |
 | Settings, Hotkeys | A row **Copy text from region** in the last group, before Upload clipboard |
 | Settings, Capture | Text recognition: Language, Second language and Third language |

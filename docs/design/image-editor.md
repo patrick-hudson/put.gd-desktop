@@ -169,8 +169,9 @@ similar), because Qt would otherwise still load the desktop's theme plugin; on
 Plasma that plugin brings in Qt Quick and the GPU driver (about 85 MiB).
 
 Use **Redact** for passwords and other private information. Blur and pixelation
-can leave information that helps reconstruct or infer text; Pixelate shows the
-same warning as Blur ("Pixelated text can sometimes be recovered.") with **Switch to Redact**.
+can leave information that helps reconstruct or infer text; Pixelate shows an
+equivalent warning ("Pixelated text can sometimes be recovered.", where Blur's says "Blurred text can
+sometimes be recovered.") with **Switch to Redact**.
 
 **Copy image** (Ctrl+Shift+C, beside **Save a copy…**) puts the same sanitized
 PNG that Upload and Save a copy produce on the clipboard. It uploads nothing,
