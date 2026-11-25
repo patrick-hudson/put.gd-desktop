@@ -56,12 +56,12 @@ void ScrollCaptureService::prepare(QJsonObject p,bool edit,bool autoStart,JsonRe
 }
 void ScrollCaptureService::prepareProbed(QJsonObject p,bool edit,bool autoStart,JsonReply reply){
  if(!fields(p,{"rect","maxHeight","driver"})||(p.contains("driver")&&p["driver"]!="user"&&p["driver"]!="putgd")||(p.contains("rect")&&!rect(p["rect"]))||(p.contains("maxHeight")&&(!p["maxHeight"].isDouble()||p["maxHeight"].toDouble()!=p["maxHeight"].toInt()||p["maxHeight"].toInt()<2000||p["maxHeight"].toInt()>60000))){reply(invalid(),{});return;}
- if(active()){reply({"scroll_active","A scrolling capture is active",{{"operationId",id_}}},{});return;}
+ if(active()){reply({"scroll_active","A scrolling capture is already running. Stop or cancel it first.",{{"operationId",id_}}},{});return;}
  const auto snapshot=host_.settings();const auto route=snapshot.actions.value(edit?"edit":"scroll");
  if(!(route.destination=="upload"&&!route.profileId.isEmpty())&&!snapshot.archive.keepUploads){reply({"output_required","No output is enabled. Choose a destination or turn on Keep a local copy in Settings → Capture.",{}},{});return;}
  if(!capabilities()["available"].toBool()){reply({"scroll_unavailable","Scrolling capture is unavailable",{{"reason",capabilities()["reason"]}}},{});return;}
  // No selector in this build: no capture, for a caller that names the rectangle either (see probeScroll).
- if(!shell_&&capabilities()["selection"]=="none"){reply({"scroll_unavailable","This desktop has no region selector for a scroll capture",{{"reason","region_unavailable"}}},{});return;}
+ if(!shell_&&capabilities()["selection"]=="none"){reply({"scroll_unavailable","This desktop doesn't have a region selector for scrolling capture.",{{"reason","region_unavailable"}}},{});return;}
  if(shell_&&!shell_->selectsRegions()){reply(shell_->regionError(),{});return;}
  op_={};op_.action=edit?"edit":"scroll";if(auto e=host_.accept(op_)){reply(e,{});return;}
  // A command an earlier session's hold still keeps back is answered now: its session has ended.
@@ -113,7 +113,7 @@ void ScrollCaptureService::command(const QString& cmd,const QJsonObject& p,JsonR
  auto controlParams=p;controlParams.remove("id");
  backend_->control(id,cmd,controlParams,[g,id,cmd,p,reply](Error e,QJsonObject r){if(!g)return;QMetaObject::invokeMethod(g,[g,id,cmd,p,e,r,reply]{if(!g)return;if(g->id_!=id){if(g->results_.contains(id))reply({},g->results_[id]);else reply({"scroll_not_found","Session ended",{}},{});return;}
   // The Cancel that is on its way decides (see cancelling_), not this answer.
-  if(g->cancelling_&&cmd!="cancel"){reply({"cancelled","Scrolling capture canceled",{}},{});return;}
+  if(g->cancelling_&&cmd!="cancel"){reply({"cancelled","Scrolling capture cancelled.",{}},{});return;}
   g->pending_.clear();
   // A pause, resume or Auto-scroll the helper refuses (resume with nothing paused, a toggle while it stops) leaves the capture as it is.
   if(e&&(cmd=="pause"||cmd=="resume"||cmd=="autoScroll")&&e.code=="scroll_state"){reply(e,{});return;}
@@ -150,7 +150,7 @@ void ScrollCaptureService::event(QJsonObject e){if(e.value("id")!=id_||id_.isEmp
 void ScrollCaptureService::paused(const QJsonObject& r){if(r["driver"].isString())view_["driver"]=r["driver"];view_["paused"]=r["paused"].toBool();if(view_["paused"].toBool()&&r["pausedBy"].isString())view_["pausedBy"]=r["pausedBy"];else view_.remove("pausedBy");}
 void ScrollCaptureService::complete(QJsonObject r){
  const auto path=r["path"].toString();const auto bytes=r["bytes"].toInteger();const int w=r["width"].toInt(),h=r["height"].toInt();const auto reason=r["endReason"].toString();const int cap=r["appliedMaxHeight"].toInt();
- Error bad{"scroll_output_invalid","Scrolling capture output failed validation",{}};
+ Error bad{"scroll_output_invalid","Scrolling capture produced an invalid image. Try again.",{}};
  if(QFileInfo(path).absolutePath()!=directory_||bytes<33||bytes>op_.settings.limits.imageBytes||w<1||h<1||qint64(w)*h>op_.settings.limits.imagePixels||cap<1||cap>requestedCap_||h>cap||qint64(w)*h*4>op_.settings.limits.imageBytes||(edit_&&qint64(w)*h>EditorJob::admissionPixels)||!QStringList{"end_of_content","top_not_reached","height_cap","done","lost_track"}.contains(reason)||(r.contains("topReached")&&!r.value("topReached").isBool())||(reason=="top_not_reached"&&r.value("topReached")!=QJsonValue(false))||(reason=="end_of_content"&&!r.value("topReached").toBool(true))
   // How it was made (#1515), and what each end reason promises of it.
   ||!QStringList{"user","putgd","both","none"}.contains(r["scrolledBy"].toString())||!r["framesPlaced"].isDouble()||r["framesPlaced"].toInt()<1||!r["framesSkipped"].isDouble()||r["framesSkipped"].toInt()<0||!r["endedLost"].isBool()||!r["reachedEnd"].isBool()||(r.contains("foundAgain")&&(!r["foundAgain"].isDouble()||r["foundAgain"].toDouble()<0||r["foundAgain"].toDouble()>r["framesPlaced"].toDouble()+r["framesSkipped"].toDouble()))
@@ -171,14 +171,15 @@ void ScrollCaptureService::complete(QJsonObject r){
  QString note,warn;
  if(reason=="height_cap"){note=QString("Stopped at %1 px. The page continues below.").arg(QLocale(QLocale::English).toString(cap));warn=reason;}
  else if(reason=="top_not_reached"){note=QString("Could not reach the top of the page. The image starts partway down.");warn=reason;}
- else if(reason=="lost_track"){note=QString("Finished while put.gd had lost its place. The image ends where it last found the page.");warn=reason;}
+ else if(reason=="lost_track"){note=QString("Lost track of the page before finishing. The image ends where it last matched.");warn=reason;}
  else if(r["note"].toString().startsWith("nobody scrolled"))note=QString("Finished by itself after 10 minutes without scrolling.");
  // Auto-scroll stopped at a blank stretch it cannot tell from the end: said, as the page may go on.
+ // The helper's notes are protocol, matched by their start here; the person reads the note set below.
  else if(reason=="done"&&!r["reachedEnd"].toBool()&&r["note"].toString().startsWith("auto-scroll stopped where the page showed nothing")){note=QString("Auto-scroll stopped where the page showed nothing. If the page goes on, scroll past the blank part yourself.");warn=reason;}
  // The tracker lost the page while the person scrolled and found its place
  // again: a place among look-alike rows can be one repeat off, and the rows
  // between are then missing. Said with any end reason, which stays as it is.
- if(foundAgain>0){const auto again=foundAgain==1?QString("The capture lost the page once and found it again. Rows may be missing there: check the image."):QString("The capture lost the page %1 times and found it again. Rows may be missing there: check the image.").arg(foundAgain);
+ if(foundAgain>0){const auto again=foundAgain==1?QString("Lost track of the page once while scrolling. Check the image for missing sections."):QString("Lost track of the page %1 times while scrolling. Check the image for missing sections.").arg(foundAgain);
   note=note.isEmpty()?again:note+" "+again;if(warn.isEmpty())warn="found_again";}
  if(!note.isEmpty()){op_.note=note;view_["note"]=note;}
  if(!warn.isEmpty())emit warning(id_,note,warn);
@@ -192,5 +193,5 @@ void ScrollCaptureService::terminate(Error e,bool cancelled){if(!active())return
  if(auto waiting=std::exchange(startWaiting_,{}))waiting(e?e:Error{"cancelled","Scrolling capture ended",{}},{});
  emit ended();}
 void ScrollCaptureService::rememberResult(){results_[id_]=view_;resultOrder_.append(id_);while(resultOrder_.size()>32)results_.remove(resultOrder_.takeFirst());}
-void ScrollCaptureService::shutdown(){if(active())terminate({"cancelled","Resident stopped",{}},true);}
+void ScrollCaptureService::shutdown(){if(active())terminate({"cancelled","put.gd is shutting down.",{}},true);}
 }

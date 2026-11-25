@@ -10,7 +10,7 @@ Error storeError(QKeychain::Job* job) {
     const auto denied = job->error() == QKeychain::AccessDenied || job->error() == QKeychain::AccessDeniedByUser;
     // An entry that isn't there says so in its details, for a caller that only reads one if it exists.
     return {denied ? "credential_access_denied" : "credential_store_unavailable",
-            "Unlock the OS secret store explicitly or select session credentials",
+            "Couldn't access the system keychain. Unlock it, or use credentials for this session.",
             job->error() == QKeychain::EntryNotFound ? QJsonObject{{"missing", true}} : QJsonObject{}};
 }
 Error validCredentials(const Credentials& value) {
@@ -23,7 +23,7 @@ Error validCredentials(const Credentials& value) {
         }
         if (!value.accessKey.isEmpty() || !value.secretKey.isEmpty() || !value.sessionToken.isEmpty()) return {"credential_invalid", "Named values are stored without an access key", {}};
         if (value.values.size() > maximumNamedValues || total > maximumNamedValueChars)
-            return {"credential_invalid", "This destination's secret values are too large to store together: at most 128 KB, names included", {}};
+            return {"credential_invalid", "This destination's secret values can't be over 128 KB together, including names.", {}};
         return {};
     }
     if (value.accessKey.isEmpty() || value.secretKey.isEmpty() || value.accessKey.size() > 4096 ||
@@ -80,7 +80,7 @@ std::optional<Credentials> CredentialStore::cached(const QString& profile, const
 }
 void CredentialStore::unlock(const QString& profile, const QJsonObject& reference, std::function<void(Error)> reply) {
     if (reference["mode"] != "keychain" || cacheKey(profile, reference).isEmpty()) {
-        reply({"credential_setup_required", "Select and provide credentials explicitly", {}});
+        reply({"credential_setup_required", "No keychain credentials are saved for this destination. Save them to the keychain, or use credentials for this session.", {}});
         return;
     }
     const auto key = cacheKey(profile, reference);
@@ -128,7 +128,7 @@ void CredentialStore::save(const QString& profile, const QJsonObject& reference,
         return;
     }
     if (reference["mode"] != "keychain" || cacheKey(profile, reference).isEmpty()) {
-        reply({"credential_setup_required", "Select a credential reference", {}});
+        reply({"credential_setup_required", "Choose Save to keychain or Use for this session first.", {}});
         return;
     }
     auto* job = new QKeychain::WritePasswordJob("putgd", this);
@@ -147,7 +147,7 @@ void CredentialStore::save(const QString& profile, const QJsonObject& reference,
 }
 void CredentialStore::erase(const QString& profile, const QJsonObject& reference, std::function<void(Error)> reply) {
     if (cacheKey(profile, reference).isEmpty()) {
-        reply({"credential_setup_required", "Select a credential reference", {}});
+        reply({"credential_setup_required", "No stored credentials are selected.", {}});
         return;
     }
     forget(profile, reference);

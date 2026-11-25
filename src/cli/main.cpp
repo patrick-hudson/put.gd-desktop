@@ -28,14 +28,14 @@ int main(int argc,char** argv) {
  auto output=[](const QJsonObject& result) {const auto bytes=QJsonDocument(result).toJson(QJsonDocument::Compact)+'\n';std::fwrite(bytes.constData(),1,bytes.size(),stdout);};
  auto error=[&](QString code,QString message) {output(putgd::LocalServer::response(id,{code,message,{}},{}));return 1;};
  if(args.size()<1||args.size()>2)return error("invalid_request","Supply a method and optional JSON parameter object");
- if(args[0]=="setup.storeCredentials"||args[0]=="setup.storeSharePassword")return error("credentials_require_settings","Enter credentials through Settings.");
- if(args[0]=="setup.revealCredentialSecret")return error("credentials_require_settings","View credentials through Settings.");
+ if(args[0]=="setup.storeCredentials"||args[0]=="setup.storeSharePassword")return error("credentials_require_settings","Enter credentials in Destinations.");
+ if(args[0]=="setup.revealCredentialSecret")return error("credentials_require_settings","View credentials in Destinations.");
  // The error log's entries come from put.gd itself; its own windows add theirs (#1753).
  if(args[0]=="errors.record")return error("invalid_request","errors.record is for put.gd's own windows; read the log with errors.list.");
  if(parser.isSet("params-stdin")&&args.size()==2)return error("invalid_request","Do not combine --params-stdin with positional parameters");
  QByteArray bytes=args.size()==2?args[1].toUtf8():QByteArray("{}");
  if(parser.isSet("params-stdin")){bytes.clear();char chunk[8192];while(const auto count=std::fread(chunk,1,sizeof(chunk),stdin)){bytes.append(chunk,qsizetype(count));if(bytes.size()>1024*1024)break;}if(std::ferror(stdin))return error("invalid_request","Cannot read JSON parameters from standard input");}
- if(bytes.size()>1024*1024)return error("request_too_large","Request exceeds 1 MiB");
+ if(bytes.size()>1024*1024)return error("request_too_large","Request exceeds 1 MB.");
  QJsonParseError parseError;auto params=QJsonDocument::fromJson(bytes,&parseError);if(parseError.error!=QJsonParseError::NoError||!params.isObject())return error("invalid_json","Parameters must be a JSON object");
  const bool bundleOptions=parser.isSet("operation")||parser.isSet("since")||parser.isSet("include-names")||parser.isSet("output")||parser.isSet("upload")||parser.isSet("profile")||parser.isSet("copy-link");
  if(bundleOptions) {
@@ -59,10 +59,10 @@ int main(int argc,char** argv) {
   auto object=params.object();object["path"]=QDir::cleanPath(QDir::current().absoluteFilePath(object["path"].toString()));params=QJsonDocument(object);
  }
  const auto path=parser.isSet("socket")?parser.value("socket"):putgd::LocalServer::defaultSocketPath();QLocalSocket socket;socket.connectToServer(path);
- if(!socket.waitForConnected(3000))return error("session_unavailable","Start the resident put.gd app in this user session");
+ if(!socket.waitForConnected(3000))return error("session_unavailable","put.gd isn't running. Start put.gd in this user session first.");
  QJsonObject request{{"schemaVersion",1},{"requestId",id},{"session",path},{"method",args[0]},{"params",params.object()}};
- socket.write(QJsonDocument(request).toJson(QJsonDocument::Compact)+'\n');if(!socket.waitForBytesWritten(3000))return error("transport_failed","Cannot send request to resident session");
+ socket.write(QJsonDocument(request).toJson(QJsonDocument::Compact)+'\n');if(!socket.waitForBytesWritten(3000))return error("transport_failed","Couldn't send the request to put.gd.");
  QDeadlineTimer deadline(putgd::LocalServer::replyDeadlineMs(args[0]));
- QByteArray reply;while(!reply.contains('\n')) {if(!socket.waitForReadyRead(int(deadline.remainingTime())))return error("transport_failed","Resident session did not return a bounded response");reply+=socket.readAll();if(reply.size()>16*1024*1024)return error("response_too_large","Resident response exceeds 16 MiB");}
- auto response=QJsonDocument::fromJson(reply,&parseError);if(parseError.error!=QJsonParseError::NoError||!response.isObject()||response.object()["schemaVersion"]!=1||response.object()["requestId"]!=id||!response.object()["ok"].isBool())return error("invalid_response","Resident response does not match request schema and ID");output(response.object());return response.object()["ok"].toBool()?0:1;
+ QByteArray reply;while(!reply.contains('\n')) {if(!socket.waitForReadyRead(int(deadline.remainingTime())))return error("transport_failed","put.gd didn't return a complete response.");reply+=socket.readAll();if(reply.size()>16*1024*1024)return error("response_too_large","Response from put.gd exceeds 16 MB.");}
+ auto response=QJsonDocument::fromJson(reply,&parseError);if(parseError.error!=QJsonParseError::NoError||!response.isObject()||response.object()["schemaVersion"]!=1||response.object()["requestId"]!=id||!response.object()["ok"].isBool())return error("invalid_response","Response from put.gd was invalid or didn't match the request.");output(response.object());return response.object()["ok"].toBool()?0:1;
 }

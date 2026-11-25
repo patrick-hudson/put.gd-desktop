@@ -13,7 +13,7 @@ bool safeCharacter(QChar character) {
 }
 
 Error invalidName() {
- return {"filename_invalid", "A filename must be nonempty and contain no path separators or control characters", {}};
+ return {"filename_invalid", "A filename can't be empty or contain path separators or control characters.", {}};
 }
 
 Error checkName(const QString& name) {

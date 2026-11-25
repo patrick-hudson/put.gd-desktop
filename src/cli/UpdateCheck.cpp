@@ -86,7 +86,7 @@ QJsonObject fetchUpdate(const update::Build& build,const QString& requested,Erro
  if(!reply->isFinished())loop.exec();
  if(reply->isOpen())body+=reply->readAll();reply->deleteLater();
  const auto status=reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
- if(tooLarge){error={"update_feed_invalid","The update feed is larger than 256 KiB",{}};return {};}
+ if(tooLarge){error={"update_feed_invalid","The update feed is larger than 256 KB.",{}};return {};}
  if(reply->error()!=QNetworkReply::NoError||status!=200){
   error={"update_feed_unavailable","Cannot read the update feed",{{"httpStatus",status?QJsonValue(status):QJsonValue()},{"network",reply->error()==QNetworkReply::NoError?QString():networkErrorText(*reply)}}};
   return {};

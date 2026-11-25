@@ -57,13 +57,13 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
  if(!QStringList{"storeCredentials","unlockCredentials","testDestination","connectAccount","inspectAccount","createFolder","storeSharePassword","signOut","trustHostKey"}.contains(kind)||!validInput(kind,input)) {reply(invalid(),{});return;}
  const auto metadata=settings_.metadata();
  if(expectedRevision!=settings_.revision()||expectedRevision!=metadata["observedRevision"].toString()) {
-  reply({"config_conflict","Configuration changed; save or reload before setup",{}},{});return;
+  reply({"config_conflict","Settings changed elsewhere. Save or reload before continuing.",{}},{});return;
  }
  if(!metadata["validation"].toObject()["ok"].toBool()) {
-  reply({"config_invalid","Resolve the configuration error before setup",{}},{});return;
+  reply({"config_invalid","Fix the settings error before continuing.",{}},{});return;
  }
  const auto profiles=settings_.snapshot().profiles;
- if(!profiles.contains(profileId)) {reply({"profile_not_found","Save the destination before setup",{}},{});return;}
+ if(!profiles.contains(profileId)) {reply({"profile_not_found","Save the destination first.",{}},{});return;}
  const auto profile=profiles[profileId];const auto reference=profile["credentials"].toObject();
  if(kind=="createFolder"&&profile["provider"]!="sftp"&&input["name"].toString().size()>255){reply(invalid(),{});return;}
  const auto key=activeKey(profileId,kind);
@@ -71,7 +71,7 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
  // whole, so only one at a time per entry, from the read through the write (#1890).
  // An unlock holds it too, so a read begun before a store can't put older values back after it.
  const auto entry=(kind=="storeCredentials"||kind=="unlockCredentials")&&reference["mode"]=="keychain"&&!reference["reference"].toString().isEmpty()?"keychain:"+reference["reference"].toString():QString();
- if(active_.contains(key)||(!entry.isEmpty()&&active_.contains(entry))||active_.size()-entrySlots_.size()>=32) {reply({"setup_busy","Wait for the active setup job to complete",{}},{});return;}
+ if(active_.contains(key)||(!entry.isEmpty()&&active_.contains(entry))||active_.size()-entrySlots_.size()>=32) {reply({"setup_busy","Another setup step is already running. Wait for it to finish.",{}},{});return;}
  // Whether put.gd ever saved to this keychain entry: only such a save marks it (#1890).
  const bool storedBefore=kind=="storeCredentials"&&!entry.isEmpty()&&status_&&status_->keychainSaved(reference["reference"].toString());
  const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);
@@ -135,12 +135,12 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
     credentials_.unlock(profileId,reference,[guarded,profileId,reference,merge,untyped,complete,storedBefore,cancelled=cancellations_.value(id)](Error error){
      if(!guarded)return;
      // setup.cancel while the entry was being read: nothing is written.
-     if(cancelled&&cancelled->load()){complete({"cancelled","Cancelled; nothing was stored",{}});return;}
+     if(cancelled&&cancelled->load()){complete({"cancelled","Cancelled. Credentials weren't changed.",{}});return;}
      // No saved entry yet: nothing to keep. A keychain that still holds the entry locked (after a
      // dismissed prompt) can also answer "not found", so that counts only while put.gd never
      // stored credentials for this destination.
      if(error&&(!error.details["missing"].toBool()||storedBefore)) {
-      complete({"credential_incomplete","Unlock this destination's saved credentials first, or enter both the password and the key passphrase: storing one secret alone would erase the other. Nothing was changed.",{{"missing",QJsonArray::fromStringList(untyped)}}});
+      complete({"credential_incomplete","Select Unlock saved credentials first, or enter both the password and the key passphrase so storing one doesn't erase the other. Credentials weren't changed.",{{"missing",QJsonArray::fromStringList(untyped)}}});
       return;
      }
      Credentials merged;merge(error?std::nullopt:guarded->credentials_.cached(profileId,reference),merged);
@@ -148,7 +148,7 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
     });
     return;
    }
-   if(const auto missing=merge(cached,value);!missing.isEmpty()) {complete({"credential_incomplete","Enter every secret value of this destination, or unlock its saved credentials first",{{"missing",QJsonArray::fromStringList(missing)}}});return;}
+   if(const auto missing=merge(cached,value);!missing.isEmpty()) {complete({"credential_incomplete","Enter all required secrets for this destination, or select Unlock saved credentials first.",{{"missing",QJsonArray::fromStringList(missing)}}});return;}
    if(value.values.isEmpty()) {complete({"credential_invalid","This destination has no secret values to store",{}});return;}
   }else value={input["accessKey"].toString(),input["secretKey"].toString(),input["sessionToken"].toString()};
   // A provider that binds a key pair to where it was given keeps that binding beside it.
@@ -175,7 +175,7 @@ QStringList SetupService::unlockSavedCredentials() {
  return started;
 }
 void SetupService::credentialHint(const QString& profileId,const QString& expectedRevision,JsonReply reply) {
- if(expectedRevision!=settings_.revision()){reply({"config_conflict","Configuration changed; refresh this destination",{}},{});return;}
+ if(expectedRevision!=settings_.revision()){reply({"config_conflict","Settings changed elsewhere. Reload before continuing.",{}},{});return;}
  const auto profiles=settings_.snapshot().profiles;
  if(!profiles.contains(profileId)){reply({"profile_not_found","This destination is not saved yet",{}},{});return;}
  const auto profile=profiles[profileId];const auto reference=profile["credentials"].toObject();
@@ -197,17 +197,17 @@ void SetupService::credentialHint(const QString& profileId,const QString& expect
 void SetupService::revealCredentialSecret(const QString& profileId,const QString& expectedRevision,JsonReply reply) {
  const auto metadata=settings_.metadata();
  if(expectedRevision!=settings_.revision()||expectedRevision!=metadata["observedRevision"].toString()){
-  reply({"config_conflict","Configuration changed; refresh this destination",{}},{});return;
+  reply({"config_conflict","Settings changed elsewhere. Reload before continuing.",{}},{});return;
  }
  if(!metadata["validation"].toObject()["ok"].toBool()){
-  reply({"config_invalid","Resolve the configuration error before showing credentials",{}},{});return;
+  reply({"config_invalid","Fix the settings error before viewing credentials.",{}},{});return;
  }
  const auto profiles=settings_.snapshot().profiles;
  if(!profiles.contains(profileId)){reply({"profile_not_found","Save the destination before showing credentials",{}},{});return;}
  const auto profile=profiles[profileId];
  if(profile["provider"]!="s3"&&profile["provider"]!="backblaze-b2"&&profile["provider"]!="cloudflare-r2"){reply({"setup_unsupported","This destination has no stored secret key",{}},{});return;}
  const auto cached=credentials_.cached(profileId,profile["credentials"].toObject());
- if(!cached){reply({"credential_setup_required","Unlock saved credentials first, or enter credentials for this session",{}},{});return;}
+ if(!cached){reply({"credential_setup_required","Select Unlock saved credentials first, or enter credentials and select Use for this session.",{}},{});return;}
  reply({},{{"secretKey",cached->secretKey}});
 }
 void SetupService::inspect(const QString& id,JsonReply reply) {

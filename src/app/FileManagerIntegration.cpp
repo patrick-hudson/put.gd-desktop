@@ -318,7 +318,7 @@ struct CosmicChange {Error error;bool changed=false;QString line;};
 // value parses, and the result parses back to the same other entries.
 CosmicChange mergeCosmic(const QString& path,const QString& launcher,bool want,bool recorded) {
  CosmicChange change;
- const auto unparseable=Error{"cosmic_context_actions_unparseable","COSMIC Files' context actions could not be read; put.gd left them unchanged",{{"path",path}}};
+ const auto unparseable=Error{"cosmic_context_actions_unparseable","Couldn't read COSMIC Files context actions. Left the file unchanged.",{{"path",path}}};
  const QFileInfo info(path);
  const auto exists=info.exists()||info.isSymLink();
  if(!exists&&!want)return change;
@@ -354,12 +354,12 @@ CosmicChange mergeCosmic(const QString& path,const QString& launcher,bool want,b
  auto same=after.ok&&afterOthers.size()==others.size();
  for(qsizetype i=0;same&&i<others.size();++i)same=others[i].sameValue(afterOthers[i])&&
   text.mid(others[i].start,others[i].end-others[i].start)==next.mid(afterOthers[i].start,afterOthers[i].end-afterOthers[i].start);
- if(!same||afterMine.size()!=(want?1:(recorded?0:mine.size()))) {change.error={"file_manager_io","put.gd could not update COSMIC Files' context actions",{{"path",path}}};return change;}
+ if(!same||afterMine.size()!=(want?1:(recorded?0:mine.size()))) {change.error={"file_manager_io","Couldn't update COSMIC Files context actions.",{{"path",path}}};return change;}
  if(want&&next.split('\n').count(cosmicLine(launcher))==1)change.line=cosmicLine(launcher);
  if(next==text)return change;
  const auto mode=exists?(info.permissions()&modeBits):QFile::Permissions(dataMode);
  const auto backup=exists?commit(path+".putgd-backup",before,mode,false):Write::Unchanged;
- if(backup==Write::Failed||backup==Write::Conflict) {change.error={"file_manager_io","Cannot keep a backup of COSMIC Files' context actions",{{"path",path}}};return change;}
+ if(backup==Write::Failed||backup==Write::Conflict) {change.error={"file_manager_io","Couldn't back up COSMIC Files context actions.",{{"path",path}}};return change;}
  if(commit(path,next.toUtf8(),mode,false)==Write::Failed) {change.error={"file_manager_io","Cannot write COSMIC Files' context actions",{{"path",path}}};return change;}
  change.changed=true;
  return change;
@@ -643,7 +643,7 @@ Error FileManagerIntegration::monitor(const FileManagerContext& c,bool enabled) 
  if(!QFileInfo::exists(path))return enabled?Error{"file_manager_monitor","The file manager launcher is missing",{}}:Error{};
  if(!managedFile(path))return {"file_manager_conflict","The file manager launcher is not managed by put.gd",{}};
  // What the user can do about it; the details are for the log and diagnostics.
- const auto failed=[](const QJsonObject& details){return Error{"file_manager_monitor",QStringLiteral("put.gd can't watch for this AppImage being deleted, so its file manager entries may stay behind if you delete it. Using one then removes them."),details};};
+ const auto failed=[](const QJsonObject& details){return Error{"file_manager_monitor",QStringLiteral("Couldn't watch for this AppImage being deleted, so its file manager menu entries may stay behind if you remove it. Selecting one later cleans them up."),details};};
  QProcess process;process.start("/bin/sh",{path,enabled?"--install-watch":"--stop-watch"});
  const bool started=process.waitForStarted(3000);
  if(!started||!process.waitForFinished(10000)) {

@@ -28,7 +28,7 @@ bool move(const QString& from,const QString& to) {
  return !present(to)&&QDir().rename(from,to);
 #endif
 }
-Error interrupted() {return {"storage_migration_interrupted","Moving put.gd files stopped; it resumes at the next start",{}};}
+Error interrupted() {return {"storage_migration_interrupted","Moving put.gd's files was interrupted. It will resume the next time put.gd starts.",{}};}
 // A journal lock in a tree about to move must be stale: a live owner is an
 // earlier put.gd still running from it. Releasing a stale lock removes the file.
 Error releaseStaleJournal(const QString& root) {
@@ -47,7 +47,7 @@ Error finish(const QString& root,QJsonObject& report,const StorageLocations::Mov
   const auto from=staging+"/"+name,to=root+"/"+name;
   if(present(to)){conflicts.append(name);continue;}
   if(hook&&!hook(from,to))return interrupted();
-  if(!move(from,to))return {"storage_migration_failed","Cannot move put.gd files into their new folder; the rest stay staged and moving resumes at the next start",{{"from",from},{"to",to}}};
+  if(!move(from,to))return {"storage_migration_failed","Couldn't move put.gd's files into their new folder. Remaining files stay staged and moving resumes at the next start.",{{"from",from},{"to",to}}};
  }
  report["state"]="migrated";
  QFile::setPermissions(root,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner);
@@ -109,7 +109,7 @@ StorageLocations StorageLocations::prepare(const QString& genericConfig,const QS
 }
 Error StorageLocations::journalLockBusy(const QString& code,const QString& lockPath,const QJsonObject& details) {
  const auto path=QDir::toNativeSeparators(lockPath);auto fields=details;fields["lockPath"]=path;
- return {code,"The operation journal lock could not be acquired. If no other put.gd is running, quit put.gd, remove "+path+" and start it again.",fields};
+ return {code,"Couldn't lock put.gd's data folder. If no other put.gd is running, remove "+path+" and start put.gd again.",fields};
 }
 Error StorageLocations::journalLockFailure(const QLockFile& lock,const QString& code,const QString& lockPath,const QJsonObject& details) {
  if(lock.error()==QLockFile::LockFailedError)return journalLockBusy(code,lockPath,details);

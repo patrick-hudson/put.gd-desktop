@@ -213,7 +213,7 @@ private slots:
   // The end of the page with the top unproved: the same promise as end_of_content (CodeRabbit on #1528).
   QTest::newRow("top not reached with a skipped frame")<<"top_not_reached"<<true<<QJsonObject{{"framesSkipped",1}}<<false<<"";
   QTest::newRow("top not reached, ended lost")<<"top_not_reached"<<true<<QJsonObject{{"endedLost",true}}<<false<<"";
-  QTest::newRow("lost track")<<"lost_track"<<false<<none<<true<<"Finished while put.gd had lost its place. The image ends where it last found the page.";
+  QTest::newRow("lost track")<<"lost_track"<<false<<none<<true<<"Lost track of the page before finishing. The image ends where it last matched.";
   QTest::newRow("lost track, not lost")<<"lost_track"<<false<<QJsonObject{{"endedLost",false}}<<false<<"";
   QTest::newRow("height cap")<<"height_cap"<<false<<none<<true<<"Stopped at 30,000 px. The page continues below.";
   QTest::newRow("done marked truncated")<<"done"<<false<<QJsonObject{{"truncated",true}}<<false<<"";
@@ -222,10 +222,10 @@ private slots:
   // The tracker lost the page while the user scrolled and found it again: a
   // place among look-alike rows can be a repeat off, so the person is told to
   // check the image, and the end reason stays (#1515).
-  QTest::newRow("done, found again once")<<"done"<<false<<QJsonObject{{"foundAgain",1}}<<true<<"The capture lost the page once and found it again. Rows may be missing there: check the image.";
-  QTest::newRow("done, found again twice")<<"done"<<false<<QJsonObject{{"foundAgain",2},{"framesSkipped",9}}<<true<<"The capture lost the page 2 times and found it again. Rows may be missing there: check the image.";
-  QTest::newRow("lost track, found again before")<<"lost_track"<<false<<QJsonObject{{"foundAgain",1}}<<true<<"Finished while put.gd had lost its place. The image ends where it last found the page. The capture lost the page once and found it again. Rows may be missing there: check the image.";
-  QTest::newRow("height cap, found again")<<"height_cap"<<false<<QJsonObject{{"foundAgain",3}}<<true<<"Stopped at 30,000 px. The page continues below. The capture lost the page 3 times and found it again. Rows may be missing there: check the image.";
+  QTest::newRow("done, found again once")<<"done"<<false<<QJsonObject{{"foundAgain",1}}<<true<<"Lost track of the page once while scrolling. Check the image for missing sections.";
+  QTest::newRow("done, found again twice")<<"done"<<false<<QJsonObject{{"foundAgain",2},{"framesSkipped",9}}<<true<<"Lost track of the page 2 times while scrolling. Check the image for missing sections.";
+  QTest::newRow("lost track, found again before")<<"lost_track"<<false<<QJsonObject{{"foundAgain",1}}<<true<<"Lost track of the page before finishing. The image ends where it last matched. Lost track of the page once while scrolling. Check the image for missing sections.";
+  QTest::newRow("height cap, found again")<<"height_cap"<<false<<QJsonObject{{"foundAgain",3}}<<true<<"Stopped at 30,000 px. The page continues below. Lost track of the page 3 times while scrolling. Check the image for missing sections.";
   QTest::newRow("found again, a negative count")<<"done"<<false<<QJsonObject{{"foundAgain",-1}}<<false<<"";
   QTest::newRow("found again, not a number")<<"done"<<false<<QJsonObject{{"foundAgain","2"}}<<false<<"";
   QTest::newRow("found again, more than the frames placed")<<"done"<<false<<QJsonObject{{"foundAgain",13}}<<false<<"";

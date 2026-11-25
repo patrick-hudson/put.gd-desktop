@@ -228,7 +228,7 @@ void OperationService::recordUploadCopy(const std::shared_ptr<UploadCopy>& state
   // A link was available and no copy of it was refused or failed, so none was
   // ever queued. That is a defect, reported as such rather than as a quiet
   // "nothing to copy" (#478).
-  state->error={"copy_not_attempted","A link was available but its automatic copy was never attempted",{}};op.copyStatus="failed";
+  state->error={"copy_not_attempted","A link was created, but it wasn't copied automatically. Copy it from History.",{}};op.copyStatus="failed";
   logging::warning(logOperation(),"Automatic copy not attempted",{{"operationId",op.id},{"action",op.action},{"behavior",op.settings.uploadClipboardBehavior},{"links",state->links.size()},{"held",state->held.size()},{"cursor",state->cursor}});
  }
  if(state->error)op.error=state->error;
@@ -293,7 +293,7 @@ void OperationService::pumpCopies() {
   }
   const auto before=owner->source_.clipboardRevision();
   if(error){complete(error,before);return;}
-  if(request->eligible&&!request->eligible()){complete({"copy_suppressed","A user clipboard change, cancellation or explicit copy superseded automatic copying",{}},before);return;}
+  if(request->eligible&&!request->eligible()){complete({"copy_suppressed","Link wasn't copied automatically because your clipboard changed or another copy started. Copy it from History.",{}},before);return;}
   const auto payload=request->payload();
   if(payload.kind=="text"&&payload.text.isEmpty()){complete({"copy_no_result","No successful links to copy",{}},before);return;}
   request->nativeStarted=true;

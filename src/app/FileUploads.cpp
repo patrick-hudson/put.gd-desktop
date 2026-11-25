@@ -24,7 +24,7 @@ Route resolve(const Settings& settings,const QString& requested){
  // captureDefaults.profileId may be null even when its destination is upload.
  if(defaults["destination"]=="upload"&&defaults["profileId"].isString()&&settings.profiles.contains(defaults["profileId"].toString())){route.profileId=defaults["profileId"].toString();return route;}
  if(settings.profiles.size()==1){route.profileId=settings.profiles.cbegin().key();return route;}
- route.error={"destination_required",settings.profiles.isEmpty()?QStringLiteral("No upload destination is set up. Add one in put.gd Settings → Destinations, then try again."):QStringLiteral("Choose a default destination in put.gd Settings → Capture, then try again."),{{"destinations",int(settings.profiles.size())}}};
+ route.error={"destination_required",settings.profiles.isEmpty()?QStringLiteral("No upload destination is set up. Add one in Destinations, then try again."):QStringLiteral("Choose a default destination in Settings → Capture, then try again."),{{"destinations",int(settings.profiles.size())}}};
  return route;
 }
 QJsonObject routedDocument(const Settings& settings,const Route& route){
@@ -35,7 +35,7 @@ QJsonObject routedDocument(const Settings& settings,const Route& route){
 Error matchInstallation(const QString& requested,const QString& resident){
  if(requested==resident)return {};
  const auto name=[](const QString& value){return value=="appimage"?QStringLiteral("the AppImage"):QStringLiteral("the installed package");};
- return {"installation_mismatch",QStringLiteral("put.gd from %1 is running. Quit that put.gd first (from its tray menu or its window's Quit), or use the menu entry of that installation.").arg(name(resident)),{{"resident",resident},{"requested",requested}}};
+ return {"installation_mismatch",QStringLiteral("put.gd is already running from %1. Quit it first from the tray menu or window, or use that installation's menu entry.").arg(name(resident)),{{"resident",resident},{"requested",requested}}};
 }
 Selection select(const QStringList& paths,const Settings& settings,const QString& action,qint64 objectLimit,qint64 diskAvailable){
  ArtifactStore::DiskBudget disk;disk.freeBytes=diskAvailable;
@@ -55,16 +55,16 @@ Selection select(const QStringList& paths,const Settings& settings,const QString
  const auto named=[&](const QString& path,const QString& name)->bool{
   Artifact artifact;artifact.name=name;artifact.originalFile=true;artifact.mime=QStringLiteral("application/octet-stream");
   const auto chosen=UploadNaming::acquiredName(artifact,settings,action,QDateTime::currentDateTime());
-  if(chosen.error){reject(path,chosen.error.code,QStringLiteral("this name can't be uploaded (it has a control character, newline or backslash)"));return false;}
+  if(chosen.error){reject(path,chosen.error.code,QStringLiteral("name contains a control character, newline, or backslash"));return false;}
   return true;
  };
  qint64 batch=0;bool counted=true;
  const auto addFile=[&](const QString& path,const QFileInfo& info,const QString& origin){
   if(!info.isReadable()){reject(path,"source_unavailable","can't be read");return;}
-  if(info.size()==0){reject(path,"source_empty","is empty (0 bytes)");return;}
+  if(info.size()==0){reject(path,"source_empty","is empty");return;}
   if(!named(path,info.fileName()))return;
-  if(objectLimit>0&&info.size()>objectLimit){reject(path,"destination_object_too_large",QStringLiteral("is %1; this destination accepts files of at most %2").arg(size(info.size()),size(objectLimit)));return;}
-  if(info.size()>limits.maxFileBytes){reject(path,"input_excessive",QStringLiteral("is %1; the Largest file limit is %2").arg(size(info.size()),size(limits.maxFileBytes)));return;}
+  if(objectLimit>0&&info.size()>objectLimit){reject(path,"destination_object_too_large",QStringLiteral("is %1 (this destination's limit is %2)").arg(size(info.size()),size(objectLimit)));return;}
+  if(info.size()>limits.maxFileBytes){reject(path,"input_excessive",QStringLiteral("is %1 (exceeds the Largest file limit of %2)").arg(size(info.size()),size(limits.maxFileBytes)));return;}
   result.files.append(path);result.origins.append(origin);batch+=info.size();result.diskBytes+=info.size();
  };
  for(const auto& path:paths){
@@ -80,8 +80,8 @@ Selection select(const QStringList& paths,const Settings& settings,const QString
     // Checked against the archive's upper bound before writing: a compressible
     // folder whose archive would fit can still be refused here, and the message says so.
     const auto bound=std::max(plan.sourceBytes,plan.finalBound);
-    if(objectLimit>0&&bound>objectLimit){reject(path,"destination_object_too_large",QStringLiteral("folder can zip to up to %1; this destination accepts files of at most %2").arg(size(bound),size(objectLimit)));continue;}
-    if(bound>limits.maxFileBytes){reject(path,"input_excessive",QStringLiteral("folder can zip to up to %1; the Largest file limit is %2").arg(size(bound),size(limits.maxFileBytes)));continue;}
+    if(objectLimit>0&&bound>objectLimit){reject(path,"destination_object_too_large",QStringLiteral("folder could zip to %1 (this destination's limit is %2)").arg(size(bound),size(objectLimit)));continue;}
+    if(bound>limits.maxFileBytes){reject(path,"input_excessive",QStringLiteral("folder could zip to %1 (exceeds the Largest file limit of %2)").arg(size(bound),size(limits.maxFileBytes)));continue;}
     result.files.append(info.absoluteFilePath());result.origins.append(path);batch+=plan.sourceBytes;result.diskBytes+=plan.peakBytes;
     continue;
    }
@@ -93,23 +93,23 @@ Selection select(const QStringList& paths,const Settings& settings,const QString
     if(result.files.size()>=limits.maxFiles){counted=false;break;}
     addFile(file,entry,path);
    }
-   if(!counted){reject(path,"input_excessive",QStringLiteral("folder has more than %1 files, the file limit. Upload it as a .zip, or raise the limit in Settings → Advanced").arg(limits.maxFiles));break;}
+   if(!counted){reject(path,"input_excessive",QStringLiteral("folder has more than %1 files (the Files in a batch limit). Upload it as a .zip, or raise the limit in Settings → Advanced → Resource limits.").arg(limits.maxFiles));break;}
    continue;
   }
   if(!info.isFile()){reject(path,"source_unsupported","is not a regular file or folder");continue;}
-  if(result.files.size()>=limits.maxFiles){reject(path,"input_excessive",QStringLiteral("is past the file limit of %1 files").arg(limits.maxFiles));break;}
+  if(result.files.size()>=limits.maxFiles){reject(path,"input_excessive",QStringLiteral("exceeds the Files in a batch limit of %1").arg(limits.maxFiles));break;}
   addFile(info.absoluteFilePath(),info,path);
  }
  result.sourceBytes=batch;
  if(problems.isEmpty()&&result.files.isEmpty())reject(QStringLiteral("selection"),"input_excessive","contains no files to upload");
- if(problems.isEmpty()&&batch>limits.maxBatchBytes)reject(QStringLiteral("selection"),"input_excessive",QStringLiteral("totals %1; the Largest batch limit is %2").arg(size(batch),size(limits.maxBatchBytes)));
+ if(problems.isEmpty()&&batch>limits.maxBatchBytes)reject(QStringLiteral("selection"),"input_excessive",QStringLiteral("totals %1 (exceeds the Largest batch limit of %2)").arg(size(batch),size(limits.maxBatchBytes)));
  if(problems.isEmpty()&&diskAvailable>=0&&result.diskBytes>diskAvailable) {
   // The cause is usually the reserve, not this file: say what's free, what's kept and what to do.
-  const auto kept=QStringLiteral("%1 free for the system").arg(ByteSize::fileSummary(disk.reserveBytes))+(disk.reservedBytes>0?QStringLiteral(" and %1 for uploads in progress").arg(ByteSize::fileSummary(disk.reservedBytes)):QString());
+  const auto kept=QStringLiteral("%1 for the system").arg(ByteSize::fileSummary(disk.reserveBytes))+(disk.reservedBytes>0?QStringLiteral(" and %1 for uploads in progress").arg(ByteSize::fileSummary(disk.reservedBytes)):QString());
   // Up, so freeing this much is always enough.
   const auto shortfall=result.diskBytes+disk.reserveBytes+disk.reservedBytes-disk.freeBytes;
   const qint64 step=shortfall>=ByteSize::GiB?ByteSize::GiB/100:ByteSize::MiB;
-  result.error={"disk_space_insufficient",QStringLiteral("Not enough free disk space: this needs %1. The disk with put.gd's data folder has %2 free, and put.gd keeps %3. Free up at least %4 and try again.").arg(ByteSize::fileSummary(result.diskBytes),ByteSize::fileSummary(disk.freeBytes),kept,ByteSize::summary((shortfall+step-1)/step*step)),{{"requiredBytes",double(result.diskBytes)},{"availableBytes",double(diskAvailable)},{"freeBytes",double(disk.freeBytes)},{"reserveBytes",double(disk.reserveBytes)},{"reservedBytes",double(disk.reservedBytes)}}};
+  result.error={"disk_space_insufficient",QStringLiteral("Not enough free disk space. This upload needs %1. The disk with put.gd's data folder has %2 free, and put.gd reserves %3. Free up at least %4 and try again.").arg(ByteSize::fileSummary(result.diskBytes),ByteSize::fileSummary(disk.freeBytes),kept,ByteSize::summary((shortfall+step-1)/step*step)),{{"requiredBytes",double(result.diskBytes)},{"availableBytes",double(diskAvailable)},{"freeBytes",double(disk.freeBytes)},{"reserveBytes",double(disk.reserveBytes)},{"reservedBytes",double(disk.reservedBytes)}}};
  }
  if(!problems.isEmpty()){
   const auto more=problems.size()>listed.size()?QStringLiteral("\n… and %1 more").arg(problems.size()-listed.size()):QString();
@@ -117,7 +117,7 @@ Selection select(const QStringList& paths,const Settings& settings,const QString
   QString code=problems.first().toObject()["code"].toString();
   for(const auto& value:problems)if(value.toObject()["code"].toString()!=code)code.clear();
   if(code!="input_excessive"&&code!="destination_object_too_large")code=QStringLiteral("files_rejected");
-  result.error={code,(problems.size()==1?QStringLiteral("Nothing was uploaded. "):QStringLiteral("Nothing was uploaded:\n"))+listed.join('\n')+more,{{"files",problems}}};
+  result.error={code,(problems.size()==1?QStringLiteral("Upload didn't start. "):QStringLiteral("Upload didn't start.\n"))+listed.join('\n')+more,{{"files",problems}}};
   result.files.clear();result.origins.clear();
  }
  return result;

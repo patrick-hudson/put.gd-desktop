@@ -29,10 +29,10 @@ constexpr qint64 maximumInput=1099511627776LL;
 constexpr qint64 discoveryBudget=32*1024*1024;
 Error failure(const QString& code){
  if(code=="cancelled")return {code,"Image processing cancelled",{}};
- if(code=="input_excessive")return {code,"Image exceeds resource limits",{}};
+ if(code=="input_excessive")return {code,"The image exceeds the image size limit.",{}};
  if(code=="source_unsupported")return {code,"Image could not be decoded",{}};
  if(code=="image_job_timeout")return {code,"Image processing timed out",{}};
- return {code,"The image worker could not complete this request",{}};
+ return {code,"Couldn't process this image.",{}};
 }
 QJsonObject build(){return QJsonDocument::fromJson(buildManifestJson()).object();}
 QJsonObject envelope(const QString& nonce){return {{"role","image-job"},{"nonce",nonce},{"generation","1"}};}

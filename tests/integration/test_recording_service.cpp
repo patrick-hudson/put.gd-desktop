@@ -194,7 +194,7 @@ private slots:
  }
  void diskFinalizationFailureDoesNotClaimReviewOrUpload(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);
-  const Error failure{"recording_disk_full","The clip could not be finalized; nothing was uploaded",{{"reason","disk_space"},{"freeBytes",0},{"finalized",false}}};
+  const Error failure{"recording_disk_full","Couldn't finish saving the recording.; nothing was uploaded",{{"reason","disk_space"},{"freeBytes",0},{"finalized",false}}};
   h.backend->sink({{"id",id},{"event","failed"},{"error",failure.toJson()}});
   HistoryStore journal(h.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("failed"));
   QCOMPARE(journal.operation(id).error.code,failure.code);
@@ -305,7 +305,7 @@ private slots:
   h.backend->log.clear();
   h.backend->sink({{"id",id},{"event","uploadRequested"},{"revision",1}});
   PUTGD_TRY_VERIFY(h.backend->log.contains("raise"));
-  QVERIFY(h.backend->lastControlParams["error"].toString().contains("nothing was uploaded"));
+  QVERIFY(h.backend->lastControlParams["error"].toString().contains("the upload didn't start"));
   QVERIFY(!h.backend->lastControlParams["retry"].toBool(true));  // U35: no Try again
   QCOMPARE(h.backend->exports,0);QCOMPARE(h.state(id),QString("reviewing"));
   // During an export (a copy being saved), an upload is refused out loud.
@@ -339,11 +339,11 @@ private slots:
   h.backend->failExport=false;
   QVERIFY(!h.rec("edit",{{"id",id},{"revision",1},{"commands",QJsonArray{QJsonObject{{"op","addCut"},{"start",2000000},{"end",3000000}}}}}).error);
   const auto retried=h.rec("review",{{"id",id},{"action","retryExport"}});
-  QCOMPARE(retried.error.code,QString("recording_stale"));QVERIFY(retried.error.message.contains("Press Upload"));
+  QCOMPARE(retried.error.code,QString("recording_stale"));QVERIFY(retried.error.message.contains("Select Upload"));
   h.backend->log.clear();
   h.backend->sink({{"id",id},{"event","retryExportRequested"}});
   PUTGD_TRY_VERIFY(h.backend->log.contains("raise"));
-  QVERIFY(h.backend->lastControlParams["error"].toString().contains("Press Upload"));QVERIFY(!h.backend->lastControlParams["retry"].toBool(true));
+  QVERIFY(h.backend->lastControlParams["error"].toString().contains("Select Upload"));QVERIFY(!h.backend->lastControlParams["retry"].toBool(true));
   QCOMPARE(h.backend->exports,1);
  }
  // U32: the upload carries the output the window shows; any other is refused.
@@ -473,7 +473,7 @@ private slots:
   h.backend->sink({{"id",id},{"event","configChanged"},{"seq",1},{"config",QJsonObject{{"format","mp4"},{"codec","h264"},{"audio",QJsonObject{{"system",false},{"microphone",false}}}}}});
   PUTGD_TRY_VERIFY(!h.rec("inspect",{{"id",id}}).result["config"].toObject()["audio"].toObject()["system"].toBool());
   const auto retried=h.rec("review",{{"id",id},{"action","retryExport"}});
-  QCOMPARE(retried.error.code,QString("recording_config"));QVERIFY(retried.error.message.contains("Press Upload"));
+  QCOMPARE(retried.error.code,QString("recording_config"));QVERIFY(retried.error.message.contains("Select Upload"));
   h.backend->log.clear();
   h.backend->sink({{"id",id},{"event","retryExportRequested"}});
   PUTGD_TRY_VERIFY(h.backend->log.contains("raise"));

@@ -118,7 +118,7 @@ void completeEntry(QJsonObject& entry,const QJsonObject& item,const QHash<QStrin
 }
 }
 QJsonObject ErrorLog::entryJson(const Entry& e,const QString& id,const QDateTime& now,int occurrences,const QString& first) const {
- const auto message=logging::redact(e.message.isEmpty()?QStringLiteral("put.gd couldn't finish this."):e.message).left(4096);
+ const auto message=logging::redact(e.message.isEmpty()?QStringLiteral("Couldn't complete this action."):e.message).left(4096);
  auto details=logging::redact(QJsonValue(e.details)).toObject();
  if(QJsonDocument(details).toJson(QJsonDocument::Compact).size()>maximumDetailBytes)details=QJsonObject{{"truncated",true}};
  auto provider=e.provider;
@@ -212,10 +212,10 @@ void ErrorLog::operationFinished(const QJsonObject& op) {
 }
 void ErrorLog::deletionFinished(const QJsonObject& doc) {
  static const QHash<QString,QString> outcomes{
-  {"failed","The deletion failed."},{"unknown","put.gd couldn't tell whether the file was deleted."},
-  {"changed","The file at the destination changed after it was uploaded, so put.gd left it in place."},
-  {"hidden_version_retained","The file was deleted, but an older hidden version remains at the destination."},
-  {"version_retained","The file was deleted, but an earlier version remains at the destination."},
+  {"failed","The deletion failed."},{"unknown","Couldn't confirm whether the file was deleted. Check the destination before retrying."},
+  {"changed","The file at the destination changed after upload, so it wasn't deleted."},
+  {"hidden_version_retained","The file is hidden, but an older version is still stored at the destination."},
+  {"version_retained","The file was deleted, but an earlier version is still stored at the destination."},
   {"unsupported_safe_removal","This destination can't safely delete the recorded file."}};
  for(const auto& value:doc["items"].toArray()){
   const auto item=value.toObject();const auto status=item["status"].toString(),historyId=item["historyId"].toString();
@@ -279,7 +279,7 @@ void ErrorLog::load() {
 bool ErrorLog::enqueue(Work work,JsonReply done,bool write) {
  // Reads answer at once while the journal recovers; writes wait, up to a bound (#1753).
  if(!write&&!operations_.ready()){if(done)done(operations_.notReadyError(),{});return false;}
- if(write&&queue_.size()>=maximumQueue){++dropped_;logging::warning(logHistory(),"Error log write dropped",{{"queued",qint64(queue_.size())},{"dropped",qint64(dropped_)}});if(done)done({"error_log_full","The error log can't keep up; this entry wasn't saved",{}},{});return false;}
+ if(write&&queue_.size()>=maximumQueue){++dropped_;logging::warning(logHistory(),"Error log write dropped",{{"queued",qint64(queue_.size())},{"dropped",qint64(dropped_)}});if(done)done({"error_log_full","The error log queue is full, so this entry wasn't saved.",{}},{});return false;}
  queue_.push_back({std::move(work),std::move(done),write});pump();
  return true;
 }

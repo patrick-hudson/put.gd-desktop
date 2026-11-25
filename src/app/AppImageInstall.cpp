@@ -57,7 +57,7 @@ Image inspect(const QString& path,qint64 requiredBytes,Error& error,[[maybe_unus
  if(path.isEmpty()||!given.isAbsolute()){error={"update_install_unavailable","put.gd is not running from an AppImage file",{}};return {};}
  // A link to the image is followed: the file itself is replaced, and the link keeps working.
  const auto canonical=given.canonicalFilePath();const QFileInfo file(canonical);
- if(canonical.isEmpty()||!file.isFile()||!isAppImage(canonical)){error={"update_install_unavailable","The AppImage put.gd runs from is missing or is not an AppImage",{{"image",path}}};return {};}
+ if(canonical.isEmpty()||!file.isFile()||!isAppImage(canonical)){error={"update_install_unavailable","The AppImage put.gd is running from is missing or invalid.",{{"image",path}}};return {};}
  image.path=canonical;image.directory=file.absolutePath();image.size=file.size();
  image.updateInformation=LoginStartup::appImageUpdateInformation(canonical);
 #ifdef Q_OS_UNIX
@@ -96,12 +96,12 @@ QString sumsLine(const QByteArray& sums,const QString& name) {
 Error verify(const QString& candidate,const QString& expectedSha256,const QString& updateInformation) {
  const auto actual=sha256(candidate);
  if(actual.isEmpty()||actual!=expectedSha256)
-  return {"update_verification_failed","The new version doesn't match the release's SHA256SUMS; nothing was changed",{{"check","sha256"},{"expected",expectedSha256},{"actual",actual.isEmpty()?QJsonValue():QJsonValue(actual)}}};
- if(!isAppImage(candidate))return {"update_verification_failed","The new version is not an AppImage; nothing was changed",{{"check","appimage"}}};
+  return {"update_verification_failed","The new version doesn't match the release's SHA256SUMS. Your current AppImage wasn't changed.",{{"check","sha256"},{"expected",expectedSha256},{"actual",actual.isEmpty()?QJsonValue():QJsonValue(actual)}}};
+ if(!isAppImage(candidate))return {"update_verification_failed","The downloaded file isn't an AppImage. Your current AppImage wasn't changed.",{{"check","appimage"}}};
  // The same channel's permalink: an image for another channel or origin is not this update.
  const auto information=LoginStartup::appImageUpdateInformation(candidate);
  if(information!=updateInformation)
-  return {"update_verification_failed","The new version follows other update information; nothing was changed",{{"check","updateInformation"},{"expected",updateInformation},{"actual",information}}};
+  return {"update_verification_failed","The new version doesn't match this channel's update metadata. Your current AppImage wasn't changed.",{{"check","updateInformation"},{"expected",updateInformation},{"actual",information}}};
  return {};
 }
 bool linkOrCopy(const QString& source,const QString& destination,bool* copied) {
@@ -117,7 +117,7 @@ QJsonObject swap(const QString& candidate,const Image& image,const QString& prev
 #ifdef Q_OS_UNIX
  const auto failed=[&](const QString& message){error={"update_install_failed",message,{{"image",image.path}}};return QJsonObject{};};
  struct stat old{};
- if(::stat(QFile::encodeName(image.path).constData(),&old)!=0)return failed("The AppImage is no longer there");
+ if(::stat(QFile::encodeName(image.path).constData(),&old)!=0)return failed("Couldn't find the AppImage file to replace.");
  if(::chmod(QFile::encodeName(candidate).constData(),old.st_mode&07777)!=0||!syncPath(candidate,false))return failed("Cannot prepare the new version beside the AppImage");
  // Hidden, so the login script never picks it, and named after what it holds.
  static const QRegularExpression unsafe("[^0-9A-Za-z.+~-]");
@@ -128,15 +128,15 @@ QJsonObject swap(const QString& candidate,const Image& image,const QString& prev
   const auto path=QDir(image.directory).filePath(name);
   if(!QFileInfo::exists(path)&&!QFileInfo(path).isSymLink())backup=path;
  }
- if(backup.isEmpty())return failed("Too many earlier backups of the AppImage are in its folder");
+ if(backup.isEmpty())return failed("Too many older AppImage backups are in this folder. Remove old backup files and try again.");
  bool copied=false;
- if(!linkOrCopy(image.path,backup,&copied))return failed("Cannot keep a backup of the current AppImage");
+ if(!linkOrCopy(image.path,backup,&copied))return failed("Couldn't create a backup of the current AppImage.");
  struct stat kept{};
- if(::stat(QFile::encodeName(backup).constData(),&kept)!=0){QFile::remove(backup);return failed("Cannot keep a backup of the current AppImage");}
+ if(::stat(QFile::encodeName(backup).constData(),&kept)!=0){QFile::remove(backup);return failed("Couldn't create a backup of the current AppImage.");}
  // The one step that changes what the path holds; atomic on one file system.
  if(::rename(QFile::encodeName(candidate).constData(),QFile::encodeName(image.path).constData())!=0){
   QFile::remove(backup);
-  return failed("Cannot put the new version in place of the AppImage");
+  return failed("Couldn't replace the AppImage with the new version.");
  }
  syncPath(image.directory,true);
  return {{"path",backup},{"device",QString::number(quint64(kept.st_dev))},{"inode",QString::number(quint64(kept.st_ino))},{"size",qint64(kept.st_size)},

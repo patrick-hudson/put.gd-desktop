@@ -113,7 +113,7 @@ SessionClient::RequestId SessionClient::request(const QString& method, const QJs
     pending_.insert(id, pending);
     connect(receiver, &QObject::destroyed, pending, [this, id] { abandon(id); });
     if (busy) {
-        finish(id, {"client_busy", "Too many requests are awaiting a resident response", {}});
+        finish(id, {"client_busy", "Too many requests are waiting for put.gd to answer.", {}});
         return id;
     }
 
@@ -310,8 +310,8 @@ void SessionClient::transportFailed(RequestId id, bool timedOut) {
     const auto* pending = pending_.value(id);
     if (!pending || pending->complete) return;
     Error error = timedOut
-        ? Error{"client_timeout", "Resident request exceeded its deadline", {}}
-        : Error{"client_unavailable", "Cannot exchange a complete response with the resident", {}};
+        ? Error{"client_timeout", "put.gd didn't respond in time.", {}}
+        : Error{"client_unavailable", "Lost the connection to put.gd.", {}};
     if (pending->submitted) error.details["outcomeUnknown"] = true;
     finish(id, std::move(error));
 }

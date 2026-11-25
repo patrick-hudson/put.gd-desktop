@@ -102,13 +102,13 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
   if(!check["latest"].isString()){error={"update_no_release","There's no "+options.channel+" release yet",{{"channel",options.channel}}};return {};}
   const auto order=update::compareVersions(check["latest"].toString(),build.version);
   if(order&&*order<0&&!options.allowOlder){
-   error={"update_switch_older",options.channel+" "+check["latest"].toString()+" is older than this build ("+build.version+"); switching to it must be confirmed",{{"latest",check["latest"]},{"current",build.version}}};return {};
+   error={"update_switch_older",options.channel+" "+check["latest"].toString()+" is older than this build ("+build.version+"). Confirm before switching to an older version.",{{"latest",check["latest"]},{"current",build.version}}};return {};
   }
  } else if(!check["updateAvailable"].toBool()){error={"update_not_available","This is the newest version on the channel",{{"current",build.version},{"latest",check["latest"]}}};return {};}
  const auto asset=check["asset"].toObject();const auto tag=check["tag"].toString(),version=check["latest"].toString(),name=asset["name"].toString();
- if(asset.isEmpty()||!name.endsWith(".AppImage")){error={"update_install_unavailable","The release names no AppImage to install",{{"tag",tag}}};return {};}
+ if(asset.isEmpty()||!name.endsWith(".AppImage")){error={"update_install_unavailable","This release doesn't include an AppImage to install.",{{"tag",tag}}};return {};}
  const auto size=asset["size"].toInteger();
- if(size<=0||size>appimage::maximumImageBytes){error={"update_verification_failed","The release's AppImage has an implausible size",{{"size",size}}};return {};}
+ if(size<=0||size>appimage::maximumImageBytes){error={"update_verification_failed","The release's AppImage size is invalid.",{{"size",size}}};return {};}
  auto image=appimage::inspect(options.image,size,error,options.access);if(error)return {};
  // What the new image must embed: the same channel's permalink, or the target's.
  const auto information=switching?update::switchedUpdateInformation(image.updateInformation,build.channel,options.channel):image.updateInformation;
@@ -117,7 +117,7 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
  // An install that is waiting for its restart is finished first.
  const auto pending=state.value("installed").toObject();
  if(!state.value("backup").toObject().isEmpty()&&pending["image"]==image.path&&pending["version"]!=build.version){
-  error={"update_restart_required","Restart put.gd to finish the update that is already installed",{{"installed",pending["version"]}}};return {};
+  error={"update_restart_required","An update is already installed. Restart put.gd to finish updating.",{{"installed",pending["version"]}}};return {};
  }
 
  // The release's own list, over TLS from the release, is the authority.
@@ -133,16 +133,16 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
  Transfer signatureTransfer;const auto signature=fetch(network,signatureUrl,maximumSignatureBytes,nullptr,nullptr,{},signatureTransfer);
  if(!signatureTransfer.ok){
   auto details=transferDetails(signatureUrl,signatureTransfer);details["check"]="missing";
-  error={"update_signature_invalid","The release's SHA256SUMS has no signature; nothing was changed",details};return {};
+  error={"update_signature_invalid","The release's SHA256SUMS has no signature. Your current AppImage wasn't changed.",details};return {};
  }
  const auto key=options.publicKeys.value(options.channel,minisign::releaseKey(options.channel));
  QString trusted;
- if(auto failed=minisign::verify(sums,signature,key,&trusted)){error=failed;error.message="The release's SHA256SUMS signature isn't valid ("+failed.message.toLower()+"); nothing was changed";return {};}
- if(trusted!="put.gd "+tag+" "+options.channel){error={"update_signature_invalid","The SHA256SUMS signature is for another release; nothing was changed",{{"check","release"},{"trustedComment",trusted}}};return {};}
+ if(auto failed=minisign::verify(sums,signature,key,&trusted)){error=failed;error.message="The release's SHA256SUMS signature isn't valid ("+failed.message.toLower()+"). Your current AppImage wasn't changed.";return {};}
+ if(trusted!="put.gd "+tag+" "+options.channel){error={"update_signature_invalid","The SHA256SUMS signature is for a different release. Your current AppImage wasn't changed.",{{"check","release"},{"trustedComment",trusted}}};return {};}
  const auto expected=appimage::sumsLine(sums,name);
  if(expected.isEmpty()){error={"update_sums_unavailable","The release's SHA256SUMS doesn't list the AppImage",{{"name",name}}};return {};}
  if(asset.contains("sha256")&&asset["sha256"].toString()!=expected){
-  error={"update_verification_failed","The update feed and the release's SHA256SUMS disagree; nothing was changed",{{"feed",asset["sha256"]},{"sums",expected}}};return {};
+  error={"update_verification_failed","The update feed and the release's SHA256SUMS don't match. Your current AppImage wasn't changed.",{{"feed",asset["sha256"]},{"sums",expected}}};return {};
  }
  QJsonObject result{{"installed",false},{"version",version},{"tag",tag},{"previousVersion",build.version},{"image",image.path},{"sha256",expected},{"method",QJsonValue()},
   {"zsync",QJsonValue()},{"backup",QJsonValue()},{"signature",QJsonObject{{"trustedComment",trusted}}},
@@ -164,10 +164,10 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
  // in another folder (the image moved) doesn't block this image's update.
  if(const auto earlier=state["staging"].toString();!earlier.isEmpty()&&!appimage::removeStaging(earlier)
     &&QFileInfo(QFileInfo(earlier).absolutePath()).canonicalFilePath()==QFileInfo(image.directory).canonicalFilePath()){
-  error={"update_install_failed","An earlier update's staging folder can't be removed",{{"staging",earlier}}};return {};
+  error={"update_install_failed","Couldn't remove an earlier update's temporary folder.",{{"staging",earlier}}};return {};
  }
  QTemporaryDir staging(QDir(image.directory).filePath(QString(appimage::stagingPrefix)+"XXXXXX"));
- if(!staging.isValid()){error={"update_image_not_writable","Cannot create a staging folder beside the AppImage",{{"directory",image.directory}}};return {};}
+ if(!staging.isValid()){error={"update_image_not_writable","Couldn't create a temporary folder beside the AppImage.",{{"directory",image.directory}}};return {};}
  state["staging"]=staging.path();state["backup"]=QJsonValue();
  if(!appimage::writeState(options.stateRoot,state)){error={"update_install_failed","Cannot save the update's state",{}};return {};}
  const auto clearStaging=[&]{auto current=appimage::readState(options.stateRoot);current["staging"]=QJsonValue();appimage::writeState(options.stateRoot,current);};
@@ -247,7 +247,7 @@ QJsonObject installUpdate(const update::Build& build,const InstallOptions& optio
    if(QString::fromLatin1(hash.result().toHex())!=expected){
     if(source=="mirror"){auto attempt=attempts.last().toObject();attempt["sha256"]="mismatch";attempts.replace(attempts.size()-1,attempt);lastFailure="the pkg.put.gd copy doesn't match SHA256SUMS";continue;}
     clearStaging();
-    error={"update_verification_failed","The download doesn't match the release's SHA256SUMS; nothing was changed",{{"check","sha256"},{"expected",expected},{"actual",QString::fromLatin1(hash.result().toHex())},{"source",source}}};return {};
+    error={"update_verification_failed","The download doesn't match the release's SHA256SUMS. Your current AppImage wasn't changed.",{{"check","sha256"},{"expected",expected},{"actual",QString::fromLatin1(hash.result().toHex())},{"source",source}}};return {};
    }
    progress("verifying",source,size,size);
    if(!QFile::rename(part,candidatePath)){clearStaging();error={"update_install_failed","Cannot prepare the download beside the AppImage",{}};return {};}

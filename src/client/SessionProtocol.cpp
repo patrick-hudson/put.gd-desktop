@@ -47,7 +47,7 @@ bool decodeReply(const QByteArray& frame, const QString& wireId, Error& error, Q
 }
 
 Error invalidResponse(bool submitted) {
-    return {"invalid_response", "Resident response does not match the request protocol",
+    return {"invalid_response", "Received an invalid response from put.gd.",
             submitted ? QJsonObject{{"outcomeUnknown", true}} : QJsonObject{}};
 }
 }

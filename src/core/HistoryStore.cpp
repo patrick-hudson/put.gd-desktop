@@ -11,7 +11,7 @@
 #include <QCryptographicHash>
 namespace putgd {
 namespace {
-Error sqlError() {return {"history_io","Persistent journal could not be read or committed",{}};}
+Error sqlError() {return {"history_io","Couldn't read or save History. Free up disk space and try again.",{}};}
 QByteArray encode(const QJsonObject& o) {return QJsonDocument(o).toJson(QJsonDocument::Compact);}
 QJsonObject decode(const QVariant& v) {return QJsonDocument::fromJson(v.toByteArray()).object();}
 QString publicationIdentity(const StorageReceipt& receipt,const ProviderRegistry& providers) {
@@ -96,7 +96,7 @@ HistoryStore::HistoryStore(QString path):root_(QFileInfo(path).absolutePath()) {
 HistoryStore::~HistoryStore() {db_.close();db_=QSqlDatabase{};QSqlDatabase::removeDatabase(connection_);}
 Error HistoryStore::initialize() {
  QSqlQuery q(db_);if(!q.exec("PRAGMA foreign_keys=ON")||!q.exec("PRAGMA user_version")||!q.next()) return sqlError(); const int version=q.value(0).toInt();
- if(version>7) return {"history_version","Unsupported history schema version",{}};
+ if(version>7) return {"history_version","This History database was created by a newer version of put.gd.",{}};
  // The error log table (#1753) is created beside schema 7 without raising the version, so an
  // older put.gd still opens this journal; it never reads the table.
  // Deletion targets are looked up by record (#1773); the index is added to existing schema-7 journals too.
@@ -130,7 +130,7 @@ Error HistoryStore::initialize() {
   &&exec("PRAGMA user_version=5");
  if(ok)ok=exec("CREATE TABLE IF NOT EXISTS sharing_operations(id TEXT PRIMARY KEY,history_id TEXT NOT NULL,data BLOB NOT NULL)")
   &&exec("CREATE INDEX IF NOT EXISTS sharing_history ON sharing_operations(history_id)")&&exec("CREATE INDEX IF NOT EXISTS sharing_state ON sharing_operations(json_extract(data,'$.state'))")&&exec("PRAGMA user_version=7");
- if(!ok||!db_.commit()) {db_.rollback();return {"history_migration","History migration failed; original records preserved",{}};}
+ if(!ok||!db_.commit()) {db_.rollback();return {"history_migration","Couldn't update the History database to the new format. Your earlier records were kept.",{}};}
  return ensureErrorLog();
 }
 void HistoryStore::relocate(Operation& op) const {
@@ -211,10 +211,10 @@ Error HistoryStore::refreshLink(const QString& id,const StorageReceipt& before,c
  if(error_)return error_;
  if(!db_.transaction())return sqlError();
  Error e;const auto current=detail(id,&e);
- if(e||!current["linkRefreshable"].toBool()||current["receipt"].toObject()!=before.toJson()) {db_.rollback();return e?e:Error{"link_changed","The recorded link changed; select it again",{}};}
+ if(e||!current["linkRefreshable"].toBool()||current["receipt"].toObject()!=before.toJson()) {db_.rollback();return e?e:Error{"link_changed","The saved link changed. Select it again.",{}};}
  auto a=before.objectReference,b=after.objectReference;a.remove("linkExpiresAt");b.remove("linkExpiresAt");
  const auto expiry=QDateTime::fromString(after.objectReference["linkExpiresAt"].toString(),Qt::ISODateWithMs);
- if(after.validate()||after.directUrl.isEmpty()||!expiry.isValid()||expiry<=QDateTime::currentDateTimeUtc()||a!=b||before.destination.toJson()!=after.destination.toJson()||before.publicationId!=after.publicationId||before.concurrencyToken!=after.concurrencyToken){db_.rollback();return {"link_identity_changed","Refresh did not confirm the recorded object",{}};}
+ if(after.validate()||after.directUrl.isEmpty()||!expiry.isValid()||expiry<=QDateTime::currentDateTimeUtc()||a!=b||before.destination.toJson()!=after.destination.toJson()||before.publicationId!=after.publicationId||before.concurrencyToken!=after.concurrencyToken){db_.rollback();return {"link_identity_changed","The refreshed link didn't match the uploaded file.",{}};}
  QSqlQuery q(db_);q.prepare("SELECT data FROM item_state WHERE id=?");q.addBindValue(id);
  if(!q.exec()||!q.next()){db_.rollback();return sqlError();}
  auto remote=decode(q.value(0));q.finish();remote["shareReceipt"]=after.toJson();
@@ -252,13 +252,13 @@ QList<Operation> HistoryStore::recover(Error* error) {
  auto q=forwardQuery(db_);if(!q.exec("SELECT data FROM operations")) {if(error)*error=sqlError();return result;}
  while(q.next()) {auto op=Operation::fromJson(decode(q.value(0)));relocate(op);bool changed=false;
   const auto state=op.state();
-  if(state==OperationState::Accepted||state==OperationState::Acquiring) {op.error={"source_interrupted","Acquisition interrupted; invoke a new action",{}};}
+  if(state==OperationState::Accepted||state==OperationState::Acquiring) {op.error={"source_interrupted","Capture was interrupted before it finished. Start a new capture.",{}};}
   // An unsubmitted edit is never resumed or uploaded; its private source is discarded.
-  else if(state==OperationState::Editing) {op.error={"edit_interrupted","Editing was interrupted before upload; nothing was uploaded",{}};}
+  else if(state==OperationState::Editing) {op.error={"edit_interrupted","Editing was interrupted. The upload didn't start.",{}};}
   // A recording that never reached explicit Upload is discarded with its private clip.
-  else if(state==OperationState::Recording) {op.error={"recording_interrupted","Recording was interrupted before upload; nothing was uploaded",{}};}
+  else if(state==OperationState::Recording) {op.error={"recording_interrupted","Recording was interrupted. The upload didn't start.",{}};}
   // Text recognition (#1428) is never rerun, and nothing it read was ever stored.
-  else if(state==OperationState::Recognizing) {op.error={"text_interrupted","Text recognition was interrupted; nothing was copied",{}};}
+  else if(state==OperationState::Recognizing) {op.error={"text_interrupted","Text recognition was interrupted. Nothing was copied.",{}};}
   if(op.active()) {op.advance(OperationState::Interrupted);changed=true;}
   for(auto& i:op.items) if(i.uploadStatus=="uploading") {i.uploadStatus="unknown";changed=true;}
   if(op.state()==OperationState::Interrupted&&op.copyStatus=="pending") {op.copyStatus="no_result";changed=true;}
@@ -509,7 +509,7 @@ bool HistoryStore::writeDeletion(QJsonObject& doc,bool claim,Error* refused) {
    QStringList keeping;
    const bool holderBusy=QStringList{"pending","deleting","unknown","changed","hidden_version_retained"}.contains(remote)||(progress.contains("phase")&&!finals.contains(remote));
    if(holderBusy||!releasable(historyId,{},&keeping)) {
-    if(refused)*refused={"delete_target_changed","An earlier deletion of this file saved its progress. Retry that deletion from History instead.",{{"historyId",historyId},{"deleteOperationId",holder}}};
+    if(refused)*refused={"delete_target_changed","An earlier deletion of this file saved its progress. Select Retry deletion in History instead.",{{"historyId",historyId},{"deleteOperationId",holder}}};
     return true;
    }
    keeping.removeAll(id);release.insert(historyId,keeping);
@@ -521,7 +521,7 @@ bool HistoryStore::writeDeletion(QJsonObject& doc,bool claim,Error* refused) {
     if(finals.contains(earlier["status"].toString())){item=earlier;item["takenOverBy"]=holder;}
     else {
      item["status"]="taken_over";item["takenOverBy"]=holder;
-     item["error"]=Error{"delete_taken_over","A newer deletion of this file took over; its History entry shows that one.",{{"deleteOperationId",holder}}}.toJson();
+     item["error"]=Error{"delete_taken_over","A newer deletion of this file took over. Check its entry in History.",{{"deleteOperationId",holder}}}.toJson();
     }
     items[i]=item;held<<false;taken<<true;states<<QJsonObject{};continue;
    }
@@ -547,20 +547,20 @@ QJsonObject HistoryStore::sharing(const QString& id,Error* error) const {
  if(error_){if(error)*error=error_;return {};}
  QSqlQuery q(db_);q.prepare("SELECT data FROM sharing_operations WHERE id=?");q.addBindValue(id);
  if(!q.exec()){if(error)*error=sqlError();return {};}
- if(!q.next()){if(error)*error={"share_not_found","Sharing operation not found",{}};return {};}
+ if(!q.next()){if(error)*error={"share_not_found","Share link request not found.",{}};return {};}
  return decode(q.value(0));
 }
 Error HistoryStore::saveSharing(const QJsonObject& doc,bool requireRecord) {
  if(error_)return error_;
  const auto id=doc["id"].toString(),historyId=doc["historyId"].toString();
  const auto receipt=StorageReceipt::fromJson(doc["receipt"].toObject());
- if(id.isEmpty()||historyId.isEmpty()||receipt.validate())return {"share_journal_invalid","Incomplete sharing intent",{}};
+ if(id.isEmpty()||historyId.isEmpty()||receipt.validate())return {"share_journal_invalid","Incomplete share link record.",{}};
  if(!db_.transaction())return sqlError();
  QSqlQuery q(db_);
  // As for a deletion: a new link change only for a record still in History (#1759).
  if(requireRecord){q.prepare("SELECT 1 FROM history WHERE id=?");q.addBindValue(historyId);if(!q.exec()||!q.next()){db_.rollback();return {"history_not_found","History record not found",{}};}}
  q.prepare("SELECT data FROM item_state WHERE id=?");q.addBindValue(historyId);
- if(!q.exec()||!q.next()){db_.rollback();return {"history_not_found","Uploaded item ledger not found",{}};}
+ if(!q.exec()||!q.next()){db_.rollback();return {"history_not_found","Uploaded file record not found.",{}};}
  auto remote=decode(q.value(0));
  // Remember a create until it is confirmed shared or explicitly abandoned.
  // A read-only inspection that proves private resolves uncertainty, not intent.

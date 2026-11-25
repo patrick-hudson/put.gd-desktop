@@ -11,7 +11,7 @@ LocalCopy LocalCopy::fromJson(const QJsonObject& o) {auto e=o["error"].toObject(
 QString LocalArchive::folder(const ArchiveSettings& s,const QString& category) {return s.folders.value(category).isEmpty()?QDir(s.root).filePath(category):s.folders.value(category);}
 LocalCopy LocalArchive::save(const Artifact& a,const ArchiveSettings& s) {
  LocalCopy r; r.status="failed"; const auto dir=folder(s,a.category);
- auto fail=[&] {r.error={"archive_failed","Cannot create local copy; retry the retained artifact",{}};return r;};
+ auto fail=[&] {r.error={"archive_failed","Couldn't save a local copy. Check the folder, then select Retry local save.",{}};return r;};
  if(!QDir().mkpath(dir)) return fail();
  QFile in(a.path); if(!in.open(QIODevice::ReadOnly)) return fail();
  QTemporaryFile temp(QDir(dir).filePath(".putgd-XXXXXX")); if(!temp.open()) return fail();

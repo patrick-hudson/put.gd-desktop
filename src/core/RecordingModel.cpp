@@ -156,7 +156,7 @@ Error checkTransition(RecordingState state, const QString& command) {
         {"audio", {S::Ready}}};
     if (!allowed.contains(command)) return {"unknown_method", "Unknown recording command", {}};
     const auto name = stateName(state);
-    if (!allowed[command].contains(state)) return {"recording_state", command == QLatin1String("audio") ? QStringLiteral("The audio sources can be changed only while the recording is ready; it is %1").arg(name)
+    if (!allowed[command].contains(state)) return {"recording_state", command == QLatin1String("audio") ? QStringLiteral("Audio sources can only be changed before recording starts. This recording is %1.").arg(name)
                                                                                                          : QStringLiteral("Cannot %1 a recording that is %2").arg(command, name), {{"state", name}, {"command", command}}};
     return {};
 }
@@ -265,8 +265,8 @@ Error parseConfig(const QJsonObject& params, RecordingConfig& out) {
         config.audio.system = audio["system"].toBool();
         config.audio.microphone = audio["microphone"].toBool();
         config.audio.microphoneDevice = audio["microphoneDevice"].toString();
-        if (config.silent() && config.audio.system) return invalid("GIF and WebP are silent formats; audio cannot be included", "audio.system");
-        if (config.silent() && config.audio.microphone) return invalid("GIF and WebP are silent formats; audio cannot be included", "audio.microphone");
+        if (config.silent() && config.audio.system) return invalid("GIF and WebP are silent formats, so audio can't be included.", "audio.system");
+        if (config.silent() && config.audio.microphone) return invalid("GIF and WebP are silent formats, so audio can't be included.", "audio.microphone");
     }
     if (params.contains("clickHighlights") && !params["clickHighlights"].isBool()) return invalid("clickHighlights must be a boolean", "clickHighlights");
     config.clickHighlights = params["clickHighlights"].toBool();
@@ -398,7 +398,7 @@ Error applyEditCommands(RecordingEdit& edit, const QJsonArray& commands, qint64 
             if (command.contains("end") && !command["end"].isNull() && !integer(command["end"], 0, duration, &end)) return invalid("Trim end must be microseconds within the clip or null", "end");
             start = up(start);
             if (end < duration) end = down(end);
-            if (end - start < minimum) return invalid("The retained interval must contain at least one frame", "end");
+            if (end - start < minimum) return invalid("The trimmed clip must contain at least one frame", "end");
             next.trimStart = start;
             if (command.contains("end") && !command["end"].isNull() && end != duration) next.trimEnd = end; else next.trimEnd.reset();
             cutsOrTrimChanged = true;
@@ -408,7 +408,7 @@ Error applyEditCommands(RecordingEdit& edit, const QJsonArray& commands, qint64 
             cutsOrTrimChanged = true;
         } else if (op == "addMask") {
             if (!knownKeys(command, {"op", "mask"})) return invalid("addMask takes a mask", "commands");
-            if (next.masks.size() >= maximumMasks) return invalid("At most 64 masks are supported", "mask");
+            if (next.masks.size() >= maximumMasks) return invalid("You can add at most 64 covers", "mask");
             RecordingMask mask;
             if (auto error = validateMask(command["mask"], mask, duration, canvas)) return error;
             snapMask(mask);
@@ -429,7 +429,7 @@ Error applyEditCommands(RecordingEdit& edit, const QJsonArray& commands, qint64 
             start = down(start);
             end = end >= duration ? duration : up(end);
             mergeCut(next.cuts, {}, start, end);
-            if (next.cuts.size() > maximumCuts) return invalid("At most 64 cuts are supported", "start");
+            if (next.cuts.size() > maximumCuts) return invalid("You can add at most 64 cuts", "start");
             cutsOrTrimChanged = true;
         } else if (op == "updateCut" || op == "removeCut") {
             if (!knownKeys(command, op == "updateCut" ? QStringList{"op", "cutId", "start", "end"} : QStringList{"op", "cutId"}) || !command["cutId"].isString()) return invalid("Cut commands need a cutId", "cutId");
@@ -473,14 +473,14 @@ QSize outputSize(const QSize& canvas, const std::optional<int>& maxEdge) {
 }
 Error checkExportBudget(const RecordingConfig& config, const RecordingEdit& edit, qint64 duration, const QSize& canvas, const RecordingLimits& limits) {
     const auto retained = edit.exportDuration(duration);
-    if (retained <= 0) return invalid("The retained interval is empty", "trim");
+    if (retained <= 0) return invalid("The trimmed clip has no frames.", "trim");
     if (!config.animation()) return {};
     if (retained > limits.animationMaxUs)
-        return {"recording_animation_too_long", QStringLiteral("%1 exports are limited to %2 s; trim the clip to %2 s or less").arg(config.format.toUpper()).arg(limits.animationMaxUs / 1000000), {{"retainedUs", double(retained)}, {"limitUs", double(limits.animationMaxUs)}}};
+        return {"recording_animation_too_long", QStringLiteral("%1 exports are limited to %2 s. Trim or cut the clip to %2 s or less.").arg(config.format.toUpper()).arg(limits.animationMaxUs / 1000000), {{"retainedUs", double(retained)}, {"limitUs", double(limits.animationMaxUs)}}};
     const auto size = outputSize(canvas, config.maxEdge);
     const int edge = std::max(size.width(), size.height());
     if (edge > limits.animationMaxEdge)
-        return {"recording_animation_too_large", QStringLiteral("%1 exports are limited to %2 px; set maxEdge to %2 or less").arg(config.format.toUpper()).arg(limits.animationMaxEdge), {{"edge", edge}, {"limitEdge", limits.animationMaxEdge}}};
+        return {"recording_animation_too_large", QStringLiteral("%1 exports are limited to %2 px. Set maxEdge to %2 or less.").arg(config.format.toUpper()).arg(limits.animationMaxEdge), {{"edge", edge}, {"limitEdge", limits.animationMaxEdge}}};
     return {};
 }
 bool clampAnimationSize(RecordingConfig& config, const QSize& canvas, const RecordingLimits& limits) {

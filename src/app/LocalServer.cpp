@@ -445,9 +445,9 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   if(!openLink_){reply({"ui_unavailable","This resident cannot open links",{}},{});return;}
   history_.detail(p["id"].toString(),[open=openLink_,reply](Error e,QJsonObject data){
    if(e){reply(e,{});return;}
-   if(!data["linkAvailable"].toBool()){reply({"link_unavailable","This recorded link is no longer available",{}},{});return;}
+   if(!data["linkAvailable"].toBool()){reply({"link_unavailable","This link is no longer available.",{}},{});return;}
    open(QUrl(data["receipt"].toObject()["directUrl"].toString()),[reply](const QJsonObject& result){
-    if(result["opened"].toBool())reply({},result);else reply({"link_not_opened","The link could not be opened on this desktop",result},{});
+    if(result["opened"].toBool())reply({},result);else reply({"link_not_opened","Couldn't open the link in your browser.",result},{});
    });
   });
   return;
@@ -529,7 +529,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   entry.operationId=p["operationId"].toString();entry.profileId=p["profileId"].toString();entry.itemName=p["itemName"].toString();
   entry.subject=entry.kind+":"+entry.code+":"+(entry.historyId.isEmpty()?entry.operationId:entry.historyId);
   const auto id=errorLog_->record(entry);
-  if(id.isEmpty()){reply({"error_log_full","The error log can't keep up; this entry wasn't saved",{}},{});return;}
+  if(id.isEmpty()){reply({"error_log_full","The error log queue is full, so this entry wasn't saved.",{}},{});return;}
   reply({},{{"id",id}});return;
  }
  // Drives the open Settings → Error log page the way a user does.
@@ -580,7 +580,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(method=="settings.reorderProfiles") {
   if(!fields(p,{"order","expectedRevision"})||!p["order"].isArray()||p["order"].toArray().size()>64||!p["expectedRevision"].isString()) {reply(invalid(),{});return;}
   // Reorder only the accepted document it was read from; the save rechecks the file under its lock.
-  if(p["expectedRevision"].toString()!=settings_.revision()) {reply({"config_conflict","Configuration changed; reload or rebase before saving.",{{"observedRevision",settings_.metadata()["observedRevision"]}}},{});return;}
+  if(p["expectedRevision"].toString()!=settings_.revision()) {reply({"config_conflict","Settings changed elsewhere. Reload before saving.",{{"observedRevision",settings_.metadata()["observedRevision"]}}},{});return;}
   QJsonObject document;if(auto error=Settings::reorderProfiles(settings_.document(),p["order"].toArray(),document)) {reply(error,{});return;}
   if(document==settings_.document()) {reply({},{{"changed",false},{"metadata",settings_.metadata()}});return;}
   QPointer<LocalServer> guarded(this);settings_.saveAsync(document,p["expectedRevision"].toString(),[guarded,reply](Result result) {if(guarded)reply(result.error,{{"changed",true},{"metadata",guarded->settings_.metadata()}});});return;
@@ -694,12 +694,12 @@ void LocalServer::actOnError(const QJsonObject& entry,const QString& action,Json
   dispatch(request("delete.prepare",{{"ids",ids}}),[guarded,request,historyId,ids,answer](Error error,QJsonObject preview){
    if(error){answer(error,{});return;}
    const auto target=preview["targets"].toArray().first().toObject();
-   if(!target["destinationRemoved"].toBool()){answer({"destination_not_removed","This file's destination is in Settings again, so put.gd can delete it there. Delete it from History instead.",{{"historyId",historyId}}},{});return;}
+   if(!target["destinationRemoved"].toBool()){answer({"destination_not_removed","This file's destination is back in Destinations, so put.gd can delete it there. Delete it from History instead.",{{"historyId",historyId}}},{});return;}
    const auto retainedBy=target["retainedBy"].toString();
-   if(!target["forgettable"].toBool()){answer({"history_record_retained",retainedBy=="sharing"?QStringLiteral("This file can't be removed from History yet: a share link change hasn't finished. Check its link in History first."):QStringLiteral("This file can't be removed from History yet: an earlier deletion may have reached the destination. Check the file there."),{{"historyId",historyId},{"retainedBy",retainedBy}}},{});return;}
+   if(!target["forgettable"].toBool()){answer({"history_record_retained",retainedBy=="sharing"?QStringLiteral("Couldn't remove this file from History because a share link change hasn't finished. Check its link in History first."):QStringLiteral("Couldn't remove this file from History because an earlier deletion may have reached the destination. Check the file there first."),{{"historyId",historyId},{"retainedBy",retainedBy}}},{});return;}
    if(!guarded){answer({"error_log_unavailable","This resident keeps no error log",{}},{});return;}
    guarded->dispatch(request("history.forget",{{"ids",ids}}),[historyId,answer](Error error,QJsonObject result){
-    if(!error&&result["removed"].toInt()<1)error={"history_record_retained","This file can't be removed from History yet: a deletion or link change started meanwhile.",{{"historyId",historyId}}};
+    if(!error&&result["removed"].toInt()<1)error={"history_record_retained","Couldn't remove this file from History because a deletion or share link change started.",{{"historyId",historyId}}};
     answer(error,result);
    });
   });

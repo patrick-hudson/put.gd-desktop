@@ -109,7 +109,7 @@ int activateResident(const QString& view,bool background,QJsonObject& replaced) 
   const auto retired=putgd::retireResident(path,peer);
   replaced={{"pid",peer.pid},{"session",session.session.id},{"type",session.session.type},{"state",session.session.state},{"reason",session.reason},{"how",retired.done?retired.how:QStringLiteral("failed")}};
   if(retired.done)return -1;
-  launcherError("stale_resident: A put.gd resident left from an ended login session did not stop. Quit put.gd and start it again.");
+  launcherError("stale_resident: An earlier put.gd process from an ended login session didn't stop. Close it and start put.gd again.");
   return 1;
  };
  if(background) {
@@ -143,7 +143,7 @@ int activateResident(const QString& view,bool background,QJsonObject& replaced) 
   }
  }
  if(code=="ui_incompatible")launcherError("ui_incompatible: The installed UI version does not match the running app. Restart put.gd after pending uploads finish.");
- else launcherError(code+": Could not confirm that the requested window opened. Retry opening the window; check the resident if this continues.");
+ else launcherError(code+": Couldn't confirm that the window opened. Try opening it again. If this continues, restart put.gd.");
  return 1;
 }
 // fsync of a file or folder; false when it can't be opened or synced.
@@ -156,25 +156,25 @@ bool syncToDisk(const QString& path,bool folder) {
 }
 putgd::Error checkpointFile(const QString& path,const QJsonObject& data) {
  const auto parent=QFileInfo(path).absolutePath();
- if(!QDir().mkpath(parent)||!QFile::setPermissions(parent,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner))return {"setup_journal_io","Cannot create private destination test journal",{}};
+ if(!QDir().mkpath(parent)||!QFile::setPermissions(parent,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner))return {"setup_journal_io","Couldn't create the destination test folder.",{}};
  QJsonArray checkpoints;
  QFile existing(path);
  if(existing.exists()) {
-  if(!existing.open(QIODevice::ReadOnly)||existing.size()>1024*1024)return {"setup_journal_io","Cannot read bounded destination test journal",{}};
+  if(!existing.open(QIODevice::ReadOnly)||existing.size()>1024*1024)return {"setup_journal_io","Couldn't read the destination test log.",{}};
   QJsonParseError parse;const auto previous=QJsonDocument::fromJson(existing.readAll(),&parse);
-  if(parse.error!=QJsonParseError::NoError||!previous.isObject())return {"setup_journal_io","Destination test journal is invalid; original target preserved",{}};
+  if(parse.error!=QJsonParseError::NoError||!previous.isObject())return {"setup_journal_io","The destination test log is invalid. The test stopped without changing anything.",{}};
   checkpoints=previous.object()["checkpoints"].toArray();
  }
- if(checkpoints.size()>=64)return {"setup_journal_io","Destination test checkpoint limit reached; target preserved",{}};
+ if(checkpoints.size()>=64)return {"setup_journal_io","The destination test recorded too many steps and stopped.",{}};
  checkpoints.append(data);
  QSaveFile file(path);file.setDirectWriteFallback(false);
- if(!file.open(QIODevice::WriteOnly)||!file.setPermissions(QFile::ReadOwner|QFile::WriteOwner))return {"setup_journal_io","Cannot open destination test journal",{}};
+ if(!file.open(QIODevice::WriteOnly)||!file.setPermissions(QFile::ReadOwner|QFile::WriteOwner))return {"setup_journal_io","Couldn't open the destination test log.",{}};
  const auto bytes=QJsonDocument(QJsonObject{{"schemaVersion",1},{"checkpoints",checkpoints}}).toJson(QJsonDocument::Compact);
- if(file.write(bytes)!=bytes.size()||!file.commit())return {"setup_journal_io","Cannot commit destination test journal",{}};
+ if(file.write(bytes)!=bytes.size()||!file.commit())return {"setup_journal_io","Couldn't save the destination test log.",{}};
  // The record is on disk before the step it records is sent (#1690): the file, the folder that
  // names it, and the data folder that names destination-tests/, every time.
  if(!syncToDisk(path,false)||!syncToDisk(parent,true)||!syncToDisk(QFileInfo(parent).absolutePath(),true))
-  return {"setup_journal_io","Cannot write the destination test journal to disk",{}};
+  return {"setup_journal_io","Couldn't write the destination test log to disk.",{}};
  return {};
 }
 }
@@ -197,7 +197,7 @@ int main(int argc,char* argv[]) {
   QCoreApplication removal(argc,argv);
   const auto result=putgd::gnome::removeOwnedUserCopy(putgd::gnome::defaultSetupInputs());
   if(result.needsUser()){std::fprintf(stderr,"put.gd: %s\n",qUtf8Printable(result.message));return 1;}
-  std::printf("put.gd: %s\n",result.details["removed"].toBool()?"removed the GNOME extension copy it installed; log out and back in to unload it.":"no put.gd-installed GNOME extension copy was found.");
+  std::printf("put.gd: %s\n",result.details["removed"].toBool()?"Removed the GNOME extension copy installed by put.gd. Log out and back in to unload it.":"no put.gd-installed GNOME extension copy was found.");
   return 0;
  }
 #endif
@@ -407,7 +407,7 @@ int main(int argc,char* argv[]) {
  if(bindSource){bindSource();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,bindSource);}
  auto tester=[&](const QString& profileId,const QJsonObject& profile,std::function<void(putgd::Error)> reply) {
   const auto provider=profile["provider"].toString();
-  if(provider!="s3"&&provider!="backblaze-b2"&&provider!=putgd::r2::providerId){reply({"test_unsupported","This provider has no destination test",{}});return;}
+  if(provider!="s3"&&provider!="backblaze-b2"&&provider!=putgd::r2::providerId){reply({"test_unsupported","This destination doesn't support connection tests.",{}});return;}
   const putgd::Destination destination{provider,profileId,settings.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};
   // Journal recovery first takes the journal lock and rewrites earlier tests' journals without
   // signed links (#1680). A History database recovery can't finish doesn't hold tests back.
@@ -433,7 +433,7 @@ int main(int argc,char* argv[]) {
    result=trail->completed(result);
    auto journalError=checkpointFile(path,putgd::withoutSignedTestLinks({{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}}));
    if(!error&&journalError)error=journalError;
-   if(!error&&(!result["publicReachable"].toBool()||!QStringList{"removed","missing"}.contains(result["cleanupStatus"].toString())))error={"destination_test_incomplete","Destination test publication or cleanup needs attention; its recorded target is retained",{}};
+   if(!error&&(!result["publicReachable"].toBool()||!QStringList{"removed","missing"}.contains(result["cleanupStatus"].toString())))error={"destination_test_incomplete","The test file may not be reachable or may still be at the destination. Check the destination and remove the test file if it is still there.",{}};
    reply(error);
   };
   if(provider=="s3"){s3->testDestination(destination,checkpoint,finished);return;}
@@ -482,7 +482,7 @@ int main(int argc,char* argv[]) {
     result=trail->completed(result);
     auto journalError=checkpointFile(path,putgd::dav::redactShareTokensIn(QJsonValue(putgd::withoutSignedTestLinks({{"schemaVersion",1},{"phase","finished"},{"result",result},{"error",error.toJson()}}))).toObject());
     if(!error&&journalError)error=journalError;
-    if(!error&&(!result["publicReachable"].toBool()||!QStringList{"removed","missing"}.contains(result["cleanupStatus"].toString())))error={"destination_test_incomplete","Destination test publication or cleanup needs attention; its recorded target is retained",{}};
+    if(!error&&(!result["publicReachable"].toBool()||!QStringList{"removed","missing"}.contains(result["cleanupStatus"].toString())))error={"destination_test_incomplete","The test file may not be reachable or may still be at the destination. Check the destination and remove the test file if it is still there.",{}};
     reply(error,result);
    });
    });
@@ -539,7 +539,7 @@ int main(int argc,char* argv[]) {
       if(!found){reply({"profile_not_found","The destination was removed while its host key was trusted",{}},result);return;}
       document["profiles"]=profiles;
       settings.saveAsync(document,destination.profileRevision,[reply,result](putgd::Result saved){
-       if(saved.error){auto e=saved.error;e.message="The key was trusted, but recording it in the destination failed: "+e.message+" Test the destination again.";reply(e,result);return;}
+       if(saved.error){auto e=saved.error;e.message="The host key was trusted, but couldn't be saved to this destination: "+e.message+" Test the destination again.";reply(e,result);return;}
        reply({},result);
       });
      });
@@ -695,9 +695,9 @@ int main(int argc,char* argv[]) {
 #endif
  // An AppImage update install or restart waits for recordings and uploads (#293 phase 3).
  updates.setBusy([&]()->QString{
-  if(operations.scroll().active())return "A scrolling capture is running; install the update when it has finished";
-  if(operations.recording().active())return "A recording is running; install the update when it has finished";
-  if(!operations.activeObservations().isEmpty()||operations.storageActive())return "An upload is running; install the update when it has finished";
+  if(operations.scroll().active())return "A scrolling capture is running. Install the update after it finishes.";
+  if(operations.recording().active())return "A recording is running. Install the update after it finishes.";
+  if(!operations.activeObservations().isEmpty()||operations.storageActive())return "An upload is running. Install the update after it finishes.";
   return {};
  });
  updates.setQuit(quitApplication);

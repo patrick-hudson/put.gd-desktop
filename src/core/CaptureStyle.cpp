@@ -59,7 +59,7 @@ Error CaptureStyle::validate(const QJsonValue& value, const QString& pointer) {
         const auto kind = backdrop["kind"].toString();
         if (!backdropNames().contains(kind)) return invalid(at + "/kind", "The backdrop is color, gradient, picture or none.");
         for (const auto* field : {"color", "colorEnd"})
-            if (backdrop.contains(field) && !colorText(backdrop[field])) return invalid(at + "/" + field, "A colour is #rrggbb.");
+            if (backdrop.contains(field) && !colorText(backdrop[field])) return invalid(at + "/" + field, "A color must be #rrggbb.");
         if (backdrop.contains("picture")) {
             const auto path = backdrop["picture"].toString();
             bool control = false;
