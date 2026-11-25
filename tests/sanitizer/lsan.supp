@@ -10,3 +10,12 @@
 # Fedora 45's fontconfig doesn't. A `leak:` rule matches any frame of the allocation
 # stack, and fontconfig never calls back into put.gd, so this can't hide a put.gd leak.
 leak:FcConfigGetFonts
+
+# libdbus on Ubuntu 26.04: the read buffer of the bus connection that QtDBus's own
+# thread services (QDBusConnectionManager -> libdbus -> _dbus_read ->
+# _dbus_string_lengthen) is still allocated when a process exits, with no pointer
+# LeakSanitizer can follow. 1032 bytes once per process that talks to the session bus,
+# such as the capture and record helpers, which then exit 1. Only allocations made
+# inside _dbus_read match; a D-Bus message or connection put.gd leaked would be
+# allocated from put.gd's own frames and still be reported.
+leak:_dbus_read
