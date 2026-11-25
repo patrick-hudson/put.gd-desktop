@@ -324,8 +324,8 @@ QString notification(const TextResult& result,const QString& copyStatus,const QS
  const auto plural=[](qsizetype count,const QString& noun){return QStringLiteral("%1 %2%3").arg(count).arg(noun,count==1?QString():QStringLiteral("s"));};
  const auto characters=textjob::characters(result.text);const int codes=result.textCodes();QString message;
  if(!characters&&!codes)message=QStringLiteral("No text found");
- else if(copyStatus=="suppressed")return QStringLiteral("Text not copied: the clipboard changed");
- else if(copyStatus!="copied")return QStringLiteral("Text could not be copied");
+ else if(copyStatus=="suppressed")return QStringLiteral("Text not copied because your clipboard changed");
+ else if(copyStatus!="copied")return QStringLiteral("Couldn't copy the text");
  else if(characters&&codes)message=QStringLiteral("Copied %1 and %2").arg(plural(characters,"character"),plural(codes,"code"));
  else message=QStringLiteral("Copied %1").arg(characters?plural(characters,"character"):plural(codes,"code"));
  if(!missing.isEmpty())message+=missing.size()==1?QStringLiteral(" (%1 data is missing)").arg(missing.first()):QStringLiteral(" (%1 and %2 data are missing)").arg(missing.mid(0,missing.size()-1).join(", "),missing.last());

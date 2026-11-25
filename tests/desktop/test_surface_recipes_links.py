@@ -52,7 +52,7 @@ class FakeContext(Context):
         return self.link
 
     def notifications(self):
-        return [{'body': 'Uploaded. Link copied to the clipboard. Click to open in browser.'}]
+        return [{'body': 'Uploaded. Link copied to clipboard. Click to open in browser.'}]
 
     def accessible(self, query):
         return [{'bounds': {'x': 10, 'y': 20, 'width': 100, 'height': 40}}]

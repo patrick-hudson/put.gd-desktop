@@ -996,9 +996,9 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
   else{
    auto* combo=new QComboBox(cell);combo->setObjectName("historyChoice"+key);combo->setAccessibleName(labels[i]);combo->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);combo->setMinimumContentsLength(10);combo->addItem("Any",QString{});label->setBuddy(combo);combo->setFixedHeight(qMax(Ui::scaled(32),combo->fontMetrics().height()+space(Space::s)));field->addWidget(combo);
    QList<std::pair<QString,QString>> choices;
-   if(key=="uploadStatus")choices={{"uploaded","Uploaded"},{"local_only","Local only"},{"pending","Waiting to upload"},{"uploading","Uploading"},{"failed","Failed"},{"unknown","Outcome unknown"},{"cancelled","Canceled"},{"not_requested","Not requested"},{"skipped","Skipped"},{"conflict","Conflict"}};
+   if(key=="uploadStatus")choices={{"uploaded","Uploaded"},{"local_only","Local only"},{"pending","Waiting to upload"},{"uploading","Uploading"},{"failed","Failed"},{"unknown","Status unknown"},{"cancelled","Cancelled"},{"not_requested","Not requested"},{"skipped","Skipped"},{"conflict","Conflict"}};
    else if(key=="localStatus")choices={{"saved","Saved"},{"disabled","Not requested"},{"pending","Waiting to save"},{"failed","Save failed"}};
-   else if(key=="remoteStatus")choices={{"not_requested","Deletion not requested"},{"present","Available"},{"pending","Waiting for deletion"},{"deleting","Deleting"},{"removed","Deleted"},{"already_missing","Already missing"},{"failed","Deletion failed"},{"unknown","Outcome unknown"},{"changed","Remote file changed"},{"superseded","Replaced by newer upload"},{"hidden_version_retained","Hidden; version retained"},{"version_retained","Version retained"},{"unsupported_safe_removal","Safe removal unavailable"}};
+   else if(key=="remoteStatus")choices={{"not_requested","Deletion not requested"},{"present","Available"},{"pending","Waiting for deletion"},{"deleting","Deleting"},{"removed","Deleted"},{"already_missing","Already missing"},{"failed","Deletion failed"},{"unknown","Status unknown"},{"changed","Remote file changed"},{"superseded","Replaced by newer upload"},{"hidden_version_retained","Hidden (old version stored)"},{"version_retained","Old version stored"},{"unsupported_safe_removal","Safe delete unavailable"}};
    for(const auto& [value,name]:std::as_const(choices))combo->addItem(name,value);
    if(key=="remoteStatus"){showCancelled_=new QCheckBox("Include canceled",technical);showCancelled_->setObjectName("historyShowCancelled");showCancelled_->setCheckable(true);showCancelled_->setAccessibleName("Include canceled");techBox->addWidget(showCancelled_);connect(showCancelled_,&QCheckBox::toggled,this,[this](bool show){if(model_){model_->setShowCancelled(show);updateFilterSummary();emit viewStateChanged();}});}
    if(key=="profileId"){
@@ -1056,7 +1056,7 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
   copyLinks_=new QPushButton("Copy links",selectionBar_);copyLinks_->setObjectName("historyCopyLinks");copyLinks_->setToolTip("Copy available stored links from the selection, one per line");bar->addWidget(copyLinks_);selectionLinkHint_=new QLabel(selectionBar_);selectionLinkHint_->setObjectName("historySelectionLinkHint");selectionLinkHint_->setWordWrap(true);Ui::role(selectionLinkHint_,"meta");selectionLinkHint_->hide();bar->addWidget(selectionLinkHint_);connect(copyLinks_,&QPushButton::clicked,this,&HistoryWindow::copySelectedLinks);
   deleteSelected_=new QPushButton("Delete from destination…",selectionBar_);deleteSelected_->setObjectName("historyDeleteSelected");Ui::role(deleteSelected_,"danger");bar->addWidget(deleteSelected_);connect(deleteSelected_,&QPushButton::clicked,this,[this]{const auto ids=deletableIds();prepareDelete(ids,int(selectedFiles().size())-int(ids.size()));});
   auto* more=Ui::toolButton({}, {},"quiet",selectionBar_);more->setObjectName("historySelectionMore");more->setIcon(Ui::chromeIcon("more"));more->setAccessibleName("More selection actions");more->setToolTip(more->accessibleName());bar->addWidget(more);auto* menu=new QMenu(more);more->setMenu(menu);more->setPopupMode(QToolButton::InstantPopup);
-  auto* copyDetails=menu->addAction("Copy details");copyDetails->setObjectName("historyCopySelectionDetails");connect(copyDetails,&QAction::triggered,this,[this]{QJsonArray details;for(const auto& row:table_->selectionModel()->selectedRows())details.append(model_->record(row.row()));QApplication::clipboard()->setText(QString::fromUtf8(QJsonDocument(details).toJson(QJsonDocument::Indented)));Ui::feedback(status_,"Selected operation and receipt details copied.");});
+  auto* copyDetails=menu->addAction("Copy details");copyDetails->setObjectName("historyCopySelectionDetails");connect(copyDetails,&QAction::triggered,this,[this]{QJsonArray details;for(const auto& row:table_->selectionModel()->selectedRows())details.append(model_->record(row.row()));QApplication::clipboard()->setText(QString::fromUtf8(QJsonDocument(details).toJson(QJsonDocument::Indented)));Ui::feedback(status_,"Selected item details copied.");});
   auto* clearSelection=menu->addAction("Clear selection");clearSelection->setObjectName("historyClearSelection");connect(clearSelection,&QAction::triggered,this,[this]{table_->clearSelection();table_->setFocus();});
   // Folded here when the header is too narrow for the bar's own buttons.
   auto* foldedDelete=new QAction("Delete from destination…",menu);foldedDelete->setObjectName("historySelectionMenuDelete");connect(foldedDelete,&QAction::triggered,deleteSelected_,&QPushButton::click);auto* foldedCopy=new QAction(menu);foldedCopy->setObjectName("historySelectionMenuCopyLinks");connect(foldedCopy,&QAction::triggered,copyLinks_,&QPushButton::click);menu->insertActions(copyDetails,{foldedCopy,foldedDelete});
@@ -1133,7 +1133,7 @@ HistoryWindow::HistoryWindow(UiSession& session,QWidget* parent):RetainedWindow(
   const auto id=unlockLinkItemId_;if(id.isEmpty()||selectedRecord()["id"]!=id)return;
   unlockLink->setEnabled(false);session_.request("history.unlockLinkCredentials",{{"id",id}},this,[g=QPointer<HistoryWindow>(this),id,unlockLink](Error e,QJsonObject){
    if(!g||g->selectedRecord()["id"]!=id||g->unlockLinkItemId_!=id)return;
-   unlockLink->setEnabled(true);if(!e)g->unlockLinkItemId_.clear();unlockLink->setVisible(bool(e));g->notify(e,"Credentials loaded. Choose Refresh and copy link.");
+   unlockLink->setEnabled(true);if(!e)g->unlockLinkItemId_.clear();unlockLink->setVisible(bool(e));g->notify(e,"Credentials unlocked. Select Refresh and copy link.");
   });
  });
  connect(copy_,&QPushButton::clicked,this,[this]{const auto record=selectedRecord();if(record.isEmpty())return;if(record["uploadStatus"]=="local_only"){operationAction("operation.copy");return;}copyHistoryLink(record);});connect(open_,&QPushButton::clicked,this,[this]{if(currentDetail_.value("linkAvailable").toBool())openBrowser(link_->text());});connect(retry_,&QPushButton::clicked,this,[this]{const auto rows=table_->selectionModel()->selectedRows();if(rows.size()!=1)return;const auto row=model_->record(rows.first().row());if(HistoryModel::retryUpload(row))operationAction("operation.retry");else if(HistoryModel::finishShareLink(row))finishShareLink();else operationAction("operation.retryLocalSave");});connect(cancel_,&QPushButton::clicked,this,[this]{operationAction("operation.cancel");});connect(copyImage_,&QPushButton::clicked,this,[this]{exportLocal(true);});connect(saveAs_,&QPushButton::clicked,this,[this]{exportLocal(false);});
@@ -1372,7 +1372,7 @@ void HistoryWindow::confirmCancelAll(){
  if(!cancelAllConfirmation_||!cancelAllConfirmation_->isVisible()||cancelAllIds_.isEmpty())return;const auto ids=cancelAllIds_;cancelAllConfirmation_->accept();
  // An upload that finished after the dialog opened answers operation_inactive: it is
  // not a failure, and History shows it finished. Only real cancellations are counted.
- auto remaining=std::make_shared<int>(ids.size());auto requested=std::make_shared<int>(0);auto failures=std::make_shared<QStringList>();auto recorded=std::make_shared<QString>();for(const auto& id:ids)session_.request("operation.cancel",{{"id",id}},this,[g=QPointer<HistoryWindow>(this),remaining,requested,failures,recorded](Error e,QJsonObject){if(!e)++*requested;else if(e.code!="operation_inactive"){failures->append(e.message);if(recorded->isEmpty())*recorded=e.details["errorLogId"].toString();}if(--*remaining||!g)return;if(!failures->isEmpty())g->showError(QString("Some uploads couldn't be canceled. ")+failures->join(" "),recorded->isEmpty()?QJsonObject{}:QJsonObject{{"id",*recorded}});else Ui::feedback(g->status_,*requested==0?QString("Those uploads had already finished."):*requested==1?QString("Cancellation requested for 1 upload."):QString("Cancellation requested for %1 uploads.").arg(*requested));g->refresh();});
+ auto remaining=std::make_shared<int>(ids.size());auto requested=std::make_shared<int>(0);auto failures=std::make_shared<QStringList>();auto recorded=std::make_shared<QString>();for(const auto& id:ids)session_.request("operation.cancel",{{"id",id}},this,[g=QPointer<HistoryWindow>(this),remaining,requested,failures,recorded](Error e,QJsonObject){if(!e)++*requested;else if(e.code!="operation_inactive"){failures->append(e.message);if(recorded->isEmpty())*recorded=e.details["errorLogId"].toString();}if(--*remaining||!g)return;if(!failures->isEmpty())g->showError(QString("Some uploads couldn't be cancelled. ")+failures->join(" "),recorded->isEmpty()?QJsonObject{}:QJsonObject{{"id",*recorded}});else Ui::feedback(g->status_,*requested==0?QString("Those uploads had already finished."):*requested==1?QString("Cancellation requested for 1 upload."):QString("Cancellation requested for %1 uploads.").arg(*requested));g->refresh();});
 }
 void HistoryWindow::updateSelectionBar(){if(!selectionBar_)return;
  const int rows=table_->selectionModel()->selectedRows().size();const bool several=rows>1;
@@ -1412,7 +1412,7 @@ bool HistoryWindow::eventFilter(QObject* object,QEvent* event){
  if((object==status_||object==errorNotice_||object==savedCopy_)&&(event->type()==QEvent::ShowToParent||event->type()==QEvent::HideToParent||event->type()==QEvent::LayoutRequest))QTimer::singleShot(0,this,&HistoryWindow::updateFooterLayout);if(object==split_&&event->type()==QEvent::Resize){QTimer::singleShot(0,this,&HistoryWindow::updateInspectorLayout);if(fitFilters_)QTimer::singleShot(0,this,fitFilters_);}if(object->objectName()=="historyFiltersScroll"&&event->type()==QEvent::Resize&&fitFilters_)QTimer::singleShot(0,this,fitFilters_);return RetainedWindow::eventFilter(object,event);}
 void HistoryWindow::resizeEvent(QResizeEvent* event){RetainedWindow::resizeEvent(event);updateInspectorLayout();if(fitFilters_)QTimer::singleShot(0,this,fitFilters_);if(activeBanner_)updateActivityLayout();}
 // A journal whose recovery failed (a full disk, an I/O error) says so: the resident keeps retrying, and the window loads once it succeeds (#1576).
-void HistoryWindow::refresh(){if(!session_.ready()){awaitingInitialization_=true;const auto error=session_.journalError();if(!error||error.code=="initializing")Ui::feedback(status_,"Waiting for the resident journal to initialize.");else Ui::feedback(status_,QString("History can't be read right now: %1 (%2). put.gd tries again automatically.").arg(error.message,error.code),true);return;}model_->refresh();}
+void HistoryWindow::refresh(){if(!session_.ready()){awaitingInitialization_=true;const auto error=session_.journalError();if(!error||error.code=="initializing")Ui::feedback(status_,"Waiting for put.gd to finish starting…");else Ui::feedback(status_,QString("Couldn't read History: %1 (%2). Retrying automatically.").arg(error.message,error.code),true);return;}model_->refresh();}
 QStringList HistoryWindow::selectedIds()const{QStringList ids;for(auto index:table_->selectionModel()->selectedRows()){auto r=model_->record(index.row());const auto records=r["records"].toArray();if(records.isEmpty())ids.append("operation:"+r["operationId"].toString());else for(auto v:records)ids.append(v.toObject()["id"].toString());}return ids;}
 QJsonObject HistoryWindow::selectedRecord()const{if(model_->busy())return {};const auto rows=table_->selectionModel()->selectedRows();if(rows.size()!=1)return {};const auto group=model_->record(rows.first().row());for(const auto& v:group["records"].toArray())if(v.toObject()["id"]==items_->currentData().toString())return v.toObject();return group["records"].toArray().isEmpty()?QJsonObject{}:group["records"].toArray().first().toObject();}
 QList<QJsonObject> HistoryWindow::selectedFiles()const{if(model_->busy())return {};QList<QJsonObject> files;auto rows=table_->selectionModel()->selectedRows();std::sort(rows.begin(),rows.end(),[](const QModelIndex& a,const QModelIndex& b){return a.row()<b.row();});for(const auto& index:std::as_const(rows))for(const auto& v:model_->record(index.row())["records"].toArray())files.append(v.toObject());return files;}
@@ -1453,7 +1453,7 @@ QString HistoryWindow::destinationLabel(const QJsonObject& r)const{
 }
 // #1361: shown while the selected upload's outcome is unknown at a destination that cannot be
 // asked whether it arrived; cleared when that stops being true of the selection.
-static const QString& resendNotice(){static const QString text="This upload may already be on the server: its outcome is unknown, and this destination cannot be asked. Retry upload sends the file again and may leave a second copy there.";return text;}
+static const QString& resendNotice(){static const QString text="The file may already be on the server, and this destination can't check whether it arrived. Retry upload sends it again and may create a duplicate.";return text;}
 void HistoryWindow::selectionChanged(){emit viewStateChanged();const auto rows=table_->selectionModel()->selectedRows();
  // The instruction shows only while it applies; feedback stays until replaced.
  {static const QString instruction="Select an item to inspect its files and share link.";if(!rows.isEmpty()||!model_->rowCount()){if(status_->text()==instruction)Ui::feedback(status_,{});}else if(status_->text().isEmpty()&&Ui::scaled(100)<=125)Ui::feedback(status_,instruction);}{QSignalBlocker block(items_);items_->clear();if(rows.size()==1){const auto group=model_->record(rows.first().row());for(auto v:group["records"].toArray()){auto r=v.toObject();items_->addItem(r["name"].toString(),r["id"].toString());}const auto itemIndex=items_->findData(selectedItemId_);if(itemIndex>=0)items_->setCurrentIndex(itemIndex);items_->setVisible(items_->count()>1);}}loadSelectedItem();updateInspectorLayout();}
@@ -1483,7 +1483,7 @@ void HistoryWindow::loadSelectedItem(){
   g->remove_->setVisible(removed||(HistoryModel::remoteDeletable(data)&&caps["delete"].toBool()&&(caps["referenceDelete"].toBool()||(caps["stat"].toBool()&&(caps["conditionalDelete"].toBool()||caps["versionAddressing"].toBool())))&&!caps["deletionEffect"].toString().isEmpty()));
   // #1361: an upload that came back without a deletion URL says why it cannot be deleted here.
   if(HistoryModel::remoteDeletable(data)&&!caps["delete"].toBool()&&!caps["removeUnavailable"].toString().isEmpty()){g->deletionStatus_->setText(caps["removeUnavailable"].toString());g->deletionStatus_->show();}}
- if(data["superseded"].toBool()||data["remoteStatus"]=="superseded")Ui::feedback(g->status_,"Superseded: this stored link may serve replacement content. Deletion still targets the original receipt.",true);
+ if(data["superseded"].toBool()||data["remoteStatus"]=="superseded")Ui::feedback(g->status_,"A newer upload replaced this file, so this link may show the newer version. Deleting still targets the original upload.",true);
  // #1361: a server that names its own uploads cannot be asked whether one arrived.
  else if(data["uploadStatus"]=="unknown"&&data["capabilities"].toObject()["serverNamesObjects"].toBool())Ui::feedback(g->status_,resendNotice(),true);else{if(g->status_->text()==resendNotice())Ui::feedback(g->status_,{});if(!g->sharingFeedback_.isEmpty())Ui::feedback(g->status_,g->sharingFeedback_,g->sharingFeedbackError_);}const auto previewPath=data["previewPath"].toString();
   // Cache replies use artifacts/../previews; older detail snapshots can use previews.
@@ -1543,7 +1543,7 @@ bool HistoryWindow::editable(const QJsonObject& record){
  return (record["mime"]=="image/png"||record["mime"]=="image/jpeg")&&local["status"]=="saved"&&QFileInfo(local["path"].toString()).isFile();
 }
 QString HistoryWindow::copyTextUnavailable(const QJsonObject& record){
- if(record["mime"]!="image/png"&&record["mime"]!="image/jpeg")return "Copy text reads PNG and JPEG images";
+ if(record["mime"]!="image/png"&&record["mime"]!="image/jpeg")return "Copy text only works on PNG and JPEG images";
  // The same rule as Edit again: put.gd never downloads an upload to read it.
  if(!editable(record))return "Copy text needs the local copy. Turn on Keep a local copy in Settings → Capture for future captures.";
  return {};
@@ -1573,8 +1573,8 @@ void HistoryWindow::pollText(){
   if(state!="completed"){g->showError(record["error"].toObject()["message"].toString("Text recognition failed"),QJsonObject{{"operationId",record["id"].toString(record["operationId"].toString())},{"kind","text_recognition"}});return;}
   const auto characters=record["characterCount"].toInt(),codes=record["codeCount"].toInt();const auto copied=record["copyStatus"].toString();
   if(characters==0&&codes==0){Ui::feedback(g->status_,"No text found");return;}
-  if(copied=="suppressed"){g->notice("Text not copied: the clipboard changed");return;}
-  if(copied!="copied"){g->localError("text_recognition","text_copy_failed","Text could not be copied",g->currentDetail_.value("id").toString());return;}
+  if(copied=="suppressed"){g->notice("Text not copied because your clipboard changed");return;}
+  if(copied!="copied"){g->localError("text_recognition","text_copy_failed","Couldn't copy the text",g->currentDetail_.value("id").toString());return;}
   QStringList parts;if(characters)parts<<QLocale().toString(characters)+(characters==1?" character":" characters");if(codes)parts<<QString::number(codes)+(codes==1?" code":" codes");
   Ui::feedback(g->status_,"Copied "+parts.join(" and ")+(record["truncated"].toBool()?". The text was cut at a size or time limit.":""));
  });
@@ -1602,7 +1602,7 @@ void HistoryWindow::showQrCode(const QJsonObject& params,std::function<void(Erro
  reply({},window->state());
 }
 void HistoryWindow::editAgain(const QJsonObject& record){
- if(!editable(record)){notice("Editing needs a retained local PNG or JPEG copy.");return;}
+ if(!editable(record)){notice("Editing needs a saved local PNG or JPEG copy.");return;}
  // #1893: a styled capture is edited from the original kept beside it, with the style on again, so frames never
  // stack. Without that original (no local copy of it), the styled copy opens with the style off.
  const auto original=record["style"].toObject()["original"].toString();
@@ -1623,7 +1623,7 @@ void HistoryWindow::showRowMenu(const QModelIndex& i,const QPoint& point,bool ov
   selection->setCurrentIndex(i,QItemSelectionModel::NoUpdate);QMenu menu(this);menu.setObjectName("historyRowMenu");menu.addSection(QString("%1 selected").arg(selection->selectedRows().size()));
   if(!overflow&&selectionHasLinks())menu.addAction(copyLinks_->text(),this,&HistoryWindow::copySelectedLinks);
   if(const auto ids=deletableIds();!overflow&&!ids.isEmpty())menu.addAction(ids.size()==selectedFiles().size()?QString("Delete from destination…"):QString("Delete %1 from destination…").arg(ids.size()),this,[this]{const auto ids=deletableIds();prepareDelete(ids,int(selectedFiles().size())-int(ids.size()));});
-  if(!overflow){menu.addSeparator();menu.addAction("Clear selection",this,[this]{table_->clearSelection();});}menu.addAction("Copy details",this,[this]{QJsonArray details;for(const auto& row:table_->selectionModel()->selectedRows())details.append(model_->record(row.row()));QApplication::clipboard()->setText(QString::fromUtf8(QJsonDocument(details).toJson(QJsonDocument::Indented)));Ui::feedback(status_,"Selected operation and receipt details copied.");});menu.exec(point);return;
+  if(!overflow){menu.addSeparator();menu.addAction("Clear selection",this,[this]{table_->clearSelection();});}menu.addAction("Copy details",this,[this]{QJsonArray details;for(const auto& row:table_->selectionModel()->selectedRows())details.append(model_->record(row.row()));QApplication::clipboard()->setText(QString::fromUtf8(QJsonDocument(details).toJson(QJsonDocument::Indented)));Ui::feedback(status_,"Selected item details copied.");});menu.exec(point);return;
  }
  selection->select(i,QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);table_->setCurrentIndex(i);const auto row=model_->record(i.row());const auto files=row["records"].toArray();
  QMenu menu(this);menu.setObjectName("historyRowMenu");
@@ -1647,7 +1647,7 @@ void HistoryWindow::showRowMenu(const QModelIndex& i,const QPoint& point,bool ov
  if(!inspector)menu.addAction(findChild<QAction*>("historyShowDetails"));
  menu.addSeparator();
  if(remaining("Save diagnostics for this upload")&&(!overflow||!inspector||saveDiagnostics_->isHidden())&&diagnosticsAvailable(i.row()))menu.addAction("Save diagnostics for this upload",this,[this,row]{saveDiagnostics(row["operationId"].toString());});
- menu.addAction("Copy details",this,[this,row]{QJsonObject detail=row;if(currentDetail_.value("operationId")==row["operationId"])detail["selectedFile"]=currentDetail_;QApplication::clipboard()->setText(QString::fromUtf8(QJsonDocument(detail).toJson(QJsonDocument::Indented)));Ui::feedback(status_,"Operation and receipt details copied.");});
+ menu.addAction("Copy details",this,[this,row]{QJsonObject detail=row;if(currentDetail_.value("operationId")==row["operationId"])detail["selectedFile"]=currentDetail_;QApplication::clipboard()->setText(QString::fromUtf8(QJsonDocument(detail).toJson(QJsonDocument::Indented)));Ui::feedback(status_,"Item details copied.");});
  QStringList deletable;bool removedOnly=true;for(const auto& v:files)if(HistoryModel::remoteDeletable(v.toObject())){deletable.append(v.toObject()["id"].toString());removedOnly=removedOnly&&v.toObject()["destinationRemoved"].toBool();}
  // #1759: named as the details pane names it when every file's destination was removed.
  const QString removeLabel=removedOnly?QStringLiteral("Remove from History only…"):QStringLiteral("Delete from destination…");
@@ -1658,8 +1658,8 @@ void HistoryWindow::updateSummary(){
  if(currentDetail_.isEmpty())return;
  const auto data=currentDetail_;
  const QHash<QString,QString> copies{{"saved","Saved"},{"disabled","No local copy requested"},{"failed","Local save failed"},{"pending","Waiting for local save"}};
- const QHash<QString,QString> sharing{{"shared","Created"},{"not_requested","No share link requested"},{"private","Private upload"},{"pending","Creating share link"},{"revoked","Link revoked"},{"failed","Sharing failed"},{"unknown","Sharing outcome needs inspection"},{"changed","Share link changed"}};
- const QHash<QString,QString> remote{{"present","Available"},{"not_requested","Remote deletion not requested"},{"removed","Deleted from destination"},{"already_missing","Remote file already missing"},{"unknown","Remote outcome unknown"},{"failed","Remote deletion failed"},{"pending","Waiting for remote deletion"},{"deleting","Deleting from destination"},{"changed","Remote file changed"},{"superseded","Replaced by a newer upload"},{"hidden_version_retained","Hidden; original version remains"}};
+ const QHash<QString,QString> sharing{{"shared","Created"},{"not_requested","No share link requested"},{"private","Private upload"},{"pending","Creating share link"},{"revoked","Link revoked"},{"failed","Sharing failed"},{"unknown","Share link status unknown"},{"changed","Share link changed"}};
+ const QHash<QString,QString> remote{{"present","Available"},{"not_requested","Remote deletion not requested"},{"removed","Deleted from destination"},{"already_missing","Already missing"},{"unknown","Remote status unknown"},{"failed","Deletion failed"},{"pending","Waiting for deletion"},{"deleting","Deleting from destination"},{"changed","Remote file changed"},{"superseded","Replaced by newer upload"},{"hidden_version_retained","Hidden (old version still stored)"},{"version_retained","Old version still stored"},{"unsupported_safe_removal","Safe delete unavailable"}};
  const auto size=HistoryModel::fileSize(data["bytes"].toInteger())+(pixelDimensions_.isEmpty()?QString{}:" · "+pixelDimensions_);const auto local=data["local"].toObject();
  // Label / value rows: type, output, created, size, file, then the recorded outcomes.
  const auto mime=data["mime"].toString();const auto category=data["category"].toString();
@@ -1674,9 +1674,9 @@ void HistoryWindow::updateSummary(){
  // whole capture, and a single file's line can lead with another outcome
  // ("Saved locally" after an interrupted upload).
  QTextDocument outcomeText;outcomeText.setHtml(outcome_->text());auto shownOutcome=outcomeText.toPlainText()+" "+(capabilityHint_->isHidden()?QString{}:capabilityHint_->text());shownOutcome.replace(QChar(0x00a0),QChar(' '));
- const QHash<QString,QString> uploads{{"uploaded","Uploaded"},{"local_only","Local capture"},{"pending","Waiting to upload"},{"uploading","Uploading"},{"failed","Upload failed"},{"unknown","Upload outcome unknown"},{"not_requested","No upload requested"}};
+ const QHash<QString,QString> uploads{{"uploaded","Uploaded"},{"local_only","Local capture"},{"pending","Waiting to upload"},{"uploading","Uploading"},{"failed","Upload failed"},{"unknown","Upload status unknown"},{"not_requested","No upload requested"}};
  {const auto upload=uploads.value(data["uploadStatus"].toString(),"Not recorded");if(items_->count()>1||(data["uploadStatus"]!="local_only"&&!data["linkAvailable"].toBool()&&!shownOutcome.contains(upload,Qt::CaseInsensitive)&&HistoryModel::remoteStateText(data).isEmpty()))row("Upload",upload);}
- const auto copy=HistoryModel::localCopyUnavailable(data)?QString("Local file unavailable"):copies.value(local["status"].toString(),"Not recorded"),link=data["uploadStatus"]=="failed"&&data["receipt"].toObject()["objectReference"].toObject().isEmpty()?QString("Not created (upload failed)"):data["linkRefreshable"].toBool()?QString("Expired; refresh on copy"):data["linkAvailable"].toBool()?QString("Created"):data["linkFinishable"].toBool()?QString("Share link not finished"):sharing.value(data["shareStatus"].toString(),"Not recorded");
+ const auto copy=HistoryModel::localCopyUnavailable(data)?QString("Local file unavailable"):copies.value(local["status"].toString(),"Not recorded"),link=data["uploadStatus"]=="failed"&&data["receipt"].toObject()["objectReference"].toObject().isEmpty()?QString("Not created (upload failed)"):data["linkRefreshable"].toBool()?QString("Expired (refreshes on copy)"):data["linkAvailable"].toBool()?QString("Created"):data["linkFinishable"].toBool()?QString("Share link not finished"):sharing.value(data["shareStatus"].toString(),"Not recorded");
  if(items_->count()>1||(!HistoryModel::localCopyUnavailable(data)&&capabilityHint_->isHidden()&&(!(local["status"]=="saved"&&shownOutcome.contains("Saved locally"))&&!shownOutcome.contains(copy,Qt::CaseInsensitive))))row("Local copy",copy);if(data["uploadStatus"]!="local_only"&&!data["linkAvailable"].toBool()&&(items_->count()>1||(!shownOutcome.contains("Upload failed")&&(HistoryModel::remoteStateText(data).isEmpty()||!shownOutcome.contains(HistoryModel::remoteStateText(data)))&&!shownOutcome.contains(link,Qt::CaseInsensitive))))row("Link",link);const auto remoteState=data["remoteStatus"].toString();if(!QStringList{"present","not_requested"}.contains(remoteState)&&(items_->count()>1||(HistoryModel::remoteStateText(data).isEmpty()||!shownOutcome.contains(HistoryModel::remoteStateText(data)))))row("Remote file",remote.value(remoteState,"Not recorded"));
  if(category!="images"&&category!="videos"&&!mime.isEmpty()&&!type.contains(mime))row("Content type",mime);
  static_cast<HistorySummary*>(summary_)->setFields(rows);summary_->setAccessibleDescription(summary_->accessibleDescription()+"\nFile: "+data["name"].toString()+"\nUpload: "+uploads.value(data["uploadStatus"].toString(),"Not recorded")+"\nLocal copy: "+copy+"\nLink: "+link);
@@ -1750,7 +1750,7 @@ void HistoryWindow::exportLocal(bool image){
  const auto historyId=currentDetail_.value("id").toString();const auto local=currentDetail_.value("local").toObject();const auto path=local["path"].toString();if(local["status"]!="saved"||!QFileInfo(path).isFile())return;
  chooser_->open({FileDialog::Mode::Save,"Save original file as",{},currentDetail_.value("name").toString(),{}},[this,path,historyId](const FileDialog::Result& result){
   if(result.failed()){localError("history","file_dialog_failed",result.error);return;}
-  if(!result.chosen())return;const auto destination=result.path;if(QFileInfo(destination).absoluteFilePath()==QFileInfo(path).absoluteFilePath()){Ui::feedback(status_,"This is already the retained local file.");return;}
+  if(!result.chosen())return;const auto destination=result.path;if(QFileInfo(destination).absoluteFilePath()==QFileInfo(path).absoluteFilePath()){Ui::feedback(status_,"This is already the saved local file.");return;}
   const auto filename=QFileInfo(destination).fileName();const auto job=QUuid::createUuid().toString(QUuid::WithoutBraces);copyJob_={{"id",job},{"historyId",historyId},{"filename",filename},{"path",QFileInfo(destination).absoluteFilePath()},{"status","saving"}};saveAs_->setEnabled(false);Ui::feedback(status_,"Saving “"+filename+"”…");emit viewStateChanged();
   session_.background([path,destination](Error& e){QFile source(path);QSaveFile target(destination);if(!source.open(QIODevice::ReadOnly)||!target.open(QIODevice::WriteOnly)){e={"file_copy","Couldn't open the original or selected destination file.",{}};return QJsonObject{};}while(!source.atEnd()){const auto bytes=source.read(1024*1024);if(bytes.isEmpty()&&source.error()!=QFileDevice::NoError){e={"file_copy","Couldn't read the retained original file.",{}};return QJsonObject{};}if(target.write(bytes)!=bytes.size()){e={"file_copy","Couldn't write the selected destination file.",{}};return QJsonObject{};}}if(!target.commit())e={"file_copy","Couldn't finish saving the original file.",{}};return QJsonObject{};},this,[g=QPointer<HistoryWindow>(this),destination,filename,job](Error e,QJsonObject){if(!g||g->copyJob_["id"]!=job)return;g->copyJob_["status"]=e?"failed":"saved";g->copyJob_["error"]=e?QJsonObject{{"code",e.code},{"message",e.message}}:QJsonObject{};g->saveAs_->setEnabled(g->currentDetail_.value("local").toObject()["status"]=="saved"&&QFileInfo(g->currentDetail_.value("local").toObject()["path"].toString()).isFile());if(e)g->localError("history",e.code,"Couldn't save “"+filename+"”. "+e.message,g->copyJob_["historyId"].toString());else Ui::feedback(g->status_,{});if(!e){g->savedPath_=QFileInfo(destination).absoluteFilePath();g->savedCopyDismissed_=false;g->savedFolderResult_={};g->updateSavedCopy();}emit g->viewStateChanged();});
  });
@@ -1819,9 +1819,9 @@ void HistoryWindow::prepareDelete(const QStringList& ids,int skipped){
   if(!g)return;if(e){const auto name=names.value(e.details["historyId"].toString());g->showError((name.isEmpty()?QString{}:"“"+name+"”: ")+e.message,errorTarget(e,e.details["historyId"].toString(),"deletion"));return;}
   g->deletionNames_=names;QPointer<QDialog> dialog=deletionConfirmation(g,preview,names,g->session_.document()["profiles"].toArray(),skipped);const int result=dialog->exec();if(!g)return;const auto forgetIds=dialog?dialog->property("forgetIds").toJsonArray():QJsonArray{};delete dialog.data();
   // #1759: Remove from History only, for files whose destination was removed.
-  if(result==forgetResult){g->session_.request("history.forget",{{"ids",forgetIds}},g,[g,count=forgetIds.size()](Error e,QJsonObject r){if(!g)return;if(e)g->notify(e);else if(r["removed"].toInt()==count)Ui::feedback(g->status_,count==1?"Removed from History. The file stays where it was uploaded.":"Removed from History. The files stay where they were uploaded.");else g->notice(QString("Removed %1 of %2 from History; the others have a deletion or link change in progress.").arg(r["removed"].toInt()).arg(count));g->refresh();});return;}
+  if(result==forgetResult){g->session_.request("history.forget",{{"ids",forgetIds}},g,[g,count=forgetIds.size()](Error e,QJsonObject r){if(!g)return;if(e)g->notify(e);else if(r["removed"].toInt()==count)Ui::feedback(g->status_,count==1?"Removed from History. The file stays where it was uploaded.":"Removed from History. The files stay where they were uploaded.");else g->notice(QString("Removed %1 of %2 from History. The others have a deletion or link change in progress.").arg(r["removed"].toInt()).arg(count));g->refresh();});return;}
   const bool accepted=result==QDialog::Accepted;if(!accepted)return;
-  g->deleteAccepting_=true;emit g->viewStateChanged();g->session_.request("delete.confirm",{{"ids",QJsonArray::fromStringList(ids)},{"acknowledgement",preview["acknowledgement"]}},g,[g](Error failure,QJsonObject data){if(!g)return;g->deleteAccepting_=false;emit g->viewStateChanged();g->notify(failure,"Remote deletion accepted; individual outcomes will update.");if(!failure){g->deletionId_=data["deleteOperationId"].toString();g->deletionAnnounce_=true;emit g->viewStateChanged();g->deletionTimer_->start();}});
+  g->deleteAccepting_=true;emit g->viewStateChanged();g->session_.request("delete.confirm",{{"ids",QJsonArray::fromStringList(ids)},{"acknowledgement",preview["acknowledgement"]}},g,[g](Error failure,QJsonObject data){if(!g)return;g->deleteAccepting_=false;emit g->viewStateChanged();g->notify(failure,"Deletion started. Results will update as each file finishes.");if(!failure){g->deletionId_=data["deleteOperationId"].toString();g->deletionAnnounce_=true;emit g->viewStateChanged();g->deletionTimer_->start();}});
  });
 }
 namespace {
@@ -1920,12 +1920,12 @@ void HistoryWindow::forgetSelectedDeletion(){
  if(!Ui::confirm(this,"Remove from History only",QString("Remove %1 from History only?\n").arg(name)+why+" put.gd will stop tracking it and can’t retry this deletion. Check the file there yourself.","Remove from History only",true))return;
  deletionForget_->setEnabled(false);
  session_.request("history.forget",{{"ids",QJsonArray{file}}},this,[g=QPointer<HistoryWindow>(this)](Error e,QJsonObject r){if(!g)return;g->deletionForget_->setEnabled(true);
-  if(e)g->notify(e);else if(r["removed"].toInt()==1)Ui::feedback(g->status_,"Removed from History. put.gd no longer tracks this file at its destination.");else g->notice("This file can’t be removed from History yet: a deletion or link change started meanwhile.");g->refresh();});
+  if(e)g->notify(e);else if(r["removed"].toInt()==1)Ui::feedback(g->status_,"Removed from History. put.gd no longer tracks this file at its destination.");else g->notice("Can't remove this file from History yet because a deletion or link change started.");g->refresh();});
 }
 void HistoryWindow::deletionAction(const QString& method){
  if(model_->busy()||selectedDeletion_.isEmpty()||selectedDeletion_["id"]!=currentDetail_.value("deleteOperationId"))return;
  const auto id=selectedDeletion_["id"].toString();deletionRetry_->setEnabled(false);deletionCancel_->setEnabled(false);
- session_.request(method,{{"id",id}},this,[g=QPointer<HistoryWindow>(this),id](Error e,QJsonObject){if(!g)return;g->deletionRetry_->setEnabled(true);g->deletionCancel_->setEnabled(true);g->notify(e,"Deletion action accepted; already sent deletion can't be rolled back.");if(!e){g->deletionId_=id;g->deletionAnnounce_=true;g->deletionTimer_->start();}g->refresh();});
+ session_.request(method,{{"id",id}},this,[g=QPointer<HistoryWindow>(this),id](Error e,QJsonObject){if(!g)return;g->deletionRetry_->setEnabled(true);g->deletionCancel_->setEnabled(true);g->notify(e,"Deletion updated. Requests already sent can't be undone.");if(!e){g->deletionId_=id;g->deletionAnnounce_=true;g->deletionTimer_->start();}g->refresh();});
 }
 void HistoryWindow::pollDeletion(){
  if(deletionPollActive_)return;if(deletionId_.isEmpty()){deletionTimer_->stop();return;}
@@ -1944,7 +1944,7 @@ void HistoryWindow::pollDeletion(){
    const auto reason=item["error"].toObject()["message"].toString();
    // A newer deletion of the same file took it over (#1773): its own entry shows that one's outcome, even when this
    // deletion had recorded one of its own for it earlier.
-   if(state=="taken_over"||item.contains("takenOverBy"))handed<<name+" is handled by a newer deletion of it; its entry in History shows that one.";
+   if(state=="taken_over"||item.contains("takenOverBy"))handed<<name+" is handled by a newer deletion. Its History entry shows that one.";
    else if(state=="removed"||state=="already_missing"){++removed;removedName=name;removedWhere=where;}
    else if(state=="pending"||state=="deleting")progress<<"Deleting "+name+" from "+where+"…";
    else{problems<<"Couldn't delete "+name+" from "+where+(reason.isEmpty()?QString(" ("+state+")."):": "+reason);if(target.isEmpty())target={{"historyId",historyId},{"kind","deletion"}};}
@@ -1953,7 +1953,7 @@ void HistoryWindow::pollDeletion(){
   if(running){
    // Seen running here: its outcome is news when it ends, even after History reopened.
    g->deletionAnnounce_=true;g->deletionProgressShown_=true;
-   Ui::feedback(g->status_,progress.isEmpty()?QStringLiteral("Deleting from the destination…"):progress.join("\n"));
+   Ui::feedback(g->status_,progress.isEmpty()?QStringLiteral("Deleting from destination…"):progress.join("\n"));
   }else{
    g->deletionTimer_->stop();g->deletionId_.clear();
    if(std::exchange(g->deletionProgressShown_,false)&&g->status_->text().startsWith("Deleting "))Ui::feedback(g->status_,{});
@@ -1961,7 +1961,7 @@ void HistoryWindow::pollDeletion(){
    // row and inspector show its state, and the error log keeps what went wrong.
    if(std::exchange(g->deletionAnnounce_,false)){
     // The line that said the deletion was accepted is answered by its outcome; another note stays.
-    if(QStringList{"Remote deletion accepted","Deletion action accepted","Deletion retry requested"}.contains(g->status_->text().section(';',0,0).section('.',0,0)))Ui::feedback(g->status_,{});
+    if(QStringList{"Deletion started","Deletion updated","Deletion retry requested"}.contains(g->status_->text().section(';',0,0).section('.',0,0)))Ui::feedback(g->status_,{});
     QString done;
     if(removed==1)done="Deleted "+removedName+" from "+removedWhere+".";
     else if(removed>1)done=QStringLiteral("Deleted %1 files from their destinations.").arg(removed);

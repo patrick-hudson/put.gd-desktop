@@ -145,7 +145,7 @@ private slots:
   QVERIFY(!HistoryModel::finishShareLink(row(file,{file},{{"state","running"},{"items",QJsonArray{file}}})));
   auto changed=file;changed["shareStatus"]="changed";changed["linkFinishable"]=false;QVERIFY(!HistoryModel::finishShareLink(row(changed,{changed})));
   QCOMPARE(HistoryModel::statusText(row(changed,{changed})),QString("Share link changed"));
-  auto noIntent=file;noIntent["shareIntent"]="";noIntent["linkFinishable"]=false;QCOMPARE(HistoryModel::statusText(row(noIntent,{noIntent})),QString("Sharing outcome needs inspection"));
+  auto noIntent=file;noIntent["shareIntent"]="";noIntent["linkFinishable"]=false;QCOMPARE(HistoryModel::statusText(row(noIntent,{noIntent})),QString("Share link status unknown"));
  }
  // The tray counts an unknown-outcome upload as failed and opens Failed uploads:
  // that page lists it and its sidebar count includes it (#1539).

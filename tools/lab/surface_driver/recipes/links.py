@@ -87,7 +87,7 @@ def notification_copy_result(ctx):
     with default_browser(ctx, 'firefox'):
         upload = _upload_fixture(ctx, 'notification_upload')
         notices = ctx.wait(lambda: [n for n in ctx.notifications()
-                                   if 'Link copied to the clipboard.' in n.get('body', '')],
+                                   if 'Link copied to clipboard.' in n.get('body', '')],
                            'upload notification reports the link copied')
         ctx.expect(bool(notices), 'desktop notification reports successful copy')
         ctx.expect(ctx.clipboard_text() == _value(upload, 'link'), 'desktop clipboard contains this upload link')

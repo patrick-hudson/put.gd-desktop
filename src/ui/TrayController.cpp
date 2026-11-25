@@ -90,7 +90,7 @@ QString phaseLabel(const QJsonObject& operation) {
  if(phase=="preflight")return "Checking destination";
  if(phase=="saving_local")return "Saving local copy";
  if(phase=="checking")return "Checking for sensitive text"; // #1804
- if(phase=="sensitive_text_found")return "Waiting for your decision";
+ if(phase=="sensitive_text_found")return "Review before uploading";
  if(phase=="sharing")return "Creating share link";
  if(phase=="reconciling")return "Checking previous upload";
  auto text=phase;text.replace('_',' ');
@@ -158,7 +158,7 @@ QString activityText(const QJsonArray& observations) {
   displayed.insert(position,operation);if(displayed.size()>3)displayed.removeLast();
  }
  QStringList lines;for(const auto& operation:displayed)lines.append(activityLine(operation));
- if(observations.size()>3)lines.append(QString("%1 more active operations").arg(observations.size()-3));
+ if(observations.size()>3)lines.append(QString("%1 more in progress").arg(observations.size()-3));
  return lines.join('\n');
 }
 // The tooltip's title, its text and the icon's colour each switch on the one
@@ -180,7 +180,7 @@ QString activityName(Activity activity) {
 QString completeText(bool uploaded){return uploaded?QStringLiteral("Upload complete"):QStringLiteral("Saved");}
 QString activityTitle(Activity activity,const QString& identity,bool uploaded) {
  switch(activity) {
- case Activity::Failed: return "Needs attention";
+ case Activity::Failed: return "Last action failed";
  case Activity::Complete: return completeText(uploaded);
  case Activity::Uploading: return "Uploading";
  case Activity::Processing: return "Processing";
@@ -191,7 +191,7 @@ QString activityTitle(Activity activity,const QString& identity,bool uploaded) {
 }
 QString activityStatus(Activity activity,const QString& attentionLabel,const QString& lines,bool uploaded) {
  switch(activity) {
- case Activity::Failed: return attentionLabel+QString(" — open the tray menu to review")+(lines.isEmpty()?QString{}:"\n"+lines);
+ case Activity::Failed: return attentionLabel+QString(". Open the tray menu to review.")+(lines.isEmpty()?QString{}:"\n"+lines);
  case Activity::Complete: return completeText(uploaded);
  case Activity::Capturing: case Activity::Processing: case Activity::Uploading: case Activity::Idle: return lines;
  }
@@ -244,11 +244,11 @@ TrayController::TrayController(OperationService& operations,
  connect(&operations_,&OperationService::sensitivePromptShown,this,[this](const QString& id){announceSensitivePrompt(id);});
  connect(&operations_.scroll(),&ScrollCaptureService::warning,this,[this](const QString&,const QString& message,const QString& reason){
   logError("capture",{"scroll_"+reason,message,{{"reason",reason}}},"scroll:"+reason,"scroll");
-  if(reason=="top_not_reached")notifyMessage("scroll_top_not_reached","put.gd — scrolling capture incomplete",message,true);
-  else if(reason=="lost_track")notifyMessage("scroll_lost_track","put.gd — scrolling capture incomplete",message,true);
-  else if(reason=="done")notifyMessage("scroll_blank_stretch","put.gd — scrolling capture stopped",message,true);
-  else if(reason=="found_again")notifyMessage("scroll_found_again","put.gd — check the scrolling capture",message,true);
-  else notifyMessage("scroll_height_cap","put.gd — scrolling capture stopped",message,true);});
+  if(reason=="top_not_reached")notifyMessage("scroll_top_not_reached","Scrolling capture incomplete",message,true);
+  else if(reason=="lost_track")notifyMessage("scroll_lost_track","Scrolling capture incomplete",message,true);
+  else if(reason=="done")notifyMessage("scroll_blank_stretch","Scrolling capture stopped",message,true);
+  else if(reason=="found_again")notifyMessage("scroll_found_again","Scrolling capture may have gaps",message,true);
+  else notifyMessage("scroll_height_cap","Scrolling capture stopped",message,true);});
  // put.gd's own notices stay out of a scroll capture: those on screen are
  // closed, later ones wait for the capture's end. The capture starts
  // noticeGoneMs after the server has reported them closed (a popup fades
@@ -278,17 +278,17 @@ TrayController::TrayController(OperationService& operations,
  // A recording that ended itself on its byte budget says why (#225).
  connect(&operations_.recording(),&RecordingService::budgetStopped,this,[this](const QString&,const QJsonObject& stop) {
   logError("recording",{"recording_budget_stopped",stop["message"].toString(),{}},{},Settings::recordingActionName());
-  if(available())notifyMessage("recording_budget_stopped","put.gd — recording stopped",stop["message"].toString(),true);
+  if(available())notifyMessage("recording_budget_stopped","Recording stopped",stop["message"].toString(),true);
  });
  // History could not save some results; a restart's recovery saves them (#1579). Once per session.
  connect(&operations_,&OperationService::historyResultsUnsaved,this,[this]{
-  logError("history",{"history_results_unsaved","put.gd couldn't save some History results. Restart put.gd to finish saving them.",{}},"history_results_unsaved");
-  if(operations_.settingsSnapshot().notifications)notifyMessage("history_results_unsaved","put.gd — History not saved","put.gd couldn't save some History results. Restart put.gd to finish saving them.",true);
+  logError("history",{"history_results_unsaved","Couldn't save recent items to History. Restart put.gd to finish saving them.",{}},"history_results_unsaved");
+  if(operations_.settingsSnapshot().notifications)notifyMessage("history_results_unsaved","History not saved","Couldn't save recent items to History. Restart put.gd to finish saving them.",true);
  });
  // Uploads an automatic cleanup could not abort, once for each (#226).
  connect(&operations_,&OperationService::incompleteUploadsKept,this,[this](const QJsonObject& notice) {
   logError("upload",{"incomplete_uploads_kept",notice["message"].toString(),{{"count",notice["count"]},{"bytes",notice["bytes"]}}});
-  if(available())notifyMessage("incomplete_uploads_kept","put.gd — incomplete uploads left",notice["message"].toString(),true);
+  if(available())notifyMessage("incomplete_uploads_kept","Incomplete uploads left",notice["message"].toString(),true);
  });
 #ifdef Q_OS_LINUX
  if (!qobject_cast<QApplication*>(QCoreApplication::instance())) {
@@ -418,16 +418,16 @@ QString TrayController::failureReason(const QJsonObject& error) {
  if(code=="diagnostics_destination_failing")return "the last upload to the destination failed with a credential or configuration error";
  if(code=="diagnostics_destination_unavailable")return "the destination's connection test failed";
  if(has({"permission_denied","access_denied","multipart_permission"}))return "access denied by the destination";
- if(has({"authentication_failed","credentials_invalid","credential_invalid"}))return "the destination did not accept the saved credentials";
+ if(has({"authentication_failed","credentials_invalid","credential_invalid"}))return "the destination rejected the saved credentials";
  if(has({"setup_required","account_changed"}))return "the destination needs to be set up again in Settings";
- if(has({"credential_store_unavailable","keychain_unavailable"}))return "the saved credentials could not be read from the keyring";
+ if(has({"credential_store_unavailable","keychain_unavailable"}))return "couldn't read the saved credentials from the keyring";
  if(has({"mfa_required"}))return "the destination requires multi-factor authentication";
- if(has({"bucket_not_found"}))return "the bucket does not exist";
- if(has({"region_mismatch"}))return "the bucket is in a different region than the destination's settings";
- if(has({"acl_incompatible"}))return "the bucket does not accept the destination's access setting";
+ if(has({"bucket_not_found"}))return "the bucket doesn't exist";
+ if(has({"region_mismatch"}))return "the bucket is in a different region than configured";
+ if(has({"acl_incompatible"}))return "the bucket doesn't accept the destination's access setting";
  if(has({"object_too_large"}))return "the file is larger than the destination accepts";
- if(has({"folder_unavailable"}))return "the destination folder is not available";
- if(has({"timeout","transport"}))return "the destination could not be reached";
+ if(has({"folder_unavailable"}))return "the destination folder isn't available";
+ if(has({"timeout","transport"}))return "couldn't reach the destination";
  auto message=error["message"].toString().trimmed();
  while(message.endsWith('.'))message.chop(1);
  if(message.isEmpty())return {};
@@ -450,7 +450,7 @@ QString TrayController::completionTitle(const QJsonObject& operation) {
  for(const auto& value:items){const auto item=value.toObject();const auto local=item["local"].toObject();localOnly&=item["uploadStatus"]=="local_only";localFailed|=local["status"]=="failed"||meaningfulError(local["error"].toObject());problem|=item["uploadStatus"]=="failed"||meaningfulError(item["error"].toObject())||localFailed;}
  if(!problem)return localOnly?QString("Saved locally"):QString("Upload complete");
  if((localFailed&&localOnly)||operation["error"].toObject()["code"]=="archive_failed")return "Local save failed";
- return "Completed with a problem";
+ return "Finished with errors";
 }
 QString TrayController::completionMessage(const QJsonObject& operation,bool hasLink) {
  const auto error=operation["error"].toObject();const auto items=operation["items"].toArray();const auto state=operation["state"].toString();
@@ -461,12 +461,12 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
  // A suppressed copy (#473) is deliberate: the clipboard moved on, or a newer
  // copy took its place, between the capture and the link. Say so, and where
  // the link still is.
- const QString copied=copy=="copied"?(localOnly?"Result copied to the clipboard.":"Link copied to the clipboard."):copy=="failed"?(localOnly?"Could not copy the result.":"Could not copy the link."):
-  copy=="suppressed"?(localOnly?"Result not copied: the clipboard changed meanwhile. Copy it from History.":"Link not copied: the clipboard changed during the upload. Copy it from History."):QString{};
+ const QString copied=copy=="copied"?(localOnly?"Result copied to clipboard.":"Link copied to clipboard."):copy=="failed"?(localOnly?"Couldn't copy the result.":"Couldn't copy the link."):
+  copy=="suppressed"?(localOnly?"Result not copied because your clipboard changed. Copy it from History.":"Link not copied because your clipboard changed. Copy it from History."):QString{};
  // #1820: a covered upload whose original, before covering, couldn't be kept locally says so, whatever the upload's outcome.
- const QString originalNote=operation["sensitive"].toObject()["original"].toObject()["status"]=="failed"?QStringLiteral("The original before covering couldn't be saved locally."):QString();
+ const QString originalNote=operation["sensitive"].toObject()["original"].toObject()["status"]=="failed"?QStringLiteral("Couldn't save the unredacted original locally."):QString();
  if(!QStringList{"failed","partial","interrupted"}.contains(state)) {
-  if(localOnly)return "Saved locally"+(copy=="copied"?QString("; copied to the clipboard."):copy=="failed"?QString("; could not copy the result."):copy=="suppressed"?QString("; not copied because the clipboard changed meanwhile. Copy it from History."):QString("."));
+  if(localOnly)return "Saved locally"+(copy=="copied"?QString(" and copied to clipboard."):copy=="failed"?QString(", but couldn't copy the result."):copy=="suppressed"?QString(", but not copied because your clipboard changed. Copy it from History."):QString("."));
   QStringList parts{items.size()>1?QString("%1 files uploaded.").arg(items.size()):QString("Uploaded.")};
   // #1820: what the sensitive text check covered on its own, never after a check that couldn't finish.
   if(const auto sensitive=operation["sensitive"].toObject();sensitive["complete"].toBool(false))if(const auto covered=coveredSentence(sensitive["covered"].toObject());!covered.isEmpty())parts.append(covered);
@@ -505,9 +505,12 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
  QString link;
  if(const int links=unconfirmed+unmade){
   const auto subject=items.size()>1?QString(links==1?"1 share link ":"%1 share links ").arg(links):QString("the share link ");
-  const auto outcome=unconfirmed&&unmade?QString("were not made or could not be confirmed"):unconfirmed?QString("could not be confirmed"):QString(links==1?"was not made":"were not made");
-  QStringList actions;if(finishable){bool stored=true;for(const auto& value:items)if(!QStringList{"uploaded","skipped","conflict","local_only"}.contains(value.toObject()["uploadStatus"].toString()))stored=false;actions<<(stored?QString("Finish share link"):QString("Retry upload"));}if(inspect)actions<<"Inspect link";if(create)actions<<"Create share link";
-  link=subject+outcome+(links==1&&unmade&&!linkCause.isEmpty()?": "+linkCause:QString{})+". Use "+actions.join(" or ")+" in History.";
+  const auto outcome=unconfirmed&&unmade?QString("couldn't be created or confirmed"):unconfirmed?QString("couldn't be confirmed"):QString("couldn't be created");
+  QStringList actions;if(finishable){bool stored=true;for(const auto& value:items)if(!QStringList{"uploaded","skipped","conflict","local_only"}.contains(value.toObject()["uploadStatus"].toString()))stored=false;// The label History shows: HistoryModel::finishShareLabel counts every link the retry may make.
+   int made=0;for(const auto& value:items){const auto item=value.toObject();const auto share=item["shareStatus"].toString();
+    if(item["uploadStatus"]=="uploaded"&&item["receipt"].toObject()["directUrl"].toString().isEmpty()&&((item["shareIntent"]=="create"&&QStringList{"unknown","private","failed"}.contains(share))||share=="not_requested"))++made;}
+   actions<<(stored?QString(qMax(made,finishable)>1?"Finish share links":"Finish share link"):QString("Retry upload"));}if(inspect)actions<<"Inspect link";if(create)actions<<"Create share link";
+  link=subject+outcome+(links==1&&unmade&&!linkCause.isEmpty()?": "+linkCause:QString{})+". Select "+actions.join(" or ")+" in History.";
  }
  QString text;
  if(!link.isEmpty()&&uploaded==items.size())text=(items.size()>1?QString("%1 files uploaded, but ").arg(uploaded):QString("Uploaded, but "))+link;
@@ -694,11 +697,11 @@ void TrayController::refreshActivity() {
 void TrayController::latchFailure(const Error& error,const QJsonObject& operation) {
  auto cause=error;bool uploadFailed=false,localFailed=error.code=="archive_failed";
  for(const auto& value:operation["items"].toArray()){const auto item=value.toObject();const auto itemError=item["error"].toObject(),local=item["local"].toObject();uploadFailed|=item["uploadStatus"]!="uploaded"&&(item["uploadStatus"]=="failed"||meaningfulError(itemError)||operation["state"]=="interrupted")&&!operation["destination"].toObject()["providerId"].toString().isEmpty();localFailed|=local["status"]=="failed"||meaningfulError(local["error"].toObject());if(!cause&&meaningfulError(itemError))cause={itemError["code"].toString(),itemError["message"].toString(),itemError["details"].toObject()};}
- attentionOperation_=operation["id"].toString();attentionLabel_="Action needs attention";attentionView_="history";
+ attentionOperation_=operation["id"].toString();attentionLabel_="Action failed";attentionView_="history";
  const bool setup=QStringList{"output_required","profile_not_found","provider_unavailable","invalid_destination","destination_unavailable","s3_settings_invalid","b2_settings_invalid","config_invalid","credential_setup_required"}.contains(cause.code);
  if(uploadFailed){for(const auto& value:operation["items"].toArray()){const auto item=value.toObject();if(item["uploadStatus"]!="uploaded"&&(item["uploadStatus"]=="failed"||item["uploadStatus"]=="unknown"||meaningfulError(item["error"].toObject())||operation["state"]=="interrupted"))failedItems_.insert(item["artifact"].toObject()["id"].toString(operation["id"].toString()));}attentionLabel_="Failed uploads";attentionView_="historyFailed";}
- else if(localFailed||setup){attentionLabel_=localFailed?"Local save needs attention":"Destination needs attention";const QJsonObject recovery{{"action",operation["action"].toString("region")},{"code",localFailed?"archive_failed":cause.code},{"message",localFailed&&cause.message.isEmpty()?"Couldn't save a local copy. Review the local-copy folder.":cause.message}};attentionView_="actionRecovery:"+QString::fromUtf8(QJsonDocument(recovery).toJson(QJsonDocument::Compact));}
- else if(!operation["id"].toString().isEmpty()&&operation["items"].toArray().isEmpty()&&QStringList{"region","window","desktop","edit","record"}.contains(operation["action"].toString()))attentionLabel_="Capture needs attention";
+ else if(localFailed||setup){attentionLabel_=localFailed?"Local save failed":"Destination error";const QJsonObject recovery{{"action",operation["action"].toString("region")},{"code",localFailed?"archive_failed":cause.code},{"message",localFailed&&cause.message.isEmpty()?"Couldn't save a local copy. Check the local-copy folder.":cause.message}};attentionView_="actionRecovery:"+QString::fromUtf8(QJsonDocument(recovery).toJson(QJsonDocument::Compact));}
+ else if(!operation["id"].toString().isEmpty()&&operation["items"].toArray().isEmpty()&&QStringList{"region","window","desktop","edit","record"}.contains(operation["action"].toString()))attentionLabel_="Capture failed";
  flashError();
 }
 void TrayController::flashError() {
@@ -928,14 +931,14 @@ void TrayController::sendTrayMessage(const QString& title, const QString& messag
   // A waiting sensitive text prompt (#1829): a click on the balloon brings it forward.
   if(actions.first().key=="show-sensitive"){
    const auto clicked=trayRestartClick_=connect(tray,&QSystemTrayIcon::messageClicked,this,[this,tray,id=actions.first().value]{if(tray&&!tray->geometry().contains(QCursor::pos()))operations_.raiseSensitivePrompt(id,{});},Qt::SingleShotConnection);
-   tray->showMessage(title,message+" Click here to show it.",icon,balloonMs);
+   tray->showMessage(title,message+" Click to show it.",icon,balloonMs);
    QTimer::singleShot(balloonMs,this,[clicked]{disconnect(clicked);});
    return;
   }
   // No notification server, as on a plain LXDE: Qt's balloon has no buttons, so a click on it restarts.
   // Qt reports a click on the tray icon as a click on the balloon too; that one only dismisses it.
   const auto clicked=trayRestartClick_=connect(tray,&QSystemTrayIcon::messageClicked,this,[tray,name=actions.first().value]{if(tray&&!tray->geometry().contains(QCursor::pos()))restartFileManager(name);},Qt::SingleShotConnection);
-  tray->showMessage(title,message+" Click here to restart it.",icon,balloonMs);
+  tray->showMessage(title,message+" Click to restart it.",icon,balloonMs);
   QTimer::singleShot(balloonMs,this,[clicked]{disconnect(clicked);});
  };
  auto bus=QDBusConnection::sessionBus();
@@ -988,11 +991,11 @@ void TrayController::setUpdateStatus(const QJsonObject& status) {
 }
 void TrayController::notifyUpdate(const QJsonObject& result) {
  if(!available())return;
- notifyMessage("update_available","put.gd — update available","put.gd "+result["latest"].toString()+" is available. Settings → General → Updates has the download.",false,QUrl(result["notesUrl"].toString()));
+ notifyMessage("update_available","Update available","put.gd "+result["latest"].toString()+" is available. Download it in Settings → General → Updates.",false,QUrl(result["notesUrl"].toString()));
 }
 void TrayController::notifyDesktopSetup(const QString& code, const QString& message) {
  if(code != "gnome_login_required" && code != "gnome_extension_updated")logError("desktop_setup",{code,message,{}},"desktop:"+code);
- notifyMessage(code, "put.gd", message, code != "gnome_login_required" && code != "gnome_extension_updated");
+ notifyMessage(code, "Desktop setup", message, code != "gnome_login_required" && code != "gnome_extension_updated");
 }
 void TrayController::logError(const QString& kind,const Error& error,const QString& subject,const QString& action) {
  if(!errorLog_||!ErrorLog::userFacing(error))return;
@@ -1001,14 +1004,14 @@ void TrayController::logError(const QString& kind,const Error& error,const QStri
 }
 void TrayController::notifyFailure(const Error& error) {
  if(error)latchFailure(error);
- if (error) notifyMessage(error.code,"put.gd", error.message, true);
+ if (error) notifyMessage(error.code,"Action failed", error.message, true);
 }
 void TrayController::saveDiagnostics(const QString& operationId) {
  if(!saveDiagnostics_||operationId.isEmpty())return;
  saveDiagnostics_(operationId,[guard=QPointer<TrayController>(this),operationId](Error error,QJsonObject result) {
   if(!guard)return;
   if(error)guard->logError("diagnostics",error,"diagnostics.bundle:"+operationId);
-  if(error)guard->notifyMessage("diagnostics_not_saved","put.gd — diagnostics not saved",error.message,true);
+  if(error)guard->notifyMessage("diagnostics_not_saved","Diagnostics not saved",error.message,true);
   else guard->notifyDiagnosticsSaved(result);
  });
 }
@@ -1017,10 +1020,10 @@ void TrayController::notifyDiagnosticsSaved(const QJsonObject& result) {
  // With diagnostics.bundle upload (#123, #158) it also says where the package went.
  QString uploaded=" Nothing was uploaded.";
  const auto uploadError=result["uploadError"].toObject();
- if(result.contains("link"))uploaded=" Uploaded to "+result["upload"].toObject()["label"].toString()+(result["linkCopied"].toBool()?"; link copied.":".");
- else if(uploadError["code"]=="diagnostics_link_unavailable")uploaded=" Uploaded to "+result["upload"].toObject()["label"].toString()+", which gives it no link.";
+ if(result.contains("link"))uploaded=" Uploaded to "+result["upload"].toObject()["label"].toString()+(result["linkCopied"].toBool()?". Link copied.":".");
+ else if(uploadError["code"]=="diagnostics_link_unavailable")uploaded=" Uploaded to "+result["upload"].toObject()["label"].toString()+" (no link available).";
  else if(!uploadError.isEmpty()){const auto reason=failureReason(uploadError);uploaded=" Not uploaded"+(reason.isEmpty()?QString("."):": "+reason+".");}
- notifyMessage("diagnostics_saved","put.gd — diagnostics saved",file.fileName()+" ("+ByteSize::summary(result["bytes"].toInteger())+") in "+QDir::toNativeSeparators(file.absolutePath())+"."+uploaded,false,{},{},file.absoluteFilePath());
+ notifyMessage("diagnostics_saved","Diagnostics saved",file.fileName()+" ("+ByteSize::summary(result["bytes"].toInteger())+") in "+QDir::toNativeSeparators(file.absolutePath())+"."+uploaded,false,{},{},file.absoluteFilePath());
 }
 namespace {
 QString fileManagerName(const QString& name){
@@ -1030,20 +1033,20 @@ QString fileManagerName(const QString& name){
 }
 void TrayController::notifyFileManagerMenu(const QStringList& restartable) {
  if(holdNotices_){heldFileManagerNotices_.append(restartable);return;}
- QString message=QStringLiteral("Upload with put.gd is now in your file manager's right-click menu.");
+ QString message=QStringLiteral("Added \"Upload with put.gd\" to your file manager's right-click menu.");
  if(!restartable.isEmpty()){
   // Short, what matters first: some servers cut a body at about 80 characters.
   // "If it's missing": a file manager that hasn't shown a menu yet needs no restart.
-  message=QStringLiteral("Upload with put.gd is in your right-click menu. Restart %1 if it's missing; that closes its windows.").arg(fileManagerName(restartable.first()));
+  message=QStringLiteral("Added \"Upload with put.gd\" to your right-click menu. Restart %1 if it's missing (closes its open windows).").arg(fileManagerName(restartable.first()));
  }
- logging::info(logUi(),"Notification shown",{{"notificationId",qint64(++notifications_)},{"summary","file_manager_menu"},{"title","put.gd"},{"notificationText",message},{"warning",false}});
+ logging::info(logUi(),"Notification shown",{{"notificationId",qint64(++notifications_)},{"summary","file_manager_menu"},{"title","File manager menu"},{"notificationText",message},{"warning",false}});
 #ifdef Q_OS_LINUX
  // One button per file manager; each key is unique, its value names the file manager.
  QList<NotificationAction> actions;for(const auto& name:restartable)actions.append({"restart-file-manager-"+name,"Restart "+fileManagerName(name),name});
- if(native_){native_->notify("put.gd",message,false,{},actions);return;}
- if(tray_)showTrayMessage("put.gd",message,false,actions);
+ if(native_){native_->notify("File manager menu",message,false,{},actions);return;}
+ if(tray_)showTrayMessage("File manager menu",message,false,actions);
 #else
- if(tray_)tray_->showMessage("put.gd",message,QSystemTrayIcon::Information);
+ if(tray_)tray_->showMessage("File manager menu",message,QSystemTrayIcon::Information);
 #endif
 }
 // #1804, #1829: one notice per prompt a person is shown, on every desktop: a tray host may open the menu on
@@ -1057,17 +1060,17 @@ void TrayController::announceSensitivePrompt(const QString& id) {
  // Never into a scrolling capture's frames: it goes out after the capture, if the prompt still waits.
  if(holdNotices_){if(!heldSensitivePrompts_.contains(id)&&heldSensitivePrompts_.size()<32)heldSensitivePrompts_.append(id);return;}
  if(prompt>0){announcedSensitive_.insert(id,prompt);while(announcedSensitive_.size()>64)announcedSensitive_.erase(announcedSensitive_.begin());}
- const auto message=QStringLiteral("A capture is waiting for your decision");
- logging::info(logUi(),"Notification shown",{{"notificationId",qint64(++notifications_)},{"summary","sensitive_text_found"},{"title","put.gd"},{"notificationText",message},{"warning",false},{"operationId",id}});
+ const auto message=QStringLiteral("A capture needs review before it uploads.");
+ logging::info(logUi(),"Notification shown",{{"notificationId",qint64(++notifications_)},{"summary","sensitive_text_found"},{"title","Review before uploading"},{"notificationText",message},{"warning",false},{"operationId",id}});
 #ifdef Q_OS_LINUX
  const QList<NotificationAction> actions{{"show-sensitive","Show",id}};
- if(native_){native_->notify("put.gd",message,false,{},actions);return;}
- if(tray_)showTrayMessage("put.gd",message,false,actions);
+ if(native_){native_->notify("Review before uploading",message,false,{},actions);return;}
+ if(tray_)showTrayMessage("Review before uploading",message,false,actions);
 #else
- if(tray_)tray_->showMessage("put.gd",message,QSystemTrayIcon::Information);
+ if(tray_)tray_->showMessage("Review before uploading",message,QSystemTrayIcon::Information);
 #endif
 }
-void TrayController::notifyFileManagerProblem(const QString& message) {logError("other",{"file_manager_menu_problem",message,{}},"file_manager_menu");notifyMessage("file_manager_menu_problem","put.gd — file manager menu",message,true);}
+void TrayController::notifyFileManagerProblem(const QString& message) {logError("other",{"file_manager_menu_problem",message,{}},"file_manager_menu");notifyMessage("file_manager_menu_problem","File manager menu",message,true);}
 bool TrayController::restartFileManager(const QString& name) {
  const auto script=FileManagerIntegration::restartScript(name);
  if(script.isEmpty())return false;
@@ -1079,7 +1082,7 @@ void TrayController::showSavedPackage(const QString& path) {
  const auto error=revealPackage(path,true);if(!error)return;
  qWarning("Show in folder refused: %s",qPrintable(error.code));
  logError("diagnostics",error);
- notifyMessage("show_in_folder_refused","put.gd — Show in folder",error.message,true);
+ notifyMessage("show_in_folder_refused","Show in folder failed",error.message,true);
 }
 Error TrayController::revealPackage(const QString& path,bool savedHere) {
  static const QRegularExpression name("^putgd-diagnostics-[0-9]{8}-[0-9]{6}Z(-[0-9]+)?\\.zip$");

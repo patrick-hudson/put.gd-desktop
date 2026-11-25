@@ -623,7 +623,7 @@ void NativeTrayPrivate::notificationClosed(uint id,uint) {
 void NativeTrayPrivate::setActivity(const QColor& color,const QString& description,int percent,int recording,const QString& title,IconArt::TrayGlyph glyph,bool done) {
  percent=qBound(-2,percent,100);
  const bool iconChanged=color!=color_||percent!=percent_||recording!=recording_||glyph!=glyph_||done!=done_;
- const auto tooltipTitle=title.isEmpty()?(percent==-2?QString("Needs attention"):percent>=0?QString("Uploading"):QString("put.gd")):title;
+ const auto tooltipTitle=title.isEmpty()?(percent==-2?QString("Last action failed"):percent>=0?QString("Uploading"):QString("put.gd")):title;
  const bool textChanged=description!=activityText_||tooltipTitle!=activityTitle_;
  if(!iconChanged&&!textChanged)return;
  color_=color;activityText_=description;activityTitle_=tooltipTitle;percent_=percent;recording_=recording;glyph_=glyph;done_=done;
