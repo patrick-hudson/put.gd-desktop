@@ -232,7 +232,10 @@ private:
   // A request that sends file bytes isn't bound by the request timeout, only by the
   // low-speed limit (#1758): allow up to three sends of every byte at that minimum rate.
   const qint64 transferBudget=bytes>0?3*((bytes*1000+timeout("lowSpeedBytesPerSecond")-1)/timeout("lowSpeedBytesPerSecond")):0;
-  const qint64 totalBudget=calls*perCall+transferBudget+hashBudget+checkpoints*300000+60000;
+  // A read or a DELETE whose connection is never set up is sent up to twice more, 0.25 s and 1 s
+  // later (#2051): each of those is bounded by the connect timeout.
+  const qint64 reconnects=calls*(2*timeout("connectTimeoutMs")+1250);
+  const qint64 totalBudget=calls*perCall+reconnects+transferBudget+hashBudget+checkpoints*300000+60000;
   QElapsedTimer workDeadline;workDeadline.start();activity_.start();
   // A multipart upload learns how many idle upload slots it may borrow (#174).
   QElapsedTimer lanesPoll;lanesPoll.start();int lentLanes=0;const bool borrows=lanes_&&parts>1;

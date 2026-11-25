@@ -17,7 +17,8 @@
 #include <algorithm>
 #include <array>
 #include <aws/core/client/CoreErrors.h>
-#include <aws/core/client/DefaultRetryStrategy.h>
+#include <aws/core/client/AWSError.h>
+#include <aws/core/client/RetryStrategy.h>
 #include <aws/core/utils/memory/stl/AWSStreamFwd.h>
 #include <aws/core/utils/threading/PooledThreadExecutor.h>
 #include <aws/s3/S3Client.h>
@@ -47,6 +48,7 @@
 #include <optional>
 #include <mutex>
 #include <thread>
+#include <chrono>
 namespace putgd {
 namespace {
 Aws::String aws(const QString& value) { return value.toStdString(); }
@@ -268,6 +270,10 @@ template<class E> Error wireError(const E& error, S3Stage stage, qint64 elapsedM
     return {code, message, details};
 }
 template<class E> bool absent(const E& error) { return int(error.GetResponseCode()) == 404; }
+// The connection for this request was never set up, so nothing of it reached the server (#2051).
+template<class E> bool neverConnected(const E& error) {
+    return s3ConnectionNeverSetUp(int(error.GetResponseCode()), {error.GetMessage().data(), error.GetMessage().size()});
+}
 template<class E> bool ambiguous(const E& error) {
     if (notSent(error)) return false;
     const int status = int(error.GetResponseCode());
@@ -280,6 +286,35 @@ template<class E> bool versioningUnreadable(const E& error) {
     const int status = int(error.GetResponseCode());
     return status == 403 || status == 501;
 }
+// A DELETE always goes out on a fresh connection that is never reused (SdkRuntime.cpp), so libcurl
+// never resends it by itself: one whose connection was never set up wasn't sent (#2051).
+template<class E> bool deleteAmbiguous(const E& error) { return ambiguous(error) && !neverConnected(error); }
+// The cancellation of the deletion whose DELETE this thread is sending: no attempt after it.
+thread_local const std::atomic_bool* retryCancellation = nullptr;
+// SDK retries are off, except for a request whose connection was never set up (#2051) and that
+// libcurl can't have sent by itself before (SdkRuntime::lastRequestResendable(): a read, or a
+// request on a fresh, never-reused connection). Each S3 call runs in a new helper process on new
+// connections, and a handshake the network resets would otherwise end a deletion unknown, or a
+// name check failed, with the file untouched. Two more attempts, after 0.25 s and 1 s; the SDK
+// signs each one again. Every other failure is returned on the first attempt, for the driver's
+// own bounded and reconciled attempts.
+class UnsentRetryStrategy final : public Aws::Client::RetryStrategy {
+public:
+    static constexpr long extraAttempts = 2;
+    bool ShouldRetry(const Aws::Client::AWSError<Aws::Client::CoreErrors>& error, long attemptedRetries) const override {
+        if (attemptedRetries >= extraAttempts || !neverConnected(error) || !SdkRuntime::lastRequestResendable()) return false;
+        // The wait is here, not in the SDK's own sleep (CalculateDelayBeforeNextRetry is 0): the SDK
+        // asks this before it sleeps, so a deletion cancelled during the wait must stop it here.
+        const auto until = std::chrono::steady_clock::now() + std::chrono::milliseconds(attemptedRetries == 0 ? 250 : 1000);
+        while (std::chrono::steady_clock::now() < until) {
+            if (retryCancellation && retryCancellation->load()) return false;
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        return !(retryCancellation && retryCancellation->load());
+    }
+    long CalculateDelayBeforeNextRetry(const Aws::Client::AWSError<Aws::Client::CoreErrors>&, long) const override { return 0; }
+    long GetMaxAttempts() const override { return extraAttempts + 1; }
+};
 // Only Cloudflare R2 itself is trusted to keep no versions when it answers a request naming one
 // with 501. A proxy or another S3-compatible front could answer so while the bucket behind it
 // keeps versions, and an unversioned delete there would leave the recorded version behind a
@@ -1155,7 +1190,7 @@ struct NetworkS3Driver::State {
         config.lowSpeedLimit = destination.settings["lowSpeedBytesPerSecond"].toInt();
         // A multipart upload sends up to four parts at once (#174); other calls use one.
         config.maxConnections = s3MaximumPartLanes;
-        config.retryStrategy = Aws::MakeShared<Aws::Client::DefaultRetryStrategy>("putgd", 0);
+        config.retryStrategy = Aws::MakeShared<UnsentRetryStrategy>("putgd");
         config.executor = Aws::MakeShared<Aws::Utils::Threading::PooledThreadExecutor>("putgd", 1);
         config.useVirtualAddressing = s3VirtualAddressing(effective);
         config.disableS3ExpressAuth = true;
@@ -1611,6 +1646,8 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
         remove.SetKey(aws(key));
         if (!exactVersion.isEmpty()) remove.SetVersionId(aws(exactVersion));
         if (!etag.isEmpty()) remove.SetIfMatch(aws(etag));
+        struct Scope { const std::atomic_bool* previous = retryCancellation; ~Scope() { retryCancellation = previous; } } scope;
+        retryCancellation = request.cancellation.get();
         return client->DeleteObject(remove);
     };
     if (immutable) {
@@ -1670,7 +1707,13 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
                 const auto marked = erase({}, expected.concurrencyToken);
                 const auto markerElapsedMs = markerTimer.elapsed();
                 if (!marked.IsSuccess()) {
-                    const bool unknown = ambiguous(marked.GetError());
+                    const bool unknown = deleteAmbiguous(marked.GetError());
+                    // Cancelled while it couldn't connect: no marker was asked for.
+                    if (!unknown && neverConnected(marked.GetError()) && stopped(request.cancellation)) {
+                        persist(S3DeletePhase::MarkerCancelled);
+                        finish("failed", cancelled());
+                        return;
+                    }
                     if (auto error = persist(unknown ? S3DeletePhase::MarkerUnknown : S3DeletePhase::MarkerFailed)) {
                         finish("unknown", error);
                         return;
@@ -1720,7 +1763,12 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
         const auto removed = erase(version, {});
         const auto removeElapsedMs = removeTimer.elapsed();
         if (!removed.IsSuccess()) {
-            const bool unknown = ambiguous(removed.GetError());
+            const bool unknown = deleteAmbiguous(removed.GetError());
+            if (!unknown && neverConnected(removed.GetError()) && stopped(request.cancellation)) {
+                persist(S3DeletePhase::VersionCancelled);
+                finish(progress.contains("markerVersionId") ? "hidden_version_retained" : "failed", cancelled());
+                return;
+            }
             persist(unknown ? S3DeletePhase::VersionUnknown : S3DeletePhase::VersionFailed);
             // A lost reply may have removed the version: unknown, with the marker and the
             // version intent journaled for Retry. A refusal leaves the version hidden.
@@ -1752,7 +1800,12 @@ void NetworkS3Driver::remove(const DeleteRequest& request, DurableCheckpoint sav
         const auto removed = erase(version, expected.concurrencyToken);
         const auto removeElapsedMs = removeTimer.elapsed();
         if (!removed.IsSuccess()) {
-            const bool unknown = ambiguous(removed.GetError());
+            const bool unknown = deleteAmbiguous(removed.GetError());
+            if (!unknown && neverConnected(removed.GetError()) && stopped(request.cancellation)) {
+                persist(S3DeletePhase::ObjectCancelled);
+                finish("failed", cancelled());
+                return;
+            }
             persist(unknown ? S3DeletePhase::ObjectUnknown : S3DeletePhase::ObjectFailed);
             finish(unknown ? "unknown" : (int(removed.GetError().GetResponseCode()) == 412 || int(removed.GetError().GetResponseCode()) == 409 ? "changed" : "failed"), wireError(removed.GetError(), S3Stage::DeleteObject, removeElapsedMs));
             return;

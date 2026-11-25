@@ -31,6 +31,19 @@ private slots:
                 "curlCode:  7, detail", "curlCode: 7\n, detail", "ordinary SDK failure"})
             QCOMPARE(putgd::sdkCurlCode(input), -1);
     }
+    // #2051: only a connection that was never set up (no reply; couldn't connect, or the TLS
+    // handshake failed) counts as a request nothing of which reached the server.
+    void connectionNeverSetUpIsOnlyConnectAndHandshake() {
+        QVERIFY(putgd::s3ConnectionNeverSetUp(-1, "curlCode: 35, SSL connect error; Details: Recv failure: Connection reset by peer"));
+        QVERIFY(putgd::s3ConnectionNeverSetUp(-1, "curlCode: 7, Couldn't connect to server"));
+        // Resolution, timeouts, a reply lost on a sent request, and certificate failures don't count.
+        for (const auto input : {"curlCode: 6, resolve", "curlCode: 28, Timeout", "curlCode: 52, Empty reply from server",
+                "curlCode: 55, Send failure", "curlCode: 56, Recv failure", "curlCode: 60, certificate", "ordinary SDK failure"})
+            QVERIFY(!putgd::s3ConnectionNeverSetUp(-1, input));
+        // A reply came: whatever its text, the server had the request.
+        QVERIFY(!putgd::s3ConnectionNeverSetUp(500, "curlCode: 35, SSL connect error"));
+        QVERIFY(!putgd::s3ConnectionNeverSetUp(200, "curlCode: 7, Couldn't connect to server"));
+    }
     void initialTlsShareCompatibilityPreservesOlderAndOtherBackends() {
         QVERIFY(putgd::smallInitialTlsShare(0x081200, "OpenSSL/3.5.5"));
         QVERIFY(putgd::smallInitialTlsShare(0x074900, "OpenSSL/3.5.0"));

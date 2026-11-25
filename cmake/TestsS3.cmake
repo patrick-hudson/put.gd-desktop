@@ -12,7 +12,8 @@
   set_tests_properties(collision_policy_integration PROPERTIES TIMEOUT 120)
   add_executable(test_s3_delete tests/integration/test_s3_delete.cpp)
   target_include_directories(test_s3_delete PRIVATE tests)
-  target_compile_definitions(test_s3_delete PRIVATE S3_FIXTURE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/s3_server.py")
+  target_compile_definitions(test_s3_delete PRIVATE S3_FIXTURE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/s3_server.py"
+    TLS_FRONT_PATH="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/tls_front.py")
   target_link_libraries(test_s3_delete PRIVATE putgd_s3 putgd_app Qt6::Test)
   add_test(NAME s3_delete_integration COMMAND test_s3_delete)
   set_tests_properties(s3_delete_integration PROPERTIES TIMEOUT 120)
