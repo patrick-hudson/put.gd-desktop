@@ -14,6 +14,12 @@ public:
     static void ensureInitialized();
     ~SdkRuntime();
     static bool safeDeleteTransport();
+    // Whether the last request this thread sent may be sent again when its connection was never
+    // set up (#2051): a GET or HEAD, which only reads, or a request sent on a fresh connection that
+    // is never reused (a DELETE, or one in a SingleSendScope). libcurl transparently resends a
+    // request whose reused connection lost its reply, so for any other request a failed reconnect
+    // doesn't show that nothing was sent. False without the Curl transport.
+    static bool lastRequestResendable();
     // While one lives on a thread, every request that thread sends goes out on a fresh connection
     // that is never reused, and with redirect following off (#1690). Test upload and link's
     // synthetic PutObject and CreateMultipartUpload use it: libcurl could otherwise send such a

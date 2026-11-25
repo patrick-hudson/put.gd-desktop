@@ -88,6 +88,8 @@ thread_local bool singleSendRequests = false;
 thread_local bool bodyRequest = false;
 // The request on this thread whose continue handler can cut it (#203).
 thread_local const Aws::Http::HttpRequest* continuableRequest = nullptr;
+// SdkRuntime::lastRequestResendable(): set by each request this thread sends.
+thread_local bool resendableRequest = false;
 // The SDK asks a request's continue handler only while body bytes move, so a part
 // whose body is sent and whose reply is slow would run to its timeout. libcurl's
 // progress callback also runs about once a second while a transfer waits.
@@ -145,6 +147,9 @@ public:
                 request->GetMethod() == Aws::Http::HttpMethod::HTTP_PUT && request->GetContentBody() &&
                     request->HasContentLength() && sendsBytes(request->GetContentLength()),
                 request->GetContinueRequestHandler() && !request->IsEventStreamRequest() ? request.get() : nullptr);
+        // A fresh, never-reused connection (OverrideOptionsOnConnectionHandle) or a read.
+        resendableRequest = destructiveRequest || request->GetMethod() == Aws::Http::HttpMethod::HTTP_GET ||
+                            request->GetMethod() == Aws::Http::HttpMethod::HTTP_HEAD;
         return Aws::Http::CurlHttpClient::MakeRequest(request, read, write);
     }
 protected:
@@ -301,6 +306,13 @@ SdkRuntime::SingleSendScope::~SingleSendScope() = default;
 bool SdkRuntime::safeDeleteTransport() {
 #if defined(PUTGD_SDK_CURL_TRANSPORT)
     return true;
+#else
+    return false;
+#endif
+}
+bool SdkRuntime::lastRequestResendable() {
+#if defined(PUTGD_SDK_CURL_TRANSPORT)
+    return resendableRequest;
 #else
     return false;
 #endif

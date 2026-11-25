@@ -2,6 +2,7 @@
 #include <QStandardPaths>
 #include <QUrlQuery>
 #include <stdexcept>
+#include <thread>
 using namespace putgd::test;
 namespace {
 // HTTPS in front of the plain fixture (tests/fixtures/tls_front.py), with a certificate made for
@@ -598,6 +599,52 @@ private slots:
         front.arm(0, 0);
         QCOMPARE(f.remove(uploaded.receipt, result.progress).status, QString("removed"));
         QCOMPARE(f.events("DELETE").size(), 1);
+    }
+    // Only a read, or a request on a fresh never-reused connection, is sent again by the SDK:
+    // libcurl may already have resent a PutObject whose reused connection lost its reply, so its
+    // failed reconnect proves nothing (#2051). The adapter's own three attempts decide the upload.
+    void unconnectedPutIsLeftToTheAdapter() {
+        S3Fixture f;
+        f.reset();
+        TlsFront front(f);
+        const auto request = f.request();
+        front.arm(0, 3);
+        const auto uploaded = f.upload(request);
+        QCOMPARE(front.connections(), QStringList({"reset", "reset", "reset"}));
+        QCOMPARE(uploaded.status, QString("failed"));
+        QCOMPARE(uploaded.error.code, QString("s3_upload_interrupted"));
+        QCOMPARE(f.events("PUT").size(), 0);
+    }
+    // A deletion cancelled while its DELETE couldn't connect sends no further attempt (#2051).
+    void cancelledDeleteIsNotSentAgain() {
+        S3Fixture f;
+        f.reset();
+        TlsFront front(f);
+        const auto uploaded = f.upload(f.request());
+        QVERIFY2(uploaded.status == "uploaded", qPrintable(uploaded.error.code + ": " + uploaded.error.message));
+        front.arm(1, 3);
+        auto cancellation = std::make_shared<std::atomic_bool>(false);
+        // Cancel as soon as the DELETE's first connection is reset: inside the 0.25 s before the next attempt.
+        std::atomic_bool done{false};
+        std::thread watcher([&] {
+            while (!done.load() && !front.connections().contains("reset")) std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            cancellation->store(true);
+        });
+        QStringList phases;
+        const auto result = f.await<DeleteResult>([&](auto cb) {
+            f.provider.remove({"synthetic-delete", uploaded.receipt, {}, cancellation}, [&](auto progress, auto ack) {
+                phases.append(progress["phase"].toString());
+                ack({});
+            }, cb);
+        });
+        done.store(true);
+        watcher.join();
+        QCOMPARE(front.connections(), QStringList({"pass", "reset"}));
+        QCOMPARE(result.status, QString("failed"));
+        QCOMPARE(result.error.code, QString("cancelled"));
+        QCOMPARE(phases, QStringList({"object_intent", "object_cancelled"}));
+        QCOMPARE(f.events("DELETE").size(), 0);
+        QVERIFY(!f.state()["objects"].toObject()["prefix é/a b.txt"].toArray().isEmpty());
     }
     void notImplementedVersionOnVersionedBucketNeverDeletes() {
         S3Fixture f;
