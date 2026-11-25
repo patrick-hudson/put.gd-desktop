@@ -56,7 +56,7 @@ QList<CaptureFrame> X11Capture::layout(Error& error) {
   const QRect native(crtc->x,crtc->y,crtc->width,crtc->height);const QRectF logical(screen->geometry());
   const qreal sx=native.width()/logical.width(),sy=native.height()/logical.height();
   if(qAbs(sx-sy)>0.02){error={"capture_geometry","Unsupported inconsistent monitor coordinate scaling",{}};return {};}
-  result.append({name,logical,native,sx,rotation,{}});
+  result.append(CaptureFrame{name,logical,native,sx,rotation,{}});
  }
  if(result.isEmpty())error={"capture_geometry","No enabled monitors",{}};
  return result;
