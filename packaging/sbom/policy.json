@@ -12,15 +12,6 @@
   },
   "ignore": [
     {
-      "id": "CVE-2026-107696",
-      "component": "ffmpeg",
-      "scope": "appimage-ffmpeg-9.0.2",
-      "reason": "Affected code is not built or shipped: RTSP demuxer and muxer (ff_rtsp_connect's redirect loop in libavformat/rtsp.c, compiled only for the RTSP demuxer/muxer and SDP demuxer; the build has --disable-network and only the file protocol). Verified against the pinned source, CI configure output and exact bundled libraries.",
-      "expires": "2027-01-21",
-      "issue": 511,
-      "evidence": "packaging/sbom/dispositions/511.json"
-    },
-    {
       "id": "CVE-2025-5222",
       "component": "icu",
       "scope": "appimage-icu-73.2",
@@ -67,16 +58,6 @@
     }
   ],
   "scopes": {
-    "appimage-ffmpeg-9.0.2": {
-      "package": "appimage",
-      "component": "ffmpeg",
-      "version": "9.0.2",
-      "properties": {
-        "putgd:commit": "946fcce07b6dcd0331c8cc609192aeff5e1924f8",
-        "putgd:filesSha256": "4951e9d7eedc8dcf16551f993c4a230fec1bbb36a8bbcb1e00fdc295275fecc0",
-        "putgd:toolsAbsent": "true"
-      }
-    },
     "appimage-icu-73.2": {
       "package": "appimage",
       "component": "icu",
