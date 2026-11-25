@@ -923,7 +923,7 @@ int main(int argc,char** argv){
   // A result over the output's limit: editing resumes with the reason, and a
   // destination too long to sit beside the actions wraps above them.
   editor.setDestination("Upload to Production screenshots for customer support (EU) · Shared link",true);
-  editor.showPreparationFailed("Edited image is 41.3 MB, over the 25 MB limit for this destination. Crop it and try again, or save a copy.");if(!grab("29-editor-preparation-failed"))return 2;
+  editor.showPreparationFailed("Edited image is 41.3 MB, over the 25 MB limit. The upload didn't start. Crop it and select Upload again, or select Save a copy… instead.");if(!grab("29-editor-preparation-failed"))return 2;
   // Clear state 29's failure and the earlier saved-copy feedback before the swatches.
   editor.viewCommand({{"action","keepEditing"}},code,message);if(!code.isEmpty())return 2;
   editor.viewCommand({{"action","dismissSavedCopy"}},code,message);if(!code.isEmpty())return 2;

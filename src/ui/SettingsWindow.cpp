@@ -615,7 +615,7 @@ public:
    if(uploadAvailable()&&saved_.isEmpty()&&!saving_){
     upload_->setText("Also upload to "+target_["label"].toString()+" and copy a link");upload_->show();
     uploadNote_->setText(target_["warning"].toString());
-   } else if(!uploadAvailable()){upload_->hide();uploadNote_->setText("Upload unavailable: "+unavailableReason());}
+   } else if(!uploadAvailable()){upload_->hide();uploadNote_->setText("Upload unavailable. "+unavailableReason());}
    if(saved_.isEmpty()&&!saving_)save_->setText(saveLabel());
    fit();
   });
@@ -701,10 +701,10 @@ private:
  QString unavailableReason()const{
   const auto reason=target_["reason"].toString();const auto label=target_["label"].toString();
   auto sentence=[](QString text){text=text.trimmed();return text.isEmpty()||text.endsWith('.')?text:text+".";};
-  if(reason=="diagnostics_no_destination")return "no upload destination is set up.";
-  if(reason=="diagnostics_destination_failing")return "the last upload to "+label+" failed with a credential or configuration error. Fix the destination in Settings, then try again.";
-  if(reason=="diagnostics_destination_unavailable"){const auto detail=target_["details"].toObject()["error"].toObject()["message"].toString();return "the connection test for "+label+" failed"+(detail.isEmpty()?QString("."):[&]{auto shown=detail.trimmed();while(shown.endsWith('.'))shown.chop(1);return " ("+shown+").";}());}
-  return sentence(target_["message"].toString("no working upload destination"));
+  if(reason=="diagnostics_no_destination")return "No upload destination is set up.";
+  if(reason=="diagnostics_destination_failing")return "The last upload to "+label+" failed with a credential or configuration error. Fix it in Destinations, then try again.";
+  if(reason=="diagnostics_destination_unavailable"){const auto detail=target_["details"].toObject()["error"].toObject()["message"].toString();return "The connection test for "+label+" failed."+(detail.isEmpty()?QString():" "+sentence(detail));}
+  auto fallback=sentence(target_["message"].toString("No working upload destination"));if(!fallback.isEmpty())fallback[0]=fallback[0].toUpper();return fallback;
  }
  QString saveLabel()const{return uploading()?"Save and upload":"Save package";}
  UiSession& session_;
@@ -1491,7 +1491,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  }
  connect(credentials,&QPushButton::clicked,this,[this]{if(!admitSetup())return;resetCredentialSecretDisplay();
   // #1361: a custom uploader stores the values typed into its Secret rows, by name.
-  if(providerType_->currentData()==CustomUploaderPanel::provider()){QJsonObject values;const auto typed=uploader_->typedSecrets();for(auto it=typed.cbegin();it!=typed.cend();++it)values[it.key()]=it.value();if(values.isEmpty()){status({"credential_invalid","Enter a value in a row marked Secret first. Only Secret rows are saved here.",{}});return;}beginSetup("storeCredentials",{{"values",values}});return;}
+  if(providerType_->currentData()==CustomUploaderPanel::provider()){QJsonObject values;const auto typed=uploader_->typedSecrets();for(auto it=typed.cbegin();it!=typed.cend();++it)values[it.key()]=it.value();if(values.isEmpty()){status({"credential_invalid","Enter a value in a field marked Secret first.",{}});return;}beginSetup("storeCredentials",{{"values",values}});return;}
   // #1871: an SFTP destination stores its password and key passphrase by name; an empty one is not used.
   if(providerType_->currentData()==SftpPanel::provider()){if(!sftpPanel_->hasTypedSecrets()){status({"credential_invalid","Type a password or a key passphrase first. Leave both empty to sign in with your SSH agent or key files.",{}});return;}QJsonObject values;const auto typed=sftpPanel_->typedSecrets();for(auto it=typed.cbegin();it!=typed.cend();++it)values[it.key()]=it.value();beginSetup("storeCredentials",{{"values",values}});return;}
   QJsonObject value{{"accessKey",access_->text()},{"secretKey",secret_->text()},{"sessionToken",token_->text()}};beginSetup("storeCredentials",value);});connect(unlock,&QPushButton::clicked,this,[this]{beginSetup("unlockCredentials");});connect(test,&QPushButton::clicked,this,[this]{beginSetup("testDestination");});

@@ -1283,7 +1283,7 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
  text_->whenRecognized([g=QPointer<EditorWindow>(this),categories,done,dragWait,terms=std::move(terms),patterns=std::move(patterns),first=std::move(first)](Error error){
   if(!g)return;
   const auto stopWith=[&](const QString& text,const char* role,Error failure){g->quickRedacting_=false;g->quickRedactResult_->setText(text);Ui::role(g->quickRedactResult_,role);g->refresh();if(done)done(failure,{});};
-  if(g->busy_){stopWith("Quick redact didn't run because the edit was already submitted.","danger",{"editor_finalizing","The edit was already submitted or discarded",{}});return;}
+  if(g->busy_){stopWith("Quick redact added no marks because the edit was submitted or discarded.","danger",{"editor_finalizing","The edit was already submitted or discarded",{}});return;}
   if(error){stopWith(error.code=="edit_stale"?QStringLiteral("A redaction or the crop changed, so nothing was added. Try again."):error.message,"danger",error);return;}
   // The saved list and an agent's own terms, for this run (#1618). Never stored or logged. The account is
   // looked up by the runner, on its worker thread, only when name is chosen.
@@ -1308,7 +1308,7 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
     g->quickRedacting_=false;
     const auto fail=[&](const QString& text,Error failure){g->quickRedactResult_->setText(text);Ui::role(g->quickRedactResult_,"danger");g->refresh();if(done)done(failure,{});};
     if(g->doc_.inGesture()){fail("A mark was still being dragged, so nothing was added. Try again.",{"editor_busy","A mark was still being dragged while Quick redact waited",{}});return;}
-    if(g->busy_){fail("Quick redact didn't run because the edit was already submitted.",{"editor_finalizing","The edit was already submitted or discarded",{}});return;}
+    if(g->busy_){fail("Quick redact added no marks because the edit was submitted or discarded.",{"editor_finalizing","The edit was already submitted or discarded",{}});return;}
     if(g->text_->revision()!=revision){fail("A redaction or the crop changed, so nothing was added. Try again.",{"edit_stale","A Redact mark or the crop changed while Quick redact was matching",{}});return;}
     // Every match is ordinary Redact marks, all added as one undo step. A mark the user deleted from an earlier run is not added back.
     QJsonObject counts;for(const auto& category:categories)counts[category]=0;QJsonArray created;
@@ -1341,7 +1341,7 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
     QStringList lines{added?QString("Added %1 suggested %2").arg(added).arg(added==1?"redaction":"redactions"):QStringLiteral("No matches found. Text can still be there.")};
     QJsonArray skipped;for(const int index:found.skippedPatterns){skipped.append(index);lines<<QString("Pattern %1 didn't finish and was skipped.").arg(index+1);}
     // The account lookup did not answer in time: the other categories ran without it (#1618).
-    if(found.nameUnchecked)lines<<QStringLiteral("Couldn't check My username and name because the account lookup timed out.");
+    if(found.nameUnchecked)lines<<QStringLiteral("Skipped 'My username and name'. Account lookup timed out.");
     g->quickRedactResult_->setText(lines.join('\n'));Ui::role(g->quickRedactResult_,"body");
     g->documentEdited();
     QJsonObject result{{"created",created},{"counts",counts}};if(!codeKinds.isEmpty())result["codes"]=codeKinds;if(!skipped.isEmpty())result["skippedPatterns"]=skipped;if(found.nameUnchecked)result["nameUnchecked"]=true;if(found.unfinished)result["unfinished"]=true;

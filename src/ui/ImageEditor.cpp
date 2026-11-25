@@ -159,9 +159,9 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    int width=0,height=0;QByteArray png;
    // #1893: the exported size, which a capture style makes larger than the crop.
    {const auto size=document->exportSize();width=size.width();height=size.height();png=document->exportPng();}
-   if(png.isEmpty()){recover("edit_export_failed","Couldn't encode the edited image as PNG. Try again, or save a copy.");return;}
+   if(png.isEmpty()){recover("edit_export_failed","Couldn't encode the edited image as PNG. The upload didn't start. Select Upload again, or select Save a copy… instead.");return;}
    if(png.size()>outputBytes){
-    recover("input_excessive",QString("Edited image is %1, over the %2 limit for this destination. Crop it and try again, or save a copy.").arg(ByteSize::localized(png.size(),1),ByteSize::localized(outputBytes,1)));
+    recover("input_excessive",QString("Edited image is %1, over the %2 limit. The upload didn't start. Crop it and select Upload again, or select Save a copy… instead.").arg(ByteSize::localized(png.size(),1),ByteSize::localized(outputBytes,1)));
     return;
    }
    // Staging that can't be written is not recoverable here: the session ends.

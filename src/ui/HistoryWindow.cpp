@@ -143,7 +143,7 @@ QString missingLocalCopyHint(const QJsonObject& data){
  const auto remote=data["remoteStatus"].toString();const auto kind=video(data)?QString("recording"):data["mime"].toString().startsWith("image/")?QString("image"):QString("file");
  QString text="No local copy is available. ";
  if(remote=="removed"||remote=="already_missing")text+="The uploaded "+kind+(remote=="removed"?" was deleted from its destination.":" is missing from its destination.")+" Check for another copy or a destination backup.";
- else if(remote=="hidden_version_retained"||remote=="version_retained")text+="The original uploaded version is still stored at its destination. You may be able to download it from the destination's version history.";
+ else if(remote=="hidden_version_retained"||remote=="version_retained")text+="The original uploaded version is still at its destination. You may be able to download it from version history.";
  else if(remote=="changed"||remote=="superseded"||data["superseded"].toBool())text+="The file at the destination has changed. Check its version history or backups for the original "+kind+".";
  else if(remote=="pending"||remote=="deleting")text+="Deletion is "+QString(remote=="pending"?"pending":"in progress")+" at its destination. Check there or in backups for a copy.";
  else if(remote=="unknown")text+="Remote status is unknown. Check its destination or backups for a copy.";
