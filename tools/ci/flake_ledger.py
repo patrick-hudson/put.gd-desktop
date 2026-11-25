@@ -17,6 +17,12 @@ with its attempts; a test with a failed attempt and a passed one is flaky.
       an older base only gets the comment. Needs
       GITHUB_TOKEN (or GH_TOKEN) with issues: write; without one it prints a
       warning.
+  flake_ledger.py failures LEDGER --title TITLE --job NAME [--output PATH] [--repo OWNER/NAME]
+      For a run that must not fail silently (nightly.yml's sanitizer run of every
+      test): when a test failed, CTest failed without one, the ledger is missing,
+      or a test passed only on its retry after a sanitizer report, add one comment
+      to the open issue with exactly TITLE, or open it. Prints a workflow error and
+      exits 1 for any of those; appends what it found to PATH.
 """
 import argparse
 import json
@@ -25,10 +31,14 @@ from pathlib import Path
 import subprocess
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 
 LABEL = 'flaky-test'
 MARKER = '<!-- flake-ledger: {} -->'
+FAILURE_LABEL = 'area: tests'
+# A sanitizer's own report lines, as ctest_retry.py keeps them in a failed attempt's details.
+SANITIZER_REPORT = ('Sanitizer', 'runtime error:')
 
 
 def load(path):
@@ -246,6 +256,85 @@ def issues(ledger, repo, token):
     return 0
 
 
+def sanitizer_report(attempt):
+    return [line for line in attempt.get('details') or [] if any(mark in line for mark in SANITIZER_REPORT)]
+
+
+def run_failures(ledger):
+    """[(test or None, why, detail lines)] for everything that makes this run a failure."""
+    if ledger is None:
+        return [(None, 'no test ledger: the run stopped before its tests finished', [])]
+    found = []
+    for name, test in sorted(ledger['tests'].items()):
+        first = test['attempts'][0] if test['attempts'] else {}
+        if test['outcome'] == 'failed':
+            found.append((name, 'failed', first.get('details') or [first.get('message', '')]))
+        elif test['outcome'] == 'passed_on_retry' and sanitizer_report(first):
+            found.append((name, 'sanitizer report, then passed its retry', sanitizer_report(first)))
+    if ledger.get('summary', {}).get('unexplainedCtestFailure'):
+        found.append((None, 'CTest failed without a failed test to show for it', []))
+    return found
+
+
+def failure_comment(found, ledger, job):
+    source = (ledger or {}).get('source') or {key: os.environ[key] for key in
+                                              ('GITHUB_REPOSITORY', 'GITHUB_SERVER_URL', 'GITHUB_RUN_ID',
+                                               'GITHUB_RUN_ATTEMPT', 'GITHUB_SHA', 'GITHUB_REF_NAME',
+                                               'GITHUB_EVENT_NAME') if os.environ.get(key)}
+    link = run_link(source)
+    sha = (source.get('PUTGD_CI_HEAD_SHA') or source.get('GITHUB_SHA', ''))[:12]
+    where = f"[{job}]({link})" if link else job
+    lines = [f"**{len(found)} failure(s)** in {where}, commit `{sha}` on `{source.get('GITHUB_REF_NAME', '?')}` "
+             f"({source.get('GITHUB_EVENT_NAME', '?')}).", '']
+    for name, why, details in found:
+        lines.append(f"- `{name}`: {why}" if name else f"- {why}")
+        if details:
+            lines += ['', '  ```', *('  ' + line for line in details[:24]), '  ```']
+    lines += ['', 'Full output: the `ctest-clang-asan-all` artifact of the run (`LastTest.log`).']
+    return '\n'.join(lines)[:60000] + '\n'
+
+
+def failures(ledger, title, job, repo, token, output=None):
+    found = run_failures(ledger)
+    if output:
+        with Path(output).open('a') as stream:
+            stream.write(f'### {title}\n\n' + (failure_comment(found, ledger, job) if found else
+                                                 'Every test passed under ASan/UBSan.\n') + '\n')
+    if not found:
+        print('flake_ledger: no failure; no tracking issue update')
+        return 0
+    print(f'::error title={title}::{len(found)} failure(s) under ASan/UBSan: '
+          + ', '.join(name or why for name, why, _ in found), flush=True)
+    if not token or not repo:
+        print('::warning title=Sanitizer tracking issue not updated::No GITHUB_TOKEN/GITHUB_REPOSITORY; '
+              'the failures are listed in the job summary only.')
+        return 1
+    github = GitHub(repo, token)
+    try:
+        issue = None
+        label = urllib.parse.quote(FAILURE_LABEL)
+        for page in range(1, 11):
+            listed = github.call('GET', f'/repos/{repo}/issues?labels={label}&state=open&per_page=100&page={page}')
+            issue = next((item for item in listed if 'pull_request' not in item and item.get('title') == title), None)
+            if issue or len(listed) < 100:
+                break
+        if issue is None:
+            body = (f"The nightly workflow's daily run of every test under clang ASan/UBSan (#2065) failed. "
+                    "Each failed run adds a comment here with the failed tests and their first report lines.\n\n"
+                    "Fix the code, not the sanitizer: suppress only a report from inside a third-party library "
+                    "(Qt, GStreamer, the AWS SDK), with the reason beside the suppression. "
+                    "Close this issue when the next run passes; a later failure opens a new one.\n")
+            issue = github.call('POST', f'/repos/{repo}/issues', {'title': title, 'body': body, 'labels': [FAILURE_LABEL]})
+            print(f"flake_ledger: opened {issue['html_url']}")
+        github.call('POST', f"/repos/{repo}/issues/{issue['number']}/comments",
+                    {'body': failure_comment(found, ledger, job)})
+        print(f"flake_ledger: recorded {len(found)} failure(s) in {issue['html_url']}")
+    except (urllib.error.URLError, OSError) as error:
+        print(f'::warning title=Sanitizer tracking issue not updated::{error}; the failures are listed in the job '
+              'summary.')
+    return 1
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest='command', required=True)
@@ -256,7 +345,17 @@ def main(argv=None):
     tracker = sub.add_parser('issues')
     tracker.add_argument('ledger', type=Path)
     tracker.add_argument('--repo', default=os.environ.get('GITHUB_REPOSITORY', ''))
+    failed = sub.add_parser('failures')
+    failed.add_argument('ledger', type=Path)
+    failed.add_argument('--title', required=True)
+    failed.add_argument('--job', required=True)
+    failed.add_argument('--output', type=Path)
+    failed.add_argument('--repo', default=os.environ.get('GITHUB_REPOSITORY', ''))
     args = parser.parse_args(argv)
+    token = os.environ.get('GITHUB_TOKEN') or os.environ.get('GH_TOKEN', '')
+    if args.command == 'failures':
+        return failures(load(args.ledger) if args.ledger.is_file() else None, args.title, args.job, args.repo, token,
+                        args.output)
     if args.command == 'summary':
         text = summary([load(path) for path in args.ledgers if path.is_file()], args.title)
         if args.output:
@@ -264,7 +363,7 @@ def main(argv=None):
                 stream.write(text)
         print(text)
         return 0
-    return issues(load(args.ledger), args.repo, os.environ.get('GITHUB_TOKEN') or os.environ.get('GH_TOKEN', ''))
+    return issues(load(args.ledger), args.repo, token)
 
 
 if __name__ == '__main__':

@@ -8,6 +8,8 @@ the complete UI render and both catalog safeguards in the Linux 26.04 leg.
 Any path not explicitly known to be build-neutral selects `build`, so a new
 directory is tested by default. Push, schedule, dispatch and called runs
 select everything unless a nightly explicitly reuses successful source CI for the exact commit.
+A manual run with --sanitizers-only (ci.yml's full_sanitizers input) selects only
+`sanitizers`, the contracts job aside.
 """
 import argparse
 import json
@@ -31,7 +33,7 @@ CONTRACT_FILES = frozenset({'.github/renovate.json', '.github/dependabot.yml', '
 # Inputs to the package builders, the curated source archive or CI itself.
 # The file-manager plugins are checked only in the package builds (#1105).
 PACKAGING_PREFIXES = ('packaging/', 'tools/releases/', 'tools/proton/', 'tools/ci/',
-                      'cmake/', 'integrations/', '.github/workflows/', 'src/filemanager/')
+                      'cmake/', 'integrations/', '.github/workflows/', '.github/actions/', 'src/filemanager/')
 PACKAGING_FILES = frozenset({'CMakeLists.txt', 'CMakePresets.json', 'LICENSE',
                              'THIRD_PARTY_NOTICES.md', '.gitignore',
                              'tools/verify_dependencies.py',
@@ -41,7 +43,7 @@ PACKAGING_FILES = frozenset({'CMakeLists.txt', 'CMakePresets.json', 'LICENSE',
 # The core and application libraries, their C++ tests and the build definitions
 # that compile them. The clang ASan/UBSan job runs only for these.
 SANITIZER_PREFIXES = ('src/core/', 'src/app/', 'src/ipc/', 'tests/unit/', 'tests/integration/',
-                      'tests/fixtures/', 'tests/fuzz/', 'cmake/', 'tools/ci/')
+                      'tests/fixtures/', 'tests/fuzz/', 'cmake/', 'tools/ci/', '.github/actions/sanitizers/')
 SANITIZER_FILES = frozenset({'CMakeLists.txt', 'CMakePresets.json', '.github/workflows/ci.yml'})
 
 # The pipewire job links the AppImage's pipewiresrc, with the recorder's
@@ -132,6 +134,8 @@ def main():
     parser.add_argument('--base', default='HEAD^1', help='Pull request base (the merge commit\'s first parent)')
     parser.add_argument('--head', default='HEAD')
     parser.add_argument('--reuse-source-ci', action='store_true')
+    parser.add_argument('--sanitizers-only', action='store_true',
+                        help='a manual run of every test under ASan/UBSan: select nothing else')
     args = parser.parse_args()
     if args.event == 'pull_request':
         result = select(changed_paths(args.root, args.base, args.head))
@@ -141,6 +145,8 @@ def main():
         from reuse_ci import reuse
         if reuse(args.root):
             result.update(build=False, sanitizers=False)
+    if args.sanitizers_only:
+        result.update(catalog=False, build=False, packages=False, sanitizers=True, pipewire=False)
     result['event'] = args.event
     if os.environ.get('GITHUB_OUTPUT'):
         with open(os.environ['GITHUB_OUTPUT'], 'a') as stream:

@@ -27,7 +27,7 @@ import time
 import xml.etree.ElementTree as ElementTree
 
 RETRY_LABEL = 'integration'
-FAILURE_LINE = re.compile(r'^(FAIL!|XPASS|QFATAL|   Actual|   Expected|   Loc:|putgd wait:|.*Sanitizer).*$', re.M)
+FAILURE_LINE = re.compile(r'^(FAIL!|XPASS|QFATAL|   Actual|   Expected|   Loc:|putgd wait:|.*Sanitizer|.*: runtime error:).*$', re.M)
 
 
 def registered(ctest_args, cwd=None):

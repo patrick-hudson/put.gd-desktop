@@ -37,7 +37,7 @@ class Workflows(unittest.TestCase):
                 self.assertNotIn('gh workflow run', text)
 
     def test_every_action_is_pinned_to_a_full_commit(self):
-        for path in WORKFLOWS.glob('*.yml'):
+        for path in [*WORKFLOWS.glob('*.yml'), *(ROOT / '.github/actions').glob('*/action.yml')]:
             for line in path.read_text().splitlines():
                 use = re.match(r'\s+(?:- )?uses: (\S+)', line)
                 if use and not use[1].startswith('./'):
@@ -184,6 +184,28 @@ class Workflows(unittest.TestCase):
         self.assertNotIn('/dispatches', workflow('release.yml'))
         self.assertIn('contents: write', job(nightly, 'plan'))
         self.assertIn('contents: read', ci)
+
+    def test_nightly_runs_every_test_under_the_sanitizers_without_gating_publication(self):
+        # #2065: once a day, the whole set under ASan/UBSan; the pull-request job keeps the core contracts.
+        nightly = workflow('nightly.yml')
+        sanitizers = job(nightly, 'sanitizers')
+        self.assertIn('needs: [plan, images]', sanitizers)
+        self.assertIn("if: needs.plan.outputs.skip == 'false'", sanitizers)
+        self.assertIn('ref: ${{ needs.plan.outputs.tag }}', sanitizers)
+        self.assertIn('issues: write', sanitizers)
+        self.assertIn('uses: ./.github/actions/sanitizers', sanitizers)
+        self.assertIn("scope: all\n          track-failures: 'true'", sanitizers)
+        self.assertNotIn('continue-on-error', sanitizers)
+        for name in ('publish', 'surface-map'):
+            self.assertNotIn('sanitizers', job(nightly, name).split('runs-on:', 1)[0])
+        self.assertIn('uses: ./.github/workflows/ci-images.yml', job(nightly, 'images'))
+        ci = job(workflow('ci.yml'), 'sanitizers')
+        self.assertIn('name: sanitizers (clang ASan/UBSan)', ci)
+        self.assertIn("scope: ${{ inputs.full_sanitizers && 'all' || 'contracts' }}", ci)
+        action = (ROOT / '.github/actions/sanitizers/action.yml').read_text()
+        self.assertIn('all) echo "PUTGD_SANITIZER_PRESET=clang-asan-all"', action)
+        self.assertIn('contracts) echo "PUTGD_SANITIZER_PRESET=clang-asan"', action)
+        self.assertIn('flake_ledger.py failures', action)
 
     def test_main_pushes_tag_and_stage_the_stable_release(self):
         # #373: no candidate channel; every push to main tags HEAD's calendar version.
