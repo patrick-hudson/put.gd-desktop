@@ -394,8 +394,9 @@ region** (which is Done during a capture) are the controls.
 | `finishing` | Saving… | |
 
 The finish hint names the keys the bar knows about (`finishKey`, one per line). With none it
-says "Select Done to finish", with one key "Select Done, or press %1" and with two or more
-"Select Done, or press %1 or %2" (three or more: "press %1, %2 or %3"). On X11 the keys are Esc
+says "Select Done to finish", with one key "Select Done, or press %1", with two "Select Done,
+or press %1 or %2", and with more keys the earlier ones separated by commas and "or" before the
+last (three keys: "press %1, %2 or %3"). On X11 the keys are Esc
 and then the `scroll` hotkey where one is bound.
 
 Beside them, the height so far. Buttons: **Auto-scroll** (a toggle), **Done** (enabled
