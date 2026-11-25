@@ -7,11 +7,11 @@ struct WindowSnapshot {QImage image;Error error;bool done=false;std::function<vo
 PayloadResult imageResult(const QImage& image,const ResourceLimits& limits,Error error={}){
  if(error)return {{},error};
  if(image.isNull())return {{},{"capture_failed","The compositor provided no image",{}}};
- if(qint64(image.width())*image.height()>limits.imagePixels||image.sizeInBytes()>limits.imageBytes)return {{},{"input_excessive","Capture exceeds accepted operation resource limits",{}}};
+ if(qint64(image.width())*image.height()>limits.imagePixels||image.sizeInBytes()>limits.imageBytes)return {{},{"input_excessive","Capture exceeds the image size limit.",{}}};
  ClipboardPayload payload;payload.kind="image";payload.mime="image/png";payload.image=image;return {payload,{}};
 }
 }
-QString WaylandCaptureAdapter::cleanupMessage(){return QStringLiteral("Region helper exited before confirming surface cleanup; restart put.gd before capturing again");}
+QString WaylandCaptureAdapter::cleanupMessage(){return QStringLiteral("The region helper exited before clearing its overlay. Restart put.gd before capturing again.");}
 WaylandCaptureAdapter::WaylandCaptureAdapter(QObject* parent):QObject(parent){
  connect(&outputs_,&WaylandOutputs::changed,this,[this]{if(region_.busy())region_.cancel({"display_changed","Display layout changed during region selection",{}});emit capabilitiesChanged();});
  connect(&capture_,&ImageCopyCapture::changed,this,&WaylandCaptureAdapter::capabilitiesChanged);
@@ -37,12 +37,12 @@ SourceAdapter::PreparedAcquisition WaylandCaptureAdapter::prepareAcquisition(con
   auto snapshot=std::make_shared<WindowSnapshot>();const auto generation=generation_;const auto limits=limits_;
   auto complete=[guard,snapshot,generation](QImage image,Error error){
    snapshot->done=true;
-   if(!guard||guard->generation_!=generation)snapshot->error={"cancelled","Window acquisition cancelled",{}};
+   if(!guard||guard->generation_!=generation)snapshot->error={"cancelled","Window capture cancelled.",{}};
    else{snapshot->error=std::move(error);if(!snapshot->error)snapshot->image=std::move(image);}
    if(snapshot->accepted){auto cb=std::move(snapshot->accepted);cb(imageResult(snapshot->image,snapshot->acceptedLimits,snapshot->error));}
   };
   captureActiveWindow(limits,generation,std::move(complete));
-  return [guard,snapshot,generation](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(!guard||guard->generation_!=generation){cb({{},{"cancelled","Window acquisition cancelled",{}}});return;}if(snapshot->done)cb(imageResult(snapshot->image,limits,snapshot->error));else{snapshot->acceptedLimits=limits;snapshot->accepted=std::move(cb);}};
+  return [guard,snapshot,generation](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(!guard||guard->generation_!=generation){cb({{},{"cancelled","Window capture cancelled.",{}}});return;}if(snapshot->done)cb(imageResult(snapshot->image,limits,snapshot->error));else{snapshot->acceptedLimits=limits;snapshot->accepted=std::move(cb);}};
  }
  const auto frozen=layout();const auto revision=outputs_.revision();
  if(action=="monitor"){
@@ -79,7 +79,7 @@ SourceAdapter::PreparedAcquisition WaylandCaptureAdapter::prepareAcquisition(con
 void WaylandCaptureAdapter::captureArea(QList<CaptureFrame> frozen,quint64 revision,QRectF selection,ResourceLimits limits,std::function<void(PayloadResult)> cb){
  if(region_.cleanupRequired()){cb({{},{"capture_cleanup_pending",cleanupMessage(),{}}});return;}
  if(region_.busy()){cb({{},{"busy_selecting","Region selection is already active",{}}});return;}
- if(frozen.isEmpty()||!unchanged(frozen,revision)){cb({{},{"display_changed","Display layout changed after invocation",{}}});return;}
+ if(frozen.isEmpty()||!unchanged(frozen,revision)){cb({{},{"display_changed","Display layout changed before capture started.",{}}});return;}
  captureScreens(std::move(frozen),revision,selection,limits,std::move(cb));
 }
 std::function<void(PayloadResult)> WaylandCaptureAdapter::remembering(QRectF selection,QList<CaptureFrame> layout,std::function<void(PayloadResult)> cb,bool remember){
@@ -135,10 +135,10 @@ void WaylandCaptureAdapter::capture(QString action,QList<CaptureFrame> frozen,qu
  if(action=="region"&&takeEarlyCancel()){cb({{},{"cancelled","Region selection cancelled",{}}});return;}
  if(region_.cleanupRequired()){cb({{},{"capture_cleanup_pending",cleanupMessage(),{}}});return;}
 #if !defined(PUTGD_HAVE_LAYER_SHELL) || QT_VERSION < QT_VERSION_CHECK(6,5,0)
- if(action=="region"){cb({{},{"region_unavailable","Native region selection requires current distro per-window LayerShellQt",{}}});return;}
+ if(action=="region"){cb({{},{"region_unavailable","This build has no region selector (requires LayerShellQt and Qt 6.5 or later).",{}}});return;}
 #endif
  if(region_.busy()){cb({{},{"busy_selecting","Region selection is already active",{}}});return;}
- if(frozen.isEmpty()||!unchanged(frozen,revision)){cb({{},{"display_changed","Display layout changed after invocation",{}}});return;}
+ if(frozen.isEmpty()||!unchanged(frozen,revision)){cb({{},{"display_changed","Display layout changed before capture started.",{}}});return;}
  if(action=="region"&&screenshotFirst){selectFrozen(std::move(frozen),revision,limits,std::move(cb),outcome,remember);return;}
  if(action=="region"){
   const auto generation=generation_;QPointer<WaylandCaptureAdapter> guard(this);
@@ -191,16 +191,16 @@ void WaylandCaptureAdapter::readOutputs(QList<CaptureFrame> frames,QList<Capture
    if(auto refused=guard->checkOutput(image))return refused;
    // The buffer is the output's native, upright size; anything else means the
    // mode, scale or transform changed after the layout froze.
-   if(image.size()!=frame.nativeRect.size())return {"display_changed","Captured output does not match frozen output geometry",{{"captured",QStringLiteral("%1x%2").arg(image.width()).arg(image.height())},{"expected",QStringLiteral("%1x%2").arg(frame.nativeRect.width()).arg(frame.nativeRect.height())}}};
+   if(image.size()!=frame.nativeRect.size())return {"display_changed","Captured monitor size doesn't match the current display layout.",{{"captured",QStringLiteral("%1x%2").arg(image.width()).arg(image.height())},{"expected",QStringLiteral("%1x%2").arg(frame.nativeRect.width()).arg(frame.nativeRect.height())}}};
    const auto pixels=qint64(image.width())*image.height();
-   if(pixels>remaining.imagePixels||image.sizeInBytes()>remaining.imageBytes)return {"input_excessive","Desktop frame snapshots exceed resource limits",{}};
+   if(pixels>remaining.imagePixels||image.sizeInBytes()>remaining.imageBytes)return {"input_excessive","Captured desktop exceeds the image size limit.",{}};
    image.setDevicePixelRatio(frame.density);frame.pixels=std::move(image);return {};
   },std::move(cb));
 }
 void WaylandCaptureAdapter::compose(QList<CaptureFrame> frames,QList<CaptureFrame> frozen,quint64 revision,QRectF selection,const ResourceLimits& limits,std::function<void(PayloadResult)> cb){
  const auto generation=generation_;auto result=std::make_shared<PayloadResult>();
  auto* worker=QThread::create([frames=std::move(frames),selection,limits,result]{result->payload.image=composeOutputFrames(frames,selection,std::min(limits.imagePixels,limits.imageBytes/4),result->error);result->payload.kind="image";result->payload.mime="image/png";});workers_.append(worker);
- connect(worker,&QThread::finished,this,[this,worker,generation,frozen=std::move(frozen),revision,result,cb=std::move(cb)]()mutable{workers_.removeOne(worker);worker->deleteLater();if(generation!=generation_)cb({{},{"cancelled","Capture acquisition cancelled",{}}});else if(!unchanged(frozen,revision))cb({{},{"display_changed","Display layout changed during capture composition",{}}});else cb(std::move(*result));});
+ connect(worker,&QThread::finished,this,[this,worker,generation,frozen=std::move(frozen),revision,result,cb=std::move(cb)]()mutable{workers_.removeOne(worker);worker->deleteLater();if(generation!=generation_)cb({{},{"cancelled","Capture cancelled.",{}}});else if(!unchanged(frozen,revision))cb({{},{"display_changed","Display layout changed during capture.",{}}});else cb(std::move(*result));});
  worker->start();
 }
 void WaylandCaptureAdapter::cancelAcquisition(){countdown_.cancel();cancelPointer();++generation_;capture_.cancel();clipboard_.cancel();region_.cancel();}

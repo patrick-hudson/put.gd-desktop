@@ -37,7 +37,7 @@ bool validName(const QString& name){
 QList<CaptureFrame> WaylandOutputs::framesFromMetadata(const QList<Metadata>& metadata,QString* error){
  if(error)error->clear();
  const auto fail=[error](const char* reason){if(error)*error=QString::fromLatin1(reason);return QList<CaptureFrame>{};};
- if(metadata.isEmpty()||metadata.size()>maximumOutputs)return fail("No usable bounded output layout is available");
+ if(metadata.isEmpty()||metadata.size()>maximumOutputs)return fail("No valid monitor layout is available.");
  QList<CaptureFrame> frames;QSet<QString> names;
  for(const auto& output:metadata){
   if(!validName(output.name)||names.contains(output.name))return fail("Output names are missing, invalid, or duplicated");
@@ -85,7 +85,7 @@ struct WaylandOutputs::Impl:QObject {
   if(!display)nextError=connectionError.isEmpty()?QStringLiteral("Native output connection is unavailable"):connectionError;
   else if(!manager)nextError="Compositor lacks named xdg-output support";
   else if(!unsupportedOutputs.isEmpty())nextError="Compositor output protocol lacks wl_output v2 batch completion";
-  else if((!overflowOutputs.isEmpty()||overflowUntracked))nextError="Compositor output count exceeds supported bounds";
+  else if((!overflowOutputs.isEmpty()||overflowUntracked))nextError="More than 16 monitors are connected, which exceeds the limit.";
   else if(outputs.isEmpty())nextError="Waiting for compositor outputs";
   else for(const auto* output:std::as_const(outputs)){
    if(output->invalid){nextError="Compositor output metadata is invalid";break;}

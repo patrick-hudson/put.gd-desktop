@@ -6,8 +6,8 @@
 namespace putgd {
 namespace {
 QRect rectangle(const QJsonArray& a){return {a[0].toInt(),a[1].toInt(),a[2].toInt(),a[3].toInt()};}
-Error targetError(){return {"capture_target","Focused external window is unavailable or changed",{}};}
-Error changedError(){return {"display_changed","Display layout or scale changed during source acquisition",{}};}
+Error targetError(){return {"capture_target","The active window is unavailable or changed.",{}};}
+Error changedError(){return {"display_changed","Display layout or scale changed during capture.",{}};}
 }
 X11Target X11NativeSnapshot::resolve(const QJsonObject& snapshot,X11Capture& capture,Error& error){
  X11Target target;if(!unchanged(snapshot,error))return target;

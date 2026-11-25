@@ -154,7 +154,7 @@ struct HyprlandShortcuts::Registry:QObject {
 std::optional<HyprlandShortcuts::Chord> HyprlandShortcuts::chordFromPortable(const QString& portableText,QString* error){
  if(error)error->clear();
  const QKeySequence sequence=QKeySequence::fromString(portableText,QKeySequence::PortableText);
- if(sequence.count()!=1){if(error)*error="Hyprland binds hold a single key chord";return {};}
+ if(sequence.count()!=1){if(error)*error="Hyprland hotkeys support a single key combination.";return {};}
  const auto combination=sequence[0];const int key=combination.key();const auto modifiers=combination.keyboardModifiers();
  // A keypad key would otherwise bind the ordinary key of the same name.
  if(modifiers&Qt::KeypadModifier){if(error)*error="Keypad keys cannot be bound on Hyprland";return {};}

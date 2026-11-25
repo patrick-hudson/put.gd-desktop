@@ -9,7 +9,7 @@
 #include <xcb/randr.h>
 #include <cstring>
 namespace putgd {
-namespace {using x11::reply;Error targetError(){return {"capture_target","Focused external window is unavailable or changed",{}};}}
+namespace {using x11::reply;Error targetError(){return {"capture_target","The active window is unavailable or changed.",{}};}}
 QJsonArray describeLayout(const QList<CaptureFrame>& frames){
  QJsonArray out;
  for(const auto& frame:frames)out.append(QJsonObject{{"identity",frame.identity},{"logical",QJsonArray{frame.logicalRect.x(),frame.logicalRect.y(),frame.logicalRect.width(),frame.logicalRect.height()}},{"native",QJsonArray{frame.nativeRect.x(),frame.nativeRect.y(),frame.nativeRect.width(),frame.nativeRect.height()}},{"rotation",frame.rotation}});
@@ -78,10 +78,10 @@ X11Target X11Capture::freeze(const QString& action,Error& error) {
   auto active=reply(xcb_get_property_reply(connection_,xcb_get_property(connection_,0,root_,atom("_NET_ACTIVE_WINDOW"),XCB_ATOM_WINDOW,0,1),nullptr));
   if(!active||active->format!=32||xcb_get_property_value_length(active.get())!=4){error=targetError();return target;}
   memcpy(&target.window,xcb_get_property_value(active.get()),4);if(!target.window||target.window==root_){error=targetError();return target;}
-  for(auto* window:QGuiApplication::allWindows())if(window->winId()==target.window){error={"capture_target","Focus an external window before invoking window capture",{}};return target;}
+  for(auto* window:QGuiApplication::allWindows())if(window->winId()==target.window){error={"capture_target","put.gd can't capture its own window. Focus another app's window and capture again.",{}};return target;}
   const auto pid=reply(xcb_get_property_reply(connection_,xcb_get_property(connection_,0,target.window,atom("_NET_WM_PID"),XCB_ATOM_CARDINAL,0,1),nullptr));
   uint32_t owner=0;if(pid&&pid->format==32&&xcb_get_property_value_length(pid.get())==4)memcpy(&owner,xcb_get_property_value(pid.get()),4);
-  if(owner&&((uiProcess_&&qint64(owner)==uiProcess_)||x11::startedByResident(owner))){error={"capture_target","Focus an external window before invoking window capture",{}};return target;}
+  if(owner&&((uiProcess_&&qint64(owner)==uiProcess_)||x11::startedByResident(owner))){error={"capture_target","put.gd can't capture its own window. Focus another app's window and capture again.",{}};return target;}
   target.nativeWindowRect=windowRect(target.window,error);if(error)return target;
   target.logicalSelection={};
   for(const auto& f:std::as_const(target.layout)){const QRect intersection=f.nativeRect.intersected(target.nativeWindowRect);if(intersection.isEmpty())continue;
@@ -100,8 +100,8 @@ X11Target X11Capture::freeze(const QString& action,Error& error) {
 }
 bool X11Capture::unchanged(const X11Target& target,Error& error) {
  auto current=layout(error);if(error)return false;
- if(current.size()!=target.layout.size()){error={"display_changed","Display layout changed during source acquisition",{}};return false;}
- for(int i=0;i<current.size();++i){const auto& a=current[i];const auto& b=target.layout[i];if(a.identity!=b.identity||a.nativeRect!=b.nativeRect||a.logicalRect!=b.logicalRect||a.density!=b.density||a.rotation!=b.rotation){error={"display_changed","Display layout changed during source acquisition",{}};return false;}}
+ if(current.size()!=target.layout.size()){error={"display_changed","Display layout changed during capture.",{}};return false;}
+ for(int i=0;i<current.size();++i){const auto& a=current[i];const auto& b=target.layout[i];if(a.identity!=b.identity||a.nativeRect!=b.nativeRect||a.logicalRect!=b.logicalRect||a.density!=b.density||a.rotation!=b.rotation){error={"display_changed","Display layout changed during capture.",{}};return false;}}
  if(target.window&&windowRect(target.window,error)!=target.nativeWindowRect){if(!error)error=targetError();return false;}
  return !error;
 }

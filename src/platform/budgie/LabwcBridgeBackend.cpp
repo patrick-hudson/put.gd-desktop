@@ -51,7 +51,7 @@ QString LabwcBridgeBackend::strv(const QStringList& values){QStringList items;fo
 QString LabwcBridgeBackend::gtkAccelerator(const QString& portable,QString* error){
  if(error)error->clear();
  const QKeySequence sequence=QKeySequence::fromString(portable,QKeySequence::PortableText);
- if(sequence.count()!=1){if(error)*error="Budgie custom shortcuts hold a single key chord";return {};}
+ if(sequence.count()!=1){if(error)*error="Budgie shortcuts support a single key combination.";return {};}
  const auto combination=sequence[0];const int key=combination.key();const auto modifiers=combination.keyboardModifiers();
  QString name;
  if(key>=Qt::Key_F1&&key<=Qt::Key_F35)name=QStringLiteral("F%1").arg(key-Qt::Key_F1+1);
@@ -114,7 +114,7 @@ QString portableFromLabwc(const QString& labwc){
 QList<LabwcBridgeBackend::Keybind> LabwcBridgeBackend::readKeybinds(const QString& path,QString* error){
  if(error)error->clear();QList<Keybind> out;QFile file(path);
  if(!file.open(QIODevice::ReadOnly)){if(error)*error="Cannot read "+path;return out;}
- if(file.size()>maximumRcBytes){if(error)*error="rc.xml is larger than put.gd reads";return out;}
+ if(file.size()>maximumRcBytes){if(error)*error="rc.xml is larger than 4 MB.";return out;}
  QXmlStreamReader xml(&file);Keybind* current=nullptr;int depth=0,keybindDepth=-1;
  while(!xml.atEnd()){
   const auto token=xml.readNext();
@@ -262,7 +262,7 @@ QJsonObject LabwcBridgeBackend::status()const{
   else if(requested.isEmpty())entry["state"]=actual.isEmpty()?"unbound":"pending";
   else if(invalid_.contains(action)){entry["state"]="shortcut_invalid";entry["error"]=invalid_.value(action);}
   else if(conflicts_.contains(action)){entry["state"]="shortcut_conflict";entry["error"]="Budgie already uses this key";entry["conflict"]=conflicts_.value(action);}
-  else if(pending_.contains(action)){entry["state"]="pending";if(!patience_.isActive()&&!applying_)entry["error"]="Budgie's labwc bridge has not applied this hotkey yet; it starts 10 seconds after login";}
+  else if(pending_.contains(action)){entry["state"]="pending";if(!patience_.isActive()&&!applying_)entry["error"]="Budgie's labwc bridge hasn't applied this hotkey yet. It starts 10 seconds after login.";}
   else if(!actual.isEmpty()&&!commandMatches){entry["state"]="shortcut_conflict";entry["error"]="The Budgie entry no longer runs put.gd";}
   else if(!actual.isEmpty()){entry["state"]="bound";entry["bound"]=true;}
   else{entry["state"]="pending";entry["error"]=rcError_.isEmpty()?QStringLiteral("rc.xml has no entry for this hotkey"):rcError_;}

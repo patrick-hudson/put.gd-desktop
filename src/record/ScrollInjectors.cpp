@@ -128,7 +128,7 @@ QJsonObject probeScroll() {
     // named rectangle was admitted there with the panel and the helper's own
     // windows in it (Ubuntu 24.04 package on KDE, acceptance of 2026-11-12).
     // So the capture is unavailable on such a build, for every caller.
-    if (selection == "none") refuse("region_unavailable", QStringLiteral("This desktop has no region selector for a scroll capture"));
+    if (selection == "none") refuse("region_unavailable", QStringLiteral("This desktop has no region selector for scrolling capture."));
     result["frames"] = frames;
     result["injector"] = injector;
     result["selection"] = selection;

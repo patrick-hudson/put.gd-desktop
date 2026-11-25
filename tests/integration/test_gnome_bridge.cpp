@@ -365,7 +365,7 @@ private slots:
   QVERIFY(!source.selectsRegions());
   QCOMPARE(source.scrollShell()->selectsRegions(),loadedVersion>=22);
   Error error;bool done=false;source.selectRegion([&](Error value,QJsonObject){error=value;done=true;});QVERIFY(done);
-  QCOMPARE(error.code,QString("helper_outdated"));QVERIFY2(error.message.contains("log out and back in"),qPrintable(error.message));
+  QCOMPARE(error.code,QString("helper_outdated"));QVERIFY2(error.message.contains("Log out and back in"),qPrintable(error.message));
   // Non-region acquisition remains available with the loaded extension.
   QVERIFY(source.capabilities()["capture"].toObject()["region"].toObject()["available"].toBool());
   QCOMPARE(source.regionError().code,QString("helper_outdated"));

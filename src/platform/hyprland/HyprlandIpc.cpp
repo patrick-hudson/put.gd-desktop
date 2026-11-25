@@ -65,7 +65,7 @@ struct Exchange:QObject {
    if(count<0){if(errno==EINTR)continue;if(errno==EAGAIN||errno==EWOULDBLOCK)return;finish({},unavailable("Hyprland's IPC reply failed: "+QString::fromLocal8Bit(std::strerror(errno)),text));return;}
    if(count==0){finish(in,{});return;}
    in.append(buffer,count);
-   if(in.size()>maximumReply){finish({},unavailable("Hyprland's IPC reply exceeds the size put.gd reads",text));return;}
+   if(in.size()>maximumReply){finish({},unavailable("Hyprland's IPC reply exceeded the 8 MB limit.",text));return;}
   }
  }
 };
@@ -155,7 +155,7 @@ Error HyprlandIpc::requestBlocking(const QString& text,QByteArray* reply,int tim
   char buffer[16384];const auto count=::recv(fd,buffer,sizeof buffer,0);
   if(count<0){if(errno==EINTR||errno==EAGAIN)continue;return unavailable("Hyprland's IPC reply failed",text);}
   if(count==0)break;
-  in.append(buffer,count);if(in.size()>maximumReply)return unavailable("Hyprland's IPC reply exceeds the size put.gd reads",text);
+  in.append(buffer,count);if(in.size()>maximumReply)return unavailable("Hyprland's IPC reply exceeded the 8 MB limit.",text);
  }
  if(reply)*reply=in;
  return {};

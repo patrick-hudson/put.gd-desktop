@@ -23,7 +23,7 @@ namespace putgd {
 namespace {
 QJsonObject build(){return QJsonDocument::fromJson(buildManifestJson()).object();}
 
-const QString genericReason=QStringLiteral("The capture helper could not complete source acquisition");
+const QString genericReason=QStringLiteral("The capture helper couldn't finish the capture.");
 // Resident-side failures name their check; helper failures arrive with theirs.
 Error unavailable(const QString& code,const QString& check={},QJsonObject details={}){
  if(!check.isEmpty()){details["stage"]="resident";details["check"]=check;}
@@ -148,7 +148,7 @@ void CaptureProcessController::sendBegin(){
 }
 void CaptureProcessController::cancel(){
  if(!busy()||cancelling_)return;
- cancelling_=true;releaseCrosshair();forgetHeldButtons();if(!failure_)failure_={"cancelled","Capture acquisition cancelled",{}};if(auto ticket=preparation_.lock())ticket->failure_=failure_;deadline_.stop();
+ cancelling_=true;releaseCrosshair();forgetHeldButtons();if(!failure_)failure_={"cancelled","Capture cancelled.",{}};if(auto ticket=preparation_.lock())ticket->failure_=failure_;deadline_.stop();
  if(ready_&&control_)control_->send("cancel",{{"nonce",nonce_},{"generation",QString::number(generation_)}});
  notifyEarlyTerminal();
  if(process_&&process_->state()!=QProcess::NotRunning)stopDeadline_.start(2000);else complete();
@@ -191,7 +191,7 @@ void CaptureProcessController::receive(const QString& type,const QJsonObject& pa
   if(!ready_||payload.size()!=5||!allowed.contains(code)||!payload["reason"].isString()||!payload["details"].isObject()||reason.size()>CaptureControl::reasonChars||QJsonDocument(details).toJson(QJsonDocument::Compact).size()>CaptureControl::detailBytes){fail(unavailable("capture_protocol","error_frame"));return;}
   // Keep the helper's own reason and details: they name the failed check and
   // its geometry, which a diagnostics package otherwise cannot recover (#331).
-  failure_=code=="cancelled"?Error{"cancelled","Capture acquisition cancelled",{}}:Error{code,reason.isEmpty()?genericReason:reason,details};
+  failure_=code=="cancelled"?Error{"cancelled","Capture cancelled.",{}}:Error{code,reason.isEmpty()?genericReason:reason,details};
   releaseCrosshair();forgetHeldButtons();logFailure(failure_);notifyEarlyTerminal();deadline_.stop();stopDeadline_.start(2000);return;
  }
  if(type=="handoff"){
@@ -226,25 +226,25 @@ void CaptureProcessController::decode(QJsonObject descriptor){
   bool numeric=false;const auto expectedBytes=descriptor["bytes"].toString().toLongLong(&numeric);const auto width=descriptor["width"].toInteger(),height=descriptor["height"].toInteger();
   // Each check names itself with the descriptor's geometry, never image bytes.
   auto reject=[&](const QString& code,const QString& reason,const QString& check,QJsonObject details={}){details["width"]=width;details["height"]=height;details["bytes"]=expectedBytes;decoded->error=rejected(code,reason,check,details);};
-  if(!numeric||expectedBytes<45||expectedBytes>limits.maxFileBytes||QString::number(expectedBytes)!=descriptor["bytes"].toString()||width<1||height<1||width>INT_MAX||height>INT_MAX||descriptor["width"].toDouble()!=width||descriptor["height"].toDouble()!=height||width>limits.imagePixels/height||width>limits.imageBytes/4/height||descriptor["sha256"].toString().size()!=64){reject("input_excessive","The capture helper described an image outside the accepted limits","descriptor_limits");return;}
+  if(!numeric||expectedBytes<45||expectedBytes>limits.maxFileBytes||QString::number(expectedBytes)!=descriptor["bytes"].toString()||width<1||height<1||width>INT_MAX||height>INT_MAX||descriptor["width"].toDouble()!=width||descriptor["height"].toDouble()!=height||width>limits.imagePixels/height||width>limits.imageBytes/4/height||descriptor["sha256"].toString().size()!=64){reject("input_excessive","Captured image exceeds the size limit.","descriptor_limits");return;}
   const qint64 raw=width*height*4;if(expectedBytes>raw+raw/1000+height+65536){reject("input_excessive","The capture helper's PNG is larger than its pixels allow","descriptor_ratio");return;}
-  const int fd=::open(QFile::encodeName(path).constData(),O_RDONLY|O_CLOEXEC|O_NOFOLLOW);struct stat s{};if(fd<0||::fstat(fd,&s)||!privateRegular(s)||s.st_size!=expectedBytes||QString::number(qulonglong(s.st_dev))!=device||QString::number(qulonglong(s.st_ino))!=inode){const QJsonObject found{{"fileBytes",fd>=0?qint64(s.st_size):qint64(-1)}};if(fd>=0)::close(fd);reject("capture_io","The capture artifact is missing, replaced or a different size","artifact_identity",found);return;}
-  QFile file;if(!file.open(fd,QIODevice::ReadOnly,QFileDevice::AutoCloseHandle)){::close(fd);reject("capture_io","Cannot open the capture artifact","artifact_open");return;}
-  QCryptographicHash hash(QCryptographicHash::Sha256);if(!hash.addData(&file)||QString::fromLatin1(hash.result().toHex())!=descriptor["sha256"].toString()){reject("capture_failed","The capture artifact does not match the helper's SHA-256","sha256");return;}file.seek(0);const auto header=file.read(33);file.seek(expectedBytes-12);const auto ending=file.read(12);
-  if(header.size()!=33||header.left(8)!=QByteArray::fromHex("89504e470d0a1a0a")||header.mid(8,8)!=QByteArray::fromHex("0000000d49484452")){reject("capture_failed","The capture artifact has no PNG header","png_signature");return;}
-  if(ending!=QByteArray::fromHex("0000000049454e44ae426082")){reject("capture_failed","The capture artifact's PNG has no IEND trailer","png_trailer");return;}
-  if(quint8(header[24])!=8){reject("capture_failed","The capture artifact's PNG sample depth is not 8","png_depth",{{"depth",int(quint8(header[24]))}});return;}
+  const int fd=::open(QFile::encodeName(path).constData(),O_RDONLY|O_CLOEXEC|O_NOFOLLOW);struct stat s{};if(fd<0||::fstat(fd,&s)||!privateRegular(s)||s.st_size!=expectedBytes||QString::number(qulonglong(s.st_dev))!=device||QString::number(qulonglong(s.st_ino))!=inode){const QJsonObject found{{"fileBytes",fd>=0?qint64(s.st_size):qint64(-1)}};if(fd>=0)::close(fd);reject("capture_io","The temporary capture file is missing, replaced, or has the wrong size.","artifact_identity",found);return;}
+  QFile file;if(!file.open(fd,QIODevice::ReadOnly,QFileDevice::AutoCloseHandle)){::close(fd);reject("capture_io","Couldn't open the temporary capture file.","artifact_open");return;}
+  QCryptographicHash hash(QCryptographicHash::Sha256);if(!hash.addData(&file)||QString::fromLatin1(hash.result().toHex())!=descriptor["sha256"].toString()){reject("capture_failed","The temporary capture file failed its SHA-256 check.","sha256");return;}file.seek(0);const auto header=file.read(33);file.seek(expectedBytes-12);const auto ending=file.read(12);
+  if(header.size()!=33||header.left(8)!=QByteArray::fromHex("89504e470d0a1a0a")||header.mid(8,8)!=QByteArray::fromHex("0000000d49484452")){reject("capture_failed","The temporary capture file has no PNG header.","png_signature");return;}
+  if(ending!=QByteArray::fromHex("0000000049454e44ae426082")){reject("capture_failed","The temporary capture file's PNG is incomplete (missing IEND trailer).","png_trailer");return;}
+  if(quint8(header[24])!=8){reject("capture_failed","The temporary capture file's PNG isn't 8-bit.","png_depth",{{"depth",int(quint8(header[24]))}});return;}
   // Qt 6.4.2 and 6.8.2 instantiate every installed image plugin for a named
   // format unless detection is off; the PNG signature was checked above.
   file.seek(0);QImageReader reader(&file,"PNG");reader.setAutoDetectImageFormat(false);
-  if(const auto size=reader.size();size!=QSize(int(width),int(height))){reject("capture_geometry","The capture artifact's PNG size disagrees with its descriptor","reader_size",{{"pngWidth",size.width()},{"pngHeight",size.height()}});return;}
+  if(const auto size=reader.size();size!=QSize(int(width),int(height))){reject("capture_geometry","The temporary capture file's dimensions don't match its metadata.","reader_size",{{"pngWidth",size.width()},{"pngHeight",size.height()}});return;}
   const auto format=reader.imageFormat();
-  if(format!=QImage::Format_RGB32&&format!=QImage::Format_ARGB32){reject("capture_failed","The capture artifact's PNG is not 8-bit RGB or RGBA","reader_format",{{"format",int(format)}});return;}
+  if(format!=QImage::Format_RGB32&&format!=QImage::Format_ARGB32){reject("capture_failed","The temporary capture file's PNG isn't 8-bit RGB or RGBA.","reader_format",{{"format",int(format)}});return;}
   // This exact trusted capture was bounded before allocation. Supplying a
   // matching buffer preserves Qt's global reader guard for all other callers.
   QImage image(int(width),int(height),format);
   if(image.isNull()||image.sizeInBytes()>limits.imageBytes){reject("input_excessive","Cannot allocate the capture image within its limits","allocation");return;}
-  if(!reader.read(&image)||image.size()!=QSize(int(width),int(height))||image.format()!=format||image.sizeInBytes()>limits.imageBytes){reject("capture_failed","Cannot decode the capture artifact's PNG","reader_decode",{{"reader",int(reader.error())}});return;}
+  if(!reader.read(&image)||image.size()!=QSize(int(width),int(height))||image.format()!=format||image.sizeInBytes()>limits.imageBytes){reject("capture_failed","Couldn't decode the temporary capture file.","reader_decode",{{"reader",int(reader.error())}});return;}
   decoded->payload.image=std::move(image);decoded->payload.image.setDevicePixelRatio(1);decoded->payload.kind="image";decoded->payload.mime="image/png";
  });
  auto* worker=decoder_;connect(worker,&QThread::finished,this,[this,worker,decoded]{decoder_=nullptr;worker->deleteLater();if(failure_){complete();return;}if(decoded->error){fail(decoded->error);return;}result_=std::move(*decoded);if(!control_||!control_->send("accept",{{"nonce",nonce_},{"generation",QString::number(generation_)}})){fail(unavailable("capture_protocol","accept_send"));return;}accepted_=true;deadline_.stop();stopDeadline_.start(2000);if(exited_)complete();});worker->start();

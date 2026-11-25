@@ -44,7 +44,7 @@ void doubleClickTail(QWidget* button) {
 }
 QJsonObject answer(quint64 proposal, const QString& refusedCode = {}) {
     QJsonObject a{{"proposal", double(proposal)}};
-    if (!refusedCode.isEmpty()) a["refused"] = QJsonObject{{"code", refusedCode}, {"message", "At most 64 masks are supported"}, {"revision", 2}};
+    if (!refusedCode.isEmpty()) a["refused"] = QJsonObject{{"code", refusedCode}, {"message", "You can add at most 64 covers"}, {"revision", 2}};
     return a;
 }
 }
@@ -1678,7 +1678,7 @@ private slots:
         releaseNow(upload);
         QCOMPARE(uploads.size(), 0);
         QVERIFY(!window.inspect()["uploadWaiting"].toBool());
-        QVERIFY2(window.inspect()["status"].toString().contains("Nothing was uploaded"), qPrintable(window.inspect()["status"].toString()));
+        QVERIFY2(window.inspect()["status"].toString().contains("the upload didn't start"), qPrintable(window.inspect()["status"].toString()));
         QVERIFY(window.isVisible());
         // U1: the click was the first of a double-click; its second press
         // (a MouseButtonDblClick) and release still upload nothing.

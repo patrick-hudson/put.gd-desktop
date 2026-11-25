@@ -271,9 +271,9 @@ struct ImageCopyCapture::Impl:QObject {
   if(format==QImage::Format_Invalid){finish(request,{},{"capture_unavailable","The compositor offers no 32-bit shared-memory capture format",{}});return;}
   const auto width=request->batchSize.width(),height=request->batchSize.height();
   if(width<1||height<1){finish(request,{},{"capture_failed","The compositor reported an empty capture buffer",{}});return;}
-  if(qint64(width)*height>request->limits.imagePixels){finish(request,{},{"input_excessive","Capture exceeds accepted operation resource limits",{}});return;}
+  if(qint64(width)*height>request->limits.imagePixels){finish(request,{},{"input_excessive","Capture exceeds the image size limit.",{}});return;}
   const int stride=width*4;const auto bytes=size_t(stride)*size_t(height);
-  if(qint64(bytes)>request->limits.imageBytes){finish(request,{},{"input_excessive","Capture exceeds accepted operation resource limits",{}});return;}
+  if(qint64(bytes)>request->limits.imageBytes){finish(request,{},{"input_excessive","Capture exceeds the image size limit.",{}});return;}
   if(request->map!=MAP_FAILED){munmap(request->map,request->mapSize);request->map=MAP_FAILED;}
   if(request->buffer){wl_buffer_destroy(request->buffer);request->buffer=nullptr;}
   if(request->pool){wl_shm_pool_destroy(request->pool);request->pool=nullptr;}

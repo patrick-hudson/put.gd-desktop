@@ -60,12 +60,12 @@ void CinnamonRegionCapture::finish(Error error){
  // can drain before QObject destruction; their results are discarded.
  if(workers_.isEmpty())deleteLater();
 }
-void CinnamonRegionCapture::cancel(){finish({"cancelled","Capture acquisition cancelled",{}});}
+void CinnamonRegionCapture::cancel(){finish({"cancelled","Capture cancelled.",{}});}
 void CinnamonRegionCapture::start(){
  qint64 pixels=0,bytes=0;
  for(const auto& frame:frames_){
   const auto count=qint64(frame.nativeRect.width())*frame.nativeRect.height();
-  if(count<=0||count>limits_.imagePixels-pixels||count>(limits_.imageBytes-bytes)/4){finish(failure("input_excessive","Desktop frame snapshots exceed resource limits","frame_limits"));return;}
+  if(count<=0||count>limits_.imagePixels-pixels||count>(limits_.imageBytes-bytes)/4){finish(failure("input_excessive","Captured desktop exceeds the image size limit.","frame_limits"));return;}
   pixels+=count;bytes+=count*4;
  }
  if(frames_.isEmpty()){finish(failure("capture_geometry","No enabled monitor is available","no_monitors"));return;}
@@ -141,7 +141,7 @@ void CinnamonRegionCapture::decode(int index,const QString& path){
   QFile file(path);const qint64 raw=qint64(expected.width())*expected.height()*4;
   if(!file.open(QIODevice::ReadOnly)){reject("capture_failed","Cannot open the Cinnamon PNG","png_open");return;}
   const QJsonObject sized{{"fileBytes",file.size()},{"maxBytes",raw+raw/1000+expected.height()+65536}};
-  if(file.size()<45||file.size()>raw+raw/1000+expected.height()+65536){reject("capture_failed","Cinnamon returned an empty or excessive PNG","png_size",sized);return;}
+  if(file.size()<45||file.size()>raw+raw/1000+expected.height()+65536){reject("capture_failed","Cinnamon returned an empty or oversized PNG.","png_size",sized);return;}
   const auto header=file.read(33);file.seek(file.size()-12);const auto ending=file.read(12);
   if(header.left(8)!=QByteArray::fromHex("89504e470d0a1a0a")||header.mid(8,8)!=QByteArray::fromHex("0000000d49484452")){reject("capture_failed","Cinnamon returned a file without a PNG header","png_signature",sized);return;}
   if(ending!=pngTrailer){reject("capture_failed","Cinnamon returned an incomplete PNG","png_trailer",sized);return;}
@@ -151,10 +151,10 @@ void CinnamonRegionCapture::decode(int index,const QString& path){
   // Qt 6.4.2 and 6.8.2 instantiate every installed image plugin for a named
   // format unless detection is off; the PNG signature was checked above.
   file.seek(0);QImageReader reader(&file,"PNG");reader.setAutoDetectImageFormat(false);
-  if(const auto size=reader.size();size!=expected){reject("capture_geometry","Cinnamon frame dimensions disagree with frozen monitor geometry","png_dimensions",{{"width",size.width()},{"height",size.height()}});return;}
+  if(const auto size=reader.size();size!=expected){reject("capture_geometry","Cinnamon's captured size doesn't match the current monitor layout.","png_dimensions",{{"width",size.width()},{"height",size.height()}});return;}
   decoded->image=reader.read();decoded->image.setDevicePixelRatio(1);
   if(decoded->image.isNull()){reject("capture_failed","Cannot decode Cinnamon desktop capture","png_decode",{{"reader",QString::number(int(reader.error()))}});return;}
-  if(decoded->image.sizeInBytes()>raw){reject("input_excessive","Cinnamon frame exceeds its accepted image budget","frame_budget",{{"imageBytes",decoded->image.sizeInBytes()}});decoded->image={};}
+  if(decoded->image.sizeInBytes()>raw){reject("input_excessive","Cinnamon capture exceeds the image size limit.","frame_budget",{{"imageBytes",decoded->image.sizeInBytes()}});decoded->image={};}
  });
  workers_.append(worker);
  connect(worker,&QThread::finished,this,[this,worker,decoded,index]{

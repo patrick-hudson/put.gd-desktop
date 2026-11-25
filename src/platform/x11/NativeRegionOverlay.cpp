@@ -58,7 +58,7 @@ QAccessibleInterface* accessibleRegion(const QString& name,QObject* object){
 Error unavailable(){return {"capture_unavailable","Cannot initialize region selection",{}};}
 // The capture helper protocol carries this reason to the notification.
 Error inputHeld(int waited,int attempts,bool pointer,bool keyboard){
- return {"capture_unavailable","Region selection could not start: an open menu or another app is holding the keyboard or mouse. Close it, then try again.",{{"stage","select"},{"check","input_grab"},{"waitedMs",waited},{"attempts",attempts},{"pointerHeld",pointer},{"keyboardHeld",keyboard}}};
+ return {"capture_unavailable","Region selection couldn't start because an open menu or another app is holding the keyboard or mouse. Close it, then try again.",{{"stage","select"},{"check","input_grab"},{"waitedMs",waited},{"attempts",attempts},{"pointerHeld",pointer},{"keyboardHeld",keyboard}}};
 }
 bool held(uint8_t status){return status==XCB_GRAB_STATUS_ALREADY_GRABBED||status==XCB_GRAB_STATUS_FROZEN;}
 bool nativeGeometry(const QRect& r){

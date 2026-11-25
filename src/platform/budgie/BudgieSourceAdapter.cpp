@@ -40,7 +40,7 @@ QJsonObject BudgieSourceAdapter::capabilities()const{
  if(!windowsReady){window["error"]=windowReason;window["code"]="window_unavailable";}
  if(!outputs["available"].toBool()){const auto error=outputs["error"];for(auto* status:{&region,&desktop}){(*status)["available"]=false;(*status)["error"]=error;}}
 #if !defined(PUTGD_HAVE_LAYER_SHELL) || QT_VERSION < QT_VERSION_CHECK(6,5,0)
- region["available"]=false;region["error"]="Native region selection requires current distro per-window LayerShellQt and Qt 6.5 or later";
+ region["available"]=false;region["error"]="This build has no region selector (requires LayerShellQt and Qt 6.5 or later).";
 #endif
  if(region_.cleanupRequired()){for(auto* status:{&region,&window,&desktop}){(*status)["available"]=false;(*status)["error"]=cleanupMessage();(*status)["code"]="capture_cleanup_pending";}}
  const QJsonObject helper=region_.diagnostics();
@@ -56,17 +56,17 @@ QJsonObject BudgieSourceAdapter::capabilities()const{
 void BudgieSourceAdapter::captureActiveWindow(const ResourceLimits& limits,quint64 generation,std::function<void(QImage,Error)> complete){
  QPointer<BudgieSourceAdapter> guard(this);
  capture_.freezeActive([guard,complete,limits,generation](ImageCopyCapture::Toplevel target,Error error){
-  if(error){if(error.code=="capture_target"&&error.message.startsWith("No window"))error={"target_unavailable","Focus an external window and invoke the window hotkey or CLI",error.details};complete({},std::move(error));return;}
-  if(!guard){complete({},{"cancelled","Window acquisition cancelled",{}});return;}
-  if(ownAppId(target.appId)){complete({},{"target_unavailable","Focus an external window and invoke the window hotkey or CLI",{}});return;}
+  if(error){if(error.code=="capture_target"&&error.message.startsWith("No window"))error={"target_unavailable","No window is focused. Focus another app's window and capture again.",error.details};complete({},std::move(error));return;}
+  if(!guard){complete({},{"cancelled","Window capture cancelled.",{}});return;}
+  if(ownAppId(target.appId)){complete({},{"target_unavailable","put.gd can't capture its own window. Focus another app's window and capture again.",{}});return;}
   guard->queryVisibility([guard,complete,limits,generation,id=target.identifier](bool visible){
-   if(!guard||guard->generation_!=generation){complete({},{"cancelled","Window acquisition cancelled",{}});return;}
+   if(!guard||guard->generation_!=generation){complete({},{"cancelled","Window capture cancelled.",{}});return;}
    if(!visible){complete({},visibilityError());return;}
    guard->capture_.captureToplevel(id,limits,[guard,generation,complete](QImage image,Error error){
     if(error){complete({},std::move(error));return;}
-    if(!guard||guard->generation_!=generation){complete({},{"cancelled","Window acquisition cancelled",{}});return;}
+    if(!guard||guard->generation_!=generation){complete({},{"cancelled","Window capture cancelled.",{}});return;}
     guard->queryVisibility([guard,generation,complete,image=std::move(image)](bool visible)mutable{
-     if(!guard||guard->generation_!=generation){complete({},{"cancelled","Window acquisition cancelled",{}});return;}
+     if(!guard||guard->generation_!=generation){complete({},{"cancelled","Window capture cancelled.",{}});return;}
      if(!visible){complete({},visibilityError());return;}
      complete(std::move(image),{});
     });
@@ -99,7 +99,7 @@ void BudgieSourceAdapter::captureFrames(QList<CaptureFrame> frames,QList<Capture
    guard->queryVisibility([guard,generation,frozen,revision,frames=std::move(frames),cb=std::move(cb)](bool visible)mutable{
     if(!guard||guard->generation_!=generation){cb({},{"cancelled","Desktop capture cancelled",{}});return;}
     if(!visible){cb({},visibilityError());return;}
-    if(!guard->unchanged(frozen,revision)){cb({},{"display_changed","Display layout changed during acquisition",{}});return;}
+    if(!guard->unchanged(frozen,revision)){cb({},{"display_changed","Display layout changed during capture.",{}});return;}
     cb(std::move(frames),{});
    });
   });

@@ -6,7 +6,7 @@
 #include <utility>
 namespace putgd {
 namespace {
-Error unavailable(const QString& check,QJsonObject details={}){details["check"]=check;return {"delay_unavailable","The capture countdown could not be shown; restart put.gd if this continues",details};}
+Error unavailable(const QString& check,QJsonObject details={}){details["check"]=check;return {"delay_unavailable","Couldn't show the capture countdown. Restart put.gd if this continues.",details};}
 }
 CountdownProcess::CountdownProcess(QString helper,QObject* parent):QObject(parent),helper_(helper.contains('/')?std::move(helper):QCoreApplication::applicationDirPath()+'/'+helper){
  deadline_.setSingleShot(true);
@@ -29,7 +29,7 @@ void CountdownProcess::start(int seconds,const QJsonObject& appearance,std::func
   if(cancelling_||(status==QProcess::NormalExit&&code==cancelledExit))finish({"cancelled","Capture countdown cancelled",{}});
   else if(status==QProcess::NormalExit&&code==0)finish({});
   else if(status==QProcess::NormalExit&&code==hiddenExit)finish(countdownNotShown());
-  else if(status==QProcess::NormalExit&&code==buildExit)finish({"capture_unavailable","put.gd was updated while it was running; quit and start it again",{{"check","countdown_build"}}});
+  else if(status==QProcess::NormalExit&&code==buildExit)finish({"capture_unavailable","put.gd was updated while running. Quit and start it again.",{{"check","countdown_build"}}});
   else finish(unavailable("exit",{{"exitCode",code},{"crashed",status!=QProcess::NormalExit}}));
  });
  // The helper may take a moment to map its pill; the delay itself is its own.

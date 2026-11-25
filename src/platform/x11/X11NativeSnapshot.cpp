@@ -14,8 +14,8 @@
 #include <cmath>
 namespace putgd {
 namespace {
-Error targetError(){return {"capture_target","Focused external window is unavailable or changed",{}};}
-Error changedError(){return {"display_changed","Display layout or scale changed during source acquisition",{}};}
+Error targetError(){return {"capture_target","The active window is unavailable or changed.",{}};}
+Error changedError(){return {"display_changed","Display layout or scale changed during capture.",{}};}
 QJsonArray rectangle(const QRect& r){return {r.x(),r.y(),r.width(),r.height()};}
 QRect rectangle(const QJsonArray& a){return {a[0].toInt(),a[1].toInt(),a[2].toInt(),a[3].toInt()};}
 bool finiteRectangle(const QJsonArray& a){if(a.size()!=4)return false;for(const auto& v:a)if(!v.isDouble()||!std::isfinite(v.toDouble())||std::abs(v.toDouble())>1e7)return false;return a[2].toDouble()>0&&a[3].toDouble()>0;}
@@ -32,7 +32,7 @@ bool X11NativeSnapshot::available()const{return connection_&&!xcb_connection_has
 xcb_atom_t X11NativeSnapshot::atom(const char* name){return x11::internAtom(connection_,name);}
 QByteArray X11NativeSnapshot::property(xcb_window_t window,const char* name,Error& error){
  auto value=x11::reply(xcb_get_property_reply(connection_,xcb_get_property(connection_,0,window,atom(name),XCB_GET_PROPERTY_TYPE_ANY,0,262145),nullptr));
- if(!value||value->bytes_after||xcb_get_property_value_length(value.get())>1024*1024){error={"capture_geometry","Cannot freeze bounded X11 scaling metadata",{}};return {};}
+ if(!value||value->bytes_after||xcb_get_property_value_length(value.get())>1024*1024){error={"capture_geometry","Couldn't read X11 display scaling settings.",{}};return {};}
  QByteArray bytes;bytes.append(QByteArray::number(value->type));bytes+=':';bytes+=QByteArray::number(value->format);bytes+=':';bytes.append(static_cast<const char*>(xcb_get_property_value(value.get())),xcb_get_property_value_length(value.get()));return bytes;
 }
 QString X11NativeSnapshot::scaleFingerprint(Error& error){
@@ -54,7 +54,7 @@ QJsonObject X11NativeSnapshot::layout(Error& error){
   const QString name=QString::fromUtf8(reinterpret_cast<const char*>(xcb_randr_get_output_info_name(output.get())),xcb_randr_get_output_info_name_length(output.get()));
   outputs.append({{"identity",name},{"native",rectangle(QRect(crtc->x,crtc->y,crtc->width,crtc->height))},{"rotation",int(crtc->rotation)}});
  }
- if(outputs.isEmpty()||outputs.size()>64){error={"capture_geometry","Enabled monitor count is unsupported",{}};return {};}
+ if(outputs.isEmpty()||outputs.size()>64){error={"capture_geometry","No enabled monitors, or more than 64 monitors are connected.",{}};return {};}
  std::sort(outputs.begin(),outputs.end(),[](const auto& a,const auto& b){return a["identity"].toString()<b["identity"].toString();});QJsonArray frames;for(const auto& o:outputs)frames.append(o);
  auto rootGeometry=x11::reply(xcb_get_geometry_reply(connection_,xcb_get_geometry(connection_,root_),nullptr));if(!rootGeometry){error=changedError();return {};}
  const auto scale=scaleFingerprint(error);if(error)return {};
@@ -94,7 +94,7 @@ QJsonObject X11NativeSnapshot::freeze(const QString& action,const QSet<qint64>& 
   auto active=x11::reply(xcb_get_property_reply(connection_,xcb_get_property(connection_,0,root_,atom("_NET_ACTIVE_WINDOW"),XCB_ATOM_WINDOW,0,1),nullptr));if(!active||active->format!=32||xcb_get_property_value_length(active.get())!=4){error=targetError();return {};}
   std::memcpy(&window,xcb_get_property_value(active.get()),4);if(!window||window==root_){error=targetError();return {};}
   auto owner=x11::reply(xcb_get_property_reply(connection_,xcb_get_property(connection_,0,window,atom("_NET_WM_PID"),XCB_ATOM_CARDINAL,0,1),nullptr));uint32_t pid=0;if(owner&&owner->format==32&&xcb_get_property_value_length(owner.get())==4)std::memcpy(&pid,xcb_get_property_value(owner.get()),4);
-  if(pid&&(excluded.contains(pid)||x11::startedByResident(pid))){error={"capture_target","Focus an external window before invoking window capture",{}};return {};}
+  if(pid&&(excluded.contains(pid)||x11::startedByResident(pid))){error={"capture_target","put.gd can't capture its own window. Focus another app's window and capture again.",{}};return {};}
   geometry=windowRect(window,error);if(error)return {};
  }
  if(layout(error)!=before){if(!error)error=changedError();return {};}

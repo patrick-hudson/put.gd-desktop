@@ -39,9 +39,9 @@ QJsonObject KWinClickEffect::clickCapability() const {
     const bool services = interface && interface->isServiceRegistered(kwin) && interface->isServiceRegistered(accel);
     QJsonObject capability{{"available", services}, {"route", "kwin-mouseclick-effect"}, {"drawnBy", "compositor"},
                            {"targets", services ? QJsonArray{"monitor", "desktop", "region"} : QJsonArray{}},
-                           {"targetReasons", QJsonObject{{"window", "KWin draws the click rings on the screen; a window recording's stream carries the window alone, so it has none."}}},
-                           {"note", "KWin draws the rings on the screen for the length of the recording; window recordings carry none."}};
-    if (!services) { capability["reason"] = "kwin_unavailable"; capability["message"] = "KWin or KGlobalAccel is not on the session bus, so the click effect cannot be switched on."; }
+                           {"targetReasons", QJsonObject{{"window", "KWin draws click rings on the screen, so window recordings don't include them."}}},
+                           {"note", "KWin draws click rings on the screen while recording. Window recordings don't include them."}};
+    if (!services) { capability["reason"] = "kwin_unavailable"; capability["message"] = "KWin or KGlobalAccel isn't on the session bus, so click highlights can't be turned on."; }
     return capability;
 }
 void KWinClickEffect::enqueue(Job job) {
@@ -114,7 +114,7 @@ void KWinClickEffect::watchClicks(const QJsonObject&, RecordingClicks::Sink, Rec
         auto switchOn = [guard, reply, done, failed](State now) {
             if (!guard) { done(); return; }
             if (!now.loaded) { failed(QStringLiteral("KWin could not load its Mouse Click Animation effect.")); return; }
-            if (!now.known) { failed(QStringLiteral("This KWin does not report whether its Mouse Click Animation effect is switched on, so put.gd leaves it as it is.")); return; }
+            if (!now.known) { failed(QStringLiteral("This KWin version doesn't report whether Mouse Click Animation is turned on, so put.gd left it unchanged.")); return; }
             auto finish = [guard, reply, done](bool wasOn) {
                 guard->on_ = true;
                 logging::info(logRecording(), "KWin click effect is on for the recording", {{"loadedByPutgd", guard->loadedByUs_}, {"switchedOnByPutgd", guard->toggledByUs_}, {"wasOn", wasOn}});
@@ -125,14 +125,14 @@ void KWinClickEffect::watchClicks(const QJsonObject&, RecordingClicks::Sink, Rec
             if (now.enabled) { finish(true); return; }
             guard->toggle([guard, finish, failed, done](State after) {
                 if (!guard) { done(); return; }
-                if (!after.loaded || !after.known || !after.enabled) { failed(QStringLiteral("KWin's Mouse Click Animation effect did not switch on through its shortcut (KGlobalAccel).")); return; }
+                if (!after.loaded || !after.known || !after.enabled) { failed(QStringLiteral("Couldn't turn on KWin's Mouse Click Animation effect through KGlobalAccel.")); return; }
                 guard->toggledByUs_ = true;
                 finish(false);
             });
         };
         state([guard, done, failed, switchOn](State now) {
             if (!guard) { done(); return; }
-            if (!now.answered) { failed(QStringLiteral("KWin did not answer, so its click effect could not be switched on.")); return; }
+            if (!now.answered) { failed(QStringLiteral("KWin didn't respond, so click highlights couldn't be turned on.")); return; }
             if (now.loaded) { switchOn(now); return; }
             guard->effects(QStringLiteral("loadEffect"), [guard, done, failed, switchOn](bool ok, QVariantList values) {
                 if (!guard) { done(); return; }

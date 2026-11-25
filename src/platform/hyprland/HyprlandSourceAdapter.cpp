@@ -11,7 +11,7 @@
 #include <memory>
 namespace putgd {
 namespace {
-const QString focusMessage="Focus an external window and invoke the window hotkey or CLI";
+const QString focusMessage="Focus another app's window and capture again.";
 // The parent of a process, from /proc/<pid>/stat (the field after the command's closing parenthesis).
 qint64 parentOf(qint64 pid){return parentProcess(pid);}
 }
@@ -88,7 +88,7 @@ Error HyprlandSourceAdapter::permissionError(){
 void HyprlandSourceAdapter::freezeActiveWindow(std::function<void(QJsonObject,Error)> reply){
  QPointer<HyprlandSourceAdapter> guard(this);
  ipc_.json("j/activewindow",[guard,reply=std::move(reply)](QJsonDocument document,Error error){
-  if(!guard){reply({},{"cancelled","Window acquisition cancelled",{}});return;}
+  if(!guard){reply({},{"cancelled","Window capture cancelled.",{}});return;}
   if(error){reply({},error);return;}
   const auto window=document.object();
   const auto identity=window["stableId"].toString();
@@ -99,7 +99,7 @@ void HyprlandSourceAdapter::freezeActiveWindow(std::function<void(QJsonObject,Er
    {"at",window["at"]},{"size",window["size"]},{"workspace",window["workspace"].toObject()["name"]},{"xwayland",window["xwayland"]}};
   // The protocol, not the IPC, must say that this identifier is that window.
   guard->mapping_.addressFor(identity,[guard,frozen,reply](QString address,Error error){
-   if(!guard){reply({},{"cancelled","Window acquisition cancelled",{}});return;}
+   if(!guard){reply({},{"cancelled","Window capture cancelled.",{}});return;}
    if(error){reply({},error);return;}
    if(!ToplevelMapping::sameAddress(address,frozen["address"].toString())){
     reply({},{"capture_target","The active window changed while it was being confirmed",{{"identity",frozen["identity"]},{"ipcAddress",frozen["address"]},{"protocolAddress",address}}});return;
@@ -140,7 +140,7 @@ QJsonObject HyprlandSourceAdapter::capabilities()const{
  if(!windowsReady){window["error"]=windowReason;window["code"]="window_unavailable";}
  if(!outputs["available"].toBool()){const auto error=outputs["error"];for(auto* status:{&region,&desktop}){(*status)["available"]=false;(*status)["error"]=error;}}
 #if !defined(PUTGD_HAVE_LAYER_SHELL) || QT_VERSION < QT_VERSION_CHECK(6,5,0)
- region["available"]=false;region["error"]="Native region selection requires current distro per-window LayerShellQt and Qt 6.5 or later";
+ region["available"]=false;region["error"]="This build has no region selector (requires LayerShellQt and Qt 6.5 or later).";
 #endif
  if(region_.cleanupRequired()){for(auto* status:{&region,&window,&desktop}){(*status)["available"]=false;(*status)["error"]=cleanupMessage();(*status)["code"]="capture_cleanup_pending";}}
  const QJsonObject helper=region_.diagnostics();
@@ -162,7 +162,7 @@ void HyprlandSourceAdapter::captureActiveWindow(const ResourceLimits& limits,qui
  freezeActiveWindow([guard,complete,limits,generation](QJsonObject target,Error error){
   if(error){complete({},std::move(error));return;}
   // Cancelled while the window was being mapped: start no capture.
-  if(!guard||guard->generation_!=generation){complete({},{"cancelled","Window acquisition cancelled",{}});return;}
+  if(!guard||guard->generation_!=generation){complete({},{"cancelled","Window capture cancelled.",{}});return;}
   guard->capture_.captureToplevel(target["identity"].toString(),limits,[complete](QImage image,Error error){
    if(!error&&refusedFrame(image)){complete({},permissionError());return;}
    complete(std::move(image),std::move(error));
