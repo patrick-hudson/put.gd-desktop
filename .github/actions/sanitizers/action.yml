@@ -29,7 +29,10 @@ runs:
       run: |
         case "$SCOPE" in
           contracts) echo "PUTGD_SANITIZER_PRESET=clang-asan" >> "$GITHUB_ENV" ;;
-          # Every test, the `nightly` label included, with the linux job's CPU pool.
+          # Every test, the `nightly` label included, with the linux job's CPU pool, except
+          # two whose binaries aren't instrumented and so can't load the instrumented QtCore:
+          # the OCR helper's confinement test (confinement forbids what the sanitizers need)
+          # and the icon renderer, a build tool.
           all) echo "PUTGD_SANITIZER_PRESET=clang-asan-all" >> "$GITHUB_ENV" ;;
           *) echo "::error::Unknown sanitizer scope '$SCOPE'"; exit 1 ;;
         esac

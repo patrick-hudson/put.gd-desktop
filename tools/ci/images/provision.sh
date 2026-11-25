@@ -50,7 +50,10 @@ case "$profile" in
     useradd --create-home --shell /bin/bash putgd-ci
     ;;
   sanitizers)
-    bash "$install" "${test_packages[@]}" clang libclang-rt-dev llvm curl liblayershellqtinterface-dev
+    # The GStreamer plugins too: nightly.yml runs the recording and scroll-capture tests here (#2065).
+    bash "$install" "${test_packages[@]}" clang libclang-rt-dev llvm curl liblayershellqtinterface-dev \
+      gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-pipewire \
+      gstreamer1.0-libav
     useradd --create-home --shell /bin/bash putgd-ci
     ;;
   native-*)

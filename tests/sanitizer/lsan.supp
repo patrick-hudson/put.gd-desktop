@@ -1,0 +1,12 @@
+# LeakSanitizer suppressions for the clang-asan test presets (CMakePresets.json sets
+# LSAN_OPTIONS). Only reports from inside a third-party library belong here, each with
+# its reason; a leak through put.gd code is fixed, not suppressed (#2065).
+#
+# Ubuntu 26.04's fontconfig (2.17) leaks the configuration state it parses with expat
+# the first time Qt adds an application font: QFontDatabase::addApplicationFont ->
+# QFontconfigDatabase::addApplicationFont -> FcConfigGetFonts -> XML_ParseBuffer.
+# 320 bytes once per process, in every test that loads put.gd's bundled fonts
+# (src/ui/Fonts.cpp), and in the helpers they start, which then exit non-zero.
+# Fedora 45's fontconfig doesn't. A `leak:` rule matches any frame of the allocation
+# stack, and fontconfig never calls back into put.gd, so this can't hide a put.gd leak.
+leak:FcConfigGetFonts
