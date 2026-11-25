@@ -3084,7 +3084,10 @@ void SettingsWindow::drainSaves(){
   const auto doc=applyOperation(acceptedDocument(),op);
   if(doc==acceptedDocument()){operationSettled(op);continue;}
   saving_=true;sending_=op;emit viewStateChanged();
-  settings_.saveAsync(doc,observed_,[g=QPointer<SettingsWindow>(this),op,doc](Result result){if(g)g->saveAnswered(op,result,doc);});
+  // A restored checkpoint's base with this operation as it is sent now; it replaces the base once
+  // the save is accepted (#1735).
+  const auto restoredSent=restoredDraft_&&!restoredBase_.isEmpty()?applyOperation(restoredBase_,op):QJsonObject{};
+  settings_.saveAsync(doc,observed_,[g=QPointer<SettingsWindow>(this),op,doc,restoredSent](Result result){if(g)g->saveAnswered(op,result,doc,restoredSent);});
   return;
  }
  // A switch the resident accepted is done: a later service change elsewhere is never undone from here.
@@ -3102,7 +3105,7 @@ void SettingsWindow::operationSettled(const SaveOperation& op){
 // A reply changes the accepted state and the saved or "wasn't saved" line. It never changes a
 // field's text, cursor or message, since it can arrive while the next value is being typed; it may
 // update the destination list's state and the stored-credential hint.
-void SettingsWindow::saveAnswered(SaveOperation op,const Result& result,const QJsonObject& sent){
+void SettingsWindow::saveAnswered(SaveOperation op,const Result& result,const QJsonObject& sent,const QJsonObject& restoredSent){
  saving_=false;sending_={};answered_=true;
  // A switch the resident accepted is done before anything else is sent: a later service change
  // made elsewhere is never undone from here (#1699).
@@ -3126,6 +3129,10 @@ void SettingsWindow::saveAnswered(SaveOperation op,const Result& result,const QJ
   requeue(std::move(op));autosaveFailure(error);return;
  }
  baseRevision_=settings_.revision();baseDocument_=settings_.document();observed_=settings_.metadata()["observedRevision"].toString();
+ // A restored checkpoint's base takes what this window saved since, as it was sent, and nothing
+ // saved elsewhere: the draft's optional keys then follow this window's saves, and a replay still
+ // finds only the checkpoint's own edits (#1735).
+ if(restoredDraft_&&!restoredSent.isEmpty())restoredBase_=restoredSent;
  if(!settings_.document()["profiles"].toArray().isEmpty())initialProfile_=false;
  if(op.kind==SaveOperation::Kind::Fields){
   notSaved_.remove(op.id+"|*");

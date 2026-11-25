@@ -794,6 +794,32 @@ private slots:
   PUTGD_TRY_VERIFY(service.document()["profiles"].toArray()[0].toObject()["label"].toString()=="Renamed here");
   PUTGD_VERIFY_STEADY(service.document()["preferences"].toObject()["updates"].toObject()["check"]==QJsonValue(false),300);
  }
+ // #1735: a same-revision checkpoint taken mid-rename, with no Updates object in the file. The
+ // rename is finished in the restored window, then daily checks go off and back on: each save is
+ // accepted, and the window ends saved instead of refusing actions until Reload.
+ void restoredRenameThenUpdatesToggleEndsSaved(){
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});
+  auto doc=threeDestinations();auto preferences=doc["preferences"].toObject();preferences.remove("updates");doc["preferences"]=preferences;QVERIFY(service.save(doc,{}));
+  UiSessionFixture fixture(service,secrets);const auto revision=service.revision();
+  QJsonObject checkpoint;
+  {MainWindow first(fixture.session);first.navigate("destinations");first.show();first.activateWindow();QVERIFY(putgd::test::waitForWindowActive(&first));
+   auto* label=first.findChild<QLineEdit*>("destinationLabel");label->setFocus();PUTGD_TRY_VERIFY(label->hasFocus());label->selectAll();QTest::keyClicks(label,"Renamed");
+   checkpoint=first.settings()->saveViewState();QVERIFY(!checkpoint.contains("stateError"));QVERIFY(checkpoint["dirty"].toBool());
+   // The window goes away without sending the typed name, as when its process ends mid-rename.
+   fixture.client.failOnce.insert("settings.save",Error{"synthetic_transport","Synthetic transport failure",{}});}
+  PUTGD_TRY_VERIFY(!fixture.client.failOnce.contains("settings.save"));PUTGD_VERIFY_STEADY(service.revision()==revision,300);
+  MainWindow second(fixture.session);QVERIFY(second.settings()->restoreViewState(checkpoint));second.navigate("destinations");second.show();second.activateWindow();QVERIFY(putgd::test::waitForWindowActive(&second));
+  auto* label=second.findChild<QLineEdit*>("destinationLabel");QCOMPARE(label->text(),QString("Renamed"));
+  label->setFocus();PUTGD_TRY_VERIFY(label->hasFocus());label->end(false);QTest::keyClicks(label," here");QMetaObject::invokeMethod(label,"editingFinished");
+  PUTGD_TRY_VERIFY(service.document()["profiles"].toArray()[0].toObject()["label"].toString()=="Renamed here");
+  PUTGD_TRY_VERIFY(second.settings()->flushAutosave()&&!second.settings()->actionSaveError());
+  second.navigate("settings");auto* check=second.settings()->findChild<QCheckBox*>("checkForUpdates");QVERIFY(check&&check->isChecked());
+  check->click();PUTGD_TRY_VERIFY(service.document()["preferences"].toObject()["updates"].toObject()["check"]==QJsonValue(false));
+  PUTGD_TRY_VERIFY(second.settings()->flushAutosave()&&!second.settings()->actionSaveError());
+  check->click();PUTGD_TRY_VERIFY(service.document()["preferences"].toObject()["updates"].toObject()["check"]!=QJsonValue(false));
+  PUTGD_TRY_VERIFY(second.settings()->flushAutosave()&&!second.settings()->actionSaveError());
+  QVERIFY(!second.settings()->saveViewState()["dirty"].toBool());
+ }
  void legacyCheckpointIsNotMergedIntoAChangedFile(){
   QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));
   UiSessionFixture fixture(service,secrets);fixture.client.failOnce.insert("settings.save",Error{"synthetic_transport","Synthetic transport failure",{}});
