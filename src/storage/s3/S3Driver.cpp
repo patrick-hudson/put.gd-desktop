@@ -17,7 +17,8 @@
 #include <algorithm>
 #include <array>
 #include <aws/core/client/CoreErrors.h>
-#include <aws/core/client/DefaultRetryStrategy.h>
+#include <aws/core/client/AWSError.h>
+#include <aws/core/client/RetryStrategy.h>
 #include <aws/core/utils/memory/stl/AWSStreamFwd.h>
 #include <aws/core/utils/threading/PooledThreadExecutor.h>
 #include <aws/s3/S3Client.h>
@@ -268,8 +269,13 @@ template<class E> Error wireError(const E& error, S3Stage stage, qint64 elapsedM
     return {code, message, details};
 }
 template<class E> bool absent(const E& error) { return int(error.GetResponseCode()) == 404; }
+// The connection for this request was never set up, so nothing of it reached the server (#2051).
+template<class E> bool neverConnected(const E& error) {
+    return s3ConnectionNeverSetUp(int(error.GetResponseCode()), {error.GetMessage().data(), error.GetMessage().size()});
+}
+// Whether a failed request may still have taken effect.
 template<class E> bool ambiguous(const E& error) {
-    if (notSent(error)) return false;
+    if (notSent(error) || neverConnected(error)) return false;
     const int status = int(error.GetResponseCode());
     // 501 Not Implemented is a definite refusal of an unsupported request.
     return status < 200 || (status >= 500 && status != 501);
@@ -280,6 +286,23 @@ template<class E> bool versioningUnreadable(const E& error) {
     const int status = int(error.GetResponseCode());
     return status == 403 || status == 501;
 }
+// SDK retries are off, except for a request whose connection was never set up (#2051): it reached
+// no server, so sending it again can't repeat an effect, whatever the request. Each S3 call runs in a
+// new helper process on a new connection, and a handshake the network resets would otherwise end a
+// deletion unknown, or an upload failed, with the file untouched. Two more attempts, after 0.25 s and
+// 1 s; the SDK signs each one again. Every other failure is returned on the first attempt, for the
+// driver's own bounded and reconciled attempts.
+class UnsentRetryStrategy final : public Aws::Client::RetryStrategy {
+public:
+    static constexpr long extraAttempts = 2;
+    bool ShouldRetry(const Aws::Client::AWSError<Aws::Client::CoreErrors>& error, long attemptedRetries) const override {
+        return attemptedRetries < extraAttempts && neverConnected(error);
+    }
+    long CalculateDelayBeforeNextRetry(const Aws::Client::AWSError<Aws::Client::CoreErrors>&, long attemptedRetries) const override {
+        return attemptedRetries == 0 ? 250 : 1000;
+    }
+    long GetMaxAttempts() const override { return extraAttempts + 1; }
+};
 // Only Cloudflare R2 itself is trusted to keep no versions when it answers a request naming one
 // with 501. A proxy or another S3-compatible front could answer so while the bucket behind it
 // keeps versions, and an unversioned delete there would leave the recorded version behind a
@@ -1155,7 +1178,7 @@ struct NetworkS3Driver::State {
         config.lowSpeedLimit = destination.settings["lowSpeedBytesPerSecond"].toInt();
         // A multipart upload sends up to four parts at once (#174); other calls use one.
         config.maxConnections = s3MaximumPartLanes;
-        config.retryStrategy = Aws::MakeShared<Aws::Client::DefaultRetryStrategy>("putgd", 0);
+        config.retryStrategy = Aws::MakeShared<UnsentRetryStrategy>("putgd");
         config.executor = Aws::MakeShared<Aws::Utils::Threading::PooledThreadExecutor>("putgd", 1);
         config.useVirtualAddressing = s3VirtualAddressing(effective);
         config.disableS3ExpressAuth = true;

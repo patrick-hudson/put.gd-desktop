@@ -1,6 +1,51 @@
 #include "fixtures/S3Fixture.h"
+#include <QStandardPaths>
+#include <QUrlQuery>
 #include <stdexcept>
 using namespace putgd::test;
+namespace {
+// HTTPS in front of the plain fixture (tests/fixtures/tls_front.py), with a certificate made for
+// this run: it can reset the TLS handshakes of the next new connections, as the lab network did
+// to put.gd's S3 calls on 2026-11-23 and 2026-11-25 (#2051).
+class TlsFront {
+public:
+    QTemporaryDir directory;
+    QProcess process;
+    QString endpoint;
+    explicit TlsFront(S3Fixture& fixture) {
+        const auto openssl = QStandardPaths::findExecutable("openssl");
+        if (openssl.isEmpty()) qFatal("the TLS front needs the openssl command to make its certificate");
+        QProcess make;
+        make.start(openssl, {"req", "-x509", "-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:prime256v1", "-nodes",
+            "-days", "2", "-subj", "/CN=putgd-tls-front", "-addext", "subjectAltName=IP:127.0.0.1",
+            "-keyout", directory.filePath("key.pem"), "-out", certificate()});
+        if (!make.waitForFinished(30000) || make.exitCode() != 0) qFatal("the TLS front's certificate couldn't be made");
+        arm(0, 0);
+        process.start("python3", {TLS_FRONT_PATH, certificate(), directory.filePath("key.pem"),
+            QString::number(QUrl(fixture.endpoint).port()), directory.filePath("plan")});
+        if (!process.waitForStarted() || !process.waitForReadyRead()) qFatal("TLS front failed to start");
+        endpoint = "https://127.0.0.1:" + QString::fromUtf8(process.readLine()).trimmed();
+        // libcurl trusts this run's certificate alone (src/core/CaBundle.h).
+        qputenv("PUTGD_CA_BUNDLE", certificate().toLocal8Bit());
+        fixture.destination.settings["endpoint"] = endpoint;
+    }
+    ~TlsFront() { qunsetenv("PUTGD_CA_BUNDLE"); process.terminate(); process.waitForFinished(); }
+    QString certificate() const { return directory.filePath("cert.pem"); }
+    // Let PASS new connections through, then reset the handshakes of the next RESET.
+    void arm(int pass, int reset) {
+        QFile plan(directory.filePath("plan"));
+        if (!plan.open(QIODevice::WriteOnly | QIODevice::Truncate) || plan.write(QByteArray::number(pass) + " " + QByteArray::number(reset) + "\n") < 0)
+            qFatal("TLS front plan write failed");
+        QFile::remove(directory.filePath("plan.log"));
+    }
+    // "pass" or "reset" for each new connection since the last arm().
+    QStringList connections() const {
+        QFile log(directory.filePath("plan.log"));
+        if (!log.open(QIODevice::ReadOnly)) return {};
+        return QString::fromUtf8(log.readAll()).split('\n', Qt::SkipEmptyParts);
+    }
+};
+}
 class S3DeleteTest : public QObject {
     Q_OBJECT
     static QJsonObject rules(std::initializer_list<QJsonObject> list) {
@@ -500,6 +545,59 @@ private slots:
         QVERIFY(result.error.message.contains("s3:GetBucketVersioning"));
         QVERIFY(!result.progress.contains("versionless"));
         QCOMPARE(f.events("DELETE").size(), 0);
+    }
+    // #2051: an expiring-link upload deleted while the network resets a TLS handshake. Nothing of
+    // that request reached the server, so it is sent again, and the deletion removes the file. A
+    // deletion's lookups share its first new connection; its DELETE always opens another one
+    // (SdkRuntime.cpp).
+    void resetHandshakeIsSentAgain_data() {
+        QTest::addColumn<int>("pass");
+        QTest::addColumn<QStringList>("connections");
+        QTest::newRow("lookup") << 0 << QStringList({"reset", "pass", "pass"});
+        QTest::newRow("delete") << 1 << QStringList({"pass", "reset", "pass"});
+    }
+    void resetHandshakeIsSentAgain() {
+        QFETCH(int, pass);
+        QFETCH(QStringList, connections);
+        S3Fixture f;
+        f.reset();
+        TlsFront front(f);
+        f.destination.settings["linkMode"] = "presigned";
+        f.destination.settings["linkValidityDays"] = 1;
+        const auto uploaded = f.upload(f.request("expiring link.png"));
+        QVERIFY2(uploaded.status == "uploaded", qPrintable(uploaded.error.code + ": " + uploaded.error.message));
+        QVERIFY(QUrlQuery(QUrl(uploaded.receipt.directUrl)).hasQueryItem("X-Amz-Signature"));
+        front.arm(pass, 1);
+        QStringList phases;
+        const auto removed = f.remove(uploaded.receipt, {}, [&](auto progress, auto ack) { phases.append(progress["phase"].toString()); ack({}); });
+        QCOMPARE(removed.status, QString("removed"));
+        QCOMPARE(phases, QStringList({"object_intent", "done"}));
+        QCOMPARE(front.connections(), connections);
+        QCOMPARE(f.events("DELETE").size(), 1);
+        QVERIFY(f.state()["objects"].toObject()["prefix é/expiring link.png"].toArray().isEmpty());
+    }
+    // A DELETE whose every attempt is reset was never sent: the file is still there, so the
+    // deletion failed, rather than ending unknown as if S3 might have removed it.
+    void unsentDeleteFailsWithFileKept() {
+        S3Fixture f;
+        f.reset();
+        TlsFront front(f);
+        const auto uploaded = f.upload(f.request());
+        QVERIFY2(uploaded.status == "uploaded", qPrintable(uploaded.error.code + ": " + uploaded.error.message));
+        front.arm(1, 3);
+        QStringList phases;
+        const auto result = f.remove(uploaded.receipt, {}, [&](auto progress, auto ack) { phases.append(progress["phase"].toString()); ack({}); });
+        QCOMPARE(front.connections(), QStringList({"pass", "reset", "reset", "reset"}));
+        QCOMPARE(result.status, QString("failed"));
+        QCOMPARE(result.error.details["requestStage"].toString(), QString("delete_object"));
+        QCOMPARE(result.error.details["curlCode"].toInt(), 35);
+        QCOMPARE(phases, QStringList({"object_intent", "object_failed"}));
+        QCOMPARE(f.events("DELETE").size(), 0);
+        QVERIFY(!f.state()["objects"].toObject()["prefix é/a b.txt"].toArray().isEmpty());
+        // Retry finds the file and deletes it.
+        front.arm(0, 0);
+        QCOMPARE(f.remove(uploaded.receipt, result.progress).status, QString("removed"));
+        QCOMPARE(f.events("DELETE").size(), 1);
     }
     void notImplementedVersionOnVersionedBucketNeverDeletes() {
         S3Fixture f;
