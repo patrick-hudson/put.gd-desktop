@@ -92,6 +92,8 @@ Error failure(const QString& code){
  if(code=="sensitive_check_timeout")return {code,"put.gd couldn't check the capture for sensitive text in time, so it wasn't uploaded",{}};
  if(code=="editor_unavailable")return {code,"The image editor is not available on this platform",{}};
  if(code=="editor_output_invalid"||code=="edit_output_invalid")return {"edit_output_invalid","The editor returned an image that is not a sanitized PNG",{}};
+ // #2011: an edited image the helper handed off, then a helper that crashed or exited with an error. Its image is not used.
+ if(code=="editor_exit_handed_off")return {"editor_exit","The image editor closed with an error after handing off the image. The upload didn't start.",{}};
  return {code,"The image editor stopped before handing off an image",{}};
 }
 #ifdef Q_OS_UNIX
@@ -201,7 +203,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  }
  QProcess process;process.setProcessChannelMode(QProcess::SeparateChannels);process.setReadChannel(QProcess::StandardOutput);
  UiControl control(process);
- bool ready=false,editing=false,finalizing=false,checkpoint=false,protocolFailed=false,copying=false,prompting=false,covering=false,redacting=false;const bool checking=bool(check_);QString copyId;QJsonObject reply;QSet<QString> textCopies;
+ bool ready=false,editing=false,finalizing=false,checkpoint=false,lingered=false,protocolFailed=false,copying=false,prompting=false,covering=false,redacting=false;const bool checking=bool(check_);QString copyId;QJsonObject reply;QSet<QString> textCopies;
  // Copy image: the helper staged copy.png in this private directory. Read it
  // through the pinned identities, check it is the sanitized PNG it announced,
  // remove it, then hand the bytes to the clipboard. Never kept or uploaded.
@@ -360,7 +362,9 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
   if(checking&&prompting&&!check_->prompt&&!checkpoint&&phaseClock.elapsed()>decisionBackstopMs){error="sensitive_check_timeout";break;}
   if(!checking&&!editing&&!checkpoint&&phaseClock.elapsed()>startupTimeoutMs_){error="editor_timeout";break;}
   if(finalizing&&!checkpoint&&phaseClock.elapsed()>finalizeTimeoutMs_){error="editor_timeout";break;}
-  if(checkpoint&&phaseClock.elapsed()>5000){error="editor_exit";break;}
+  // #2011: an image handed off is already in this process's pinned staging, and the checks below read
+  // it from there. A helper that then doesn't close is stopped and the image goes on; any other ending fails.
+  if(checkpoint&&phaseClock.elapsed()>5000){if(reply["ok"].toBool())lingered=true;else error="editor_exit";break;}
   if(ready&&!checkpoint){
    const auto scheme=session->takeAppearance();
    if(!scheme.isEmpty()){auto frame=envelope(nonce);frame["scheme"]=scheme;if(control.send("appearance",frame).isEmpty()){protocolFailed=true;break;}}
@@ -399,9 +403,10 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  for(auto& pending:session->take())pending.reply(failure("editor_finalizing"),{});
  if(protocolFailed&&error.isEmpty())error="editor_protocol";
  const bool stopping=process.state()!=QProcess::NotRunning;
+ if(stopping&&helperOutput.pid()>0)helperOutput.killing(lingered?QStringLiteral("not_closed_after_handoff"):error.isEmpty()?QStringLiteral("editor_protocol"):error);
  if(stopping){control.stop();process.terminate();if(!process.waitForFinished(500)){process.kill();process.waitForFinished(1500);}}
  if(helperOutput.pid()>0){helperOutput.append(process.readAllStandardError());helperOutput.finished(process.exitCode(),process.exitStatus(),stopping);}
- if(error.isEmpty()&&(!checkpoint||process.exitStatus()!=QProcess::NormalExit||process.exitCode()!=0))error="editor_exit";
+ if(error.isEmpty()&&!lingered&&(!checkpoint||process.exitStatus()!=QProcess::NormalExit||process.exitCode()!=0))error=checkpoint&&reply["ok"].toBool()?"editor_exit_handed_off":"editor_exit";
  control.stop();
  if(!error.isEmpty())return fail(error);
  if(!reply["ok"].toBool()&&reply["code"].toString().startsWith("check_")){result.check=reply["code"].toString().mid(6);session->setPhase("closed");return result;}
