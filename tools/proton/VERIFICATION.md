@@ -1,3 +1,45 @@
+# Bun 1.4.5 (#2005)
+
+The helper is compiled with official Bun 1.4.5 (commit
+`a7733435cf40429e3b35c36072769df2052b80f1`), which fixes the High advisory
+GHSA-p268-p2w7-qr8x in Bun 1.4.4's bundled LSQUIC. The release archive matches
+Bun's SHASUMS256.txt, whose signature verifies with Bun's release key
+`F3DCC08A8572C0749B3E18888EAB4D40A7B22B59`; the npm executable is byte-identical
+to the archive's. The executable reports WebKit `d6375c72affe` (unchanged),
+BoringSSL `fe703e9faa3b` and c-ares `0b88066f79ac`.
+
+On d69, repeated provisioning reproduces helper SHA-256
+`7fc568ce70eeb6bbebe7e1fe676419b258e6b5f371b6daa538b6e300abef9fd0`.
+All 77 Bun tests (595 assertions), the compiled version check, 12 no-account
+stdio cases, 3 session cases and the full 1,048,337-byte stdout regression pass.
+The compiler-backed source collector reproduces the hash from 7,395 public files.
+An offline replay of the published helper-rebuild packet with the current
+overlay files and the official Bun 1.4.5 executable, in a network namespace with
+loopback only, reproduces the same hash and passes the same 77 tests.
+
+The resident now removes every `BUN_*` variable from the helper's environment,
+as well as `PROTON_DRIVE_*` and `PUTGD_PROTON_*`, so an inherited `BUN_OPTIONS`
+or `BUN_FEATURE_FLAG_*` cannot turn on Bun's HTTP/3 client and `BUN_BE_BUN`
+cannot make the helper run as the Bun CLI. `test_proton`'s
+`helperEnvironmentDropsBunAndProtonSwitches` fails before the change.
+
+Bun 1.4.5 moves only BoringSSL, c-ares and LSQUIC among its native sources and
+adds zlib and zstd patches; WebKit, TinyCC, Rust nightly 2026-09-15, LLVM
+23.1.1, Cargo.lock, the npm lockfiles and Node 26.3.0 headers are unchanged. The
+new Bun source packet was collected with the Bun 1.4.4 packet's own collector:
+356 of its 359 inputs and the WebKit Git source archive are byte-identical to
+the 1.4.4 packet's, and the three moved archives were fetched fresh. Offline
+assembly succeeds, and Bun 1.4.5's own `scripts/build/fetch-cli.ts` reports all
+21 assembled native sources up to date with networking disabled. The notice
+supplement adds Bun 1.4.5's source and the three changed archives (3,649
+records, one new text).
+
+The native modification/relink and compiled-helper source-selection proofs and
+the desktop/resource acceptance (P6) describe the Bun 1.4.4 helper `34dda9fa8550`;
+they are open gates in notices/SOURCES.json for this helper.
+
+The records below are historical and do not establish current acceptance.
+
 # SDK 0.23.0 / Crypto 2.2.0 / Bun 1.4.4 (#1071)
 
 On d69, repeated builds of the current helper reproduce SHA-256

@@ -17,7 +17,7 @@ class Publication(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
         self.commit = 'a' * 40
-        self.tag = 'proton-sources-0.23.0-crypto2.2.0-bun1.4.4'
+        self.tag = 'proton-sources-0.23.0-crypto2.2.0-bun1.4.5'
         self.parts = []
         for name in publisher.PART_NAMES:
             data = name.encode()

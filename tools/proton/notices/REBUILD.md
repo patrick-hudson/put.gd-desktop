@@ -6,15 +6,19 @@ then extract and verify every packet against the catalog. The updated transport
 has its own permanent release URLs; earlier published packets remain available.
 
 The current helper-rebuild packet supplies the patched SDK/account and approved
-GPL crypto 2.2.0 source graph plus locked dependencies for Bun 1.4.4.
+GPL crypto 2.2.0 source graph plus locked dependencies. Its build-only Bun npm
+packages are still 1.4.4: the helper is compiled with the official Bun 1.4.5
+executable below, never with those packages, and the overlay's lockfiles name 1.4.5.
 The application source archive supplies the applicationSourceOverlay files listed
 in SOURCES.json. Verify their hashes before copying them over build-source/.
 The overlay includes package.json and package-lock.json; use the matching packet's
 dependencies. The older Bun 1.4.2 dependency tree is not the current rebuild input.
 
-Obtain the official Linux x64 Bun 1.4.4 release archive identified in
+Obtain the official Linux x64 Bun 1.4.5 release archive identified in
 tools/proton/runtime-lock.json. Verify its SHA-256, extract the executable and
-verify bunSha256. Set proton_bun to that executable's absolute path:
+verify bunSha256. Bun's SHASUMS256.txt for that release is signed with key
+F3DCC08A8572C0749B3E18888EAB4D40A7B22B59. Set proton_bun to that executable's
+absolute path:
 
 ```sh
 cd build-source
@@ -40,7 +44,7 @@ manifest; CMake checks those inputs and binds the helper hash. No project signin
 key is needed for this source rebuild. A modified artifact is not expected to
 match the official production helper hash or inherit its acceptance receipts.
 
-The Bun 1.4.4 packet preserves its complete Bun source, exact WebKit Git source
+The Bun 1.4.5 packet preserves its complete Bun source, exact WebKit Git source
 objects, current native recipes/patches, Cargo/npm source inputs, ICU 78.3 source,
 Rust nightly 2026-09-15 identity metadata and preferred standard-library source.
 Its manifests bind every input. Run assemble_offline.py --destination NEW_DIR
@@ -51,10 +55,10 @@ upstream build requirements for a native build with local JavaScriptCore.
 
 The native rebuild supplement and OpenPGP/Argon2 proofs retain their original
 bytes and historical scope. Its Bun 1.4.2 compiler selection and modifications
-must not be mistaken for current Bun 1.4.4 native verification. A fresh native
-modification/relink check is supplied by tools/proton/native_relink/ in the
-current application source. SOURCES.json binds its result to the exact current
-helper and records desktop/resource/package acceptance separately.
+must not be mistaken for current Bun 1.4.5 native verification. The native
+modification/relink recipe in tools/proton/native_relink/ was last run for Bun
+1.4.4; SOURCES.json lists the Bun 1.4.5 relink as an open gate and records
+desktop/resource/package acceptance separately.
 
 The unchanged OpenPGP preferred source uses commit
 36198c3369ab8d4a02d70372d62f1aa8bc247dcb. Restore its supplied offline npm cache,

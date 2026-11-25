@@ -1,6 +1,6 @@
 # Proton runtime redistribution materials
 
-The selected helper uses official SDK 0.23.0, Bun 1.4.4, OpenPGP 6.3.1 and GPL
+The selected helper uses official SDK 0.23.0, Bun 1.4.5, OpenPGP 6.3.1 and GPL
 WebPackages crypto 2.2.0 at `68b93b7d2cadd043cd08203710af382706ed1458`.
 The crypto registry bootstrap and selected source versions both say 2.2.0.
 Historical 2.0.0/2.0.1 provenance is preserved separately.
@@ -28,12 +28,12 @@ records the approved source choice and original prepared assets. The later
 [rebuild receipt](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-15-proton-p3-rebuild.md) records
 native Bun 1.4.2/JavaScriptCore/TinyCC modification/relink and Argon2 WASM compiler
 proof using disposable pinned toolchains. P3's notice/source/rebuild work was
-completed for that earlier runtime. This proof does not establish Bun 1.4.4
+completed for that earlier runtime. This proof does not establish Bun 1.4.5
 native relink; consult SOURCES.json for the current proof and remaining gates.
 The marked native proof binaries are not production replacements.
-The current catalog updates the Bun 1.4.4, helper and build-controls packets.
-OpenPGP and the historical native rebuild supplement retain their original
-bytes; the crypto packet now includes complete 2.2.0 source and earlier evidence. SOURCES.json records source publication and P6 final-helper
+The current catalog replaces the Bun source packet with Bun 1.4.5's. The helper,
+build-controls, OpenPGP and historical native rebuild supplement packets retain
+their bytes, and the current application source supplies the helper overlay; the crypto packet now includes complete 2.2.0 source and earlier evidence. SOURCES.json records source publication and P6 final-helper
 functional/resource/package acceptance separately.
 
 Collect a fresh compiler-backed bundle into a new output directory:

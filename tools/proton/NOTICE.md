@@ -1,6 +1,6 @@
 # Bundled Proton runtime
 
-`putgd-proton-runtime` embeds official Bun 1.4.4 and calls the official Proton
+`putgd-proton-runtime` embeds official Bun 1.4.5 and calls the official Proton
 Drive JavaScript SDK 0.23.0 with Proton Crypto 2.2.0 and OpenPGP 6.3.1.
 Crypto is selected from official WebPackages commit
 `68b93b7d2cadd043cd08203710af382706ed1458`, with matching npm 2.2.0
@@ -46,7 +46,7 @@ Building or protocol testing alone does not establish those gates.
 Sources:
 - <https://github.com/ProtonDriveApps/sdk/tree/8a44654aece1609f0f7218be51c205103945abd8>
 - <https://www.npmjs.com/package/@protontech/drive-sdk/v/0.23.0>
-- <https://www.npmjs.com/package/bun/v/1.4.4>
+- <https://www.npmjs.com/package/bun/v/1.4.5>
 
 - <https://github.com/ProtonMail/WebPackages/tree/68b93b7d2cadd043cd08203710af382706ed1458>
 

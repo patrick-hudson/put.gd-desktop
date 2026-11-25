@@ -56,6 +56,21 @@ class ProtonTest : public QObject {
   QSqlDatabase::removeDatabase(connection);return ok;
  }
 private slots:
+ // #2005: the helper is a compiled Bun program, so an inherited BUN_OPTIONS
+ // (--experimental-http3-fetch) or BUN_FEATURE_FLAG_* variable could switch on
+ // Bun's HTTP/3 client. No Bun switch, and no caller-set Proton variable, reaches it.
+ void helperEnvironmentDropsBunAndProtonSwitches() {
+  QProcessEnvironment host;
+  host.insert("PATH","/usr/bin");host.insert("HOME","/home/synthetic");host.insert("DBUS_SESSION_BUS_ADDRESS","unix:path=/run/user/1000/bus");
+  host.insert("BUN_OPTIONS","--experimental-http3-fetch");host.insert("BUN_FEATURE_FLAG_EXPERIMENTAL_HTTP3_CLIENT","1");
+  host.insert("BUN_FEATURE_FLAG_DISABLE_IPV6","1");host.insert("BUN_BE_BUN","1");host.insert("BUN_CONFIG_VERBOSE_FETCH","curl");
+  host.insert("PROTON_DRIVE_API","https://example.invalid");host.insert("PUTGD_PROTON_DATA_DIR","/tmp/elsewhere");
+  const auto env=ProtonProvider::helperEnvironment(host,"/run/synthetic/proton");
+  for(const auto& key:env.keys())QVERIFY2(!key.startsWith("BUN_")&&!key.startsWith("PROTON_DRIVE_"),qPrintable(key));
+  QCOMPARE(env.value("PUTGD_PROTON_DATA_DIR"),QString("/run/synthetic/proton"));
+  QCOMPARE(env.value("PATH"),QString("/usr/bin"));QCOMPARE(env.value("HOME"),QString("/home/synthetic"));
+  QCOMPARE(env.value("DBUS_SESSION_BUS_ADDRESS"),QString("unix:path=/run/user/1000/bus"));
+ }
  void credentialModesAreValidatedByProvider() {
   ProviderRegistry registry;registry.add("proton-drive",std::make_shared<ProtonProvider>());registry.add("opaque",std::make_shared<SharingFixture>());
   QTemporaryDir tmp;auto doc=putgd::test::configuration(tmp.path());
