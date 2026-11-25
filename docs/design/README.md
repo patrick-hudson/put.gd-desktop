@@ -42,4 +42,5 @@ the [overview](overview.md) and [architecture](architecture.md).
 - [Appearance and themes](appearance.md): System, Dark and Light, theme tokens and tray tint.
 - [Clipboard after quitting](clipboard-keeper.md): the helper that holds a copied result on Budgie and Hyprland.
 - [Visual language](visual-language.md): the desktop visual language and its shared implementation.
+- [Interface wording](voice.md): the voice guide for titles, status lines, tooltips, notifications, errors, Settings descriptions and dialogs.
 - [UI catalog](ui-catalog.md): `putgd-ui-catalog` and the complete render CI publishes.
