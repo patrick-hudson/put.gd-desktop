@@ -633,6 +633,39 @@ void testStallInTheFirstStep() {
          wrong.empty() ? counts(h) : wrong);
 }
 
+// A first step that settled unmeasured on a stream that sends only changes
+// (#2000): the page jumps at once, one frame shows it moved and none follows,
+// so no frame proves it still before the next notch. Each later step was
+// sent from a rest nothing proved, never asked for the fresh frame that
+// proves one, and the whole capture went one notch a step: 78 steps for 24,
+// 0 px a notch (Sol's probe on #1995). With moving rows in the region (an
+// animation) frames come all the time and none shows the page as it was.
+void testMeasureAfterAnUnmeasuredStep() {
+  std::printf("Steps after a first step that settled unmeasured\n");
+  const Document doc = page(96);
+  struct Case {
+    const char* what;
+    int stall, restless;
+  };
+  for (const Case c : {Case{"a 3,500 ms stall in the first step", 3500, 0}, Case{"an animation in the region", 0, 24}, Case{"an animation and a 3,500 ms stall", 3500, 24}}) {
+    Harness h;
+    FakeAppSpec as;
+    as.pxPerNotch = 40;
+    as.animMinMs = as.animMaxMs = 1;
+    as.damageOnly = true;
+    as.stallAfterFirstMoveMs = c.stall;
+    as.restlessRows = c.restless;
+    h.script = [](Harness& x, int64_t t) { if (t >= 120000) x.stop.store(true); };
+    h.run(doc.img, as, options(true));
+    // Rows that change in every frame are in the image as one frame showed them.
+    const std::string wrong = c.restless ? std::string() : h.exact(doc.img, 0);
+    // 24 steps without the stall: one notch measures, then 4 a step.
+    report(fmt("%s on a stream of changes only: measured, and in a few steps", c.what),
+           h.end == SessionEnd::PageEnd && h.stats.reachedEnd && wrong.empty() && std::abs(h.stats.pxPerNotch - as.pxPerNotch) <= 0.1 * as.pxPerNotch && h.stats.steps <= 32,
+           (wrong.empty() ? counts(h) : wrong) + fmt(", %lld ms", (long long)h.stats.elapsedMs));
+  }
+}
+
 // "Scroll to the top first" with a strip under the first wheel point that
 // takes no wheel (#1536's review): two still steps there say nothing of the
 // top. The top is proved only where the wheel moves the page, or once every
@@ -1139,6 +1172,7 @@ int main() {
   testTopUnderADeadPoint();
   testOneFrameOutOfPlace();
   testStallInTheFirstStep();
+  testMeasureAfterAnUnmeasuredStep();
   testHintsCountedOnce();
   testBlankUnderPinnedParts();
   testEndAboveABlankTail();
