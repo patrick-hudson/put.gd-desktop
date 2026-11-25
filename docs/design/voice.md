@@ -47,11 +47,11 @@ happened or what a control does, give the next step if there is one, and stop.
 | Window and dialog title | Sentence-case topic, then ` — put.gd`, so taskbars and window switchers still name the app. A subject follows the topic after a colon. The main window is `put.gd`; the About window is `About put.gd`. | `History — put.gd`, `QR code: %1 — put.gd` |
 | Notification title | Sentence-case topic without `put.gd`: the desktop already shows the app as the notification's source. | `Update available` |
 | Notification body | One or two sentences: the cause, then the next step. | `put.gd %1 is available. Download it in Settings → General → Updates.` |
-| Status and tray | The concrete state in 2–4 words, at most 30 characters, no period. | `Finished with errors`, `Review before uploading` |
-| Tooltip | One phrase: verb, target and `(Shortcut)`, with no period. A second short sentence only for a caveat someone would not guess. No tooltip on a container, and none that repeats the label. Anything longer goes in the user guide. | `Upload edited image (Ctrl+Enter)` |
+| Status and tray | The concrete state in 2–4 words, at most 30 characters, no period. Go longer only when a shorter line would misstate the state. | `Finished with errors`, `Review before uploading` |
+| Tooltip | One phrase: verb, target and `(Shortcut)`, with no period. A second short sentence only for a caveat someone would not guess. No tooltip on a container, and none that repeats the label, except one that shows the full text of an elided value. Anything longer goes in the user guide. | `Upload edited image (Ctrl+Enter)` |
 | Empty state or hint | One line: what is empty, or the next action. | `No errors.` |
-| Error | The code, what failed, what was or wasn't stored, and the exact button, setting or permission that fixes it. | `` `operation_settling` Previous attempt is still finishing. Wait a moment and try again. `` |
-| Settings description | At most 3 sentences and 40 words: what it changes, its default, its limit or unit, the real trade-off (memory, privacy, turning itself off) and any failure code it causes. Internals and rare cases go in the user guide. | `Memory limit for uncompressed images waiting to be encoded (default: 64 MB). Captures that exceed this limit fail with image_memory_limit. Caps queued image data only, not total app memory.` |
+| Error | The failure code when there is one, what failed, what was or wasn't stored, and the fix when there is one, naming the exact button, setting or permission. | `` `operation_settling` Previous attempt is still finishing. Wait a moment and try again. `` |
+| Settings description | At most 3 sentences and 40 words: what it changes, its default, its limit or unit, the real trade-off (memory, privacy, turning itself off) and any failure code it causes. Internals and rare cases go in the user guide. | `Total memory for uncompressed images waiting for or being encoded (default: 64 MB). A capture that doesn't fit fails with image_memory_limit. This doesn't cap put.gd's total memory.` |
 | Dialog | The real effect and the real risks, such as a non-atomic SFTP delete or uploads that keep running. No `Effect on X:` prefix and no `Other files remain.` | `Stops uploads that were running when this dialog opened. Newer uploads keep running.` |
 
 Fit is part of the string. A status or tray line must fit its widget without eliding at the
@@ -76,5 +76,4 @@ in the same rollout, as a documentation pull request beside the code pull reques
 | Link not copied: the clipboard changed during the upload. Copy it from History. | Link not copied because your clipboard changed. Copy it from History. |
 | Nothing was uploaded: a change wasn't applied. Check the edits, then upload again. | Couldn't apply an edit, so the upload didn't start. Check your edits, then select Upload again. |
 | `proton_result_unknown` The request was cancelled after dispatch; reconcile its saved identity before retrying | `proton_result_unknown` Upload was cancelled after it was sent, so the file may already be in Proton Drive. Check there before retrying. |
-| Effect on S3: removes %1 only if the recorded identity still matches. Other objects remain. | Deletes %1 from S3 only if the recorded ETag still matches. |
 | Choose Redact tool | Switch to Redact |
