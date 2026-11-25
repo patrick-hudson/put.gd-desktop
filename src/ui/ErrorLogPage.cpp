@@ -302,7 +302,7 @@ void ErrorLogPage::openRemove(const QJsonObject& entry,std::function<void(Error,
   if(e){g->feedback(e.message,true);done(e,{});return;}
   // Added back for the same place, the file can be deleted there: History offers Delete, not this.
   if(!preview["targets"].toArray().first().toObject()["destinationRemoved"].toBool()){
-   const Error back{"destination_not_removed","This file's destination is in Settings again, so put.gd can delete it there. Delete it from History instead.",{{"historyId",historyId}}};
+   const Error back{"destination_not_removed","This file's destination is back in Destinations, so put.gd can delete it there. Delete it from History instead.",{{"historyId",historyId}}};
    g->feedback(back.message,true);done(back,{});return;
   }
   auto* dialog=HistoryWindow::deletionConfirmation(g,preview,{{historyId,entry["itemName"].toString()}},g->session_.document()["profiles"].toArray());
