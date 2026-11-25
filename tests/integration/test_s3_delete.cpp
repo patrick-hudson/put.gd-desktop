@@ -32,10 +32,12 @@ public:
     }
     ~TlsFront() { qunsetenv("PUTGD_CA_BUNDLE"); process.terminate(); process.waitForFinished(); }
     QString certificate() const { return directory.filePath("cert.pem"); }
-    // Let PASS new connections through, then reset the handshakes of the next RESET.
-    void arm(int pass, int reset) {
+    // Let PASS new connections through, then reset the handshakes of the next RESET, then lose
+    // the replies of the next DROP after forwarding their requests.
+    void arm(int pass, int reset, int drop = 0) {
         QFile plan(directory.filePath("plan"));
-        if (!plan.open(QIODevice::WriteOnly | QIODevice::Truncate) || plan.write(QByteArray::number(pass) + " " + QByteArray::number(reset) + "\n") < 0)
+        if (!plan.open(QIODevice::WriteOnly | QIODevice::Truncate) ||
+            plan.write(QByteArray::number(pass) + " " + QByteArray::number(reset) + " " + QByteArray::number(drop) + "\n") < 0)
             qFatal("TLS front plan write failed");
         QFile::remove(directory.filePath("plan.log"));
     }
@@ -596,6 +598,29 @@ private slots:
         QCOMPARE(f.events("DELETE").size(), 0);
         QVERIFY(!f.state()["objects"].toObject()["prefix é/a b.txt"].toArray().isEmpty());
         // Retry finds the file and deletes it.
+        front.arm(0, 0);
+        QCOMPARE(f.remove(uploaded.receipt, result.progress).status, QString("removed"));
+        QCOMPARE(f.events("DELETE").size(), 1);
+    }
+    // A DELETE that reached S3 and lost its reply (a reset after the request was written, libcurl's
+    // 52 or 56) is never sent again: the deletion stays unknown, with object_unknown journaled for
+    // Retry to reconcile (#2051). Only a connection that was never set up is resent.
+    void deleteWhoseReplyIsLostIsNotSentAgain() {
+        S3Fixture f;
+        f.reset();
+        TlsFront front(f);
+        const auto uploaded = f.upload(f.request());
+        QVERIFY2(uploaded.status == "uploaded", qPrintable(uploaded.error.code + ": " + uploaded.error.message));
+        front.arm(1, 0, 3);
+        QStringList phases;
+        const auto result = f.remove(uploaded.receipt, {}, [&](auto progress, auto ack) { phases.append(progress["phase"].toString()); ack({}); });
+        QCOMPARE(front.connections(), QStringList({"pass", "drop"}));
+        const int curl = result.error.details["curlCode"].toInt();
+        QVERIFY2(curl == 52 || curl == 56, qPrintable(QString::number(curl)));
+        QCOMPARE(result.status, QString("unknown"));
+        QCOMPARE(phases, QStringList({"object_intent", "object_unknown"}));
+        QCOMPARE(f.events("DELETE").size(), 1);
+        // The DELETE took effect: Retry reconciles it to removed without sending another.
         front.arm(0, 0);
         QCOMPARE(f.remove(uploaded.receipt, result.progress).status, QString("removed"));
         QCOMPARE(f.events("DELETE").size(), 1);
