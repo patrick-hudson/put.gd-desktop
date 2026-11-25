@@ -386,12 +386,14 @@ QJsonObject ProtonProvider::callOnce(const QString& method,const Destination& de
   :method=="createFolder"?QStringLiteral(", so the folder may already exist in Proton Drive. Select Refresh folders before trying again")
   :method=="storeSharePassword"?QStringLiteral(", so the link password may not be saved in your keychain. Enter it again")
   :QStringLiteral(". Try again");
+ // The same words whether put.gd's clock or the helper's ran out.
+ const auto deadlineMessage=[&]{return (method=="upload"||sharing||method=="createFolder"?QString("Proton Drive didn't finish within the %1-second Request deadline"):method=="storeSharePassword"?QString("Saving the link password didn't finish within %1 seconds"):QString("Proton Drive didn't answer within %1 seconds")).arg(timeout/1000.0)+effect+(method=="storeSharePassword"?QString():deadlineAdvice)+".";};
  while(process.running()){
   process.waitForReadable(100);consume();if(error){process.kill();break;}
   // A helper that answers in turn has answered, and waits for its next request.
   if(helper.lines&&gotResult)break;
   if(stopping_.load()||(cancelled&&cancelled->load())){error={"proton_result_unknown",(method=="upload"?QStringLiteral("Upload was cancelled after it was sent"):sharing?QStringLiteral("Share link change was cancelled after it was sent"):QStringLiteral("Request was cancelled after it was sent"))+(method=="upload"||sharing||method=="createFolder"||method=="storeSharePassword"?effect:QString())+".",{{"reason",stopping_.load()?"shutdown":"cancelled"}}};process.kill();break;}
-  if(elapsed.elapsed()>timeout){error={"proton_request_timeout",(method=="upload"||sharing||method=="createFolder"?QString("Proton Drive didn't finish within the %1-second Request deadline"):method=="storeSharePassword"?QString("Saving the link password didn't finish within %1 seconds"):QString("Proton Drive didn't answer within %1 seconds")).arg(timeout/1000.0)+effect+(method=="storeSharePassword"?QString():deadlineAdvice)+".",{{"reason","deadline"},{"timeoutMs",timeout},{"method",method}}};process.kill();break;}
+  if(elapsed.elapsed()>timeout){error={"proton_request_timeout",deadlineMessage(),{{"reason","deadline"},{"timeoutMs",timeout},{"method",method}}};process.kill();break;}
  }
  const bool waiting=helper.lines&&!error&&gotResult&&process.running();
  if(!waiting){process.waitForFinished(5000);consume();}
@@ -402,6 +404,7 @@ QJsonObject ProtonProvider::callOnce(const QString& method,const Destination& de
  if(!final["ok"].toBool()||!final["result"].toObject()["error"].toObject().isEmpty())end();
  if(!final["ok"].toBool()){
   error=parseError(final["error"].toObject());if(!error)error={"proton_failed","Proton Drive request failed.",{}};
+  if(error.code=="proton_request_timeout")error.message=deadlineMessage();
   // Only protocol-defined pre-mutation failures prove no remote side effect.
   if(outcomeUncertain&&QStringList{"invalid_request","authentication_required","session_unread","account_changed","artifact_changed","keychain_unavailable","invalid_destination","invalid_receipt","keychain_required","unsupported_request","unsupported_condition","unsupported_safe_removal","unsafe_data_directory","destination_unavailable"}.contains(error.code))*outcomeUncertain=false;
   return {};
