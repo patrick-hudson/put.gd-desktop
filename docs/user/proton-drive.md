@@ -164,7 +164,7 @@ changed gets no link. Agents call `operation.retry` with `"scope":"sharing"`
 `retry_would_upload` while another file of the upload still needs its upload
 (#1399, #1496). **Inspect link** only reads: it never makes a link. A row whose
 link is uncertain with no link wanted, such as an interrupted inspection or
-revocation, shows **Sharing outcome needs inspection** and offers Inspect link.
+revocation, shows **Share link status unknown** and offers Inspect link.
 After a crash the notification is not shown again, so the History row is where
 an unfinished link appears.
 
