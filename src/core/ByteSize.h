@@ -3,6 +3,7 @@
 #include <QString>
 #include <QLocale>
 #include <cmath>
+#include <limits>
 
 namespace putgd::ByteSize {
 inline constexpr qint64 MiB = 1024 * 1024;
@@ -93,10 +94,14 @@ inline QString fileSummary(qint64 bytes) {
 inline QString localized(qint64 bytes, int precision = 1, const QLocale& locale = QLocale()) {
     if (bytes <= 0) return QStringLiteral("0 KB");
     if (bytes <= 102) return QStringLiteral("<0.1 KB");
-    static const char* const units[] = {"KB", "MB", "GB", "TB"};
-    double value = double(bytes) / 1024;
+    static const char* const units[] = {"KB", "MB", "GB", "TB", "PB", "EB"};
+    // The unit comes from whole powers of 1024; qint64 tops out below 8 EB.
     int unit = 0;
-    while (value >= 1024 && unit < 3) { value /= 1024; ++unit; }
+    for (qint64 scale = MiB; unit < 5 && bytes >= scale; scale *= 1024) {
+        ++unit;
+        if (scale > std::numeric_limits<qint64>::max() / 1024) break;
+    }
+    const double value = double(bytes) / std::pow(1024.0, unit + 1);
     return locale.toString(value, 'f', precision) + ' ' + QLatin1String(units[unit]);
 }
 inline QString admissionLimit(qint64 bytes) {

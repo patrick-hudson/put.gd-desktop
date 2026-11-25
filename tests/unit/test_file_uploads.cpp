@@ -67,7 +67,7 @@ private slots:
    QCOMPARE(ByteSize::localized(0,1,locale),QString("0 KB"));QCOMPARE(ByteSize::localized(7,1,locale),QString("<0.1 KB"));
    QCOMPARE(ByteSize::localized(512,1,locale),locale.toString(0.5,'f',1)+" KB");QCOMPARE(ByteSize::localized(1023,1,locale),locale.toString(1.0,'f',1)+" KB");
    QCOMPARE(ByteSize::localized(1536,1,locale),locale.toString(1.5,'f',1)+" KB");QCOMPARE(ByteSize::localized(5*1024*1024,1,locale),locale.toString(5.0,'f',1)+" MB");}
-  QCOMPARE(ByteSize::admissionLimit(0),QString("0 MB"));
+  QCOMPARE(ByteSize::admissionLimit(0),QString("0 MB"));QCOMPARE(ByteSize::localized(qint64(1)<<50,1,QLocale::c()),QString("1.0 PB"));QCOMPARE(ByteSize::localized(qint64(1)<<60,1,QLocale::c()),QString("1.0 EB"));
  }
  void initTestCase() {
   QVERIFY(dir_.isValid());logging::open(dir_.filePath("state/logs"));
