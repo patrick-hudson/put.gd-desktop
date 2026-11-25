@@ -563,14 +563,14 @@ The tool row's free middle shows one message at a time; a lower one waits instea
 squeezed in, and nothing is truncated to an unreadable fragment at 1440 px. In order:
 
 1. **Placing a cover:** "Draw the redaction · 0:08.2 – 0:12.6" (or "· whole recording"), or
-   "Draw the blur (may be reversible) · …", with a **Cancel** button (Esc); "Loading the frame
+   "Draw the blur (text can be recovered) · …", with a **Cancel** button (Esc); "Loading the frame
    to draw on…" while the frame waits more than 100 ms.
 2. **A frame error** with **Retry preview**. While a placement waits for its frame the error
    comes before the prompt, so the reason shows.
 3. **A short note,** for its time only: what an undo or redo changed ("Undid: Cut 0:13.0–0:19.5",
    "Redid: …", 1.5 s), the new speed ("Speed 2×", 1 s; J at 1× says "Paused"), the Delete note above (2 s), and
    "Arrows move the box · Esc for frames".
-4. **The blur warning** "Blur may be reversible. Use Redact for private information.", when a
+4. **The blur warning** "Blurred text can sometimes be recovered. Use Redact for secrets.", when a
    blur is armed or selected; not repeated here while the side panel already shows it.
 
 ### Known limits
