@@ -769,11 +769,11 @@ void ScrollTracker::Tally::total() {
 
 // Bands of cur row y against ref row y + d (cur row y shows what ref row
 // y + d showed), over every row of the overlap, per tile.
-void ScrollTracker::bandTally(const Signature& cur, const Signature& ref, int d, Tally& t) const {
+void ScrollTracker::bandTally(const Signature& cur, const Signature& ref, int d, Tally& t, unsigned tolOverride) const {
   const int H = cur.h, B = cur.bands;
   const int y0 = std::max(0, -d), y1 = std::min(H, H - d);
   t.clear(B, H);
-  const unsigned tol = unsigned(bandTol_);
+  const unsigned tol = tolOverride ? tolOverride : unsigned(bandTol_);
   for (int y = y0; y < y1; ++y) {
     const size_t tile = size_t(y / kTileRows) * B;
     const unsigned agreeing = accumulate(cur.bandRow(y), ref.bandRow(y + d), cur.bandTexRow(y), ref.bandTexRow(y + d),
@@ -788,11 +788,11 @@ void ScrollTracker::bandTally(const Signature& cur, const Signature& ref, int d,
 // The same for cells, on every second row, per tile of bands: the finer
 // check that decides between neighbouring offsets and between lines of text
 // that differ in a few characters.
-void ScrollTracker::cellTally(const Signature& cur, const Signature& ref, int d, Tally& t) const {
+void ScrollTracker::cellTally(const Signature& cur, const Signature& ref, int d, Tally& t, unsigned tolOverride) const {
   const int H = cur.h, B = cur.bands, C = cur.cells;
   const int y0 = std::max(0, -d), y1 = std::min(H, H - d);
   t.clear(B, H);
-  const unsigned tol = unsigned(opts_.cellTolerance);
+  const unsigned tol = tolOverride ? tolOverride : unsigned(opts_.cellTolerance);
   std::vector<uint16_t> ca(static_cast<size_t>(C)), ci(static_cast<size_t>(C));
   const auto fold = [&](int tileRow) {
     for (int k = 0; k < B; ++k) {
@@ -830,6 +830,15 @@ void ScrollTracker::cellTally(const Signature& cur, const Signature& ref, int d,
 // a little: within twice the cell tolerance nearly all agree where they were,
 // where a page moved by even a pixel or a playing video agrees on far fewer.
 constexpr unsigned kRedrawTolerance = 2;
+// A greyscale-to-LCD text redraw shifts every text stroke systematically in the
+// same direction, so averaging across a wider band does not reduce the shift by
+// 1/sqrt(width) as random noise does. Keep redraw band tolerance proportional
+// to cellTolerance (at least 1.5x cellTolerance and 2x bandTol_) so full-width
+// viewports (where bandTol_ drops to 160-182) still tolerate the shift.
+unsigned ScrollTracker::redrawBandTol() const {
+  return std::max(kRedrawTolerance * unsigned(bandTol_), (unsigned(opts_.cellTolerance) * 3u) / 2u);
+}
+unsigned ScrollTracker::redrawCellTol() const { return kRedrawTolerance * unsigned(opts_.cellTolerance); }
 
 bool ScrollTracker::stillFrame(const Signature& cur, const Signature& ref, double* share, bool* redrawn) const {
   const int H = cur.h, C = cur.cells, B = cur.bands;
@@ -1044,9 +1053,9 @@ void ScrollTracker::judge(Candidate& c, const Tally& bands, const Tally& cells, 
 // 16th row of the overlap, the first quarter of them (every 64th) before it
 // is given up.
 double ScrollTracker::coarseShare(const Signature& cur, const Signature& ref, int d, double abortBelow,
-                                  const std::vector<uint16_t>& incl) const {
+                                  const std::vector<uint16_t>& incl, unsigned tolOverride) const {
   const int H = cur.h, B = cur.bands;
-  const unsigned tol = unsigned(bandTol_);
+  const unsigned tol = tolOverride ? tolOverride : unsigned(bandTol_);
   unsigned agree = 0, inf = 0;
   int used = 0;
   for (int y : anchors_) {
@@ -1063,9 +1072,11 @@ double ScrollTracker::coarseShare(const Signature& cur, const Signature& ref, in
 // Every offset that keeps more than a sliver of overlap, coarse first, then
 // the local best of each basin on every row, then cells.
 std::vector<ScrollTracker::Candidate> ScrollTracker::searchPair(const Signature& cur, const Signature& ref,
-                                                                 int expected, double floorOverride) const {
+                                                                 int expected, double floorOverride,
+                                                                 unsigned bandTolOverride,
+                                                                 unsigned cellTolOverride) const {
   std::vector<Candidate> out;
-  searchPass(cur, ref, expected, bandIncl_, out, floorOverride);
+  searchPass(cur, ref, expected, bandIncl_, out, floorOverride, bandTolOverride, cellTolOverride);
   // A second layer: when the best candidate leaves much of the frame neither
   // moving with it nor standing still, something else moved too (the page
   // under a dense inner box, or the box over a sparse page). Its tiles are
@@ -1081,7 +1092,7 @@ std::vector<ScrollTracker::Candidate> ScrollTracker::searchPair(const Signature&
   for (int y = 0; y < H; ++y)
     for (int k = 0; k < B; ++k)
       if (m[size_t(y / kTileRows) * B + k] == 1) masked[size_t(y) * B + k] = 0;
-  searchPass(cur, ref, expected, masked, out, floorOverride);
+  searchPass(cur, ref, expected, masked, out, floorOverride, bandTolOverride, cellTolOverride);
   return out;
 }
 
@@ -1090,7 +1101,7 @@ std::vector<ScrollTracker::Candidate> ScrollTracker::searchPair(const Signature&
 // on every row, then cells; the candidates are added to `out`.
 void ScrollTracker::searchPass(const Signature& cur, const Signature& ref, int expected,
                                const std::vector<uint16_t>& incl, std::vector<Candidate>& out,
-                               double floorOverride) const {
+                               double floorOverride, unsigned bandTolOverride, unsigned cellTolOverride) const {
   const int H = cur.h;
   // A limit, not a defect: the pair follows moves up to H less a sliver
   // (minOverlapRows, or minOverlapFraction of H). At the product's smallest
@@ -1103,7 +1114,7 @@ void ScrollTracker::searchPass(const Signature& cur, const Signature& ref, int e
   std::vector<float> coarse(size_t(n), 0.f);
   const double floor = floorOverride > 0.0 ? floorOverride : opts_.coarseFloor;
   for (int d = -dmax; d <= dmax; ++d)
-    if (d != 0) coarse[size_t(d + dmax)] = float(coarseShare(cur, ref, d, floor, incl));
+    if (d != 0) coarse[size_t(d + dmax)] = float(coarseShare(cur, ref, d, floor, incl, bandTolOverride));
   std::vector<int> peaks = pickPeaks(coarse, floor, std::clamp(expected, -dmax, dmax) + dmax);
   // Each basin's best on every row; the most promising ones then by cells.
   struct Fine {
@@ -1118,7 +1129,7 @@ void ScrollTracker::searchPass(const Signature& cur, const Signature& ref, int e
     double bestShare = -1;
     for (int d = std::max(-dmax, at - 1); d <= std::min(dmax, at + 1); ++d) {
       if (d == 0) continue;
-      bandTally(cur, ref, d, t);
+      bandTally(cur, ref, d, t, bandTolOverride);
       if (t.share() > bestShare) {
         bestShare = t.share();
         best.d = d;
@@ -1148,7 +1159,7 @@ void ScrollTracker::searchPass(const Signature& cur, const Signature& ref, int e
     fine.resize(keep);
   }
   for (const Fine& f : fine) {
-    cellTally(cur, ref, f.d, tc);
+    cellTally(cur, ref, f.d, tc, cellTolOverride);
     Candidate c;
     c.d = f.d;
     judge(c, f.bands, tc, std::max(0, -f.d), std::min(H, H - f.d), floorOverride > 0.0);
@@ -1166,9 +1177,9 @@ void ScrollTracker::searchPass(const Signature& cur, const Signature& ref, int e
     if (c.cells < best - opts_.tieCells) continue;
     for (int step : {-1, 1}) {
       for (int d = c.d + step, walked = 0; d != 0 && std::abs(d) <= dmax && walked < kWalk; d += step, ++walked) {
-        cellTally(cur, ref, d, tc);
+        cellTally(cur, ref, d, tc, cellTolOverride);
         if (tc.share() <= c.cells) break;
-        bandTally(cur, ref, d, t);
+        bandTally(cur, ref, d, t, bandTolOverride);
         Candidate n;
         n.d = d;
         judge(n, t, tc, std::max(0, -d), std::min(H, H - d), floorOverride > 0.0);
@@ -1178,6 +1189,57 @@ void ScrollTracker::searchPass(const Signature& cur, const Signature& ref, int e
   }
   std::sort(out.begin(), out.end(), [](const Candidate& a, const Candidate& b) { return a.d < b.d; });
   out.erase(std::unique(out.begin(), out.end(), [](const Candidate& a, const Candidate& b) { return a.d == b.d; }), out.end());
+}
+
+// Verifies that a redraw-tolerance pair candidate is genuinely the same moving
+// page redrawn with different text antialiasing (e.g. Chrome's greyscale -> LCD
+// switch mid-scroll, #1764), rather than a shifted page, look-alike or layout
+// change: nearly all moving cells agree within redrawCellTol, bands agree
+// strongly within redrawBandTol, no competing look-alike exists, the offset is
+// a sharp 1-px peak at both strict and redraw tolerances, and at least half of
+// its moving cells already agree at the normal cell tolerance.
+bool ScrollTracker::verifyRedrawCandidate(const Signature& cur, const Signature& ref, const Candidate& rc,
+                                          const std::vector<Candidate>& rCands, bool allowRepeat) const {
+  constexpr double kRedrawMinBands = 0.92;
+  constexpr double kRedrawMinStrictCells = 0.50;
+  if (!rc.accepted || rc.d == 0) return false;
+  if (rc.cellsKept < opts_.stillShare || rc.bandsKept < kRedrawMinBands) return false;
+  if (!allowRepeat) {
+    for (const Candidate& o : rCands) {
+      if (!o.accepted || std::abs(o.d - rc.d) < kSamePlaceRows || o.cells < rc.cells - opts_.recoverTie) continue;
+      int both = 0;
+      for (size_t t = 0; t < o.moving.size() && t < rc.moving.size(); ++t) both += o.moving[t] == 1 && rc.moving[t] == 1;
+      if (2 * both >= std::min(o.movingTiles, rc.movingTiles)) return false;
+    }
+  }
+  const int dmax = cur.h - sliverRows(opts_, cur.h);
+  const unsigned rCellTol = redrawCellTol();
+  Tally tcStrict;
+  cellTally(cur, ref, rc.d, tcStrict, 0);
+  unsigned sAgree = 0, sInf = 0;
+  for (size_t i = 0; i < rc.moving.size() && i < tcStrict.inf.size(); ++i)
+    if (rc.moving[i] == 1) {
+      sAgree += tcStrict.agree[i];
+      sInf += tcStrict.inf[i];
+    }
+  if (sInf < unsigned(4 * opts_.minEvidenceRows)) return false;
+  const double strictKept = double(sAgree) / sInf;
+  if (strictKept < kRedrawMinStrictCells || rc.cellsKept <= strictKept) return false;
+  // Must be a sharp local peak at rc.d (rejects 1-px drift and soft blur).
+  const double strictAll = tcStrict.share();
+  Tally tcN;
+  for (const int nd : {rc.d - 1, rc.d + 1}) {
+    if (nd == 0) {
+      if (wholeCells(cur, ref, rc.d, rCellTol) < wholeCells(cur, ref, 0, rCellTol) + kStillMargin) return false;
+      continue;
+    }
+    if (std::abs(nd) > dmax) continue;
+    cellTally(cur, ref, nd, tcN, rCellTol);
+    if (rc.cells < tcN.share() + kStillMargin) return false;
+    cellTally(cur, ref, nd, tcN, 0);
+    if (strictAll < tcN.share() + kStillMargin) return false;
+  }
+  return true;
 }
 
 // Local maxima of a coarse score above the floor, best first, a few of them,
@@ -1400,10 +1462,11 @@ int ScrollTracker::decide(std::vector<Candidate>& cands, int expected, int uncer
 }
 
 // Bands of the frame placed at pos against the store's rows.
-void ScrollTracker::storeBandTally(const Signature& cur, long long pos, int rowStep, Tally& t) const {
+void ScrollTracker::storeBandTally(const Signature& cur, long long pos, int rowStep, Tally& t,
+                                   unsigned tolOverride) const {
   const int H = cur.h, B = cur.bands;
   t.clear(B, H);
-  const unsigned tol = unsigned(bandTol_);
+  const unsigned tol = tolOverride ? tolOverride : unsigned(bandTol_);
   for (int y = 0; y < H; y += rowStep) {
     const long long p = pos + y;
     if (!store_->has(p)) continue;
@@ -1479,10 +1542,11 @@ void ScrollTracker::storeCellSigs(long long from, int n, std::vector<uint16_t>& 
 // Cells of the frame placed at pos against the canvas's written rows, from
 // signatures of the rows [from, from + n) computed once (storeCellSigs).
 void ScrollTracker::storeCellTally(const Signature& cur, long long pos, const std::vector<uint16_t>& sigs,
-                                   const std::vector<uint8_t>& have, long long from, Tally& t) const {
+                                   const std::vector<uint8_t>& have, long long from, Tally& t,
+                                   unsigned tolOverride) const {
   const int H = cur.h, C = cur.cells, B = cur.bands;
   t.clear(B, H);
-  const unsigned tol = unsigned(opts_.cellTolerance);
+  const unsigned tol = tolOverride ? tolOverride : unsigned(opts_.cellTolerance);
   const long long n = (long long)have.size();
   for (int y = 0; y < H; ++y) {
     const long long p = pos + y;
@@ -1512,37 +1576,81 @@ void ScrollTracker::storeCellTally(const Signature& cur, long long pos, const st
 // (the second opinion after the pair: wayscrollshot's check against the
 // long image). Dynamic bands (such as playing video) are excluded here.
 bool ScrollTracker::contradicted(const Signature& cur, long long pos, double keepShare) const {
+  const auto tileStats = [&](const Tally& t, int& kept, int& shown, int& tileRows) {
+    kept = shown = tileRows = 0;
+    const int B = cur.bands;
+    for (size_t i = 0; i < t.inf.size(); ++i) {
+      if (t.inf[i] < 2) continue;
+      ++shown;
+      kept += t.keptTile(i);
+    }
+    for (size_t r = 0; r * size_t(B) < t.inf.size(); ++r)
+      for (int k = 0; k < B; ++k)
+        if (t.inf[r * size_t(B) + size_t(k)] >= 2) {
+          ++tileRows;
+          break;
+        }
+  };
   Tally t;
   storeBandTally(cur, pos, 1, t);
   // By area: dense text in a box that moved on its own must not outvote a
   // sparser page.
-  int kept = 0, shown = 0;
-  const int B = cur.bands;
-  int tileRows = 0;
-  for (size_t i = 0; i < t.inf.size(); ++i) {
-    if (t.inf[i] < 2) continue;
-    ++shown;
-    kept += t.keptTile(i);
-  }
-  for (size_t r = 0; r * size_t(B) < t.inf.size(); ++r)
-    for (int k = 0; k < B; ++k)
-      if (t.inf[r * size_t(B) + size_t(k)] >= 2) {
-        ++tileRows;
-        break;
-      }
+  int kept = 0, shown = 0, tileRows = 0;
+  tileStats(t, kept, shown, tileRows);
   // Over a third of the frame's rows at least, as a place found again: a
   // sliver of the image at the frame's top (the first frames' cells still
   // wait to be written) under something that has just appeared there (a
   // header that sticks once the page moved) says nothing about the place.
-  return shown >= 16 && 3 * tileRows * kTileRows >= cur.h && double(kept) / shown < keepShare;
+  if (!(shown >= 16 && 3 * tileRows * kTileRows >= cur.h && double(kept) / shown < keepShare)) return false;
+  // Before rejecting as a contradiction, check whether the frame is the same
+  // stored page redrawn with different text antialiasing (e.g. Chrome's
+  // greyscale -> LCD switch, #1764): bands must agree at redrawBandTol over
+  // at least keepShare of shown tiles, AND stored canvas cells inside those
+  // tiles must agree on >= stillShare at redrawCellTol, >= 0.50 at normal
+  // cellTolerance, and form a sharp peak against pos +/- 1.
+  Tally rt;
+  storeBandTally(cur, pos, 1, rt, redrawBandTol());
+  int rKept = 0, rShown = 0, rTileRows = 0;
+  tileStats(rt, rKept, rShown, rTileRows);
+  if (rShown < 16 || 3 * rTileRows * kTileRows < cur.h || double(rKept) / rShown < keepShare) return true;
+  const int y0 = int(std::clamp<long long>(top_ - pos, 0, cur.h));
+  const int y1 = int(std::clamp<long long>(bottom_ - pos, 0, cur.h));
+  if (y1 <= y0) return true;
+  const long long from = pos + y0 - 1;
+  std::vector<uint16_t> sigs;
+  std::vector<uint8_t> have;
+  storeCellSigs(from, (y1 - y0) + 2, sigs, have);
+  const unsigned rCellTol = redrawCellTol();
+  Tally rct, sct;
+  storeCellTally(cur, pos, sigs, have, from, rct, rCellTol);
+  storeCellTally(cur, pos, sigs, have, from, sct, 0);
+  unsigned rca = 0, rci = 0, sca = 0, sci = 0;
+  for (size_t i = 0; i < rt.inf.size() && i < rct.inf.size(); ++i) {
+    if (!rt.keptTile(i)) continue;
+    rca += rct.agree[i];
+    rci += rct.inf[i];
+    sca += sct.agree[i];
+    sci += sct.inf[i];
+  }
+  if (rci < unsigned(4 * opts_.minEvidenceRows) || sci == 0) return true;
+  const double redrawCells = double(rca) / rci;
+  const double strictCells = double(sca) / sci;
+  if (redrawCells < opts_.stillShare || strictCells < 0.50 || redrawCells <= strictCells) return true;
+  const double allRedraw = rct.share();
+  Tally nt;
+  for (const long long np : {pos - 1, pos + 1}) {
+    storeCellTally(cur, np, sigs, have, from, nt, rCellTol);
+    if (nt.infSum >= unsigned(4 * opts_.minEvidenceRows) && allRedraw < nt.share() + kStillMargin) return true;
+  }
+  return false;
 }
 
 // The share of textured cells outside what is pinned, excluded or dynamic,
 // over the whole overlap, that agree between the frame and the reference at d
 // (the still lanes included).
-double ScrollTracker::wholeCells(const Signature& cur, const Signature& ref, int d) const {
+double ScrollTracker::wholeCells(const Signature& cur, const Signature& ref, int d, unsigned tolOverride) const {
   const int H = cur.h, C = cur.cells, B = cur.bands;
-  const unsigned tol = unsigned(opts_.cellTolerance);
+  const unsigned tol = tolOverride ? tolOverride : unsigned(opts_.cellTolerance);
   unsigned agree = 0, inf = 0;
   for (int y = std::max(0, -d); y < std::min(H, H - d); ++y) {
     const uint16_t* pa = &closed16_[size_t(std::min(y / opts_.blockRows, blockRowCount_ - 1)) * C];
@@ -2184,7 +2292,7 @@ std::vector<ScrollTracker::Candidate> ScrollTracker::searchStore(const Signature
 // stayed where they were while textured (and are not where the page moved
 // them) vote for "stayed", cells that are where the page moved them and not
 // where they were vote for "moved".
-void ScrollTracker::learn(const Signature& cur, const Signature& ref, int d) {
+void ScrollTracker::learn(const Signature& cur, const Signature& ref, int d, bool redrawMatch) {
   const int H = cur.h, C = cur.cells, R = opts_.blockRows;
   if (std::abs(d) < opts_.learnMinStep) {
     // Too small a step to learn from: what the last step held back stays held
@@ -2195,7 +2303,8 @@ void ScrollTracker::learn(const Signature& cur, const Signature& ref, int d) {
   ++learnedSteps_;
   std::vector<uint16_t> stay(size_t(blockRowCount_) * C, 0), stayFlat(size_t(blockRowCount_) * C, 0),
       move(size_t(blockRowCount_) * C, 0), astray(size_t(blockRowCount_) * C, 0);
-  const unsigned tol = unsigned(opts_.cellTolerance);
+  const unsigned tol = redrawMatch ? redrawCellTol() : unsigned(opts_.cellTolerance);
+  const unsigned stayTol = unsigned(opts_.cellTolerance) / 8;
   for (int y = 0; y < H; ++y) {
     const bool fwd = y + d >= 0 && y + d < H, back = y - d >= 0 && y - d < H;
     // Where neither frame shows where the page moved this row, a cell that
@@ -2204,7 +2313,7 @@ void ScrollTracker::learn(const Signature& cur, const Signature& ref, int d) {
     const size_t base = size_t(std::min(y / R, blockRowCount_ - 1)) * C;
     const auto exclAt = [&](int yy) { return &exclLane16_[size_t(std::min(yy / R, blockRowCount_ - 1)) * C]; };
     votes(cur.cellRow(y), ref.cellRow(y), cur.cellTexRow(y), ref.cellTexRow(y), fwd ? ref.cellRow(y + d) : nullptr,
-          back ? cur.cellRow(y - d) : nullptr, fwd ? exclAt(y + d) : nullptr, back ? exclAt(y - d) : nullptr, C, tol, tol / 8,
+          back ? cur.cellRow(y - d) : nullptr, fwd ? exclAt(y + d) : nullptr, back ? exclAt(y - d) : nullptr, C, tol, stayTol,
           pageCell_, &stay[base], &stayFlat[base], &move[base], &astray[base]);
   }
   bool changed = false;
@@ -3052,8 +3161,9 @@ int ScrollTracker::pinnedGroups(const std::vector<uint8_t>& mask, std::vector<in
 // behind another part that stays on the screen (a contents column sliding up
 // under the sticky header as the page's end carries it off), are not
 // compared. Gives up (0) once it cannot reach `floor`.
-double ScrollTracker::looseShare(const Loose& part, const Signature& cur, int s, double floor, int* compared) const {
-  const unsigned tol = unsigned(opts_.cellTolerance);
+double ScrollTracker::looseShare(const Loose& part, const Signature& cur, int s, double floor, int* compared,
+                                 unsigned tolOverride) const {
+  const unsigned tol = tolOverride ? tolOverride : unsigned(opts_.cellTolerance);
   const size_t n = part.values.size();
   const long long allowed = (long long)((1.0 - floor) * double(n));
   long long agree = 0, miss = 0;
@@ -3141,8 +3251,9 @@ void ScrollTracker::markLoose(const Loose& part) {
 
 // Before a placed frame is learned from and composed: the pinned parts that
 // came loose since the last placed frame, and where the loose ones are now.
-void ScrollTracker::followPinned(const Signature& cur, const Signature& ref, int d) {
+void ScrollTracker::followPinned(const Signature& cur, const Signature& ref, int d, bool redrawMatch) {
   const int C = cells_, R = opts_.blockRows, H = height_;
+  const unsigned inPlaceTol = redrawMatch ? redrawCellTol() : 0u;
   // Where a part can be seen (hiddenAt): the page's area and where the loose
   // parts lay, as the last placed frame left them.
   pageArea(followArea_);
@@ -3239,7 +3350,7 @@ void ScrollTracker::followPinned(const Signature& cur, const Signature& ref, int
       if (int(part.values.size()) < kLooseCells) continue;  // too little of it to follow
       followable[size_t(g)] = 1;
       int compared = 0;
-      const double here = looseShare(part, cur, 0, 0.0, &compared);
+      const double here = looseShare(part, cur, 0, 0.0, &compared, inPlaceTol);
       int s = INT_MIN;
       if (here < kInPlace && 10 * stale <= part.values.size()) {
         s = findLoose(part, cur, -d, std::min(0, -d) - kLooseSlack, std::max(0, -d) + kLooseSlack);
@@ -3303,7 +3414,7 @@ void ScrollTracker::followPinned(const Signature& cur, const Signature& ref, int
     int pairMoved = 0, pairStill = 0;
     bool pairBarMoved = false;
     if (d != 0) {
-      const unsigned tol = unsigned(opts_.cellTolerance);
+      const unsigned tol = redrawMatch ? redrawCellTol() : unsigned(opts_.cellTolerance);
       for (int g = 0; g < groups; ++g) {
         if (!followable[size_t(g)]) continue;
         const Loose& part = found[size_t(g)];
@@ -3574,7 +3685,7 @@ void ScrollTracker::writeCells(long long p, const uint8_t* row, const uint16_t* 
 // finish() where nothing better was written. What stays on the screen is
 // never written from a frame: finish() draws it once.
 void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Signature* ref, int d, long long pos,
-                            TrackResult& r) {
+                            TrackResult& r, bool redrawMatch) {
   const int H = height_, C = cells_;
   const long long cap = opts_.maxOutputRows;
   const long long top0 = top_, bot0 = bottom_;
@@ -3623,7 +3734,8 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
   std::vector<uint64_t> full(static_cast<size_t>(words), ~0ull), mask(static_cast<size_t>(words)),
       proved(static_cast<size_t>(words));
   if (C % 64) full[size_t(words - 1)] = (1ull << (C % 64)) - 1;
-  const unsigned tol = unsigned(opts_.cellTolerance);
+  const unsigned tol = redrawMatch ? redrawCellTol() : unsigned(opts_.cellTolerance);
+  const unsigned repeatTol = unsigned(opts_.cellTolerance) / 8;
   // 1. Proved (#1538): a cell this frame shows where the last placed frame
   //    showed it, moved by the page's step, and not as that frame showed the
   //    same spot of the screen. Only the page does that: what stays on the
@@ -3718,7 +3830,7 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
           if (absDiff(a[c], there[c]) > tol) {
             take |= 1ull << bit;
             moved |= 1ull << bit;
-          } else if ((ta[c] || tb[c]) && absDiff(a[c], b[c]) <= tol / 8) {
+          } else if ((ta[c] || tb[c]) && absDiff(a[c], b[c]) <= repeatTol) {
             // Repeating at the step's distance repeats exactly (a table's
             // equal rows): what stays put a shade off the page there (a
             // toolbar's edge, a banner that has just stopped) is not it.
@@ -3738,7 +3850,7 @@ void ScrollTracker::compose(const FrameView& f, const Signature& cur, const Sign
           verNeed &= verNeed - 1;
           const int c = w * 64 + bit;
           if (absDiff(a[c], b[c]) > tol) continue;
-          if (absDiff(a[c], there[c]) > tol || ((ta[c] || tb[c]) && absDiff(a[c], b[c]) <= tol / 8))
+          if (absDiff(a[c], there[c]) > tol || ((ta[c] || tb[c]) && absDiff(a[c], b[c]) <= repeatTol))
             moved |= 1ull << bit;
         }
         blockProved[size_t(brow) * words + size_t(w)] |= moved;
@@ -4169,9 +4281,9 @@ void ScrollTracker::narrowPending(Pending& pend, const std::vector<uint64_t>& bl
 }
 
 void ScrollTracker::placeFrame(const FrameView& f, Signature& cur, const Signature* ref, int d, long long pos,
-                               TrackResult& r) {
+                               TrackResult& r, bool redrawMatch) {
   ++frameSerial_;
-  compose(f, cur, ref, d, pos, r);
+  compose(f, cur, ref, d, pos, r, redrawMatch);
   const bool first = !hasFrame_;
   hasFrame_ = true;
   if (first) {
@@ -4520,6 +4632,28 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     }
   }
   if (stillish && !wholeMove && (pick < 0 || cands[size_t(pick)].cells < share + kStillMargin)) return noMovement(true);
+  // Chrome can switch a page's text from greyscale to subpixel (LCD)
+  // antialiasing while the page is moving (#1764): about 16% of textured cells
+  // and 31% of voting bands cross the normal tolerance, so the strict pair
+  // search reports NoMatch. When normal matching (and dynamic-video retries)
+  // found nothing, try a redraw-tolerance pair search and accept only a sharp,
+  // unique offset where nearly all moving cells agree within redrawCellTol and
+  // at least half already agree at the normal cellTolerance.
+  bool redrawMatch = false;
+  const auto hintSays = [&](int at) { return hinted && std::abs(at - expected) <= uncertainty; };
+  if (pick < 0 && noMatch && !still && !viewMoved_) {
+    std::vector<Candidate> rCands = searchPair(cur, ref, expected, -1.0, redrawBandTol(), redrawCellTol());
+    bool rb = false;
+    SkipReason rw = SkipReason::None;
+    const int rPick = decide(rCands, expected, uncertainty, hinted, &rb, &rw);
+    if (rPick >= 0 && verifyRedrawCandidate(cur, ref, rCands[size_t(rPick)], rCands, hintSays(rCands[size_t(rPick)].d))) {
+      cands = std::move(rCands);
+      pick = rPick;
+      byExp = rb;
+      why = SkipReason::None;
+      redrawMatch = true;
+    }
+  }
   // A page that repeats (a pull request's tables, one every 1,010 rows) fits
   // the pair at its place and a period away. Turning back more than half a
   // screen from one frame to the next, against the way the page was going,
@@ -4600,7 +4734,6 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
   // None of this where the driver's hint says where the page is (auto-scroll
   // knows its steps): the hint chooses among look-alikes, as before (the
   // ruler page's equal rows after one skipped frame of a step).
-  const auto hintSays = [&](int at) { return hinted && std::abs(at - expected) <= uncertainty; };
   const auto refused = [&](const Candidate& c, bool found) {
     const bool strict = (found || skipRun_ > 0) && !hintSays(c.d);
     const long long at = lastPos_ + c.d, inside = std::min(bottom_, at + height_) - std::max(top_, at);
@@ -4664,11 +4797,27 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     pairD = d;
     if (refused(cands[size_t(pick)], false)) {
       bool retried = false;
+      // If a normal pair match barely cleared searchPair during a text redraw
+      // (e.g. scrolling back over already-captured rows where c.cells dipped
+      // below recoverCells at normal tolerance), verify it at redraw tolerance.
+      if (!redrawMatch && !viewMoved_) {
+        Tally tb, tc;
+        bandTally(cur, ref, d, tb, redrawBandTol());
+        cellTally(cur, ref, d, tc, redrawCellTol());
+        Candidate rCand;
+        rCand.d = d;
+        judge(rCand, tb, tc, std::max(0, -d), std::min(height_, height_ - d));
+        if (verifyRedrawCandidate(cur, ref, rCand, cands, hintSays(d)) && !refused(rCand, false)) {
+          cands[size_t(pick)] = std::move(rCand);
+          redrawMatch = true;
+          retried = true;
+        }
+      }
       const bool usePrev = prevHasPos_ && prevSig();
       const Signature* other = usePrev ? prevSig() : &ref;
       const long long otherPos = usePrev ? prevPos_ : lastPos_;
       const bool otherViewMoved = usePrev ? prevViewMoved_ : viewMoved_;
-      if (!otherViewMoved && skipRun_ < opts_.lostAfterSkips &&
+      if (!retried && !otherViewMoved && skipRun_ < opts_.lostAfterSkips &&
           observeOnce(cur, *other, pos, otherPos, &cands, pick, true)) {
         refreshRefIncl(lastPos_);
         Tally tb, tc;
@@ -4884,10 +5033,10 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
   r.recovered = skipRun_ > 0;
   totals_.recovered += r.recovered;
   const long long prevLastPos = lastPos_;
-  followPinned(cur, ref, d);
-  learn(cur, ref, d);
-  placeFrame(frame, cur, &ref, d, pos, r);
-  if (d != 0 && !viewMoved_ && !r.onHint) observeOnce(*last_, *work_, pos, prevLastPos, &cands, pick, false);
+  followPinned(cur, ref, d, redrawMatch);
+  learn(cur, ref, d, redrawMatch);
+  placeFrame(frame, cur, &ref, d, pos, r, redrawMatch);
+  if (d != 0 && !viewMoved_ && !r.onHint && !redrawMatch) observeOnce(*last_, *work_, pos, prevLastPos, &cands, pick, false);
   if (!viewMoved_ && !r.onHint && hasDyn_) snapshotDynamic(frame, pos, *last_, *work_, d);
   prevIsLast_ = true;
   prevPos_ = pos;

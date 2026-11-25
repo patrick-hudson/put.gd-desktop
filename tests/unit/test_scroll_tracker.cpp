@@ -980,6 +980,86 @@ void testChangesAndRecovery() {
                            r.results[redrawFrom].confidence, lostFrames, r.wrong, r.firstWrong.c_str(), bad, firstBad));
   }
   {
+    // The page drawn anew while moving (#1764: Chrome switches greyscale
+    // antialiasing to subpixel LCD antialiasing mid-scroll and keeps drawing
+    // it that way). Verify mid-notch switch (both darkening/LCD fringing and
+    // lightening), scrolling back up over pre-switch rows in the store, and a
+    // wide viewport where bandTol_ is narrow (182).
+    const auto applyLcdShift = [](Image& f, int lumaShift, int chromaFringe) {
+      const Image plain = f;
+      for (int y = 0; y < f.h; ++y)
+        for (int x = 0; x < f.w; ++x) {
+          const uint32_t v = plain.at(x, y);
+          const int cr = int(v >> 16) & 255, cg = int(v >> 8) & 255, cb = int(v) & 255;
+          if (v == kBg || std::max({cr, cg, cb}) - std::min({cr, cg, cb}) > 12 || std::max({cr, cg, cb}) > 0xE8) continue;
+          const int fringe = ((x & 1) == 0 ? chromaFringe : -chromaFringe);
+          const int nr = std::clamp(cr + lumaShift + fringe, 0, 255);
+          const int ng = std::clamp(cg + lumaShift, 0, 255);
+          const int nb = std::clamp(cb + lumaShift - fringe, 0, 255);
+          f.at(x, y) = (uint32_t(nr) << 16) | (uint32_t(ng) << 8) | uint32_t(nb);
+        }
+    };
+    const int notch[] = {2, 5, 9, 12, 16, 17, 17, 15, 12, 9, 5, 1};
+    // 1. Mid-scroll switch during a smooth-scroll notch (d = 16 px) + scroll
+    //    back up over previously captured greyscale rows, then down to end.
+    {
+      const Scene scene = scene_of(doc.img, base);
+      std::vector<int> pos{0};
+      const auto pushNotch = [&](int sign) {
+        for (const int n : notch) {
+          const int next = std::clamp(pos.back() + sign * n, 0, end);
+          if (next != pos.back()) pos.push_back(next);
+        }
+      };
+      for (int k = 0; k < 10; ++k) pushNotch(1);
+      // Land the redraw right in the middle of the 11th notch (at d = 16 px).
+      const size_t redrawFrom = pos.size() + 4;
+      for (int k = 0; k < 6; ++k) pushNotch(1);
+      // Scroll back up across the greyscale/LCD boundary in the store.
+      for (int k = 0; k < 8; ++k) pushNotch(-1);
+      // Finish down to the bottom of the page.
+      while (pos.back() < end) pushNotch(1);
+      const Played r = play(scene, pos, {}, [&](size_t i, Image& f) {
+        if (i >= redrawFrom) applyLcdShift(f, 20, 24);
+        return false;
+      });
+      int lostFrames = 0;
+      for (const TrackResult& t : r.results) lostFrames += t.state == TrackState::Lost;
+      int firstBad = 0;
+      const long long bad = differing(r, pageRows(doc.img, 0, doc.img.h, W), {}, 48, &firstBad);
+      report("page drawn anew mid-scroll (#1764) and scrolled back across switch: full page, nothing lost",
+             r.wrong == 0 && lostFrames == 0 && r.totals.skipped == 0 && bad == 0 && r.totals.bottom == doc.img.h,
+             counts(r) + fmt(", %d lost, %d wrong%s, %lld pixels differ (row %d)", lostFrames, r.wrong, r.firstWrong.c_str(),
+                             bad, firstBad));
+    }
+    // 2. Wide viewport (1920px, bandTol_ = 182): systematic LCD shift exceeds
+    //    2*bandTol_ on dense text bands; redrawBandTol still follows mid-scroll.
+    {
+      constexpr int kWideW = 1920, kWideV = 640;
+      const Document wdoc = plainPage(93, kWideW, kWideV);
+      SceneSpec wss = base;
+      wss.width = kWideW;
+      wss.height = kWideV;
+      const Scene wscene(wdoc.img, wss);
+      const int wEnd = wdoc.img.h - kWideV;
+      std::vector<int> wpos{0};
+      while (wpos.back() < wEnd) wpos.push_back(std::min(wEnd, wpos.back() + 16));
+      const size_t redrawFrom = wpos.size() / 2;
+      const Played r = play(wscene, wpos, {}, [&](size_t i, Image& f) {
+        if (i >= redrawFrom) applyLcdShift(f, 20, 24);
+        return false;
+      });
+      int lostFrames = 0;
+      for (const TrackResult& t : r.results) lostFrames += t.state == TrackState::Lost;
+      int firstBad = 0;
+      const long long bad = differing(r, pageRows(wdoc.img, 0, wdoc.img.h, kWideW), {}, 48, &firstBad);
+      report("wide viewport (1920px) redrawn mid-scroll (#1764): full page, nothing lost",
+             r.wrong == 0 && lostFrames == 0 && r.totals.skipped == 0 && bad == 0 && r.totals.bottom == wdoc.img.h,
+             counts(r) + fmt(", %d lost, %d wrong%s, %lld pixels differ (row %d)", lostFrames, r.wrong, r.firstWrong.c_str(),
+                             bad, firstBad));
+    }
+  }
+  {
     // Soft grey text scrolled a pixel a frame (#1747's round 11): each frame
     // agrees in place within the redraw tolerance, yet the page moved; the
     // steps add up and every row reaches the image.

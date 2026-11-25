@@ -382,29 +382,35 @@ class ScrollTracker {
     bool keptTile(size_t i) const { return inf[i] > 0 && 2 * agree[i] >= inf[i]; }
   };
 
+  unsigned redrawBandTol() const;
+  unsigned redrawCellTol() const;
   void computeExcluded(const Signature& cur, const Signature& ref, long long refPos);
   void refreshRefIncl(long long refPos);
-  void bandTally(const Signature& cur, const Signature& ref, int d, Tally& t) const;
-  void cellTally(const Signature& cur, const Signature& ref, int d, Tally& t) const;
-  void storeBandTally(const Signature& cur, long long pos, int rowStep, Tally& t) const;
+  void bandTally(const Signature& cur, const Signature& ref, int d, Tally& t, unsigned tolOverride = 0) const;
+  void cellTally(const Signature& cur, const Signature& ref, int d, Tally& t, unsigned tolOverride = 0) const;
+  void storeBandTally(const Signature& cur, long long pos, int rowStep, Tally& t, unsigned tolOverride = 0) const;
   void storeCellSigs(long long from, int n, std::vector<uint16_t>& sigs, std::vector<uint8_t>& have) const;
   void storeCellTally(const Signature& cur, long long pos, const std::vector<uint16_t>& sigs, const std::vector<uint8_t>& have,
-                      long long from, Tally& t) const;
+                      long long from, Tally& t, unsigned tolOverride = 0) const;
   void judge(Candidate& c, const Tally& bands, const Tally& cells, int y0, int y1,
              bool allowAllMovingCols = false) const;
   bool stillTile(size_t i) const;
   bool boxed(const Candidate& c) const;
   int texturedRowCount(const Signature& sig) const;
   double coarseShare(const Signature& cur, const Signature& ref, int d, double abortBelow,
-                     const std::vector<uint16_t>& incl) const;
+                     const std::vector<uint16_t>& incl, unsigned tolOverride = 0) const;
   void searchPass(const Signature& cur, const Signature& ref, int expected, const std::vector<uint16_t>& incl,
-                  std::vector<Candidate>& out, double floorOverride = -1.0) const;
+                  std::vector<Candidate>& out, double floorOverride = -1.0, unsigned bandTolOverride = 0,
+                  unsigned cellTolOverride = 0) const;
   double storeCoarseShare(const Signature& cur, long long pos, double abortBelow) const;
   std::vector<int> pickPeaks(const std::vector<float>& coarse, double floor, long long center) const;
   // redrawn: not still, yet the same picture drawn anew in place (see kRedrawTolerance).
   bool stillFrame(const Signature& cur, const Signature& ref, double* share, bool* redrawn = nullptr) const;
   std::vector<Candidate> searchPair(const Signature& cur, const Signature& ref, int expected,
-                                    double floorOverride = -1.0) const;
+                                    double floorOverride = -1.0, unsigned bandTolOverride = 0,
+                                    unsigned cellTolOverride = 0) const;
+  bool verifyRedrawCandidate(const Signature& cur, const Signature& ref, const Candidate& rc,
+                             const std::vector<Candidate>& rCands, bool allowRepeat) const;
   std::vector<Candidate> searchStore(const Signature& cur, long long expectedPos, long long lo, long long hi,
                                      size_t maxPeaks) const;
   // The slice of the image a lost frame looks through after the near window,
@@ -419,7 +425,7 @@ class ScrollTracker {
   const Signature* prevSig() const;
   bool contradicted(const Signature& cur, long long pos, double keepShare) const;
   bool lookAlike(const Signature& cur, long long pos, const std::vector<long long>& known) const;
-  double wholeCells(const Signature& cur, const Signature& ref, int d) const;
+  double wholeCells(const Signature& cur, const Signature& ref, int d, unsigned tolOverride = 0) const;
   double selfRepeat(const Signature& sig, int y0, int y1, long long sigPos) const;
   // Frames skipped since the last placed frame (a frame that only stood
   // still while nothing was proved does not end the count).
@@ -431,7 +437,7 @@ class ScrollTracker {
     int rows = 0;
   };
   double storeCells(const Signature& cur, long long pos, int y0, int y1, StoreFit* fit) const;
-  void learn(const Signature& cur, const Signature& ref, int d);
+  void learn(const Signature& cur, const Signature& ref, int d, bool redrawMatch = false);
   void closeMask();
   void close(const std::vector<uint8_t>& src, std::vector<uint8_t>& out, bool lists = false) const;
   void blockedWords(std::vector<uint64_t>& out) const;
@@ -441,7 +447,7 @@ class ScrollTracker {
                     bool finishing);
   void pageArea(std::vector<uint64_t>& out, std::vector<uint64_t>* near = nullptr) const;
   void compose(const FrameView& frame, const Signature& cur, const Signature* ref, int d, long long pos,
-               TrackResult& r);
+               TrackResult& r, bool redrawMatch = false);
   struct FrameCopy {
     std::vector<uint8_t> px;       // the frame's pixels, where tag says so
     std::vector<uint32_t> tag;     // per block: the serial of the copy that wrote it
@@ -451,7 +457,7 @@ class ScrollTracker {
   };
   void keepCopy(const FrameView& frame, const Signature& cur, FrameCopy& copy, long long pos, bool all, int fromRow);
   void placeFrame(const FrameView& frame, Signature& cur, const Signature* ref, int d, long long pos,
-                  TrackResult& r);
+                  TrackResult& r, bool redrawMatch = false);
   // Pinned parts that move again (#1538): a column that sticks beside the
   // page until its own column ends there, and then moves with the page. While
   // a part is where it was pinned, its picture (each cell's value and texture)
@@ -468,9 +474,10 @@ class ScrollTracker {
     std::vector<uint16_t> values;        // and their values
     int shift = 0;                       // rows it lies below its pinned place now; negative above
   };
-  void followPinned(const Signature& cur, const Signature& ref, int d);
+  void followPinned(const Signature& cur, const Signature& ref, int d, bool redrawMatch = false);
   bool hiddenAt(const Loose& part, int y, int c) const;
-  double looseShare(const Loose& part, const Signature& cur, int s, double floor, int* compared) const;
+  double looseShare(const Loose& part, const Signature& cur, int s, double floor, int* compared,
+                    unsigned tolOverride = 0) const;
   int findLoose(const Loose& part, const Signature& cur, int prefer, int lo, int hi) const;
   void markLoose(const Loose& part);
   int pinnedGroups(const std::vector<uint8_t>& mask, std::vector<int>& groupOf) const;
