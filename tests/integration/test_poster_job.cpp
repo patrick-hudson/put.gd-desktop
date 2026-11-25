@@ -9,6 +9,16 @@
 #include <QtTest>
 #include <sys/stat.h>
 #include <unistd.h>
+
+// As src/core/PosterJob.cpp decides it: a sanitized build leaves the helper's address space
+// unlimited. clang 21 sets no __SANITIZE_ADDRESS__, only __has_feature.
+#if defined(__SANITIZE_ADDRESS__) || defined(__SANITIZE_THREAD__)
+#define PUTGD_TEST_SANITIZED 1
+#elif defined(__has_feature)
+#if __has_feature(address_sanitizer) || __has_feature(thread_sanitizer) || __has_feature(memory_sanitizer)
+#define PUTGD_TEST_SANITIZED 1
+#endif
+#endif
 using namespace putgd;
 
 // #112: History's poster frames come from a transient helper that reads only
@@ -51,7 +61,7 @@ private slots:
         QCOMPARE(image.text("stdin-bytes"), QString("4096"));
         const auto limits = image.text("limits");
         QVERIFY2(limits.contains("fsize=0") && limits.contains("nofile=64") && limits.contains("core=0") && limits.contains("cpu=21"), qPrintable(limits));
-#if !defined(__SANITIZE_ADDRESS__) && !defined(__SANITIZE_THREAD__)
+#ifndef PUTGD_TEST_SANITIZED
         QVERIFY2(limits.contains("as=2147483648"), qPrintable(limits));
 #endif
         QVERIFY(image.text("nice").toInt() >= 10);
