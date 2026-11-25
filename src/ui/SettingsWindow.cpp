@@ -3126,6 +3126,10 @@ void SettingsWindow::saveAnswered(SaveOperation op,const Result& result,const QJ
   requeue(std::move(op));autosaveFailure(error);return;
  }
  baseRevision_=settings_.revision();baseDocument_=settings_.document();observed_=settings_.metadata()["observedRevision"].toString();
+ // A restored checkpoint's base takes what this window saved since, and nothing saved elsewhere:
+ // the draft's optional keys then follow this window's saves, and a replay still finds only the
+ // checkpoint's own edits (#1735).
+ if(restoredDraft_&&!restoredBase_.isEmpty())restoredBase_=applyOperation(restoredBase_,op);
  if(!settings_.document()["profiles"].toArray().isEmpty())initialProfile_=false;
  if(op.kind==SaveOperation::Kind::Fields){
   notSaved_.remove(op.id+"|*");
