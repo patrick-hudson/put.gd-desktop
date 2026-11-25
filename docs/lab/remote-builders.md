@@ -955,7 +955,7 @@ Before you release:
    user manager (d69's package signer, started every 10 minutes by `putgd-signer.timer`), is
    standing host activity: it gets a note and never blocks, although it inherits the user
    manager's display variables (#2015). The same command run from an SSH or desktop session
-   scope still counts. If a new item belongs to another session (its
+   scope gets the usual rules above. If a new item belongs to another session (its
    notes or its owner say so), name it with `--not-mine ID`; the receipt records
    it. Never use `--not-mine` for your own items.
    Leave the putgd package as acquire found it: the same version, or none.
