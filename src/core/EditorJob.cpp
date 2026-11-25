@@ -25,6 +25,7 @@
 #include <QUuid>
 #include <algorithm>
 #include <climits>
+#include <csignal>
 #ifdef Q_OS_UNIX
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -406,7 +407,9 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  if(stopping&&helperOutput.pid()>0)helperOutput.killing(lingered?QStringLiteral("not_closed_after_handoff"):error.isEmpty()?QStringLiteral("editor_protocol"):error);
  if(stopping){control.stop();process.terminate();if(!process.waitForFinished(500)){process.kill();process.waitForFinished(1500);}}
  if(helperOutput.pid()>0){helperOutput.append(process.readAllStandardError());helperOutput.finished(process.exitCode(),process.exitStatus(),stopping);}
- if(error.isEmpty()&&!lingered&&(!checkpoint||process.exitStatus()!=QProcess::NormalExit||process.exitCode()!=0))error=checkpoint&&reply["ok"].toBool()?"editor_exit_handed_off":"editor_exit";
+ // A lingering helper ends by the stop above (SIGTERM, then SIGKILL) or by closing on its own just then; anything else fails.
+ const bool stopped=lingered&&process.state()==QProcess::NotRunning&&(process.exitStatus()==QProcess::NormalExit?process.exitCode()==0:process.exitCode()==SIGTERM||process.exitCode()==SIGKILL);
+ if(error.isEmpty()&&!stopped&&(!checkpoint||process.exitStatus()!=QProcess::NormalExit||process.exitCode()!=0))error=checkpoint&&reply["ok"].toBool()?"editor_exit_handed_off":"editor_exit";
  control.stop();
  if(!error.isEmpty())return fail(error);
  if(!reply["ok"].toBool()&&reply["code"].toString().startsWith("check_")){result.check=reply["code"].toString().mid(6);session->setPhase("closed");return result;}
