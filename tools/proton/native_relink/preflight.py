@@ -26,7 +26,7 @@ for tool,args in [('cmake',['--version']),('ninja',['--version']),('ruby',['--ve
         m=re.search(r'(\d+)\.(\d+)',out)
         if not m or tuple(map(int,m.groups()))<(3,24):errors.append('cmake>=3.24 required')
 out=run('bootstrap-bun',a.bun,['--revision'])
-if out and out!='1.4.4+38afee6c8':errors.append('bootstrap Bun identity must be1.4.4+38afee6c8')
+if out and out!='1.4.5+a7733435c':errors.append('bootstrap Bun identity must be 1.4.5+a7733435c')
 if not (D/'assembly.json').exists():errors.append('prepared source assembly missing')
 std_lock=a.rust_prefix/'lib/rustlib/src/rust/library/Cargo.lock'
 import hashlib
@@ -39,6 +39,6 @@ if a.check_only:raise SystemExit(0)
 # Every input comes from the verified delivered bundle or pre-installed distro
 # tools. Local WebKit forces source compilation instead of using a prebuilt JSC.
 subprocess.run(['git','-C',str(D/'WebKit'),'checkout','--detach','d6375c72affe0f70222cdcb45012b10f0bf3a9d5'],check=True)
-env=os.environ.copy();env.update(BUN_TOOLCHAIN_LLVM=str(a.llvm_prefix.resolve()),BUN_TOOLCHAIN_RUST=str(a.rust_prefix.resolve()),BUN_TOOLCHAIN_CARGO=str((a.rust_prefix/'bin/cargo').resolve()),BUN_WEBKIT_PATH=str(D/'WebKit'),BUN_BUILD_PREFETCH_DIR=str(D/'prefetch'),CARGO_HOME=str(D/'cargo-home'),CARGO_NET_OFFLINE='true',npm_config_offline='true',npm_config_audit='false',npm_config_fund='false',GIT_SHA='38afee6c84fcf48c0edb2466aa4b27d287a59c30',RUSTUP_AUTO_INSTALL='0')
+env=os.environ.copy();env.update(BUN_TOOLCHAIN_LLVM=str(a.llvm_prefix.resolve()),BUN_TOOLCHAIN_RUST=str(a.rust_prefix.resolve()),BUN_TOOLCHAIN_CARGO=str((a.rust_prefix/'bin/cargo').resolve()),BUN_WEBKIT_PATH=str(D/'WebKit'),BUN_BUILD_PREFETCH_DIR=str(D/'prefetch'),CARGO_HOME=str(D/'cargo-home'),CARGO_NET_OFFLINE='true',npm_config_offline='true',npm_config_audit='false',npm_config_fund='false',GIT_SHA='a7733435cf40429e3b35c36072769df2052b80f1',RUSTUP_AUTO_INSTALL='0')
 env['PATH']=str(a.llvm_prefix/'bin')+os.pathsep+str(a.rust_prefix/'bin')+os.pathsep+env['PATH']
 subprocess.run([str(a.bun.resolve()),'scripts/build.ts','--profile=release-local','--build-dir=build/release-local','--package-manager=npm'],cwd=B,env=env,check=True)

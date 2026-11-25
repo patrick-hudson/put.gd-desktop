@@ -14,7 +14,7 @@ env.update(BUN_TOOLCHAIN_LLVM='/usr/lib/llvm-23', BUN_TOOLCHAIN_RUST='/opt/rust'
            BUN_TOOLCHAIN_CARGO='/opt/rust/bin/cargo', BUN_WEBKIT_PATH='/p3/prepared/WebKit',
            BUN_BUILD_PREFETCH_DIR='/p3/prepared/prefetch', CARGO_HOME='/p3/prepared/cargo-home',
            CARGO_NET_OFFLINE='true', npm_config_offline='true', npm_config_audit='false',
-           npm_config_fund='false', GIT_SHA='38afee6c84fcf48c0edb2466aa4b27d287a59c30',
+           npm_config_fund='false', GIT_SHA='a7733435cf40429e3b35c36072769df2052b80f1',
            RUSTUP_AUTO_INSTALL='0', CMAKE_BUILD_PARALLEL_LEVEL='4', CARGO_BUILD_JOBS='2')
 args = ['/p3/bootstrap-bun', 'scripts/build.ts', '--profile=release-local',
         '--build-dir=build/release-local', '--package-manager=npm', '-j4']
