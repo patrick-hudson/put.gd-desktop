@@ -1239,14 +1239,16 @@ then start again from step 1.
    manifest. If a later attempt already replaced the manifest or
    `completion.json`, the retry puts back the exact copies the receipt hashed
    from their `.before-recovery-*` files and keeps the replaced ones. If either
-   exact copy can't be found, either file is unsafe to replace (a symlink or a
-   file with more than one link), or another file the manifest lists has changed,
+   exact copy can't be found, either file is unsafe to replace (anything but
+   an owned, single-link regular file with no symlink in its path), or another
+   file the manifest lists has changed,
    the slot stays kept. When the disk is gone, that check needs an
    `overlay-cleanup.json` that matches the manifest; without one the slot stays
    kept, so ask your coordinator. A retry stopped before guarded cleanup reuses
-   an earlier archive only when it is complete and readable and holds exactly
-   the files of the row's audited attempts. Otherwise it writes a fresh archive
-   and keeps the old one. Its evidence goes to
+   an earlier `attachments.tgz` or `attachments-recovery-<hex>.tgz` only when it
+   passes the same file check, is complete and readable, and holds exactly the
+   files of the row's audited attempts. Otherwise, when the row has audited
+   attempts, it writes a fresh archive and keeps the old one. Its evidence goes to
    `operator-recovery/<time>-<hex>/stale-recovery/` in the row's evidence
    directory. A refusal prints its reason. An unexpected failure after that
    directory exists leaves `stale-recovery-error.json` in
