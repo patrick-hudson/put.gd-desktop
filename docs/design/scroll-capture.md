@@ -136,8 +136,19 @@ builders, so it keeps up with every rate below):
 | Desktop | Measured while a person scrolled |
 | --- | --- |
 | Plasma 6.8.2 (KWin's region stream with the heartbeat) | 18 to 26 frames a second on long pages, 23 at the median (aurora-amd, Chrome, 2026-11-14); the loop took every frame the stream delivered |
-| Cinnamon X11 (`ximagesrc`, 30 a second) | 28 to 30 frames a second (m74, Firefox 158, 2026-11-14) |
+| Cinnamon X11 (`ximagesrc`, 60 a second, 30 after a fallback) | 54 to 60 frames a second at 1920 × 922 (m74, Firefox 158, 2026-11-25); 28 to 30 before #2064 |
 | GNOME (Mutter's area stream with the 40 ms beat), Hyprland and Budgie (`ext-image-copy-capture`, on damage) | measured by the acceptance round from the CI packages; the helper's log line says it |
+
+The X11 source grabs at a fixed rate, so it is the one source whose rate is chosen. It asks
+for 60 frames a second: between two frames a page under a person's wheel moves half as far, and
+fewer of them are lost (#2064). While the session reads, the frame tap judges each second: the
+source is slow when it sent under 48 frames, the loop when a quarter of the frames that came were
+replaced unread. After two slow seconds in a row it restarts `ximagesrc` at 30 for the rest of the
+capture and never goes back up. On m74 at 1920 × 922 the helper used 60 to 74% of a core at 60
+frames a second (43 to 55% at 30) and Xorg 15 to 17% (10 to 12%); its memory did not change. On a
+3840 × 2160 Xvfb the tracker cannot take 60 frames a second, and the tap went down to 30 after two
+seconds, at the same cost as a capture that asked for 30. The result's `stats.sourceRate` says
+what was asked, what ran at the end, what was delivered and why it went down.
 
 The frame size is the logical rectangle at the output's scale. Lab runs at 125% on Plasma
 and GNOME and at 150% on Cinnamon X11 gave exact images; a compositor that resamples a
@@ -188,8 +199,11 @@ up or down, and composes the page into a canvas the helper owns. In brief:
   against the way the page was scrolling is carried on to the next placed frames that move
   the same way, up to 8 after each frame it finds, while fewer than half of the pinned
   parts it can follow are found back in place (the bar's opening eases out).
-- A frame it cannot place is skipped and nothing of it is written. After two in a row it
-  is lost (the bar says **Scroll back a little**). It finds a later frame again in the
+- A frame it cannot place is skipped and nothing of it is written. After at least two in a
+  row, and 60 ms since the last frame it placed or took as still, it is lost (the bar says
+  **Scroll back a little**): the second skipped frame at 30 frames a second, the fourth at 60,
+  so a faster source does not lose the page sooner (#2064). Frames without a time (the replay
+  tool) count two frames. It finds a later frame again in the
   image it has built, so scrolling back brings it back.
 - Content that changes in place (a video, a carousel, a hover effect) is taken as first
   seen and ends nothing. Once the tracker has lost the page, a frame matched at a guessed
@@ -474,7 +488,7 @@ helper exit until the resident has admitted them.
 | `note` | Why, for `lost_track`, `top_not_reached`, the idle bound and auto-scroll stopped at a blank stretch |
 | `hiddenCells`, `hiddenRows` | Cells of the page that only the bar inside the region ever covered (filled with their column's plain colour), and the rows that hold them. `hiddenRows` also counts rows that no placed frame covered (since a frame is placed on the hint only where it overlaps the image, none should occur). Absent when there are none |
 | `foundAgain` | Times the tracker lost the page while the user scrolled and found it again; included in the helper result, `scroll.inspect`, `putgd-cli` and MCP `get_scroll_capture` |
-| `stats` | `steps`, `pixelsPerNotch` (auto-scroll's), `lowConfidenceSteps` (frames placed by expectation or on the hint), `elapsedMs`, `frames`, `recovered`, `pinnedRegions`, `framesPerSecond`, `rowsAtDone` (rows that Done's fresh frame added) |
+| `stats` | `steps`, `pixelsPerNotch` (auto-scroll's), `lowConfidenceSteps` (frames placed by expectation or on the hint), `elapsedMs`, `frames`, `recovered`, `pinnedRegions`, `framesPerSecond`, `rowsAtDone` (rows that Done's fresh frame added), and for X11 `sourceRate`: `asked` and `atEnd` (frames a second), `delivered` (what the source sent while the session read) and `fallback` (why it went down to 30, only when it did) |
 
 | `endReason` | `truncated` | Meaning |
 | --- | --- | --- |
@@ -517,7 +531,7 @@ A positive `foundAgain` adds a History note and, when there is no other warning,
 ## Known limits
 
 - [#1557](https://github.com/patrick-hudson/put.gd-desktop/issues/1557): small white boxes can cover content in captures you scroll yourself on Cinnamon.
-- [#1558](https://github.com/patrick-hudson/put.gd-desktop/issues/1558): on Cinnamon at about 30 frames per second, captures you scroll yourself lose the page often.
+- [#1558](https://github.com/patrick-hudson/put.gd-desktop/issues/1558): on Cinnamon, captures you scroll yourself can still lose the page where Firefox redraws scaled pictures a little differently as a scroll starts or stops; 60 frames a second (#2064) made it rarer.
 - [#1547](https://github.com/patrick-hudson/put.gd-desktop/issues/1547): auto-scroll can lose one period on a page that repeats every step.
 - [#1554](https://github.com/patrick-hudson/put.gd-desktop/issues/1554): moving the mouse on Hyprland does not always pause auto-scroll (8 of 20 lab guest runs).
 - [#1537](https://github.com/patrick-hudson/put.gd-desktop/issues/1537): a playing video can hold a capture you scroll yourself for minutes.
