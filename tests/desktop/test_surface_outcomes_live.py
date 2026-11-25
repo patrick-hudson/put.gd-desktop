@@ -473,7 +473,10 @@ class LiveOutcomes(unittest.TestCase):
                     return {}
                 def expect(ok,note):
                     if not ok:raise RecipeFailed(note)
+                # The runner's redactor: here it drops a scheme-less host, which the step note must not bypass.
+                redactor=SimpleNamespace(exception=lambda e:str(e).replace('cdn.example.invalid/key','[link]'))
                 ctx=SimpleNamespace(destination='s3',profile={},click=Mock(),focus=Mock(),scroll=Mock(),frame=Mock(),note=notes.append,
+                                    evidence=SimpleNamespace(redactor=redactor),
                                     geometry=Mock(return_value=dict(x=0,y=0,width=1280,height=760)),accessible=Mock(return_value=[{'rect':[900,600,180,36]}]),
                                     wait=lambda fn,*a,**kw:fn(),call=Mock(side_effect=call),expect=expect,
                                     clipboard_text=lambda:json.dumps({'targets':[{'historyId':'owned'}],'acknowledgement':'synthetic'}))
@@ -484,7 +487,7 @@ class LiveOutcomes(unittest.TestCase):
                             outcomes_live._cleanup(ctx,{'id':'owned'})
                 expected='status='+status+', error=s3_transport_unknown, stage=delete_object, curl=35, http=-1'
                 self.assertEqual(notes[0],'deletion_settled='+expected)
-                self.assertIn('('+expected+', the file stays at the destination)',str(failed.exception))
+                self.assertIn('('+expected+', removal not confirmed)',str(failed.exception))
                 # The failed step names the pass and step in one note, with no "; " inside it.
                 self.assertTrue(notes[1].startswith('failed_step=expiring-link pass, History delete: History confirms object removal (status='+status))
                 self.assertNotIn('; ',notes[1])
@@ -496,6 +499,7 @@ class LiveOutcomes(unittest.TestCase):
         details=[{'id':'owned','remoteStatus':'not_requested'},{'id':'owned','remoteStatus':'removed','linkAvailable':False}]
         notes=[]
         ctx=SimpleNamespace(destination='s3',profile={},click=Mock(),focus=Mock(),scroll=Mock(),frame=Mock(),note=notes.append,
+                            evidence=SimpleNamespace(redactor=SimpleNamespace(exception=str)),
                             geometry=Mock(return_value=dict(x=0,y=0,width=1280,height=760)),accessible=Mock(return_value=[{'rect':[900,600,180,36]}]),
                             wait=lambda fn,*a,**kw:fn(),call=Mock(side_effect=lambda m,p=None:details.pop(0) if m=='history.detail' else {}),
                             expect=lambda ok,note:None,
@@ -511,6 +515,13 @@ class LiveOutcomes(unittest.TestCase):
                 with outcomes_live._step(ctx,'outer pass, inner step'):
                     raise RecipeFailed('check; failed')
         self.assertEqual(notes,['failed_step=outer pass, inner step: check, failed'])
+        # The note goes through the runner's redactor, as the failure itself does.
+        notes.clear()
+        ctx.evidence=SimpleNamespace(redactor=SimpleNamespace(exception=lambda e:'[redacted failure]'))
+        with self.assertRaises(RecipeFailed):
+            with outcomes_live._step(ctx,'a pass, a step'):
+                raise RecipeFailed('link cdn.example.invalid/key refused')
+        self.assertEqual(notes,['failed_step=a pass, a step: [redacted failure]'])
 
     def test_cleanup_ownership_rejects_foreign_receipts_before_any_input(self):
         def expect(ok,note):

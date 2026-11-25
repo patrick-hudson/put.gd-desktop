@@ -60,7 +60,8 @@ def _step(ctx, where):
         if not getattr(error, 'step_noted', False):
             error.step_noted = True
             # One "; "-separated note: the failure's own text keeps commas only.
-            ctx.note('failed_step='+where+': '+str(error).replace(';', ','))
+            # The runner's exception redactor, as for every failure it reports.
+            ctx.note('failed_step='+where+': '+ctx.evidence.redactor.exception(error).replace(';', ','))
         raise
 
 
@@ -169,7 +170,7 @@ def _cleanup(ctx, detail):
             ctx.note('deletion_settled='+_deletion_outcome(final))
         ctx.expect(removed and not final['linkAvailable'],
                    'History confirms object removal ('+_deletion_outcome(final)
-                   + ('' if removed else ', the file stays at the destination')+')')
+                   + ('' if removed else ', removal not confirmed')+')')
         ctx.note('deletion_count=1')
     ctx.frame('history-after-remote-cleanup', window='history')
 
@@ -236,117 +237,120 @@ def _region_upload(ctx):
     service = ctx._live_service = provider(scope)
     outcomes._clipboard_reader(scope)
     scene, oracle = outcomes._pattern(ctx)
+    where = ('public-link' if ctx.destination == 's3' else 'share-link')+' pass, '
     if ctx.destination == 's3':
         resolved = next(p for p in ctx.call('settings.get')['document']['profiles'] if p['id'] == service.profile_id)
-        ctx.expect(resolved['settings'].get('publicUrlBase') == 'https://put.gd'
-                   and resolved['settings'].get('aclMode') == 'public-read'
-                   and resolved['settings'].get('objectPrefix') == service.prefix,
-                   'resolved S3 profile uses public-read, CloudFront and this exact acceptance prefix')
+        with _step(ctx, where+'destination setup'):
+            ctx.expect(resolved['settings'].get('publicUrlBase') == 'https://put.gd'
+                       and resolved['settings'].get('aclMode') == 'public-read'
+                       and resolved['settings'].get('objectPrefix') == service.prefix,
+                       'resolved S3 profile uses public-read, CloudFront and this exact acceptance prefix')
         ctx.note('s3_resolved_cloudfront_base_count=1')
     detail, cleaned, owned = None, False, False
-    where = ('public-link' if ctx.destination == 's3' else 'share-link')+' pass, '
     try:
-        with _step(ctx, where+'capture and upload'), selectors._portal_scope(ctx):
-            x, y, w, h = scene.rect
-            rect = (x+20, y+20, x+w-20, y+h-20)
-            service.pending['remote'] = True
-            oid = selectors._open_region(ctx, accessible=False)
-            ctx.drag(rect[:2], rect[2:])
-            op, detail = _published(ctx, oid, service.pending)
-            if detail.get('uploadStatus') == 'uploaded':
-                _owned(ctx, service, detail, oid)
-                owned = True
-            elif ctx.destination == 's3':
-                reconcile_refused_s3(ctx, service, op, detail)
-                code = detail.get('error', {}).get('code', '')
-                if code == 's3_permission_denied':
-                    ctx.note('upload_failure_code=s3_permission_denied')
-        ctx.expect(op['state'] == 'completed' and detail['uploadStatus'] == 'uploaded'
-                   and detail['local']['status'] == 'saved', 'real capture saved and uploaded')
-        outcomes._auto_copy(ctx, scope, detail)
-        ctx.note('upload_count=1')
-        digest = _saved_digest(scope, detail['local']['path'])
-        data = outcomes._payload(ctx, detail['local']['path'], 'png', digest)
-        Image, _, _ = image_modules()
-        ctx.expect(outcomes.pixels_equal(Image.open(io.BytesIO(data)), oracle.crop(rect)),
-                   'live region pixels equal independently captured pattern crop (tolerance=0)')
-        if ctx.destination == 's3':
-            verify_s3(ctx, service, detail, data)
-            ctx.note('remote_hash_match_count=1')
-        with default_browser(ctx, 'firefox'):
-            previous = ctx.profile.get('windows', {})
-            ctx.profile['windows'] = {**previous, 'outcome-browser': {'title': '.*Firefox.*'}}
-            try:
-                _copy_history_link(ctx, scope, detail)
-                ctx.click('windowClose', window='history')
-                def paste():
-                    ctx.focus('outcome-browser', raise_window=ctx.profile.get('session') == 'x11')
-                    ctx.keys('Ctrl+L', 'Ctrl+V', 'Return')
-                browser_error, preview_only = None, False
+        # Any failure of the primary path is named before the cleanup below can fail too.
+        with _step(ctx, where+'link check'):
+            with _step(ctx, where+'capture and upload'), selectors._portal_scope(ctx):
+                x, y, w, h = scene.rect
+                rect = (x+20, y+20, x+w-20, y+h-20)
+                service.pending['remote'] = True
+                oid = selectors._open_region(ctx, accessible=False)
+                ctx.drag(rect[:2], rect[2:])
+                op, detail = _published(ctx, oid, service.pending)
+                if detail.get('uploadStatus') == 'uploaded':
+                    _owned(ctx, service, detail, oid)
+                    owned = True
+                elif ctx.destination == 's3':
+                    reconcile_refused_s3(ctx, service, op, detail)
+                    code = detail.get('error', {}).get('code', '')
+                    if code == 's3_permission_denied':
+                        ctx.note('upload_failure_code=s3_permission_denied')
+            ctx.expect(op['state'] == 'completed' and detail['uploadStatus'] == 'uploaded'
+                       and detail['local']['status'] == 'saved', 'real capture saved and uploaded')
+            outcomes._auto_copy(ctx, scope, detail)
+            ctx.note('upload_count=1')
+            digest = _saved_digest(scope, detail['local']['path'])
+            data = outcomes._payload(ctx, detail['local']['path'], 'png', digest)
+            Image, _, _ = image_modules()
+            ctx.expect(outcomes.pixels_equal(Image.open(io.BytesIO(data)), oracle.crop(rect)),
+                       'live region pixels equal independently captured pattern crop (tolerance=0)')
+            if ctx.destination == 's3':
+                verify_s3(ctx, service, detail, data)
+                ctx.note('remote_hash_match_count=1')
+            with default_browser(ctx, 'firefox'):
+                previous = ctx.profile.get('windows', {})
+                ctx.profile['windows'] = {**previous, 'outcome-browser': {'title': '.*Firefox.*'}}
                 try:
-                    opened = open_and_verify(ctx, paste, {'kind': ctx.destination, 'name': detail['name'], 'preview': True})
-                    ctx.expect(opened['matched'] and opened['frames'], 'guarded Firefox displays the copied link')
+                    _copy_history_link(ctx, scope, detail)
+                    ctx.click('windowClose', window='history')
+                    def paste():
+                        ctx.focus('outcome-browser', raise_window=ctx.profile.get('session') == 'x11')
+                        ctx.keys('Ctrl+L', 'Ctrl+V', 'Return')
+                    browser_error, preview_only = None, False
                     try:
-                        downloaded = live_download_digest(ctx, ctx.destination, detail['local']['path'], filename=detail['name'])
-                    except RuntimeError as error:
-                        # The helper emits only our static, allowlisted errors.
-                        ctx.note(str(error))
-                        raise
-                    if ctx.destination == 'proton':
-                        ctx.note('firefox_download_list='+json.dumps(downloaded['downloadObservations'], sort_keys=True))
-                        ctx.note('recipient_preview_pixels='+json.dumps(downloaded['preview'], sort_keys=True))
-                        if _preview_only_eligible(downloaded):
-                            ctx.expect(bool(downloaded['downloadObservations']) and
-                                       all(o.get('available') for o in downloaded['downloadObservations']),
-                                       'P-preview requires Firefox own Download-list state')
-                            ctx.note('preview_match_count=1; recipient_proof=P-preview; original_byte_hash=unproven')
-                            preview_only = True
-                    if not preview_only:
-                        ctx.expect(downloaded['matches'] and downloaded['sha256'] == digest and downloaded['bytes'] == len(data),
-                                   'recipient original bytes SHA-256 equals saved file in guest')
+                        opened = open_and_verify(ctx, paste, {'kind': ctx.destination, 'name': detail['name'], 'preview': True})
+                        ctx.expect(opened['matched'] and opened['frames'], 'guarded Firefox displays the copied link')
+                        try:
+                            downloaded = live_download_digest(ctx, ctx.destination, detail['local']['path'], filename=detail['name'])
+                        except RuntimeError as error:
+                            # The helper emits only our static, allowlisted errors.
+                            ctx.note(str(error))
+                            raise
                         if ctx.destination == 'proton':
-                            ctx.note('browser_hash_match_count=1')
-                        if ctx.destination == 's3':
-                            ctx.note('cloudfront_positive_status='+str(downloaded['status']))
-                            public = downloaded['guestGet']
-                            ctx.expect(public['status'] == 200 and public['matches'] and public['sha256'] == digest
-                                       and public['bytes'] == len(data), 'guest CloudFront GET 200 SHA-256 equals saved file')
-                            ctx.note('guest_public_hash_match_count=1; guest_cloudfront_positive_status=200')
-                        if ctx.destination == 'proton':
-                            ctx.note('remote_hash_match_count=1')
-                except Exception as error:
-                    ctx.note('recipient_positive_failure='+ctx.evidence.redactor.exception(error))
-                    browser_error = error
-                # Cleanup is inside the browser guard: its URL stays only in
-                # the private Firefox memory for the fresh negative check.
-                with _step(ctx, where+'History delete'):
-                    _cleanup(ctx, detail)
-                if ctx.destination == 's3':
-                    with _step(ctx, where+'origin absence'):
-                        verify_s3(ctx, service, detail, absent=True)
-                cleaned = True
-                service.pending['remote'] = False
-                ctx.click('windowClose', window='history')
-                if ctx.destination == 's3':
-                    # Origin GET 404 above is decisive. CloudFront can retain
-                    # the previously public image until its cache expires.
-                    try:
-                        negative = live_link_unavailable(ctx, 's3')
-                        ctx.note('cloudfront_after_delete_status='+str(negative['status']))
-                        if negative['status'] in (403,404,410):
-                            ctx.note('unavailable_link_count=1')
-                    except RuntimeError as error:
-                        ctx.note('cloudfront_after_delete_informational='+ctx.evidence.redactor.exception(error))
-                else:
-                    negative = live_link_unavailable(ctx, 'proton')
-                    ctx.expect(negative['unavailable'], 'fresh link navigation no longer resolves after UI cleanup')
-                    ctx.note('unavailable_link_count=1')
-                if browser_error is not None:
-                    raise browser_error
-                if preview_only:
-                    ctx.blocked('P-preview: decrypted pixels match and Firefox Download list recorded; original-byte hash unproven; coordinator acceptance pending', issue=978)
-            finally:
-                ctx.profile['windows'] = previous
+                            ctx.note('firefox_download_list='+json.dumps(downloaded['downloadObservations'], sort_keys=True))
+                            ctx.note('recipient_preview_pixels='+json.dumps(downloaded['preview'], sort_keys=True))
+                            if _preview_only_eligible(downloaded):
+                                ctx.expect(bool(downloaded['downloadObservations']) and
+                                           all(o.get('available') for o in downloaded['downloadObservations']),
+                                           'P-preview requires Firefox own Download-list state')
+                                ctx.note('preview_match_count=1; recipient_proof=P-preview; original_byte_hash=unproven')
+                                preview_only = True
+                        if not preview_only:
+                            ctx.expect(downloaded['matches'] and downloaded['sha256'] == digest and downloaded['bytes'] == len(data),
+                                       'recipient original bytes SHA-256 equals saved file in guest')
+                            if ctx.destination == 'proton':
+                                ctx.note('browser_hash_match_count=1')
+                            if ctx.destination == 's3':
+                                ctx.note('cloudfront_positive_status='+str(downloaded['status']))
+                                public = downloaded['guestGet']
+                                ctx.expect(public['status'] == 200 and public['matches'] and public['sha256'] == digest
+                                           and public['bytes'] == len(data), 'guest CloudFront GET 200 SHA-256 equals saved file')
+                                ctx.note('guest_public_hash_match_count=1; guest_cloudfront_positive_status=200')
+                            if ctx.destination == 'proton':
+                                ctx.note('remote_hash_match_count=1')
+                    except Exception as error:
+                        ctx.note('recipient_positive_failure='+ctx.evidence.redactor.exception(error))
+                        browser_error = error
+                    # Cleanup is inside the browser guard: its URL stays only in
+                    # the private Firefox memory for the fresh negative check.
+                    with _step(ctx, where+'History delete'):
+                        _cleanup(ctx, detail)
+                    if ctx.destination == 's3':
+                        with _step(ctx, where+'origin absence'):
+                            verify_s3(ctx, service, detail, absent=True)
+                    cleaned = True
+                    service.pending['remote'] = False
+                    ctx.click('windowClose', window='history')
+                    if ctx.destination == 's3':
+                        # Origin GET 404 above is decisive. CloudFront can retain
+                        # the previously public image until its cache expires.
+                        try:
+                            negative = live_link_unavailable(ctx, 's3')
+                            ctx.note('cloudfront_after_delete_status='+str(negative['status']))
+                            if negative['status'] in (403,404,410):
+                                ctx.note('unavailable_link_count=1')
+                        except RuntimeError as error:
+                            ctx.note('cloudfront_after_delete_informational='+ctx.evidence.redactor.exception(error))
+                    else:
+                        negative = live_link_unavailable(ctx, 'proton')
+                        ctx.expect(negative['unavailable'], 'fresh link navigation no longer resolves after UI cleanup')
+                        ctx.note('unavailable_link_count=1')
+                    if browser_error is not None:
+                        raise browser_error
+                    if preview_only:
+                        ctx.blocked('P-preview: decrypted pixels match and Firefox Download list recorded; original-byte hash unproven; coordinator acceptance pending', issue=978)
+                finally:
+                    ctx.profile['windows'] = previous
     finally:
         if detail and owned and not cleaned and detail.get('uploadStatus') == 'uploaded':
             failed = sys.exc_info()[0] is not None

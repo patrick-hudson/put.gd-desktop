@@ -529,12 +529,12 @@ class NightlyTests(unittest.TestCase):
             receipt('s3_missing_head_404_count=1; cloudfront_after_delete_status=200; presigned_status=200; unsigned_status=403; '
                     'deletion_settled=status=unknown, error=s3_transport_unknown, stage=delete_object, curl=35, http=-1; '
                     'failed_step=expiring-link pass, History delete: History confirms object removal (status=unknown, '
-                    'error=s3_transport_unknown, stage=delete_object, curl=35, http=-1, the file stays at the destination); '
+                    'error=s3_transport_unknown, stage=delete_object, curl=35, http=-1, removal not confirmed); '
                     'History confirms object removal (status=unknown); fixture cleanup failed: owned history and cache: RecipeBlocked; '
                     'accepted settings: RecipeBlocked')
             self.assertEqual(nightly.failed_recipe_note(out, 'fallback'),
                              'expiring-link pass, History delete: History confirms object removal (status=unknown, '
-                             'error=s3_transport_unknown, stage=delete_object, curl=35, http=-1, the file stays at the destination); '
+                             'error=s3_transport_unknown, stage=delete_object, curl=35, http=-1, removal not confirmed); '
                              'fixture cleanup failed: owned history and cache: RecipeBlocked; accepted settings: RecipeBlocked')
             # A recipe that names no step keeps its whole note.
             receipt('one; two')
