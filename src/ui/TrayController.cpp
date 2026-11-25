@@ -506,7 +506,7 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
  if(const int links=unconfirmed+unmade){
   const auto subject=items.size()>1?QString(links==1?"1 share link ":"%1 share links ").arg(links):QString("the share link ");
   const auto outcome=unconfirmed&&unmade?QString("couldn't be created or confirmed"):unconfirmed?QString("couldn't be confirmed"):QString("couldn't be created");
-  QStringList actions;if(finishable){bool stored=true;for(const auto& value:items)if(!QStringList{"uploaded","skipped","conflict","local_only"}.contains(value.toObject()["uploadStatus"].toString()))stored=false;actions<<(stored?QString("Finish share link"):QString("Retry upload"));}if(inspect)actions<<"Inspect link";if(create)actions<<"Create share link";
+  QStringList actions;if(finishable){bool stored=true;for(const auto& value:items)if(!QStringList{"uploaded","skipped","conflict","local_only"}.contains(value.toObject()["uploadStatus"].toString()))stored=false;actions<<(stored?QString(finishable>1?"Finish share links":"Finish share link"):QString("Retry upload"));}if(inspect)actions<<"Inspect link";if(create)actions<<"Create share link";
   link=subject+outcome+(links==1&&unmade&&!linkCause.isEmpty()?": "+linkCause:QString{})+". Select "+actions.join(" or ")+" in History.";
  }
  QString text;

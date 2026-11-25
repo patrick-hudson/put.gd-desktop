@@ -157,6 +157,8 @@ void notify(const QString& title,const QString& body,bool failure){
  loop.exec();
 }
 void refuse(const QString& body){notify(QStringLiteral("Upload didn't start"),body,true);}
+// After the resident accepted the files: it may have got further than reading them.
+void stopped(const QString& body){notify(QStringLiteral("Upload stopped"),body,true);}
 
 // Leaving the file manager's .service: re-exec under a scope of our own. The
 // re-executed client reports that it started through an inherited pipe, so a
@@ -537,7 +539,7 @@ int run(int argc,char** argv){
   auto others=resolution.unresolved;for(const auto& item:resolution.needingGio)others.removeOne(item);
   const auto noPath=QStringLiteral("Couldn't read these items because they have no local path: %1").arg(listed(others));
   if(resolution.needingGio.isEmpty())refuse(noPath);
-  else refuse(QStringLiteral("Couldn't resolve these locations because gio isn't installed: %1. Install gio, or upload from the file's own folder.%2").arg(listed(resolution.needingGio),others.isEmpty()?QString():"\n"+noPath));
+  else refuse(QStringLiteral("Couldn't resolve these locations because gio isn't available: %1. Install gio, or upload from the file's own folder.%2").arg(listed(resolution.needingGio),others.isEmpty()?QString():"\n"+noPath));
   return 1;
  }
  QJsonObject params{{"paths",QJsonArray::fromStringList(resolution.paths)},{"installation",installation}};
@@ -575,14 +577,14 @@ int run(int argc,char** argv){
   Error inspectError;const auto operation=request("operation.inspect",{{"id",id}},inspectError);
   if(inspectError){
    if(inspectError.code=="client_unavailable"||inspectError.code=="client_timeout"||inspectError.code=="operation_not_found")
-    refuse(QStringLiteral("put.gd stopped before copying the files. Check History, then try again."));
+    stopped(QStringLiteral("put.gd stopped while reading the files. Check History, then try again."));
    else refuse(inspectError.message.isEmpty()?inspectError.code:inspectError.message);
    return 1;
   }
   const auto state=operation["state"].toString();
   if(state=="accepted"||state=="acquiring"){sleepMs(pollIntervalMs);continue;}
   // The resident announces a failed operation itself; an interrupted one it doesn't.
-  if(state=="interrupted"){refuse(QStringLiteral("put.gd stopped before copying the files. Check History, then try again."));return 1;}
+  if(state=="interrupted"){stopped(QStringLiteral("put.gd stopped while reading the files. Check History, then try again."));return 1;}
   return state=="failed"||state=="cancelled"?1:0;
  }
 }

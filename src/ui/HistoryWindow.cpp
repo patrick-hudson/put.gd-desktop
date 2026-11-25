@@ -1453,7 +1453,7 @@ QString HistoryWindow::destinationLabel(const QJsonObject& r)const{
 }
 // #1361: shown while the selected upload's outcome is unknown at a destination that cannot be
 // asked whether it arrived; cleared when that stops being true of the selection.
-static const QString& resendNotice(){static const QString text="The server's reply was lost, and this destination can't check whether the file arrived. Retry upload sends it again and may create a duplicate.";return text;}
+static const QString& resendNotice(){static const QString text="The file may already be on the server, and this destination can't check whether it arrived. Retry upload sends it again and may create a duplicate.";return text;}
 void HistoryWindow::selectionChanged(){emit viewStateChanged();const auto rows=table_->selectionModel()->selectedRows();
  // The instruction shows only while it applies; feedback stays until replaced.
  {static const QString instruction="Select an item to inspect its files and share link.";if(!rows.isEmpty()||!model_->rowCount()){if(status_->text()==instruction)Ui::feedback(status_,{});}else if(status_->text().isEmpty()&&Ui::scaled(100)<=125)Ui::feedback(status_,instruction);}{QSignalBlocker block(items_);items_->clear();if(rows.size()==1){const auto group=model_->record(rows.first().row());for(auto v:group["records"].toArray()){auto r=v.toObject();items_->addItem(r["name"].toString(),r["id"].toString());}const auto itemIndex=items_->findData(selectedItemId_);if(itemIndex>=0)items_->setCurrentIndex(itemIndex);items_->setVisible(items_->count()>1);}}loadSelectedItem();updateInspectorLayout();}
