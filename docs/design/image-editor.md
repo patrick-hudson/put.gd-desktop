@@ -236,7 +236,8 @@ deadline. Each agent command must answer within 8 s, and at most 16 may wait;
 a command past its deadline answers `editor_timeout`, and the helper's late
 answer to it (a large Save a copy or Copy image still finishing) is dropped
 rather than ending the edit.
-The resident accepts the handoff only after a normal zero exit, unchanged pinned
+The resident accepts the handoff only after the helper ends cleanly (a normal zero exit, or
+the stop described below for a helper that doesn't close after handing off), unchanged pinned
 input/output identities, the authenticated digest, and a structural check that
 the PNG contains only IHDR, PLTE, tRNS, gAMA, cHRM, sRGB, pHYs, IDAT and a final
 IEND with valid CRCs and no trailing bytes. Text, EXIF, ICC, time and private
