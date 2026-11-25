@@ -3488,7 +3488,7 @@ void ReviewWindow::refreshNote() {
     if (placing_) {
         const auto& span = placing_->span;
         // A blur's prompt carries its warning (Q13).
-        const auto what = placing_->kind == "solid" ? QStringLiteral("Draw the redaction") : QStringLiteral("Draw the blur (may be reversible)");
+        const auto what = placing_->kind == "solid" ? QStringLiteral("Draw the redaction") : QStringLiteral("Draw the blur (text can be recovered)");
         auto text = placing_->whole ? what + QStringLiteral(" · whole recording") : QStringLiteral("%1 · %2 – %3").arg(what, durationText(span.start), durationText(span.end));
         if (!placeHint_.isEmpty()) text = placeHint_;
         placeBanner_->setText(waiting && loadingFrame_ ? QStringLiteral("Loading the frame to draw on…") : text);
