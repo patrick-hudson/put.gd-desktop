@@ -166,7 +166,7 @@ bool SftpPanel::chooseKey() {
     auto folder = keyFile_->text().isEmpty() ? QString() : QFileInfo(keyFile_->text()).absolutePath();
     if (folder.isEmpty() || !QFileInfo(folder).isDir()) folder = QFileInfo(QDir::home().filePath(".ssh")).isDir() ? QDir::home().filePath(".ssh") : QDir::homePath();
     return keyChooser_->open({FileDialog::Mode::Open, "Choose the SSH key file", folder, {}, {}}, [this](const FileDialog::Result& result) {
-        if (result.failed()) { keyFileProblem_ = result.error + " SSH key is unchanged."; showKeyProblem(); }
+        if (result.failed()) { keyFileProblem_ = result.error; showKeyProblem(); }
         if (!result.chosen()) return;
         keyFile_->setText(result.path);
         finished(keyFile_);
@@ -212,7 +212,7 @@ bool SftpPanel::applyAddress(const QString& text, const QString* previous) {
     const auto trimmed = sftp::withoutPassword(text, &hadPassword);
     const bool address = hadPassword || trimmed.contains('@') || trimmed.contains(QLatin1String("://")) || trimmed.contains(QLatin1String(":/")) || trimmed.contains(QLatin1String(":~"));
     if (!address) return false;
-    const QString passwordProblem = QStringLiteral("put.gd doesn't take a password in the address, so it was left out. Enter it in Password, which keeps it in the keychain.");
+    const QString passwordProblem = QStringLiteral("put.gd doesn't take a password in the address, so it was left out. Enter it in Password instead.");
     QString why;
     auto parsed = sftp::parseServer(trimmed, &why);
     // The whole address must be valid before any field takes a part of it.

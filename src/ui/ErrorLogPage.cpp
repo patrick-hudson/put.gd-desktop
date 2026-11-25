@@ -169,7 +169,7 @@ void ErrorLogPage::load(std::function<void(Error)> done) {
  loading_=true;
  session_.request("errors.list",params,this,[g=QPointer<ErrorLogPage>(this),done](Error e,QJsonObject page){
   if(!g)return;g->loading_=false;
-  if(e){g->empty_->setText("The error log can't be read right now: "+e.message);g->empty_->show();g->table_->hide();if(done)done(e);return;}
+  if(e){g->empty_->setText("Couldn't read the error log: "+e.message);g->empty_->show();g->table_->hide();if(done)done(e);return;}
   g->entries_=page["entries"].toArray();g->total_=page["total"].toInt();g->lastRevision_=page["revision"].toString();
   g->populate();if(done)done({});
  });
@@ -293,7 +293,7 @@ void ErrorLogPage::runStep(const QString& step,std::function<void(Error,QJsonObj
 // Remove from History only (#1759): History's own deletion dialog for the file, from a fresh
 // delete.prepare, so the wording, the button and its refusal are the ones History shows.
 void ErrorLogPage::openRemove(const QJsonObject& entry,std::function<void(Error,QJsonObject)> done) {
- if(removeConfirm_){done({"ui_confirmation_open","A Remove from History only confirmation is already open; confirm or cancel it first.",{}},{});return;}
+ if(removeConfirm_){done({"ui_confirmation_open","A Remove from History only confirmation is already open. Confirm or cancel it first.",{}},{});return;}
  const auto historyId=entry["historyId"].toString();
  stepRunning_=true;showDetails(entry);feedback({},false);
  session_.request("delete.prepare",{{"ids",QJsonArray{historyId}}},this,[g=QPointer<ErrorLogPage>(this),entry,historyId,done](Error e,QJsonObject preview){
@@ -302,7 +302,7 @@ void ErrorLogPage::openRemove(const QJsonObject& entry,std::function<void(Error,
   if(e){g->feedback(e.message,true);done(e,{});return;}
   // Added back for the same place, the file can be deleted there: History offers Delete, not this.
   if(!preview["targets"].toArray().first().toObject()["destinationRemoved"].toBool()){
-   const Error back{"destination_not_removed","This file's destination is in Settings again, so put.gd can delete it there. Delete it from History instead.",{{"historyId",historyId}}};
+   const Error back{"destination_not_removed","This file's destination is back in Destinations. Select Delete from destination… in History.",{{"historyId",historyId}}};
    g->feedback(back.message,true);done(back,{});return;
   }
   auto* dialog=HistoryWindow::deletionConfirmation(g,preview,{{historyId,entry["itemName"].toString()}},g->session_.document()["profiles"].toArray());

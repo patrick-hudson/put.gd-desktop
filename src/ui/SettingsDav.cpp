@@ -1,4 +1,4 @@
-// Settings → Destinations for Nextcloud and WebDAV (#1872): the sign-in flow around the
+// Destinations for Nextcloud and WebDAV (#1872): the sign-in flow around the
 // panel, the results of its setup jobs, and ui.davDestination. Kept out of
 // SettingsWindow.cpp; the panel itself is DavDestinationPanel.
 #include "SettingsWindow.h"
@@ -49,7 +49,7 @@ void SettingsWindow::revokeBeforeRemoving(const QString& profileId) {
         if (guard->profileId_->text() != profileId) return;
         guard->davRemoving_ = profileId;
         if (auto* remove = guard->findControl<QPushButton*>("removeDestination")) remove->click();
-        if (!confirmed) guard->setupFeedback("put.gd couldn't confirm that the server revoked its app password; if Nextcloud still lists put.gd under Personal settings → Security → Devices & sessions, remove it there.");
+        if (!confirmed) guard->setupFeedback("Couldn't confirm that Nextcloud revoked the app password. If put.gd still appears under Personal settings → Security → Devices & sessions, remove it there.");
     };
     setupFeedback(QString::fromUtf8("Signing out of Nextcloud…"));
     settings_.request("setup.signOut", {{"profileId", profileId}, {"expectedRevision", settings_.revision()}}, this, [this, proceed](Error e, QJsonObject data) {
@@ -138,7 +138,7 @@ bool SettingsWindow::davSetupFinished(const QJsonObject& job, const QJsonObject&
         if (!warning.isEmpty()) { setupFeedback("Signed in as " + name + ". " + warning); return true; }
         setupFeedback(result["sharePasswordEnforced"].toBool()
             ? "Signed in as " + name + ". This server requires a password on every public link, which put.gd doesn't set, so uploads there won't get a link."
-            : result["sharing"].isBool() && !result["sharing"].toBool() ? "Signed in as " + name + ". Public links are turned off on this server, so uploads would get no link."
+            : result["sharing"].isBool() && !result["sharing"].toBool() ? "Signed in as " + name + ". Public links are turned off on this server, so uploads won't get a link."
             : "Signed in as " + name + ".", true);
         return true;
     }

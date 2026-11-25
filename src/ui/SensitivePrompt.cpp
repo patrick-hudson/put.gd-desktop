@@ -28,7 +28,7 @@ QString sensitiveReasonText(const QString& reason){
  if(reason=="truncated")return QStringLiteral("Recognition stopped at its time or size limit, so part of the image was not read.");
  if(reason=="too_large")return QStringLiteral("The image is over 24 megapixels, too large to read.");
  if(reason=="patterns_skipped")return QStringLiteral("A pattern in your redaction list didn't finish in time.");
- if(reason=="name_unchecked")return QStringLiteral("Your account name could not be looked up in time.");
+ if(reason=="name_unchecked")return QStringLiteral("Couldn't look up your account name in time.");
  if(reason=="language_missing")return QStringLiteral("A language chosen in Settings has no data installed, so text in it wasn't read.");
  if(reason=="matching_unfinished")return QStringLiteral("Matching didn't finish in time.");
  if(reason=="unavailable")return QStringLiteral("Text recognition is not available.");

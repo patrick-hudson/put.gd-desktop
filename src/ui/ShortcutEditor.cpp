@@ -124,7 +124,7 @@ void ShortcutEditor::startRecording(const QString& action){
   guard->setRecordingStatus("Press hotkey… Release all keys to keep it. Escape cancels.");
  });
 }
-void ShortcutEditor::cancelRecording(){if(!recordingAction_.isEmpty())finishRecording("Recording canceled. The draft hotkey is unchanged.");}
+void ShortcutEditor::cancelRecording(){if(!recordingAction_.isEmpty())finishRecording("Recording cancelled.");}
 void ShortcutEditor::finishRecording(const QString& message){
  if(recordingAction_.isEmpty())return;
  // Escape or deactivation also abandons a keycap switch held under the mouse.
@@ -184,7 +184,7 @@ bool ShortcutEditor::eventFilter(QObject* object,QEvent* event){
   // Store the physical key's unshifted digit or punctuation (Ctrl+Shift+4,
   // not Ctrl+Shift+$), the form the defaults and every desktop backend share.
   const auto pressed=keyboard_?keyboard_->chord(*key):key->keyCombination();
-  if(!chord_.isEmpty()&&chord_[0].key()!=pressed.key()){finishRecording("Use one key with modifiers. The draft hotkey is unchanged.");return true;}
+  if(!chord_.isEmpty()&&chord_[0].key()!=pressed.key()){finishRecording("Press one key with optional modifiers.");return true;}
   chord_=QKeySequence(pressed);
   setRecordingStatus(chord_.toString(QKeySequence::NativeText)+" — release all keys to keep it. Escape cancels.");
  }else{

@@ -412,7 +412,7 @@ int main(int argc,char** argv){
   {const auto at=[&](int seconds){return now.addSecs(-seconds).toString(Qt::ISODateWithMs);};
    const QJsonArray entries{
     QJsonObject{{"id","synthetic-error-deletion"},{"time",at(60)},{"firstTime",at(60)},{"occurrences",1},{"kind","deletion"},{"code","credential_setup_required"},{"title","Credentials for this file's destination aren't loaded."},
-     {"message","Credentials for this file's destination aren't loaded. Unlock its saved credentials, or enter them again in Destinations if they were for one session only."},{"details",QJsonObject{{"deletionStatus","failed"}}},
+     {"message","Credentials for this destination are locked or missing. Unlock saved credentials, or enter them again in Destinations if they were for this session only."},{"details",QJsonObject{{"deletionStatus","failed"}}},
      {"subject","deletion:synthetic-preview-file-0"},{"resolved",false},{"historyId","synthetic-preview-file-0"},{"itemId","synthetic-preview-file-0"},{"deletionId","synthetic-deletion"},{"profileId","synthetic-archive"},{"provider","s3"},{"destination","Project archive"},
      {"nextSteps",QJsonArray{"unlock_credentials","open_destination","retry","show_in_history"}}},
     QJsonObject{{"id","synthetic-error-upload"},{"time",at(900)},{"firstTime",at(1500)},{"occurrences",3},{"kind","upload"},{"code","s3_permission_denied"},{"title","S3 denied the request (HTTP 403)."},
@@ -553,7 +553,7 @@ int main(int argc,char** argv){
    {HistoryStore ledger(operations.databasePath());if(ledger.saveOperation(expired))return 2;}window.history()->refresh();if(!waitUntil([&]{return list->model()->rowCount()==9;}))return 2;
    window.history()->command({{"action","select"},{"ids",QJsonArray{item.artifact.id}}},[](Error,QJsonObject){});window.history()->command({{"action","openDetails"}},[](Error,QJsonObject){});
    if(!waitUntil([&]{return window.findChild<QPushButton*>("copyHistoryLink")->text()=="Refresh and copy link";}))return 2;
-   fixture.client.failOnce["history.copyLink"]={"credential_setup_required","Credentials for this file's destination aren't loaded. Unlock its saved credentials, or enter them again in Destinations if they were for one session only.",{}};window.findChild<QPushButton*>("copyHistoryLink")->click();if(!waitUntil([&]{return window.findChild<QPushButton*>("historyUnlockLinkCredentials")->isVisible();}))return 2;
+   fixture.client.failOnce["history.copyLink"]={"credential_setup_required","Credentials for this destination are locked or missing. Unlock saved credentials, or enter them again in Destinations if they were for this session only.",{}};window.findChild<QPushButton*>("copyHistoryLink")->click();if(!waitUntil([&]{return window.findChild<QPushButton*>("historyUnlockLinkCredentials")->isVisible();}))return 2;
    if(!save("s3-history-expired-unlock"))return 2;
    {HistoryStore ledger(operations.databasePath());if(ledger.expireBefore("2001-01-01T00:00:00.000Z"))return 2;}window.history()->refresh();if(!waitUntil([&]{return list->model()->rowCount()==8;}))return 2;
    list->selectionModel()->select(list->model()->index(0,0),QItemSelectionModel::ClearAndSelect|QItemSelectionModel::Rows);list->setCurrentIndex(list->model()->index(0,0));
@@ -570,7 +570,7 @@ int main(int argc,char** argv){
   window.settings()->errorLogCommand({{"action","select"},{"id","synthetic-error-deletion"}},[](Error,QJsonObject){});if(!waitUntil([&]{return window.findChild<QWidget*>("errorLogDetails")->isVisible();}))return 2;if(!save("05g-settings-error-log-entry"))return 2;
   tabs->setCurrentIndex(3);}{auto* support=window.findChild<QToolButton*>("desktopSupportDetailsToggle");support->setChecked(true);auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());putgd::test::settle(50);scroll->ensureWidgetVisible(window.findChild<QWidget*>("desktopSupportDetails"),0,20);if(!save("settings-desktop-support-expanded"))return 2;
   // #1364: a desktop that draws click rings but not in window recordings (Budgie on labwc) names that here.
-  window.settings()->showClickHighlights({{"available",true},{"route","labwc-mouse-binds"},{"drawnBy","recorder"},{"targets",QJsonArray{"monitor","desktop","region"}},{"targetReasons",QJsonObject{{"window","A window recording on labwc has no pointer position: the compositor's window capture source has no cursor source, and labwc reports no window geometry."}}}});
+  window.settings()->showClickHighlights({{"available",true},{"route","labwc-mouse-binds"},{"drawnBy","recorder"},{"targets",QJsonArray{"monitor","desktop","region"}},{"targetReasons",QJsonObject{{"window","Window recordings on labwc can't highlight clicks. labwc's window capture has no cursor source and reports no window geometry."}}}});
   putgd::test::settle(50);scroll->ensureWidgetVisible(window.findChild<QWidget*>("desktopSupportDetails"),0,20);if(!save("settings-desktop-support-click-limits"))return 2;
   support->setChecked(false);scroll->verticalScrollBar()->setValue(0);}window.findChild<QToolButton*>("resourceLimitsToggle")->setChecked(true);if(!save("settings-resource-limits-expanded"))return 2;{auto* help=window.findChild<QToolButton*>("historyRetentionChoiceHelp");if(!help)return 2;help->setChecked(true);auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());putgd::test::settle(50);scroll->ensureWidgetVisible(window.findChild<QLabel*>("historyRetentionChoiceHelpText"),0,20);if(!save("settings-retention-help"))return 2;help->setChecked(false);scroll->verticalScrollBar()->setValue(0);}window.findChild<QToolButton*>("resourceLimitsToggle")->setChecked(false);
  {auto* scroll=qobject_cast<QScrollArea*>(tabs->currentWidget());auto* retention=window.findChild<QLineEdit*>("historyRetentionDays");putgd::test::settle(100);scroll->ensureWidgetVisible(retention,0,100);if(!save("settings-forever-retention"))return 2;scroll->verticalScrollBar()->setValue(0);auto* limit=window.findChild<QLineEdit*>("maxFileBytes");const auto before=limit->text();limit->setText("3");if(!save("settings-numeric-limit-unit"))return 2;limit->setText(before);}
@@ -618,8 +618,8 @@ int main(int argc,char** argv){
  window.settings()->showClickHighlights({{"available",true},{"route","x11-xinput2"},{"drawnBy","recorder"},{"targets",QJsonArray{"monitor","desktop","region","window"}}});
  putgd::test::settle(40);scroll->ensureWidgetVisible(window.findChild<QWidget*>("recordingClickHighlights"),0,60);if(!save("settings-recording-microphone-clicks"))return 2;
  // No microphone (the default input is an output's monitor), and a desktop whose rings the compositor draws.
- window.settings()->showRecordingMicrophones({{"available",false},{"reason","default_is_monitor"},{"message","The system's default input is the monitor of an output, not a microphone. Plug one in, or choose a device in Settings."},{"devices",QJsonArray{}},{"defaultIsMonitor",true}});
- window.settings()->showClickHighlights({{"available",true},{"route","kwin-mouseclick-effect"},{"drawnBy","compositor"},{"targets",QJsonArray{"monitor","desktop","region"}},{"note","KWin draws the rings on the screen for the length of the recording; window recordings carry none."}});
+ window.settings()->showRecordingMicrophones({{"available",false},{"reason","default_is_monitor"},{"message","The system's default input is an output monitor, not a microphone. Plug in a microphone, or choose one in Settings → Capture."},{"devices",QJsonArray{}},{"defaultIsMonitor",true}});
+ window.settings()->showClickHighlights({{"available",true},{"route","kwin-mouseclick-effect"},{"drawnBy","compositor"},{"targets",QJsonArray{"monitor","desktop","region"}},{"note","KWin draws click rings on the screen while recording. Window recordings don't include them."}});
  putgd::test::settle(40);if(!save("settings-recording-no-microphone"))return 2;
  scroll->verticalScrollBar()->setValue(0);}
  window.navigate("destinations");destinations->setCurrentRow(1);window.findChild<QLineEdit*>("credentialAccessKey")->setText("EXAM-synthetic-preview-access");window.findChild<QLineEdit*>("credentialSecretKey")->setText("synthetic-preview-secret");window.findChild<QPushButton*>("storeCredentials")->click();if(!waitUntil([&]{return window.findChild<QLabel*>("storedCredentialHint")->text().contains("EXAM");}))return 2;auto* destinationScroll=window.findChild<QScrollArea*>("destinationScroll");destinationScroll->verticalScrollBar()->setValue(destinationScroll->verticalScrollBar()->maximum());if(!save("09-stored-credential-hint"))return 2;
@@ -742,7 +742,7 @@ int main(int argc,char** argv){
   auto* resolved=window.findChild<QLabel*>("sftpResolved");if(!resolved||!waitUntil([&]{return resolved->isVisible()&&!resolved->text().isEmpty();}))return 2;
   destinationScroll->verticalScrollBar()->setValue(0);if(!save("settings-sftp"))return 2;
   const QString fingerprint="ED25519 SHA256:lKD1cde7y8vs6nPz/4s3tCa5I1qSUf7Et8Vb93KG/90";
-  panel->showTestError("ssh_host_unknown_key","The server's host key is "+fingerprint+". Trust it only if it matches the key your server's admin gave you.",{{"fingerprint",fingerprint}});
+  panel->showTestError("ssh_host_unknown_key","The server's host key is "+fingerprint+". Select Trust key only if it matches the key your server's admin gave you.",{{"fingerprint",fingerprint}});
   if(!save("settings-sftp-trust-key",scrollPose(destinationScroll,window.findChild<QWidget*>("sftpHostKeyBanner"),40)))return 2;
   panel->clearOffers();
   // #1892: the one Sign-in section: a key file chosen outside ~/.ssh (synthetic, private), the two
@@ -923,7 +923,7 @@ int main(int argc,char** argv){
   // A result over the output's limit: editing resumes with the reason, and a
   // destination too long to sit beside the actions wraps above them.
   editor.setDestination("Upload to Production screenshots for customer support (EU) · Shared link",true);
-  editor.showPreparationFailed("The edited image is 41.3 MB, over the 25 MB limit for this output. Your edits are kept: crop it and try again, or save a copy.");if(!grab("29-editor-preparation-failed"))return 2;
+  editor.showPreparationFailed("Edited image is 41.3 MB, over the 25 MB limit. The upload didn't start. Crop it and select Upload again, or select Save a copy… instead.");if(!grab("29-editor-preparation-failed"))return 2;
   // Clear state 29's failure and the earlier saved-copy feedback before the swatches.
   editor.viewCommand({{"action","keepEditing"}},code,message);if(!code.isEmpty())return 2;
   editor.viewCommand({{"action","dismissSavedCopy"}},code,message);if(!code.isEmpty())return 2;

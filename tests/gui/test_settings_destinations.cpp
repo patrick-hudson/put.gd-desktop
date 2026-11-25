@@ -537,7 +537,7 @@ private slots:
   auto* retry=window.findChild<QPushButton*>("retryDestinationAutosave");auto* banner=window.findChild<QWidget*>("destinationConflictBanner");auto* fileLine=window.findChild<QLabel*>("destinationConfigFileError");QVERIFY(retry&&banner&&fileLine);
   PUTGD_TRY_VERIFY(banner->isVisible()&&retry->isVisible());
   retry->click();
-  PUTGD_TRY_VERIFY(fileLine->isVisible()&&fileLine->text().startsWith("The configuration file wasn't loaded"));
+  PUTGD_TRY_VERIFY(fileLine->isVisible()&&fileLine->text().startsWith("Couldn't load the configuration file"));
   PUTGD_VERIFY_STEADY(banner->isVisible()&&fixture.client.held.isEmpty(),800);
   QVERIFY(read.open(QIODevice::ReadOnly));QCOMPARE(read.readAll(),written);
  }
@@ -865,7 +865,7 @@ private slots:
   if(!beforeRefusal)route->setCurrentIndex(route->findData("second"));
   // Nothing goes while the add can't be saved: anything sent now would be held.
   PUTGD_VERIFY_STEADY(fixture.client.held.isEmpty(),500);fixture.client.hold={};
-  auto* status=window.findChild<QLabel*>("settingsStatus");QVERIFY2(status->text().startsWith("A route to "),qPrintable(status->text()));
+  auto* status=window.findChild<QLabel*>("settingsStatus");QVERIFY2(status->text().startsWith("Capture settings for "),qPrintable(status->text()));
   window.findChild<QListWidget*>("destinationList")->setCurrentRow(0);
   window.findChild<QLineEdit*>("credentialAccessKey")->setText("SYNTHETICACCESSKEY");window.findChild<QLineEdit*>("credentialSecretKey")->setText("synthetic-secret");
   PUTGD_TRY_VERIFY(window.findChild<QPushButton*>("storeCredentials")->isEnabled());
