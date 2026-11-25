@@ -18,6 +18,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
 import datetime as dt
 import fcntl
+import gzip
 import hashlib
 import json
 import os
@@ -1359,6 +1360,11 @@ def earlier_archive(out, attempts):
             continue
         current = attempt_files(out, attempts) if current is None else current
         try:
+            # tarfile stops at the last member and never checks the gzip footer: read the stream to its
+            # end so a truncated archive (CRC and size missing) is never reused.
+            with gzip.open(archive) as stream:
+                while stream.read(1 << 20):
+                    pass
             if archived_files(archive) == current:
                 return archive
         except Exception:

@@ -1335,6 +1335,22 @@ class NightlyTests(unittest.TestCase):
                 outcomes = sorted(json.loads(p.read_text())['outcome'] for p in out.glob('completion.json.before-recovery-*'))
                 self.assertIn('failed', outcomes)
 
+    def test_a_retry_never_reuses_an_archive_missing_its_gzip_footer(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            stack, run, out, processes = self.retirement_fixture(root)
+            with stack:
+                processes.side_effect = nightly.NotRun('guest recovery deadline exhausted; explicit recovery required')
+                with self.assertRaises(nightly.NotRun):
+                    nightly.retire(run, out, {'idle_memory-1': {'status': 'green'}})
+                (out/'completion-manifest.json').unlink()
+                complete = (out/'attachments.tgz').read_bytes()
+                (out/'attachments.tgz').write_bytes(complete[:-8])
+                self.assertEqual(nightly.archived_files(out/'attachments.tgz'), nightly.attempt_files(out, [out/'idle_memory-1']))
+                self.assertIsNone(nightly.earlier_archive(out, [out/'idle_memory-1']))
+                (out/'attachments.tgz').write_bytes(complete)
+                self.assertEqual(nightly.earlier_archive(out, [out/'idle_memory-1']), out/'attachments.tgz')
+
     def test_a_retry_never_puts_evidence_back_over_a_symlink(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp).resolve()
