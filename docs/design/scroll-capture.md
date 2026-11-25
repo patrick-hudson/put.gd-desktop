@@ -505,7 +505,7 @@ desktop refused the input or the stream ended), `encoding_failed` or `input_exce
 (the spool or the PNG). The codes and what to do are in
 [errors](../user/errors.md#scrolling-capture).
 
-A positive `foundAgain` adds a History note and, when there is no other warning, the notice `scroll_found_again`, titled **put.gd — check the scrolling capture**: "The capture lost the page once and found it again. Rows may be missing there: check the image." For more than one it says "N times" instead of "once". The sentence is appended when another note exists; `endReason` and `truncated` stay unchanged. An existing warning keeps its notice kind.
+A positive `foundAgain` adds a History note and, when there is no other warning, the notice `scroll_found_again`, titled **Scrolling capture may have gaps**: "Lost track of the page once while scrolling. Check the image for missing sections." For more than one it says "N times" instead of "once". The sentence is appended when another note exists; `endReason` and `truncated` stay unchanged. An existing warning keeps its notice kind.
 
 ## Known limits
 

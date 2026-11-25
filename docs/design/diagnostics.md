@@ -777,7 +777,7 @@ destination settings** when they were for one session only).
 A failed, partial or interrupted operation's notification has a **Save diagnostics
 for this upload** button, and so do failed History rows (in the inspector and the row
 menu). Each builds a package for that one operation, in the remembered folder or the
-default one. The resident then posts **put.gd — diagnostics saved** with the file name,
+default one. The resident then posts **Diagnostics saved** with the file name,
 size and folder, and a **Show in folder** button; after an upload from the dialog it
 also says where the package went, or why it wasn't uploaded. Notification buttons
 need the desktop's notification server to support actions (GNOME, Plasma and
