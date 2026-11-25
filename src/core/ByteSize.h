@@ -83,16 +83,25 @@ inline QString summary(qint64 bytes) {
 // Sizes below 1 KB are KB too, never a raw byte count: 0 KB, <0.1 KB, 0.5 KB.
 inline QString fileSummary(qint64 bytes) {
     if (bytes <= 0) return QStringLiteral("0 KB");
-    if (bytes * 10 < 1024) return QStringLiteral("<0.1 KB");
+    if (bytes <= 102) return QStringLiteral("<0.1 KB");
     if (bytes < MiB) return QString("%1 KB").arg(QString::number(double(bytes) / 1024, 'f', bytes < 10 * 1024 ? 1 : 0));
     return summary(bytes);
 }
 
-// Qt's traditional format is 1024-based but spells kilobytes "kB"; put.gd shows KB.
+// The locale's digits with put.gd's own unit labels: Qt's traditional format writes "kB",
+// raw bytes below 1 KB, and translated units ("ko") in some locales.
 inline QString localized(qint64 bytes, int precision = 1, const QLocale& locale = QLocale()) {
-    return locale.formattedDataSize(bytes, precision, QLocale::DataSizeTraditionalFormat).replace(QStringLiteral(" kB"), QStringLiteral(" KB"));
+    if (bytes <= 0) return QStringLiteral("0 KB");
+    if (bytes <= 102) return QStringLiteral("<0.1 KB");
+    static const char* const units[] = {"KB", "MB", "GB", "TB"};
+    double value = double(bytes) / 1024;
+    int unit = 0;
+    while (value >= 1024 && unit < 3) { value /= 1024; ++unit; }
+    return locale.toString(value, 'f', precision) + ' ' + QLatin1String(units[unit]);
 }
 inline QString admissionLimit(qint64 bytes) {
+    // Rounded up for space requirements, but no space is still none.
+    if (bytes <= 0) return QStringLiteral("0 MB");
     constexpr double mib = 1024.0 * 1024, gib = mib * 1024, tib = gib * 1024;
     if (bytes >= tib) return QString::number(bytes / tib, 'f', 1) + " TB";
     if (bytes >= gib) return QString::number(bytes / gib, 'f', 1) + " GB";

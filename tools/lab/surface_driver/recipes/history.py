@@ -249,8 +249,13 @@ def _details(ctx):
 def _size(ctx, byte_count, caption='Size'):
     # UI uses traditional labels with binary arithmetic. Assert the visible
     # accessible value as well as the authoritative byte count.
-    if byte_count < 1024:
-        label = str(byte_count) + ' B'
+    if byte_count <= 0:
+        label = '0 KB'
+    elif byte_count <= 102:
+        label = '<0.1 KB'
+    elif byte_count < 1024:
+        value = (Decimal(byte_count) / 1024).quantize(Decimal('0.1'), rounding=ROUND_HALF_UP)
+        label = str(value) + ' KB'
     else:
         unit, suffix = (1024, 'KB') if byte_count < 1024**2 else ((1024**2, 'MB') if byte_count < 1024**3 else (1024**3, 'GB'))
         precision = (1 if byte_count < 10 * 1024 else 0) if suffix == 'KB' else 2
