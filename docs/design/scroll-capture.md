@@ -319,12 +319,12 @@ Plasma, Hyprland and Budgie, so is the pointer anywhere on a clear watch surface
 that leaves holes only at the wheel points, the bar and the pad. On GNOME, so is any position
 the Shell extension reports other than the helper's own targets (extension 24, `pointerWatch`;
 see [GNOME](../desktops/gnome.md#scrolling-capture)). The gate closes at once: nothing more is
-injected, the watch and the pad go, the bar says **Paused: you moved the mouse**, and the
+injected, the watch and the pad go, the bar says **Paused (mouse moved)**, and the
 capture follows the user. **Auto-scroll** (once the mouse has been still for 500 ms) or
 `scroll.autoScroll {on: true}` turns it on again from wherever the page is.
 
 **It hands the wheel back by itself** when the page moves up while it turns it down (you
-scrolled: **Paused: you scrolled**), and when nothing scrolls at any of its wheel points
+scrolled: **Paused (scrolled)**), and when nothing scrolls at any of its wheel points
 (**Nothing scrolled here**). A jump up counts as yours only if the next frame agrees: the
 page stays up or goes on up. One frame placed far up and then the page back on
 auto-scroll's way was a picture out of place: in one run on a starved X server,
@@ -384,12 +384,12 @@ region** (which is Done during a capture) are the controls.
 
 | State | Says | Then |
 | --- | --- | --- |
-| `waiting` | Scroll the page | Done (or the key) when you reach the end |
-| `following` | Following | Done (or the key) when you reach the end |
+| `waiting` | Scroll the page | Select Done, or press the key |
+| `following` | Following | Select Done, or press the key |
 | `lost` | Lost the page (Auto-scroll lost the page, after it gave up) | Scroll back a little |
 | `scrollingToTop` | Scrolling to the top… | Move the mouse to pause |
 | `autoScrolling` | Auto-scrolling | Move the mouse to pause |
-| `paused` | Paused: you moved the mouse / Paused: you scrolled / Found the page again / Nothing scrolled here | Scroll on, or Auto-scroll to go on / Scroll the page yourself |
+| `paused` | Paused (mouse moved) / Paused (scrolled) / Found the page again / Nothing scrolled here | Scroll, or select Auto-scroll / Scroll the page yourself |
 | `resuming` | Auto-scroll in a moment… | Let go of the mouse |
 | `finishing` | Saving… | |
 
