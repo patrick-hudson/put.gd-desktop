@@ -120,7 +120,7 @@ QList<LabwcBridgeBackend::Keybind> LabwcBridgeBackend::readKeybinds(const QStrin
   const auto token=xml.readNext();
   if(token==QXmlStreamReader::StartElement){
    ++depth;
-   if(xml.name()==QLatin1String("keybind")){out.append({xml.attributes().value("key").toString(),xml.attributes().value("bridge").toString(),{}});current=&out.last();keybindDepth=depth;}
+   if(xml.name()==QLatin1String("keybind")){out.append(Keybind{xml.attributes().value("key").toString(),xml.attributes().value("bridge").toString(),{}});current=&out.last();keybindDepth=depth;}
    else if(current&&xml.name()==QLatin1String("action")&&current->command.isEmpty())current->command=xml.attributes().value("command").toString();
   }else if(token==QXmlStreamReader::EndElement){if(depth==keybindDepth){current=nullptr;keybindDepth=-1;}--depth;}
  }
