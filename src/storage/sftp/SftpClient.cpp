@@ -50,7 +50,7 @@ Error Client::pump(int milliseconds) {
         if (!reply) { protocolError_ = error; return lost(); }
         // Each outstanding request is answered exactly once; nothing else may arrive.
         if (!outstanding_.erase(reply->id)) {
-            protocolError_ = QStringLiteral("The server sent a reply put.gd did not ask for");
+            protocolError_ = QStringLiteral("The server sent an unexpected SFTP reply.");
             return lost();
         }
         if (abandoned_.erase(reply->id)) continue;  // a request given up on (a cancelled write)
@@ -109,7 +109,7 @@ Error Client::await(quint32 id, wire::Reply& reply, int deadlineMs) {
             abandoned_.insert(id);
             return cancelledError();
         }
-        if (waited.elapsed() > deadlineMs) { broken_ = true; return {"sftp_timeout", "The server stopped answering", {}}; }
+        if (waited.elapsed() > deadlineMs) { broken_ = true; return {"sftp_timeout", "The server stopped responding.", {}}; }
         if (auto e = pump(100)) return e;
     }
 }
@@ -139,7 +139,7 @@ Error Client::handshake(bool& noise) {
         if (!packet) continue;
         const auto reply = wire::parse(*packet, &error);
         if (!reply || reply->type != wire::Version) { noise = true; protocolError_ = error.isEmpty() ? QStringLiteral("The server did not start SFTP") : error; return lost(); }
-        if (reply->version != 3) { protocolError_ = QStringLiteral("The server answered SFTP version %1; put.gd speaks version 3").arg(reply->version); return lost(); }
+        if (reply->version != 3) { protocolError_ = QStringLiteral("The server answered with SFTP version %1, but put.gd requires SFTP version 3.").arg(reply->version); return lost(); }
         extensions_ = reply->extensions;
         break;
     }
@@ -148,9 +148,9 @@ Error Client::handshake(bool& noise) {
         if (auto e = request(id, wire::extended(id, "limits@openssh.com", {}))) return e;
         wire::Reply reply;
         if (auto e = await(id, reply)) return e;
-        if (reply.type != wire::ExtendedReply) { protocolError_ = QStringLiteral("The server answered limits@openssh.com with something else"); return lost(); }
+        if (reply.type != wire::ExtendedReply) { protocolError_ = QStringLiteral("The server sent an unexpected reply to limits@openssh.com."); return lost(); }
         const auto l = wire::limits(reply.data);
-        if (!l) { protocolError_ = QStringLiteral("The server sent malformed limits"); return lost(); }
+        if (!l) { protocolError_ = QStringLiteral("The server sent malformed SFTP transfer limits."); return lost(); }
         // Zero means no limit of that kind; a packet limit bounds the data with the header around it.
         auto fit = [&](quint64 data) {
             auto chunk = data ? qMin(data, maximumChunk) : maximumChunk;
@@ -159,7 +159,7 @@ Error Client::handshake(bool& noise) {
         };
         writeChunk_ = fit(l->write);
         readChunk_ = fit(l->read);
-        if (writeChunk_ < 512 || readChunk_ < 512) { protocolError_ = QStringLiteral("The server's SFTP limits are too small to upload with"); return lost(); }
+        if (writeChunk_ < 512 || readChunk_ < 512) { protocolError_ = QStringLiteral("The server's SFTP packet limits are too small to upload files."); return lost(); }
     }
     return {};
 }
@@ -168,7 +168,7 @@ bool Client::has(const char* extension, const char* version) const {
     return false;
 }
 Error Client::statusOnly(const wire::Reply& reply, Status& status) {
-    if (reply.type != wire::Status) { protocolError_ = QStringLiteral("The server answered with the wrong kind of reply"); return lost(); }
+    if (reply.type != wire::Status) { protocolError_ = QStringLiteral("The server sent an unexpected SFTP reply."); return lost(); }
     status = {reply.code, reply.message};
     return {};
 }
@@ -187,7 +187,7 @@ Error Client::realpath(const QByteArray& path, QByteArray& absolute, Status& sta
     wire::Reply reply;
     if (auto e = await(id, reply)) return e;
     if (reply.type == wire::Status) { status = {reply.code == wire::Ok ? quint32(wire::Failure) : reply.code, reply.message}; return {}; }
-    if (reply.type != wire::Name || reply.names.size() != 1) { protocolError_ = QStringLiteral("The server answered a path request with something else"); return lost(); }
+    if (reply.type != wire::Name || reply.names.size() != 1) { protocolError_ = QStringLiteral("The server sent an unexpected reply to a path lookup."); return lost(); }
     absolute = reply.names.first().name;
     status = {};
     return {};
@@ -200,7 +200,7 @@ Error Client::lstat(const QByteArray& path, wire::Attributes& attributes, Status
     wire::Reply reply;
     if (auto e = await(id, reply)) return e;
     if (reply.type == wire::Status) { status = {reply.code == wire::Ok ? quint32(wire::Failure) : reply.code, reply.message}; return {}; }
-    if (reply.type != wire::Attrs) { protocolError_ = QStringLiteral("The server answered a file check with something else"); return lost(); }
+    if (reply.type != wire::Attrs) { protocolError_ = QStringLiteral("The server sent an unexpected reply to a file check."); return lost(); }
     attributes = reply.attributes;
     status = {};
     return {};
@@ -213,7 +213,7 @@ Error Client::fstat(const QByteArray& handle, wire::Attributes& attributes, Stat
     wire::Reply reply;
     if (auto e = await(id, reply, int(qMax<qint64>(0, deadlineMs - budget.elapsed())))) return e;
     if (reply.type == wire::Status) { status = {reply.code == wire::Ok ? quint32(wire::Failure) : reply.code, reply.message}; return {}; }
-    if (reply.type != wire::Attrs) { protocolError_ = QStringLiteral("The server answered a file check with something else"); return lost(); }
+    if (reply.type != wire::Attrs) { protocolError_ = QStringLiteral("The server sent an unexpected reply to a file check."); return lost(); }
     attributes = reply.attributes;
     status = {};
     return {};
@@ -224,7 +224,7 @@ Error Client::openExclusive(const QByteArray& path, QByteArray& handle, Status& 
     wire::Reply reply;
     if (auto e = await(id, reply, deadlineMs)) return e;
     if (reply.type == wire::Status) { status = {reply.code == wire::Ok ? quint32(wire::Failure) : reply.code, reply.message}; return {}; }
-    if (reply.type != wire::Handle) { protocolError_ = QStringLiteral("The server answered an open with something else"); return lost(); }
+    if (reply.type != wire::Handle) { protocolError_ = QStringLiteral("The server sent an unexpected reply to a file open."); return lost(); }
     handle = reply.handle;
     status = {};
     return {};
@@ -235,7 +235,7 @@ Error Client::openRead(const QByteArray& path, QByteArray& handle, Status& statu
     wire::Reply reply;
     if (auto e = await(id, reply)) return e;
     if (reply.type == wire::Status) { status = {reply.code == wire::Ok ? quint32(wire::Failure) : reply.code, reply.message}; return {}; }
-    if (reply.type != wire::Handle) { protocolError_ = QStringLiteral("The server answered an open with something else"); return lost(); }
+    if (reply.type != wire::Handle) { protocolError_ = QStringLiteral("The server sent an unexpected reply to a file open."); return lost(); }
     handle = reply.handle;
     status = {};
     return {};
@@ -271,7 +271,7 @@ Error Client::write(const QByteArray& handle, QIODevice& source, qint64 total, Q
             if (found == replies_.end()) { ++it; continue; }
             const auto reply = std::move(found->second);
             replies_.erase(found);
-            if (reply.type != wire::Status) { protocolError_ = QStringLiteral("The server answered a write with something else"); return lost(); }
+            if (reply.type != wire::Status) { protocolError_ = QStringLiteral("The server sent an unexpected reply to a file write."); return lost(); }
             if (reply.code != wire::Ok && status.code == wire::Ok) status = {reply.code, reply.message};
             // Only bytes the server confirmed count as sent.
             if (reply.code == wire::Ok) acknowledged += it->second;
@@ -301,7 +301,7 @@ Error Client::readHash(const QByteArray& handle, qint64 bound, QCryptographicHas
             status = {reply.code, reply.message};
             return {};
         }
-        if (reply.type != wire::Data || reply.data.isEmpty() || quint64(reply.data.size()) > readChunk_) { protocolError_ = QStringLiteral("The server answered a read with something else"); return lost(); }
+        if (reply.type != wire::Data || reply.data.isEmpty() || quint64(reply.data.size()) > readChunk_) { protocolError_ = QStringLiteral("The server sent an unexpected reply to a file read."); return lost(); }
         hash.addData(reply.data);
         size += reply.data.size();
         offset += quint64(reply.data.size());

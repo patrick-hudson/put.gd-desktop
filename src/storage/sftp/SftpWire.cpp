@@ -81,7 +81,7 @@ std::optional<QByteArray> Framer::next(QString* error) {
     if (buffer_.size() - offset_ < 4) return std::nullopt;
     const auto length = qFromBigEndian<quint32>(buffer_.constData() + offset_);
     if (length < 1 || length > maximumPacket) {
-        if (error) *error = QStringLiteral("The server sent an SFTP packet of %1 bytes").arg(length);
+        if (error) *error = QStringLiteral("The server sent an invalid SFTP packet length (%1).").arg(length);
         buffer_.clear();
         offset_ = 0;
         return std::nullopt;

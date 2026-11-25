@@ -25,7 +25,7 @@ extern "C" Q_DECL_EXPORT const putgd::S3ModuleApi* putgd_s3_module_v1() {
 namespace putgd {
 namespace {
 Error unavailable() {
-    return {"s3_module_unavailable", "S3 support is missing or incompatible; restart put.gd after an update. If it remains unavailable, reinstall this build of put.gd", {}};
+    return {"s3_module_unavailable", "S3 support is missing or doesn't match this build. Restart put.gd after an update, or reinstall put.gd if it stays unavailable.", {}};
 }
 }
 struct S3Module::State {

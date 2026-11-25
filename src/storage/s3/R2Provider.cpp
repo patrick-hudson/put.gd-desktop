@@ -16,11 +16,11 @@ Error refused(const Destination& destination) { return r2::validate(destination.
 // address or a custom domain, so a public upload without one is refused before it starts (#1699).
 Error publicLinkRefused(const Destination& destination) {
     if (destination.settings["linkMode"] != QLatin1String("public") || destination.settings["publicUrlBase"].isString()) return {};
-    return {"s3_settings_invalid", "Cloudflare R2 serves public links only from the bucket's r2.dev address or a custom domain. Enter it in Link domain, or choose Private bucket: links that expire.", {{"field", "publicUrlBase"}}};
+    return {"s3_settings_invalid", "Cloudflare R2 serves public links only from the bucket's r2.dev address or a custom domain. Enter it in Link domain, or select Private bucket: links that expire.", {{"field", "publicUrlBase"}}};
 }
 // What deleting from R2 does, for the deletion preparation agents and History acknowledge (#1699).
 QString deletionEffect() {
-    return QStringLiteral("Removal after an identity check; R2 ignores the delete precondition, so an object replaced between that check and the removal is removed too; browser/CDN caches may retain bytes");
+    return QStringLiteral("Deletes the object after verifying its identity. Cloudflare R2 ignores conditional delete headers, so an object replaced right after the check will still be deleted, and browser or CDN caches may keep serving it.");
 }
 UploadRequest s3Request(const UploadRequest& request) {
     auto converted = request;

@@ -46,7 +46,7 @@ ProviderCapabilities HttpUploaderProvider::receiptCapabilities(const StorageRece
             : leftOut == "stored_value"
             ? "The server returned a deletion URL that repeats a credential of this destination where put.gd cannot keep it by name, so it was not kept and put.gd cannot delete this upload from the server. Delete it on the server itself."
             : leftOut == "unusable"
-            ? "The server returned a deletion URL that this destination does not use: plain HTTP it does not allow, an address on this computer, or one with a user name in it. put.gd cannot delete this upload from the server. Delete it on the server itself."
+            ? "The server returned a deletion URL that put.gd can't use (disallowed plain HTTP, a local address, or a URL with a username). Delete this upload on the server itself."
             : "This upload came back without a deletion URL, so put.gd cannot delete it from the server. Delete it on the server itself.";
     }
     return caps;
@@ -97,16 +97,16 @@ Error HttpUploaderProvider::validateSettings(const QJsonObject& settings) const 
 Error HttpUploaderProvider::readiness(const Destination& destination) const {
     if (auto e = http::validateSettings(destination.settings)) return e;
     if (destination.settings["requestUrl"].toString().isEmpty())
-        return {"http_setup_required", "This destination has no request URL yet. Enter it in Settings, or import a .sxcu file.", {}};
+        return {"http_setup_required", "This destination has no Request URL yet. Enter one in Destinations, or import a .sxcu file.", {}};
     const auto keys = http::secretKeys(destination.settings);
     if (keys.isEmpty()) return {};
     const auto cached = credentials_.cached(destination.profileId, destination.credentialReference);
     if (!cached)
-        return {"credential_setup_required", "Credentials are not loaded for this destination. Unlock saved credentials, or enter its secret values in Settings and store them.", {}};
+        return {"credential_setup_required", "Credentials for this destination are locked or missing. Unlock saved credentials, or enter its secret values in Destinations and select Save to keychain or Use for this session.", {}};
     QStringList missing;
     for (const auto& key : keys) if (!cached->values.contains(key)) missing.append(http::secretLabel(key));
     if (!missing.isEmpty())
-        return {"credential_setup_required", "This destination has no stored value for: " + missing.join(", ") + ". Enter it in Settings and store the credentials.", {}};
+        return {"credential_setup_required", "Missing saved secret value for: " + missing.join(", ") + ". Enter it in Destinations and select Save to keychain or Use for this session.", {}};
     return {};
 }
 
@@ -114,7 +114,7 @@ QJsonObject HttpUploaderProvider::call(const QString& method, const Destination&
                                        std::shared_ptr<std::atomic_bool> cancellation, std::function<void(const UploadProgress&)> progress,
                                        DurableCheckpoint checkpoint, std::shared_ptr<std::atomic_bool> kill) {
     if (uncertain) *uncertain = false;
-    if (stopping_.load()) { error = {"operation_cancelled", "The application is stopping", {}}; return {}; }
+    if (stopping_.load()) { error = {"operation_cancelled", "put.gd is closing, so the request didn't start.", {}}; return {}; }
     if (auto e = http::validateSettings(destination.settings)) { error = e; return {}; }
     QJsonObject secrets;
     if (method == "remove") {
@@ -125,7 +125,7 @@ QJsonObject HttpUploaderProvider::call(const QString& method, const Destination&
             const auto cached = credentials_.cached(destination.profileId, destination.credentialReference);
             for (const auto& key : keys) {
                 if (!cached || !cached->values.contains(key)) {
-                    error = {"credential_setup_required", "Deleting this upload needs its destination's stored credentials. Unlock them, or enter and store them in Settings, then try again.", {}};
+                    error = {"credential_setup_required", "Deleting this upload requires the destination's saved credentials. Unlock saved credentials, or enter them in Destinations and select Save to keychain or Use for this session, then select Retry deletion.", {}};
                     return {};
                 }
                 secrets[key] = cached->values.value(key);
@@ -146,10 +146,11 @@ QJsonObject HttpUploaderProvider::call(const QString& method, const Destination&
     secrets = {};
     ++active_;
     struct Release { std::atomic_int& count; ~Release() { --count; } } release{active_};
+    const auto ending = worker::unconfirmedEnding(method, true, "the server", ", so the file may already be on the server. Check the server, or select Retry upload (this may create a duplicate).");
     const worker::ExchangePolicy policy{"http", "custom uploader", "Custom uploader", "http_outcome_unknown",
-        "The custom uploader helper could not start; reinstall put.gd",
-        "The custom uploader helper stopped responding; the upload may or may not be stored on the server",
-        "The custom uploader helper ended without a result; the upload may or may not be stored on the server",
+        "Couldn't start the custom uploader helper. Reinstall put.gd.",
+        "The custom uploader helper stopped responding" + ending,
+        "The custom uploader helper exited without confirming the result" + ending,
         {"remove", "testDestination"}};
     const auto final = worker::exchange(workerPath(), method, std::move(params), destination.settings["requestTimeoutMs"].toInt(600000),
                                         policy, stopping_, error, uncertain, cancellation, progress, checkpoint, kill);

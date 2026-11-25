@@ -42,9 +42,9 @@ private slots:
  void invalidOrUnboundedProgressIsUnknown_data(){
   QTest::addColumn<QString>("fixture");QTest::addColumn<int>("timeoutMs");QTest::addColumn<QString>("message");
   // An untrusted helper's malformed progress and an unbounded flood both fail closed.
-  QTest::newRow("bad-progress-negative")<<"bad-progress-negative"<<1000<<"Unexpected or invalid upload progress";
+  QTest::newRow("bad-progress-negative")<<"bad-progress-negative"<<1000<<"The Proton helper sent invalid upload progress. Check Proton Drive before retrying.";
   // Parsing 40000 lines can outlast a 1 s deadline on a loaded runner, so this row's deadline cannot be reached (#236).
-  QTest::newRow("flood")<<"flood"<<120000<<"Helper response exceeded its bound";
+  QTest::newRow("flood")<<"flood"<<120000<<"The Proton helper sent too much output, so put.gd stopped it. Check Proton Drive before retrying.";
  }
  void invalidOrUnboundedProgressIsUnknown(){
   QFETCH(QString,fixture);QFETCH(int,timeoutMs);QFETCH(QString,message);ProtonProvider provider;auto d=destination(fixture);d.settings["requestTimeoutMs"]=timeoutMs;

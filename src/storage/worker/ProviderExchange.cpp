@@ -21,8 +21,14 @@ QString startFailureMessage(StartFailure failure, const QString& installationMes
     // Qt's own text stays in the error details: for an existing helper it can name the
     // wrong cause ("No such file or directory" when Qt ran out of descriptors).
     if (failure == StartFailure::Installation) return installationMessage;
-    if (failure == StartFailure::Temporary) return subject + " just now; try again.";
-    return subject + ". Try again; if it keeps failing, reinstall put.gd.";
+    if (failure == StartFailure::Temporary) return subject + " right now. Try again.";
+    return subject + ". Try again, or reinstall put.gd if it keeps failing.";
+}
+QString unconfirmedEnding(const QString& method, bool mutation, const QString& place, const QString& upload) {
+    if (method == "upload") return upload;
+    if (method == "remove") return ", so the file may already be deleted. Check " + place + " before you retry the deletion.";
+    if (mutation) return ", so the request may already have taken effect. Check " + place + " before trying again.";
+    return QStringLiteral(". Try again.");
 }
 QJsonObject exchange(const QString& program, const QString& method, QJsonObject params, qint64 perRequest,
                      const ExchangePolicy& policy, std::atomic_bool& stopping_, Error& error, bool* uncertain,
@@ -46,7 +52,7 @@ QJsonObject exchange(const QString& program, const QString& method, QJsonObject 
     bytes.fill('\0');
     bytes.clear();
     if (uncertain) *uncertain = delivered > 0 && policy.mutation;
-    if (!process.waitForBytesWritten(10000)) { process.kill(); process.waitForFinished(5000); error = {policy.unknownCode, "The " + policy.name + " helper did not accept its request", {}}; return {}; }
+    if (!process.waitForBytesWritten(10000)) { process.kill(); process.waitForFinished(5000); error = {policy.unknownCode, "The " + policy.name + " helper didn't accept the request. Try again.", {}}; return {}; }
     // A bound on the whole call: every HTTP request has its own deadline in the worker.
     QElapsedTimer silence;
     silence.start();
@@ -81,7 +87,7 @@ QJsonObject exchange(const QString& program, const QString& method, QJsonObject 
             return true;
         }
         if (value["event"] == "signIn" && notice) { notice(value); return true; }
-        if (got || !value["ok"].isBool()) { error = {policy.prefix + "_protocol", "Invalid completion from the " + policy.name + " helper", {}}; return false; }
+        if (got || !value["ok"].isBool()) { error = {policy.prefix + "_protocol", "The " + policy.name + " helper returned an invalid final reply.", {}}; return false; }
         final = value;
         got = true;
         return true;
@@ -93,7 +99,7 @@ QJsonObject exchange(const QString& program, const QString& method, QJsonObject 
         const auto chunk = process.readAll();
         if (!chunk.isEmpty()) silence.restart();
         pending += chunk;
-        if (pending.size() > 8 * 1024 * 1024) { error = {policy.prefix + "_protocol", policy.outputName + " helper output exceeded its bound", {}}; break; }
+        if (pending.size() > 8 * 1024 * 1024) { error = {policy.prefix + "_protocol", policy.outputName + " helper sent too much output, so put.gd stopped it.", {}}; break; }
         bool failed = false;
         while (pending.contains('\n')) {
             const auto line = pending.left(pending.indexOf('\n'));
@@ -101,7 +107,7 @@ QJsonObject exchange(const QString& program, const QString& method, QJsonObject 
             QJsonParseError parse;
             const auto document = QJsonDocument::fromJson(line, &parse);
             if (parse.error != QJsonParseError::NoError || !document.isObject() || !handle(document.object())) {
-                if (!error) error = {policy.prefix + "_protocol", "Malformed " + policy.name + " helper output", {}};
+                if (!error) error = {policy.prefix + "_protocol", "The " + policy.name + " helper returned an unreadable reply.", {}};
                 failed = true;
                 break;
             }
@@ -112,7 +118,8 @@ QJsonObject exchange(const QString& program, const QString& method, QJsonObject 
         if (kill && kill->load()) {
             process.kill();
             process.waitForFinished(5000);
-            error = {policy.unknownCode, "put.gd quit while the " + policy.name + " helper was working; reconcile before retrying", {{"reason", "quit"}}};
+            error = {policy.unknownCode, "put.gd quit while the " + policy.name + " helper was running" +
+                     unconfirmedEnding(method, policy.mutation, "the server", ", so the file may already be on the server. Check the server or select Retry upload."), {{"reason", "quit"}}};
             return {};
         }
         if (lanes && !cancelSent && lanesPoll.elapsed() >= 100) {

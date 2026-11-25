@@ -88,7 +88,7 @@ private slots:
             DeleteRequest decodedRemove;
             QVERIFY(wire::decode(wire::encode(remove), decodedRemove));
             QCOMPARE(decodedRemove.progress, journal);
-            DeleteResult result{"failed", journal, {"delete_progress_unsupported", "Unsupported deletion journal schema or phase", {}}};
+            DeleteResult result{"failed", journal, {"delete_progress_unsupported", "This build of put.gd can't read the saved deletion progress, so it didn't resume the deletion.", {}}};
             DeleteResult decodedResult;
             QVERIFY(wire::decode(wire::encode(result), decodedResult));
             QCOMPARE(decodedResult.progress, journal);

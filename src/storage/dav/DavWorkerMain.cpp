@@ -47,10 +47,10 @@ namespace putgd::dav {
 namespace {
 constexpr qint64 maximumLine = 256 * 1024;
 constexpr qsizetype maximumReplyBytes = 4 * 1024 * 1024;
-worker::Stdio stdio{maximumLine, "webdav", "upload"};
+worker::Stdio stdio{maximumLine, "webdav"};
 auto& cancelled = stdio.cancelled;
 Error checkpoint(const QJsonObject& journal) { return stdio.checkpoint(journal); }
-Error stoppedError() { return {"cancelled", "Cancelled; a request already sent may still have taken effect", {}}; }
+Error stoppedError() { return {"cancelled", "Cancelled. Requests already sent to the server may still have taken effect.", {}}; }
 using Headers = QList<QPair<QByteArray, QByteArray>>;
 
 // A request body read exactly once (a file range or bytes). Qt Network silently sends a
@@ -382,10 +382,10 @@ public:
         if (!isDav(provider_)) { error = {"webdav_protocol", "Not a Nextcloud or WebDAV destination", {}}; return {}; }
         if (method == "signIn") return signIn(error);
         if (auto e = validateSettings(provider_, settings())) { error = e; return {}; }
-        if (provider_ == nextcloudId && settings()["server"].toString().isEmpty()) { error = {"webdav_settings_invalid", "Enter the Nextcloud server address first", {{"field", "server"}}}; return {}; }
-        if (provider_ == webdavId && settings()["address"].toString().isEmpty()) { error = {"webdav_settings_invalid", "Enter the WebDAV folder address first", {{"field", "address"}}}; return {}; }
+        if (provider_ == nextcloudId && settings()["server"].toString().isEmpty()) { error = {"webdav_settings_invalid", "Enter the Nextcloud Server address first.", {{"field", "server"}}}; return {}; }
+        if (provider_ == webdavId && settings()["address"].toString().isEmpty()) { error = {"webdav_settings_invalid", "Enter the WebDAV Folder address first.", {{"field", "address"}}}; return {}; }
         if (method == "signOut") return signOut(error);
-        if (client_.anonymous()) { error = {"credential_setup_required", provider_ == nextcloudId ? "Sign in to Nextcloud first" : "Enter the WebDAV user name and password first", {}}; return {}; }
+        if (client_.anonymous()) { error = {"credential_setup_required", provider_ == nextcloudId ? "Sign in to Nextcloud first." : "Enter the WebDAV User and Password first.", {}}; return {}; }
         if (method == "inspectAccount") return inspectAccount(error);
         if (method == "createFolder") return createFolder(error);
         if (method == "checkName") return checkName(error);
@@ -435,25 +435,25 @@ private:
             if (!r.tls.isEmpty() || r.detail == QLatin1String("the secure connection failed")) e = tlsError(r, url);
             else if (r.stopped) e = stoppedError();
             else if (!http::transportAllowed(url, settings()["allowInsecureHttp"].toBool()))
-                e = {"webdav_plain_http_refused", "put.gd doesn't send to a plain http:// address on another computer unless Allow plain HTTP for this destination is on.", {}};
+                e = {"webdav_plain_http_refused", "Plain http:// addresses on other computers require Allow plain HTTP for this destination.", {}};
             else e = {"webdav_unreachable", "Couldn't reach " + url.host() + ": " + r.detail + ".", {}};
         } else if (r.status == 401) {
-            e = nextcloud() ? Error{"webdav_auth_failed", "Nextcloud refused put.gd's app password; it may have been revoked. Sign in again.", {}}
-                            : Error{"webdav_auth_failed", "The WebDAV server refused the user name or password. Check them and store them again.", {}};
+            e = nextcloud() ? Error{"webdav_auth_failed", "Nextcloud rejected the saved app password (it may have been revoked). Select Sign in again… to reconnect.", {}}
+                            : Error{"webdav_auth_failed", "The WebDAV server rejected the User or Password. Check both, then select Save to keychain or Use for this session.", {}};
         } else if (r.status == 403) e = {"webdav_forbidden", service() + " refused access (HTTP 403). Check that this account may write to the folder.", {}};
         else if (r.status == 507) e = quotaError();
         else if (r.status == 413) e = {"webdav_too_large", service() + " refused a file this large (HTTP 413). Its upload size limit is lower than this file.", {}};
         else if (r.status == 429) e = {"webdav_rate_limited", service() + " is limiting how often put.gd may do this (HTTP 429). Try again in a few minutes.", {}};
         else if (r.status == 423) e = {"webdav_locked", service() + " says the file is locked by another app (HTTP 423). Try again later.", {}};
         else if (r.status >= 500) e = {"webdav_server_error", QString("%1 had an internal error (HTTP %2). Try again later.").arg(service()).arg(r.status), {}};
-        else e = {"webdav_failed", QString("%1 answered HTTP %2.").arg(service()).arg(r.status), {}};
+        else e = {"webdav_failed", QString("%1 returned HTTP %2.").arg(service()).arg(r.status), {}};
         e.details["requestStage"] = stage;
         if (r.status) e.details["httpStatus"] = r.status;
         if (const auto code = r.ocs()["meta"].toObject().value("statuscode"); code.isDouble()) e.details["ocsStatus"] = code.toInt();
         return e;
     }
     Error quotaError() {
-        Error e{"webdav_quota", service() + " is out of space for this account. Free some space or ask the administrator for more, then Retry.", {}};
+        Error e{"webdav_quota", service() + " is out of storage space for this account. Free some space or ask the administrator for more, then select Retry upload.", {}};
         if (nextcloud() && !userId_.isEmpty()) {
             // The account's own record carries its quota; /cloud/user may not.
             auto quota = account_["quota"].toObject();
@@ -465,17 +465,17 @@ private:
             const auto used = qint64(quota["used"].toDouble(-1));
             const auto size = [](qint64 bytes) { return ByteSize::localized(bytes, 1, QLocale::c()); };
             if (free > 0)
-                e.message = "Nextcloud refused the file: this account has " + size(free) + " left" + (total > 0 ? " of its " + size(total) + " quota" : QString()) +
-                            ". Free some space or ask the administrator for more, then Retry.";
+                e.message = "Nextcloud refused the file because this account has " + size(free) + " left" + (total > 0 ? " of its " + size(total) + " quota" : QString()) +
+                            ". Free some space or ask the administrator for more, then select Retry upload.";
             else if (total > 0 && used >= 0)
-                e.message = "Nextcloud refused the file: this account has used " + size(used) + " of its " + size(total) + " quota, so no space is left. Free some space or ask the administrator for more, then Retry.";
+                e.message = "Nextcloud refused the file because this account has used " + size(used) + " of its " + size(total) + " quota. Free some space or ask the administrator for more, then select Retry upload.";
         }
         return e;
     }
     bool uncertainAfter(const Reply& r) const { return (r.status == 0 && r.reached) || (r.status >= 500 && r.reached); }
     Error signInAgain() const {
-        return {"credential_setup_required", nextcloud() ? "This app password belongs to another Nextcloud account or address. Sign in again."
-                                                         : "These credentials were stored for another address. Enter them again for this one.", {}};
+        return {"credential_setup_required", nextcloud() ? "This app password belongs to a different Nextcloud account or address. Select Sign in again… to reconnect."
+                                                         : "These credentials were saved for a different address. Enter them again and select Save to keychain or Use for this session.", {}};
     }
 
     // Nextcloud: the account behind the app password (its DAV user is the OCS id, not the login
@@ -494,7 +494,7 @@ private:
         return {};
     }
     Error notNextcloud(const Reply& r) {
-        return {"nextcloud_not_found", server() + " doesn't answer like a Nextcloud server. Check the address: it is the one you open Nextcloud at in a browser.", {{"httpStatus", r.status}}};
+        return {"nextcloud_not_found", server() + " doesn't look like a Nextcloud server. Check Server and enter the address you open Nextcloud at in a browser.", {{"httpStatus", r.status}}};
     }
     // Capabilities that couldn't be read leave the link rules unknown; only a confirmed "off" refuses.
     void loadCapabilities() {
@@ -561,7 +561,7 @@ private:
         return {};
     }
     Error folderMissing() const {
-        return {"webdav_folder_missing", "The folder " + settings()["address"].toString() + " doesn't exist on the WebDAV server. Create it, or choose Create folder.", {{"createFolder", true}}};
+        return {"webdav_folder_missing", "The folder " + settings()["address"].toString() + " doesn't exist on the WebDAV server. Create it on the server, or select Create folder.", {{"createFolder", true}}};
     }
     QJsonObject createFolder(Error& error) {
         if (nextcloud()) {
@@ -607,14 +607,14 @@ private:
     }
     QJsonObject checkName(Error& error) {
         const auto name = request_["candidate"].toString();
-        if (name.isEmpty() || name.toUtf8().size() > maximumNameBytes || name.contains('/')) { error = {"webdav_name_invalid", "The file name is empty, too long or has a /", {}}; return {{"status", "inconclusive"}}; }
+        if (name.isEmpty() || name.toUtf8().size() > maximumNameBytes || name.contains('/')) { error = {"webdav_name_invalid", "The file name is empty, too long, or contains a /.", {}}; return {{"status", "inconclusive"}}; }
         if ((error = resolveAccount())) return {{"status", "inconclusive"}};
         const auto r = propfind(file(name));
         if (r.status == 404 || r.status == 409) return {{"status", "absent"}, {"objectReference", reference(name)}};
         if (r.status == 207) {
             // Present only on a readable answer that shows the file; anything else is not known.
             const auto entry = parsePropfind(r.body);
-            if (entry.malformed || !entry.found) { error = {"webdav_protocol", service() + " gave an answer put.gd couldn't read while checking the name.", {{"requestStage", "check_name"}}}; return {{"status", "inconclusive"}}; }
+            if (entry.malformed || !entry.found) { error = {"webdav_protocol", service() + " returned an unreadable response while checking the file name.", {{"requestStage", "check_name"}}}; return {{"status", "inconclusive"}}; }
             return {{"status", "present"}, {"objectReference", reference(name)}, {"concurrencyToken", entry.etag}};
         }
         error = failure(r, file(name), "check_name");
@@ -677,8 +677,8 @@ private:
         uncertain = false;
         const auto artifact = Artifact::fromJson(request_["artifact"].toObject());
         const auto name = request_["candidate"].toString();
-        if (request_["condition"].toString() != "absent") { error = {"unsupported_capability", "put.gd never uploads over an existing file here; choose rename or skip for name collisions", {}}; return {{"status", "failed"}}; }
-        if (name.isEmpty() || name.toUtf8().size() > maximumNameBytes || name.contains('/')) { error = {"webdav_name_invalid", "The file name is empty, too long or has a /", {}}; return {{"status", "failed"}}; }
+        if (request_["condition"].toString() != "absent") { error = {"unsupported_capability", (nextcloud() ? QStringLiteral("Nextcloud") : QStringLiteral("WebDAV")) + " uploads can't replace an existing file. Change When a name exists in Settings → Capture to Add a unique suffix or Skip duplicate names.", {}}; return {{"status", "failed"}}; }
+        if (name.isEmpty() || name.toUtf8().size() > maximumNameBytes || name.contains('/')) { error = {"webdav_name_invalid", "The file name is empty, too long, or contains a /.", {}}; return {{"status", "failed"}}; }
         progress("preparing", 0, artifact.bytes);
         if ((error = resolveAccount())) return {{"status", "failed"}};
         if (!referenceMatches(request_["objectReference"].toObject(), name)) { error = signInAgain(); return {{"status", "failed"}}; }
@@ -708,7 +708,7 @@ private:
         // A definite 412 is someone else's file at the name: a collision, never reconciled into ours.
         if (r.status == 412) return {{"status", "collision"}};
         if (!r.ok()) {
-            if (r.status == 404 || r.status == 409) { error = nextcloud() ? Error{"webdav_folder_missing", "The Nextcloud folder disappeared during the upload. Retry to create it again.", {}} : folderMissing(); return {{"status", "failed"}}; }
+            if (r.status == 404 || r.status == 409) { error = nextcloud() ? Error{"webdav_folder_missing", "The Nextcloud folder disappeared during the upload. Select Retry upload to recreate it and try again.", {}} : folderMissing(); return {{"status", "failed"}}; }
             error = failure(r, target, "upload");
             uncertain = uncertainAfter(r);
             return {{"status", uncertain ? "unknown" : "failed"}};
@@ -851,14 +851,14 @@ private:
             return "unknown";
         }
         if (expected.concurrencyToken.isEmpty()) {
-            error = {"unsupported_capability", service() + " confirmed no identity for this upload, so put.gd can't tell whether the file there is still it.", {{"reason", "identity_unconfirmed"}}};
+            error = {"unsupported_capability", service() + " didn't return an ETag for this upload, so put.gd can't verify whether the file is still unchanged.", {{"reason", "identity_unconfirmed"}}};
             return "unknown";
         }
         const auto r = propfind(file(name));
         if (r.status == 404) return "missing";
         if (r.status != 207) { error = failure(r, file(name), "stat"); return "unknown"; }
         const auto found = parsePropfind(r.body);
-        if (found.malformed || !found.found) { error = {"webdav_protocol", service() + " gave an answer put.gd couldn't read.", {{"requestStage", "stat"}}}; return "unknown"; }
+        if (found.malformed || !found.found) { error = {"webdav_protocol", service() + " returned an unreadable response.", {{"requestStage", "stat"}}}; return "unknown"; }
         if (entry) *entry = found;
         const auto fileId = expected.objectReference["fileId"].toString();
         if (!fileId.isEmpty() && !found.fileId.isEmpty() && fileId != found.fileId) return "foreign";
@@ -933,7 +933,7 @@ private:
         if (journal["uploadId"].isString()) ids.append(journal["uploadId"].toString());
         for (const auto& id : std::as_const(ids)) if (!dropChunks(id)) left.append(id);
         if (!left.isEmpty())
-            error = {"webdav_cleanup_failed", "put.gd couldn't remove the parts of an unfinished upload from Nextcloud; they stay in its upload folder until Nextcloud's own cleanup removes them.", {{"remaining", left.size()}}};
+            error = {"webdav_cleanup_failed", "Couldn't remove the unfinished upload parts from Nextcloud. They will stay in Nextcloud's upload folder until its own cleanup removes them.", {{"remaining", left.size()}}};
         return {};
     }
 
@@ -963,7 +963,7 @@ private:
             // Only a readable OCS answer says anything about the share: a proxy's page doesn't.
             const auto data = r.data();
             if (r.ocs().isEmpty() || !(data.isArray() || data.isObject())) {
-                error = {"webdav_protocol", "Nextcloud's answer about put.gd's recorded share couldn't be read.", {{"requestStage", "share_inspect"}, {"httpStatus", r.status}}};
+                error = {"webdav_protocol", "Couldn't read Nextcloud's reply about the recorded share link.", {{"requestStage", "share_inspect"}, {"httpStatus", r.status}}};
                 return std::nullopt;
             }
             const auto list = data.isArray() ? data.toArray() : QJsonArray{data};
@@ -972,7 +972,7 @@ private:
                 // An entry without an ID can't show the recorded share is gone.
                 const auto id = value.toObject().value("id").toVariant().toString();
                 if (!value.isObject() || id.isEmpty()) {
-                    error = {"webdav_protocol", "Nextcloud's answer about put.gd's recorded share couldn't be read.", {{"requestStage", "share_inspect"}, {"httpStatus", r.status}}};
+                    error = {"webdav_protocol", "Couldn't read Nextcloud's reply about the recorded share link.", {{"requestStage", "share_inspect"}, {"httpStatus", r.status}}};
                     return std::nullopt;
                 }
                 if (id == recordedId) named.append(value.toObject());
@@ -980,7 +980,7 @@ private:
             if (named.isEmpty()) { shareIdGone_ = true; return QJsonObject{}; }
             // Exactly one share with exactly that ID; anything else can't be told apart.
             if (named.size() != 1 || named.first()["share_type"].toInt(-1) != 3) {
-                error = {"webdav_protocol", "Nextcloud's answer about put.gd's recorded share didn't name exactly that share.", {{"requestStage", "share_inspect"}}};
+                error = {"webdav_protocol", "Nextcloud didn't return the expected share link record.", {{"requestStage", "share_inspect"}}};
                 return std::nullopt;
             }
             // It must also be a link to this file and, when a link was recorded, that link; otherwise
@@ -995,7 +995,7 @@ private:
                                 : !digest.isEmpty() ? (!listed.isEmpty() && QString::fromLatin1(QCryptographicHash::hash(listed.toUtf8(), QCryptographicHash::Sha256).toHex()) == digest)
                                                     : true;
             if (!sameFile || !sameLink) {
-                error = {"webdav_protocol", "put.gd's recorded share no longer is the link of this file, so put.gd won't use or remove it.", {{"requestStage", "share_inspect"}}};
+                error = {"webdav_protocol", "The recorded share no longer matches this file or its saved link. put.gd won't use or revoke it.", {{"requestStage", "share_inspect"}}};
                 return std::nullopt;
             }
             return share;
@@ -1004,7 +1004,7 @@ private:
         if (r.status == 404) return QJsonObject{};
         if (!r.ok()) { error = failure(r, QUrl(server()), "share_inspect"); return std::nullopt; }
         if (r.ocs().isEmpty() || !r.data().isArray()) {
-            error = {"webdav_protocol", "Nextcloud's list of this file's shares couldn't be read.", {{"requestStage", "share_inspect"}, {"httpStatus", r.status}}};
+            error = {"webdav_protocol", "Couldn't read Nextcloud's list of shares for this file.", {{"requestStage", "share_inspect"}, {"httpStatus", r.status}}};
             return std::nullopt;
         }
         // The recorded link: the receipt's token, or the digest of it History passed with a revoke.
@@ -1018,7 +1018,7 @@ private:
             const auto share = value.toObject();
             // An entry that isn't a readable share can't show that put.gd's link is absent.
             if (!value.isObject() || share.value("id").toVariant().toString().isEmpty() || !share.value("share_type").isDouble()) {
-                error = {"webdav_protocol", "Nextcloud's list of this file's shares couldn't be read.", {{"requestStage", "share_inspect"}, {"httpStatus", r.status}}};
+                error = {"webdav_protocol", "Couldn't read Nextcloud's list of shares for this file.", {{"requestStage", "share_inspect"}, {"httpStatus", r.status}}};
                 return std::nullopt;
             }
             if (share["share_type"].toInt(-1) != 3) continue;
@@ -1030,7 +1030,7 @@ private:
             if (match) found.append(share);
         }
         if (found.size() > 1) {
-            error = {"webdav_protocol", "Nextcloud has more than one link labelled as this upload's, so put.gd can't tell which is its own.", {{"requestStage", "share_inspect"}}};
+            error = {"webdav_protocol", "Nextcloud has more than one link with this upload's label, so put.gd can't tell which one it created.", {{"requestStage", "share_inspect"}}};
             return std::nullopt;
         }
         if (found.isEmpty() && unmatchable) {
@@ -1085,7 +1085,7 @@ private:
         if (!existing->isEmpty() && publicReadOnly(*existing, receipt)) return shareResult("shared", receipt, *existing);
         // Without the file's ID put.gd couldn't tell its link apart later, nor remove it: none is made.
         if (receipt.objectReference["fileId"].toString().isEmpty())
-            return notMade({"webdav_protocol", "Nextcloud didn't report this file's ID, so put.gd makes no link it couldn't manage later.", {{"requestStage", "share_create"}}});
+            return notMade({"webdav_protocol", "Nextcloud didn't report this file's ID, so put.gd didn't create a share link.", {{"requestStage", "share_create"}}});
         loadCapabilities();
         if (linkState() == 0) return notMade(sharingDisabled());
         if (passwordEnforced()) return notMade(passwordRequired());
@@ -1100,7 +1100,7 @@ private:
         if (r.ok()) {
             const auto made = r.data().toObject();
             const auto shareId = made["id"].toVariant().toString();
-            if (shareId.isEmpty() || made["token"].toString().isEmpty()) { error = {"webdav_protocol", "Nextcloud made a share without a link token", {}}; uncertain = true; return {{"status", "unknown"}}; }
+            if (shareId.isEmpty() || made["token"].toString().isEmpty()) { error = {"webdav_protocol", "Nextcloud created a share without returning a link token. Check the file's shares in Nextcloud.", {}}; uncertain = true; return {{"status", "unknown"}}; }
             // The share's ID is on record before the link is used.
             if (auto e = checkpoint({{"schemaVersion", 1}, {"phase", "created"}, {"shareId", shareId}})) { error = e; uncertain = true; return {{"status", "unknown"}}; }
             if (!publicReadOnly(made, receipt)) {
@@ -1138,9 +1138,9 @@ private:
     QJsonObject signIn(Error& error) {
         const auto server = nextcloudServer(settings()["server"].toString());
         const bool insecure = settings()["allowInsecureHttp"].toBool();
-        if (server.isEmpty()) { error = {"webdav_settings_invalid", "Enter the Nextcloud server address first", {{"field", "server"}}}; return {}; }
+        if (server.isEmpty()) { error = {"webdav_settings_invalid", "Enter the Nextcloud Server address first.", {{"field", "server"}}}; return {}; }
         if (!http::transportAllowed(QUrl(server), insecure)) {
-            error = {"webdav_plain_http_refused", "put.gd doesn't sign in over plain http:// to another computer unless Allow plain HTTP for this destination is on.", {}};
+            error = {"webdav_plain_http_refused", "Signing in over plain http:// to another computer requires Allow plain HTTP for this destination.", {}};
             return {};
         }
         destination_.settings["server"] = server;
@@ -1148,7 +1148,7 @@ private:
         const auto entered = QUrl(server);
         const auto start = client.send("POST", QUrl(server + "/index.php/login/v2"), {{"Accept", "application/json"}, {"User-Agent", "put.gd (" + QHostInfo::localHostName().left(64).toUtf8() + ")"}});
         if (start.status == 404 || start.status == 405) {
-            error = {"nextcloud_signin_unavailable", "This server doesn't offer Nextcloud's browser sign-in (Login Flow v2). Create an app password in its security settings and use App password instead.", {}};
+            error = {"nextcloud_signin_unavailable", "This server doesn't support Nextcloud browser sign-in (Login Flow v2). Create an app password in Nextcloud's security settings, then select Use an app password instead.", {}};
             return {};
         }
         if (!start.ok()) { error = failure(start, entered, "sign_in"); return {}; }
@@ -1157,12 +1157,12 @@ private:
         const QUrl endpoint(flow["poll"].toObject()["endpoint"].toString(), QUrl::StrictMode);
         const auto token = flow["poll"].toObject()["token"].toString();
         if (token.isEmpty() || !login.isValid() || !endpoint.isValid()) {
-            error = {"nextcloud_not_found", server + " doesn't answer like a Nextcloud server. Check the address: it is the one you open Nextcloud at in a browser.", {}};
+            error = {"nextcloud_not_found", server + " doesn't look like a Nextcloud server. Check Server and enter the address you open Nextcloud at in a browser.", {}};
             return {};
         }
         // The browser page and the poll stay on the server the user entered, below its base.
         if (!loginPageAllowed(login, server, insecure) || !loginPageAllowed(endpoint, server, insecure)) {
-            error = {"nextcloud_server_mismatch", "Nextcloud named another address for sign-in. Its overwrite.cli.url or trusted proxy settings may be wrong; enter the address it uses, or ask the administrator.", {}};
+            error = {"nextcloud_server_mismatch", "Nextcloud returned a different address for sign-in. Its overwrite.cli.url or trusted proxy settings may be wrong. Enter the address Nextcloud uses, or ask the administrator.", {}};
             return {};
         }
         stdio.emitLine({{"event", "signIn"}, {"url", login.toString(QUrl::FullyEncoded)}});
@@ -1171,9 +1171,9 @@ private:
         const auto timeout = qBound(1000, request_["timeoutMs"].toInt(signInTimeoutMs), signInTimeoutMs);
         QJsonObject granted;
         while (true) {
-            if (cancelled.load()) { error = {"nextcloud_signin_cancelled", "Sign-in cancelled", {}}; return {}; }
+            if (cancelled.load()) { error = {"nextcloud_signin_cancelled", "Sign-in cancelled.", {}}; return {}; }
             const auto remaining = timeout - int(clock.elapsed());
-            if (remaining <= 0) { error = {"nextcloud_signin_timeout", "Sign-in wasn't finished in the browser in time. Choose Sign in to start again.", {}}; return {}; }
+            if (remaining <= 0) { error = {"nextcloud_signin_timeout", "Sign-in wasn't finished in the browser in time. Select Sign in… to try again.", {}}; return {}; }
             OneShot body("token=" + QUrl::toPercentEncoding(token));
             const auto poll = client.send("POST", endpoint, {{"Content-Type", "application/x-www-form-urlencoded"}, {"Accept", "application/json"}}, &body, false, {},
                                           qMin(requestTimeoutMs, remaining));
@@ -1190,7 +1190,7 @@ private:
         const QUrl returned(granted["server"].toString());
         const auto loginName = granted["loginName"].toString();
         auto appPassword = granted["appPassword"].toString();
-        if (loginName.isEmpty() || appPassword.isEmpty()) { error = {"webdav_protocol", "Nextcloud finished sign-in without an app password", {}}; return {}; }
+        if (loginName.isEmpty() || appPassword.isEmpty()) { error = {"webdav_protocol", "Nextcloud finished sign-in without returning an app password. Select Sign in… to try again.", {}}; return {}; }
         Client signedIn(loginName, appPassword, insecure);
         // A grant put.gd won't keep goes back to the resident with the error, which revokes it in a
         // helper of its own: this one may be stopping (a cancelled sign-in sends nothing more).
@@ -1202,8 +1202,8 @@ private:
             return grant;
         };
         if (!sameOrigin(returned, entered) || !loginPageAllowed(QUrl(returned.toString() + "/"), server, insecure))
-            return drop({"nextcloud_server_mismatch", "Nextcloud finished sign-in for another address. Enter the address it uses as the server, or ask the administrator to fix overwrite.cli.url.", {}});
-        if (cancelled.load()) return drop({"nextcloud_signin_cancelled", "Sign-in cancelled", {}});
+            return drop({"nextcloud_server_mismatch", "Nextcloud finished sign-in for a different address. Enter that address in Server, or ask the administrator to fix overwrite.cli.url.", {}});
+        if (cancelled.load()) return drop({"nextcloud_signin_cancelled", "Sign-in cancelled.", {}});
         const auto user = signedIn.ocs("GET", server, "/ocs/v2.php/cloud/user");
         if (!user.ok()) return drop(failure(user, entered, "account"));
         account_ = user.data().toObject();
@@ -1243,7 +1243,7 @@ private:
             if (linkState() == 0) { error = sharingDisabled(); return out; }
             if (passwordEnforced()) { error = passwordRequired(); return out; }
             if (const auto days = enforcedDays(); days > 0)
-                warn("nextcloud_share_expiry_enforced", QString("This server makes every public link expire after %1 days; put.gd's links follow that.").arg(days));
+                warn("nextcloud_share_expiry_enforced", QString("This server makes every public link expire after %1 days. Links created by put.gd will follow that limit.").arg(days));
             bool created = false;
             // The folder Test may create is journaled before it is.
             if ((error = checkpoint({{"schemaVersion", 1}, {"phase", "synthetic_folder_intent"}, {"folder", settings()["folder"]},
@@ -1257,19 +1257,19 @@ private:
             const auto product = QJsonDocument::fromJson(status.body).object();
             if (status.ok() && product["installed"].toBool() && product.contains("versionstring")) {
                 out["nextcloudDetected"] = true;
-                warn("webdav_is_nextcloud", "This is a Nextcloud server. A Nextcloud destination signs in through the browser and makes share links; change Storage service to Nextcloud to use it.");
+                warn("webdav_is_nextcloud", "This is a Nextcloud server. Change Storage service to Nextcloud to use browser sign-in and share links.");
             }
             const auto probe = propfind(folder());
             if (probe.status == 404 || probe.status == 409) { error = folderMissing(); return out; }
             if (probe.status != 207) { error = failure(probe, folder(), probe.status == 0 ? "connect" : "folder"); return out; }
-            if (!parsePropfind(probe.body).collection) { error = {"webdav_folder_missing", "The address is a file, not a folder. Enter the folder's address, ending with /.", {{"field", "address"}}}; return out; }
+            if (!parsePropfind(probe.body).collection) { error = {"webdav_folder_missing", "Folder address points to a file, not a folder. Enter a folder URL ending with /.", {{"field", "address"}}}; return out; }
         }
         const auto synthetic = QUuid::createUuid().toString(QUuid::WithoutBraces);
         const auto bytes = QByteArray("put.gd connection test " + synthetic.toUtf8() + "\n");
         QTemporaryDir dir;
         const auto path = dir.filePath("synthetic.txt");
         QFile temporary(path);
-        if (!dir.isValid() || !temporary.open(QIODevice::WriteOnly) || temporary.write(bytes) != bytes.size()) { error = {"synthetic_artifact_failed", "Could not create the private synthetic file", {}}; return out; }
+        if (!dir.isValid() || !temporary.open(QIODevice::WriteOnly) || temporary.write(bytes) != bytes.size()) { error = {"synthetic_artifact_failed", "Couldn't create a temporary test file. Check free disk space and permissions in your temp folder.", {}}; return out; }
         temporary.close();
         Artifact artifact;
         artifact.id = "synthetic-" + synthetic;
@@ -1291,7 +1291,7 @@ private:
         const auto uploaded = upload(error, uncertain);
         out["uploadStatus"] = uploaded["status"].toString(uncertain || !error ? "unknown" : "failed");
         if (error || uploaded["status"] != "uploaded") {
-            if (!error) error = {"synthetic_collision", "The synthetic test file name is unavailable", {}};
+            if (!error) error = {"synthetic_collision", "Couldn't reserve a temporary test file name. Try running Test upload and link again.", {}};
             return out;
         }
         const auto receipt = StorageReceipt::fromJson(uploaded["receipt"].toObject());
@@ -1319,7 +1319,7 @@ private:
             fetchUrl = link;
             // Whether the server honours the preconditions put.gd relies on: a second create must be
             // refused. The probe sends the same bytes, so a server that ignores it changes nothing.
-            if (!validator) warn("webdav_no_etag", "The server confirmed no identity for uploaded files (no usable ETag), so Delete in History is unavailable for this destination.");
+            if (!validator) warn("webdav_no_etag", "The server didn't return a strong ETag for uploaded files, so deleting uploads from History isn't available for this destination.");
             else if (auto e = probeStep("conditional_create")) error = e;
             else {
                 OneShot again(bytes);
@@ -1330,7 +1330,7 @@ private:
             }
         }
         if (!error && nextcloud() && link.isEmpty())
-            error = {"public_url_unreachable", "The upload worked, but Nextcloud made no share link (" + out["shareStatus"].toString("no answer") + "). Test again.", {}};
+            error = {"public_url_unreachable", "The upload worked, but Nextcloud didn't create a share link (" + out["shareStatus"].toString("no answer") + "). Select Test upload and link to try again.", {}};
         if (!link.isEmpty()) out["link"] = redactShareTokens(link);
         bool reachable = false;
         if (!fetchUrl.isEmpty()) {
@@ -1351,7 +1351,7 @@ private:
         if (!validator) {
             // Without a usable ETag put.gd can't be sure the file there is the test's: it stays.
             out["cleanupStatus"] = "retained";
-            warn("webdav_test_file_left", "The test file " + artifact.name + " was left on the server, because put.gd couldn't confirm it is still the test's own file. Delete it there.");
+            warn("webdav_test_file_left", "Left the test file " + artifact.name + " on the server because put.gd couldn't confirm its ETag. Delete it on the server.");
             return out;
         }
         if (!nextcloud()) {
@@ -1361,14 +1361,14 @@ private:
             out["conditionalDelete"] = refused.status == 412;
             if (refused.status != 412 && !refused.ok()) {
                 // Neither refused for the ETag nor done: the probe says nothing about If-Match.
-                warn("webdav_conditional_delete_unchecked", QString("put.gd couldn't check whether the server honours If-Match on delete (HTTP %1).").arg(refused.status));
+                warn("webdav_conditional_delete_unchecked", QString("Couldn't check whether the server honors If-Match on delete (HTTP %1).").arg(refused.status));
             } else if (refused.status != 412) {
                 // The warning only once the file is confirmed gone: then the delete took effect.
                 const auto after = propfind(file(artifact.name));
                 if (after.status != 404)
-                    warn("webdav_conditional_delete_unchecked", QString("put.gd couldn't check whether the server honours If-Match on delete (HTTP %1).").arg(refused.status));
+                    warn("webdav_conditional_delete_unchecked", QString("Couldn't check whether the server honors If-Match on delete (HTTP %1).").arg(refused.status));
                 else {
-                    warn("webdav_conditional_delete_ignored", "The server ignores If-Match on delete: it deleted the test file although its ETag didn't match. A file replaced on the server after an upload could then be deleted from History.");
+                    warn("webdav_conditional_delete_ignored", "The server ignored If-Match and deleted the test file even though its ETag didn't match. A file replaced on the server after upload could still be deleted from History.");
                     // Removed only once that is on record.
                     if (auto e = checkpoint({{"schemaVersion", 1}, {"phase", "done"}, {"target", recorded.toJson()}})) { if (!error) error = e; out["cleanupStatus"] = "unknown"; return out; }
                     out["cleanupStatus"] = "removed";

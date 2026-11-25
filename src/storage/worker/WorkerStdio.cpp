@@ -56,13 +56,13 @@ Error Stdio::checkpoint(const QJsonObject& journal) {
     emitLine({{"event", "checkpoint"}, {"journal", journal}});
     std::unique_lock lock(controlMutex);
     if (!controlChanged.wait_for(lock, std::chrono::minutes(5), [this] { return !acks.empty() || parentGone; }))
-        return {prefix_ + "_checkpoint_timeout", "The resident did not save the " + journal_ + " journal in time", {}};
-    if (acks.empty()) return {"cancelled", "The resident stopped this request", {}};
+        return {prefix_ + "_checkpoint_timeout", "Couldn't save progress for this request in time. Try again.", {}};
+    if (acks.empty()) return {"cancelled", "Request was cancelled.", {}};
     const auto ack = acks.front();
     acks.pop_front();
     if (ack["ack"].toBool()) return {};
     const auto e = ack["error"].toObject();
-    return {e["code"].toString("checkpoint_failed"), e["message"].toString("The " + journal_ + " journal could not be saved"), {}};
+    return {e["code"].toString("checkpoint_failed"), e["message"].toString("Couldn't save progress for this request."), {}};
 }
 
 void Stdio::progress(const QString& phase, qint64 sent, qint64 total) {

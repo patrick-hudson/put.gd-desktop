@@ -23,6 +23,11 @@ StartFailure classifyStartFailure(const QString& program, const QString& reason)
 // start, as the user knows it). It never repeats Qt's reason, which belongs in the error details.
 QString startFailureMessage(StartFailure, const QString& installationMessage,
                             const QString& subject = QStringLiteral("put.gd couldn't start its upload helper"));
+// How a message about a helper that ended without confirming `method` ends, after "The …
+// helper stopped responding" (#2028). An upload ends with `upload`, the provider's own advice
+// beginning ", so". A deletion and any other change say to check `place` (such as "the bucket")
+// first, and a request that changes nothing says to try again.
+QString unconfirmedEnding(const QString& method, bool mutation, const QString& place, const QString& upload);
 // `lanes`, when set, is polled every 100 ms while the helper works: how many extra
 // requests it may run beside its own (upload slots lent to it, #1792). Each change goes
 // to the helper as a {"lanes":n} control line.

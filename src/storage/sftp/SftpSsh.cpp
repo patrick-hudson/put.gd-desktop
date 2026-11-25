@@ -117,7 +117,7 @@ Resolved resolve(const QString& ssh, const QProcessEnvironment& env, const QJson
     if (!process.waitForFinished(15000)) {
         process.kill();
         process.waitForFinished(2000);
-        error = {"ssh_failed", "ssh did not finish reading your SSH settings", {}};
+        error = {"ssh_failed", "ssh timed out while reading your SSH settings. Try again.", {}};
         return resolved;
     }
     const auto address = parseServer(settings["server"].toString());
@@ -182,7 +182,7 @@ QJsonObject toJson(const Resolved& r) {
 KnownLookup lookupHost(const QStringList& files, const QString& token, const QProcessEnvironment& env) {
     KnownLookup found;
     const auto keygen = host::findProgram("ssh-keygen", env);
-    if (keygen.isEmpty()) { found.error = {"ssh_known_hosts_unreadable", "put.gd can't check known_hosts files: ssh-keygen isn't installed.", {}}; return found; }
+    if (keygen.isEmpty()) { found.error = {"ssh_known_hosts_unreadable", "Can't check known_hosts files because ssh-keygen isn't installed.", {}}; return found; }
     for (const auto& file : files) {
         struct stat info {};
         if (::stat(QFile::encodeName(file).constData(), &info) != 0) {
@@ -192,7 +192,7 @@ KnownLookup lookupHost(const QStringList& files, const QString& token, const QPr
         }
         // Only a readable regular file can say "no entry"; anything else decides nothing.
         if (!S_ISREG(info.st_mode) || ::access(QFile::encodeName(file).constData(), R_OK) != 0) {
-            found.error = {"ssh_known_hosts_unreadable", "put.gd can't read the known_hosts file " + file + ": it isn't a readable file.", {}};
+            found.error = {"ssh_known_hosts_unreadable", "Can't read the known_hosts file " + file + " because it isn't a readable regular file.", {}};
             return found;
         }
         QProcess lookup;
@@ -477,8 +477,8 @@ Error classify(const QByteArray& raw, const FailureContext& c) {
     // ssh's own lines are not repeated: put.gd says which file it had ssh check.
     if (changed && c.userFile.isEmpty())
         return {"ssh_trusted_key_changed",
-                "The server's host key changed since you trusted it in put.gd. Ask your server's admin whether it was replaced; trust the new key in "
-                "Settings → Destinations only if they confirm it.",
+                "The server's host key changed since you trusted it in put.gd. Ask your server's admin whether it was replaced. Only select Trust new key in "
+                "Destinations if they confirm it.",
                 {}};
     if (changed)
         return {"ssh_host_key_changed",
@@ -486,14 +486,14 @@ Error classify(const QByteArray& raw, const FailureContext& c) {
                 "replaced the key, remove the old one with ssh-keygen -R " + c.resolved.token() + " and test again.",
                 {{"knownHostsFile", c.userFile}}};
     if (unknown)
-        return {"ssh_host_unknown_key", "put.gd doesn't know this server's host key yet. Test the destination in Settings to see the key, and trust it only if it matches your server's.", {}};
+        return {"ssh_host_unknown_key", "put.gd doesn't know this server's host key yet. Test this destination in Destinations to see the key, and select Trust key only if it matches your server's.", {}};
     if (text.contains(QLatin1String("Could not resolve hostname")) || text.contains(QLatin1String("Name or service not known")) ||
         text.contains(QLatin1String("Temporary failure in name resolution")))
         return {"ssh_host_not_found", "ssh couldn't find the server " + c.resolved.host + ". Check its name, or the Host alias in ~/.ssh/config.", {}};
     if (text.contains(QLatin1String("Connection refused")))
-        return {"ssh_connection_refused", QString("The server refused the connection on port %1. Check the server name and port, and that its SSH service runs.").arg(port), {}};
+        return {"ssh_connection_refused", QString("The server refused the connection on port %1. Check Server and make sure its SSH service is running.").arg(port), {}};
     if (text.contains(QLatin1String("timed out")))
-        return {"ssh_connection_timeout", QString("The server did not answer on port %1. Check the server name and port, and your network.").arg(port), {}};
+        return {"ssh_connection_timeout", QString("The server didn't respond on port %1. Check Server and your network.").arg(port), {}};
     // ssh skips a private key other users can read, then signs in without it: say how to fix the file.
     static const QRegularExpression tooOpen(QStringLiteral("Permissions 0[0-7]+ for '(.+)' are too open"));
     if (const auto open = tooOpen.match(text); open.hasMatch() && text.contains(QLatin1String("Permission denied")))
@@ -515,7 +515,7 @@ Error classify(const QByteArray& raw, const FailureContext& c) {
                     "didn't answer. Give one key a shorter path, or add it to your SSH agent.",
                     {}};
         if (c.asked.contains(QLatin1String("passphrase")) && !c.passphrase)
-            return {"ssh_auth_failed", "Your key " + QFileInfo(c.passphraseKey).fileName() + " needs its passphrase: enter it in Key passphrase, or add the key to your SSH agent.", {}};
+            return {"ssh_auth_failed", "Your key " + QFileInfo(c.passphraseKey).fileName() + " needs its passphrase. Enter it in Key passphrase, or add the key to your SSH agent.", {}};
         if (c.asked.contains(QLatin1String("password")) && !c.password)
             return {"ssh_auth_failed", "The server asked " + user + " for a password and refused the keys put.gd offered. Enter the password in Password, or add your key to the server.", {}};
         // ssh says nothing (below debug level) about a wrong passphrase: one that was asked and given
@@ -525,14 +525,14 @@ Error classify(const QByteArray& raw, const FailureContext& c) {
                         (c.asked.contains(QLatin1String("passphrase")) ? QStringLiteral("Check the Key passphrase, the user name, and ") : QStringLiteral("Check the user name, and ")) +
                         "that the key's public half is in that user's ~/.ssh/authorized_keys on the server.", {}};
         if (!c.resolved.agent && c.resolved.identityFiles.isEmpty() && !c.password)
-            return {"ssh_auth_failed", "The server refused to sign in " + user + ". No SSH agent was found and no key file or password is set: start ssh-agent with your key, or enter a password.", {}};
-        return {"ssh_auth_failed", "The server refused to sign in " + user + " with the " +
-                    (c.password ? QStringLiteral("password") : QStringLiteral("keys")) + " put.gd offered. Check the user name, and that the server accepts your key.", {}};
+            return {"ssh_auth_failed", "The server refused to sign in " + user + ". No SSH agent, SSH key, or Password is set. Start ssh-agent with your key, select an SSH key, or enter a Password.", {}};
+        return {"ssh_auth_failed", "The server refused to sign in " + user + (c.password ? QStringLiteral(" with the password put.gd sent. Check User and Password.")
+                               : QStringLiteral(" with the keys put.gd offered. Check User and make sure the server accepts your key.")), {}};
     }
     if (text.contains(QLatin1String("subsystem request failed")) || c.protocolNoise)
         return {"ssh_no_sftp",
-                "The server has no SFTP service for this account. Ask its admin to enable the sftp subsystem. If your shell prints text when it starts "
-                "(in .bashrc or similar), that text breaks SFTP: print it only in interactive shells.",
+                "The server has no SFTP service for this account. Ask its admin to enable the sftp subsystem. If your shell prints text on startup "
+                "(for example in .bashrc), print it only in interactive shells so it doesn't break SFTP.",
                 {}};
     return {"ssh_failed", QString("ssh stopped before SFTP started (exit status %1). Run ssh -v %2 in a terminal to see why.").arg(c.exitCode).arg(c.resolved.alias.isEmpty() ? c.resolved.host : c.resolved.alias),
             {{"exitStatus", c.exitCode}}};
@@ -540,7 +540,7 @@ Error classify(const QByteArray& raw, const FailureContext& c) {
 
 QString probeHostKey(const QString& ssh, const QJsonObject& settings, Error& error) {
     QTemporaryDir folder;
-    if (!folder.isValid()) { error = {"ssh_failed", "put.gd couldn't create a temporary file for the host key", {}}; return {}; }
+    if (!folder.isValid()) { error = {"ssh_failed", "Couldn't create a temporary file for the host key. Check free disk space and permissions in your temp folder.", {}}; return {}; }
     const auto file = folder.filePath("known_hosts");
     QProcess process;
     // A fresh environment with no askpass: nothing can be asked, so nothing is answered.
@@ -576,7 +576,7 @@ Error knownHostsError(const QString& path, const QString& why) { return {"sftp_k
 }
 Error trustLine(const QString& path, const QString& line, const QString& previous) {
     const auto host = hostOfLine(line), fingerprint = fingerprintOfLine(line);
-    if (host.isEmpty() || fingerprint.isEmpty()) return {"sftp_protocol", "The host key line is not one put.gd can read", {}};
+    if (host.isEmpty() || fingerprint.isEmpty()) return {"sftp_protocol", "Couldn't parse the server's host key line.", {}};
     // Its own folder, private: other users can't add keys put.gd would then trust. A symbolic
     // link, or anything but a folder of this user's, is refused.
     const auto folder = QFileInfo(path).absolutePath();

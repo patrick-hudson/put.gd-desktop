@@ -74,9 +74,9 @@ QString problem(const QJsonObject& settings, const QString& field) {
     if (field == QLatin1String("accountId")) {
         if (value.toString().isEmpty()) return QStringLiteral("Enter the Account ID to finish setting up this destination. It is in R2 overview → Account details.");
         if (!value.isString() || !accountIdValid(value.toString()))
-            return QStringLiteral("Enter the Account ID: 32 characters, digits and letters a to f, from R2 overview → Account details.");
+            return QStringLiteral("Account ID must be 32 lowercase hex characters (0–9 and a–f) from R2 overview → Account details.");
     } else if (field == QLatin1String("jurisdiction")) {
-        if (!value.isString() || !jurisdictionValid(value.toString())) return QStringLiteral("Choose the bucket's jurisdiction: Default, EU or FedRAMP.");
+        if (!value.isString() || !jurisdictionValid(value.toString())) return QStringLiteral("Change Jurisdiction to Default, EU, or FedRAMP.");
     } else if (field == QLatin1String("bucket")) {
         if (value.toString().isEmpty()) return QStringLiteral("Enter a bucket name to finish setting up this destination.");
         if (!value.isString() || !bucketValid(value.toString()))
@@ -113,7 +113,7 @@ Error validate(const QJsonObject& settings) {
     for (const auto& key : {QStringLiteral("connectTimeoutMs"), QStringLiteral("requestTimeoutMs"), QStringLiteral("lowSpeedBytesPerSecond"), QStringLiteral("lowSpeedTimeSeconds")}) {
         const auto value = settings[key];
         if (!value.isDouble() || value.toDouble() < 1 || value.toDouble() > 2147483647 || value.toDouble() != qint64(value.toDouble()))
-            return fieldError(key, QStringLiteral("Advanced connection values are whole numbers of at least 1."));
+            return fieldError(key, QStringLiteral("Advanced connection settings must be whole numbers of at least 1."));
     }
     return {};
 }

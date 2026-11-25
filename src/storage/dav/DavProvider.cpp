@@ -41,7 +41,7 @@ ProviderCapabilities DavProvider::capabilities(const Destination&) const {
     caps.sharing = id_ == dav::nextcloudId;
     caps.maximumNameBytes = dav::maximumNameBytes;
     caps.deletionEffect = id_ == dav::nextcloudId
-        ? QStringLiteral("Deletes the uploaded file only while it is unchanged since the upload; its share link stops working. Nextcloud keeps it in the trash bin until the trash is emptied.")
+        ? QStringLiteral("Deletes the uploaded file only if it is unchanged since upload. Its share link stops working, and Nextcloud moves the file to the trash bin until emptied.")
         : QStringLiteral("Deletes the uploaded file only while the server reports it unchanged since the upload (If-Match on its ETag). Links to it stop working.");
     return caps;
 }
@@ -82,15 +82,15 @@ QJsonObject DavProvider::call(const QString& method, const Destination& destinat
                               DurableCheckpoint checkpoint, std::shared_ptr<std::atomic_bool> kill, std::function<void(const QJsonObject&)> notice, bool needsCredentials,
                               const Credentials* given) {
     if (uncertain) *uncertain = false;
-    if (stopping_.load()) { error = {"operation_cancelled", "The application is stopping", {}}; return {}; }
+    if (stopping_.load()) { error = {"operation_cancelled", "put.gd is closing, so the request didn't start.", {}}; return {}; }
     if (destination.providerId != id_) { error = {"webdav_protocol", "The destination is not a " + label(id_) + " destination", {}}; return {}; }
     if (method != "signIn")
         if (auto e = dav::validateSettings(id_, destination.settings)) { error = e; return {}; }
     const auto credential = given ? std::optional<Credentials>(*given) : credentials_.cached(destination.profileId, destination.credentialReference);
     if (needsCredentials && (!credential || credential->accessKey.isEmpty() || credential->secretKey.isEmpty())) {
         error = {"credential_setup_required", id_ == dav::nextcloudId
-            ? QStringLiteral("put.gd isn't signed in to this Nextcloud destination. Sign in, or unlock saved credentials.")
-            : QStringLiteral("Credentials are not loaded for this destination. Unlock saved credentials, or enter the WebDAV user and password and choose Save to keychain or Use for this session."), {}};
+            ? QStringLiteral("Not signed in to this Nextcloud destination. Unlock saved credentials, or select Sign in… in Destinations.")
+            : QStringLiteral("Credentials for this destination are locked or missing. Unlock saved credentials, or enter the WebDAV user and password and select Save to keychain or Use for this session."), {}};
         return {};
     }
     // Credentials go only to the place they were given for (#1872): the binding stored beside them
@@ -100,14 +100,14 @@ QJsonObject DavProvider::call(const QString& method, const Destination& destinat
         const auto binding = dav::parseBinding(credential->sessionToken);
         if (binding.isEmpty() || binding["base"].toString() != dav::bindingBase(destination.settings, id_)) {
             error = {"credential_setup_required", id_ == dav::nextcloudId
-                ? QStringLiteral("put.gd's app password was given for another Nextcloud address. Sign in again.")
-                : QStringLiteral("These credentials were stored for another WebDAV address. Enter them again for this one."), {{"reason", "binding"}}};
+                ? QStringLiteral("The saved app password belongs to a different Nextcloud address. Select Sign in again… to reconnect.")
+                : QStringLiteral("These credentials were saved for a different WebDAV address. Enter them again and select Save to keychain or Use for this session."), {{"reason", "binding"}}};
             return {};
         }
         // A Nextcloud app password stored by hand is checked (and bound to its account) before
         // any other operation uses it.
         if (id_ == dav::nextcloudId && binding["userId"].toString().isEmpty() && !QStringList{"inspectAccount", "signOut"}.contains(method)) {
-            error = {"credential_setup_required", QStringLiteral("put.gd hasn't checked which Nextcloud account this app password belongs to yet. Test the destination, or sign in."), {{"reason", "unbound"}}};
+            error = {"credential_setup_required", QStringLiteral("put.gd hasn't verified which Nextcloud account this app password belongs to yet. Select Test upload and link to check it, or select Sign in… to replace it."), {{"reason", "unbound"}}};
             return {};
         }
         params["binding"] = binding;
@@ -119,12 +119,13 @@ QJsonObject DavProvider::call(const QString& method, const Destination& destinat
     if (method == "upload") { params["chunkThresholdBytes"] = double(chunkThreshold_); params["chunkBytes"] = double(chunkBytes_); }
     ++active_;
     struct Release { std::atomic_int& count; ~Release() { --count; } } release{active_};
+    const bool mutation = !QStringList{"checkName", "stat", "reconcile", "inspectAccount", "signIn"}.contains(method);
+    const auto ending = worker::unconfirmedEnding(method, mutation, "the server", ", so the file may already be on the server. Select Retry upload to check before sending again.");
     const worker::ExchangePolicy policy{"webdav", label(id_), label(id_), "webdav_transport_unknown",
-        "The " + label(id_) + " helper could not start; reinstall put.gd",
-        "The " + label(id_) + " helper stopped responding; reconcile before retrying",
-        "The " + label(id_) + " helper ended without a confirmed result; reconcile before retrying",
-        {"upload", "remove", "share", "testDestination"},
-        !QStringList{"checkName", "stat", "reconcile", "inspectAccount", "signIn"}.contains(method), true};
+        "Couldn't start the " + label(id_) + " helper. Reinstall put.gd.",
+        "The " + label(id_) + " helper stopped responding" + ending,
+        "The " + label(id_) + " helper exited without confirming the result" + ending,
+        {"upload", "remove", "share", "testDestination"}, mutation, true};
     // Sign-in waits for the browser (up to 20 minutes) without output; assembling a large chunked
     // upload sends a heartbeat while the server works.
     const qint64 perRequest = method == "signIn" ? 7 * 60 * 1000 : 5 * 60 * 1000;
@@ -146,7 +147,7 @@ void DavProvider::checkName(const Destination& destination, const QString& candi
 }
 void DavProvider::upload(const UploadRequest& request, std::function<void(UploadResult)> reply) {
     if (request.condition != "absent") {
-        reply({"failed", {}, {"unsupported_capability", label(id_) + " uploads never replace an existing file; choose rename or skip for name collisions", {}}});
+        reply({"failed", {}, {"unsupported_capability", label(id_) + " uploads can't replace an existing file. Change When a name exists in Settings → Capture to Add a unique suffix or Skip duplicate names.", {}}});
         return;
     }
     Error e;
@@ -247,7 +248,7 @@ void DavProvider::setup(const QString& kind, const Destination& destination, con
     // A server that enforces link passwords: signed in, but no link can be made.
     const auto passwordEnforced = [](const QJsonObject& account, bool saved) {
         Error e{"nextcloud_share_password_required",
-                QString("Signed in as %1, but this Nextcloud server requires a password on every public link, which put.gd doesn't set, so uploads there won't get a link. Ask the administrator to stop enforcing link passwords.")
+                QString("Signed in as %1, but this Nextcloud server requires a password on every public link. put.gd doesn't set link passwords, so uploads won't get a link. Ask the administrator to turn off mandatory link passwords.")
                     .arg(account["accountName"].toString(account["userId"].toString())),
                 {{"credentialSaved", saved}, {"accountName", account["accountName"]}, {"userId", account["userId"]}}};
         if (account.contains("revokeWarning")) { e.details["revokeWarning"] = account["revokeWarning"]; e.message += " " + account["revokeWarning"].toString(); }
@@ -291,7 +292,7 @@ void DavProvider::setup(const QString& kind, const Destination& destination, con
                 // Cancelled meanwhile, or the destination is gone or names another server.
                 if ((cancelled && cancelled->load()) || (current && !current(destination))) {
                     refuse(cancelled && cancelled->load() ? Error{"nextcloud_signin_cancelled", "Sign-in cancelled.", {}}
-                                                          : Error{"config_conflict", "The destination changed while you were signing in. Sign in again.", {}});
+                                                          : Error{"config_conflict", "The destination changed while you were signing in. Select Sign in… to try again.", {}});
                     return;
                 }
                 const auto previous = store->cached(destination.profileId, destination.credentialReference);
@@ -354,7 +355,7 @@ void DavProvider::setup(const QString& kind, const Destination& destination, con
         // The inspection uses one credential, and only that one is bound to the account it found:
         // a replacement stored meanwhile is never bound to the old origin or account.
         const auto used = store->cached(destination.profileId, destination.credentialReference);
-        if (!used) { reply({"credential_setup_required", nextcloud ? "put.gd isn't signed in to this Nextcloud destination. Sign in, or unlock saved credentials." : "Credentials are not loaded for this destination.", {}}, {}); return; }
+        if (!used) { reply({"credential_setup_required", nextcloud ? "Not signed in to this Nextcloud destination. Unlock saved credentials, or select Sign in… in Destinations." : "Credentials for this destination are locked or missing. Unlock saved credentials, or enter them and select Save to keychain or Use for this session.", {}}, {}); return; }
         background([this, destination, used](Error& error) {
             Credentials given = *used;
             return call("inspectAccount", destination, {}, error, nullptr, {}, {}, {}, {}, {}, true, &given);
@@ -364,7 +365,7 @@ void DavProvider::setup(const QString& kind, const Destination& destination, con
             if (!dav::parseBinding(used->sessionToken)["userId"].toString().isEmpty()) { finish(); return; }
             const auto now = store->cached(destination.profileId, destination.credentialReference);
             if (!now || now->generation != used->generation || (current && !current(destination))) {
-                reply({"credential_changed", "The credentials or the destination changed while put.gd was checking them. Check again.", {}}, {});
+                reply({"credential_changed", "Credentials or destination settings changed during the check. Try again.", {}}, {});
                 return;
             }
             auto bound = *used;

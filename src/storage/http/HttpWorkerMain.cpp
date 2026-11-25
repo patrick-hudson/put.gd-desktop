@@ -45,7 +45,7 @@ namespace {
 constexpr qint64 maximumLine = 1024 * 1024;
 constexpr qsizetype maximumReplyBytes = 4 * 1024 * 1024;
 constexpr int maximumRedirects = 5;
-worker::Stdio stdio{maximumLine, "http", "request"};
+worker::Stdio stdio{maximumLine, "http"};
 auto& cancelled = stdio.cancelled;
 Error checkpoint(const QJsonObject& journal) { return stdio.checkpoint(journal); }
 Error stoppedError() { return {"cancelled", "Upload cancelled", {}}; }
@@ -134,7 +134,7 @@ QString transportReason(QNetworkReply::NetworkError error) {
     case QNetworkReply::RemoteHostClosedError: return QStringLiteral("the server closed the connection");
     case QNetworkReply::HostNotFoundError: return QStringLiteral("host not found");
     case QNetworkReply::TimeoutError: return QStringLiteral("timed out");
-    case QNetworkReply::SslHandshakeFailedError: return QStringLiteral("the TLS handshake failed; the certificate may not be trusted");
+    case QNetworkReply::SslHandshakeFailedError: return QStringLiteral("the TLS handshake failed (the certificate may not be trusted)");
     case QNetworkReply::TemporaryNetworkFailureError:
     case QNetworkReply::NetworkSessionFailedError: return QStringLiteral("the network is unavailable");
     case QNetworkReply::ContentReSendError: return QStringLiteral("the connection closed before the reply");
@@ -500,13 +500,13 @@ private:
         const auto name = row["name"].toString();
         const auto key = secretKey(list, name);
         if (row["secret"].toBool() && !secrets_.contains(key)) {
-            error = {"credential_setup_required", "A stored value of this destination is missing (" + secretLabel(key) + "). Enter it in Settings and store the credentials again.", {}};
+            error = {"credential_setup_required", "Missing saved secret value (" + secretLabel(key) + "). Enter it in Destinations and select Save to keychain or Use for this session.", {}};
             return false;
         }
         QString problem;
         out = renderRequest(row["secret"].toBool() ? secrets_.value(key) : row["value"].toString(), values, &problem);
         if (!problem.isEmpty()) {
-            error = {problem.contains("{input}") ? "http_text_only" : "http_value_invalid", "The " + secretLabel(key) + " of this destination cannot be used: " + problem, {}};
+            error = {problem.contains("{input}") ? "http_text_only" : "http_value_invalid", "Can't use the " + secretLabel(key) + ": " + problem, {}};
             return false;
         }
         return true;
@@ -522,11 +522,11 @@ private:
     bool plan(const Artifact& artifact, const QString& fileName, Plan& out, Error& error) const {
         const auto s = settings();
         const auto kind = artifactKind(artifact.mime, artifact.category);
-        if (s["requestUrl"].toString().isEmpty()) { error = {"http_setup_required", "This destination has no request URL yet. Enter it in Settings, or import a .sxcu file.", {}}; return false; }
+        if (s["requestUrl"].toString().isEmpty()) { error = {"http_setup_required", "This destination has no Request URL yet. Enter one in Destinations, or import a .sxcu file.", {}}; return false; }
         if (!acceptsKind(s, kind)) {
             QStringList kinds;
             for (const auto& value : s["accepts"].toArray()) kinds.append(value.toString() == "image" ? "images" : value.toString());
-            error = {"http_type_unsupported", "This uploader takes " + kinds.join(" and ") + " only, so it cannot upload this file.", {{"kind", kind}}};
+            error = {"http_type_unsupported", "This uploader only accepts " + kinds.join(" and ") + ", so the upload didn't start. Change Uploads in Destinations, or use another destination.", {{"kind", kind}}};
             return false;
         }
         const auto body = s["body"].toString();
@@ -541,7 +541,7 @@ private:
             if (file.open(QIODevice::ReadOnly)) { values.input = QString::fromUtf8(file.readAll()); values.hasInput = true; }
         }
         if (!out.file && !values.hasInput) {
-            error = {"http_text_only", "This uploader sends text in its request ({input}); it cannot upload this file.", {{"kind", kind}}};
+            error = {"http_text_only", "This uploader only sends text ({input}), so the upload didn't start.", {{"kind", kind}}};
             return false;
         }
         // A request that carries the file may still name {input}, as XBackBone's does:
@@ -553,7 +553,7 @@ private:
         const auto rendered = renderRequest(s["requestUrl"].toString(), address, &problem);
         QUrl url(rendered, QUrl::TolerantMode);
         if (!problem.isEmpty() || !url.isValid() || url.host().isEmpty() || !transportAllowed(url, allowInsecure())) {
-            error = {"http_settings_invalid", "The request URL of this destination cannot be used" + (problem.isEmpty() ? QString(".") : ": " + problem), {}};
+            error = {"http_settings_invalid", "Can't use Request URL" + (problem.isEmpty() ? QString(".") : ": " + problem), {}};
             return false;
         }
         QByteArray query;
@@ -564,7 +564,7 @@ private:
             query.append(QUrl::toPercentEncoding(value.toObject()["name"].toString()) + '=' + QUrl::toPercentEncoding(text));
         }
         if (!query.isEmpty()) url = QUrl::fromEncoded(url.toEncoded(QUrl::RemoveQuery | QUrl::RemoveFragment) + '?' + query, QUrl::StrictMode);
-        if (!url.isValid()) { error = {"http_settings_invalid", "The request URL of this destination cannot be used.", {}}; return false; }
+        if (!url.isValid()) { error = {"http_settings_invalid", "Can't use Request URL.", {}}; return false; }
         out.url = url;
         bool contentType = false;
         for (const auto& value : s["headers"].toArray()) {
@@ -600,7 +600,7 @@ private:
             out.headers.append(QPair<QByteArray, QByteArray>("Content-Type", "application/x-www-form-urlencoded"));
         } else if (body == "json" || body == "xml") {
             if (s["dataSecret"].toBool() && !secrets_.contains(dataSecretKey())) {
-                error = {"credential_setup_required", "The stored request body of this destination is missing. Enter it in Settings and store the credentials again.", {}};
+                error = {"credential_setup_required", "The saved request body is missing. Enter it under Body text in Destinations and select Save to keychain or Use for this session.", {}};
                 return false;
             }
             auto data = s["dataSecret"].toBool() ? secrets_.value(dataSecretKey()) : s["data"].toString();
@@ -635,7 +635,7 @@ private:
         QJsonObject details{{"requestStage", stage}, {"httpStatus", r.status}};
         const auto suffix = said(values);
         if (r.status == 401 || r.status == 403)
-            return {"http_authentication_failed", QString("The server refused this destination's credentials (HTTP %1)%2 Check its header, parameter and argument values, then store them again.").arg(r.status).arg(suffix), details};
+            return {"http_authentication_failed", QString("The server rejected this destination's credentials (HTTP %1)%2 Check Headers, URL parameters, and Form fields in Destinations, then select Save to keychain or Use for this session.").arg(r.status).arg(suffix), details};
         if (r.status == 413) return {"http_too_large", QString("The server says the file is too large (HTTP 413)%1").arg(suffix), details};
         if (r.status == 429) return {"http_rate_limited", QString("The server is limiting requests (HTTP 429)%1 Wait before retrying.").arg(suffix), details};
         if (r.status >= 500) return {"http_server_error", QString("The server failed to handle the upload (HTTP %1)%2").arg(r.status).arg(suffix), details};
@@ -659,7 +659,7 @@ private:
                 // before the reply, and a server that had stored the file stores it twice.
                 body = plan.body ? std::make_unique<Body>(plan.before, plan.file ? artifact.path : QString(), artifact.bytes, plan.after)
                                  : std::make_unique<Body>(QByteArray(), QString(), 0, QByteArray());
-                if (!body->open(QIODevice::ReadOnly)) { error = {"artifact_invalid", "Retained artifact is unavailable", {}}; return {}; }
+                if (!body->open(QIODevice::ReadOnly)) { error = {"artifact_invalid", "Couldn't read the temporary upload file. Capture or select the file again.", {}}; return {}; }
             }
             const bool reports = configured && plan.file;
             const auto sent = [&](qint64 bytes) { progress("uploading", bytes - plan.before.size(), artifact.bytes); };
@@ -668,18 +668,18 @@ private:
             // its address or lack of one, leaves the upload unclear (#1690).
             if (configured && synthetic_ && r.status >= 300 && r.status < 400) {
                 answered = true;
-                error = {"http_outcome_unknown", QString("The server answered the test upload with a redirect (HTTP %1). Test upload and link sends its file once and follows no redirect, "
-                         "so whether the server stored it is not known.").arg(r.status), {{"requestStage", "redirect"}, {"httpStatus", r.status}}};
+                error = {"http_outcome_unknown", QString("The server answered the test upload with a redirect (HTTP %1). Test upload and link sends the file once without following redirects, "
+                         "so put.gd can't tell whether the server stored it.").arg(r.status), {{"requestStage", "redirect"}, {"httpStatus", r.status}}};
                 return r;
             }
             if (!QList<int>{301, 302, 303, 307, 308}.contains(r.status)) return r;
             const auto location = r.header("location");
             const auto target = url.resolved(QUrl(location));
             const QJsonObject details{{"requestStage", "redirect"}, {"httpStatus", r.status}};
-            if (location.isEmpty() || !target.isValid() || target.host().isEmpty()) { error = {"http_redirect_refused", QString("The server answered with a redirect that names no address (HTTP %1).").arg(r.status), details}; return r; }
+            if (location.isEmpty() || !target.isValid() || target.host().isEmpty()) { error = {"http_redirect_refused", QString("The server returned a redirect with no address (HTTP %1).").arg(r.status), details}; return r; }
             if (hop >= maximumRedirects) { error = {"http_redirect_refused", "The server redirects too many times.", details}; return r; }
             if (!transportAllowed(target, allowInsecure()) || (url.scheme() == "https" && target.scheme() != "https")) {
-                error = {"http_redirect_refused", "The server redirects to an unencrypted address; put.gd does not follow it.", details};
+                error = {"http_redirect_refused", "The server redirected to an unencrypted address, so put.gd didn't follow it.", details};
                 return r;
             }
             // Asked with plain HTTP let through: the transport rule was applied just above.
@@ -692,7 +692,7 @@ private:
                 // The server asks for the same request elsewhere: only on its own host.
                 if (configured && !same) {
                     error = {"http_redirect_refused", "The server redirected the upload to another host (" + shown(target.host(), 96) +
-                             "). put.gd does not send the file or this destination's credentials there. If that address is right, set it as the request URL.", details};
+                             "). put.gd won't send the file or credentials there. If that address is right, enter it in Request URL.", details};
                     return r;
                 }
             } else {
@@ -714,8 +714,8 @@ private:
         if (reference["nonce"].toString().isEmpty() || fileName.isEmpty()) { error = {"http_protocol", "The upload request is incomplete", {}}; return {}; }
         progress("preparing", 0, artifact.bytes);
         Hashes whole;
-        if (!hashFile(artifact.path, whole)) { error = cancelled.load() ? stoppedError() : Error{"artifact_invalid", "Retained artifact is unavailable", {}}; return {}; }
-        if (whole.bytes != artifact.bytes || QString::fromLatin1(whole.sha256) != artifact.sha256) { error = {"artifact_changed", "The retained artifact changed since it was saved", {}}; return {}; }
+        if (!hashFile(artifact.path, whole)) { error = cancelled.load() ? stoppedError() : Error{"artifact_invalid", "The temporary file for this upload is missing, so the upload didn't start. Capture or select the file again.", {}}; return {}; }
+        if (whole.bytes != artifact.bytes || QString::fromLatin1(whole.sha256) != artifact.sha256) { error = {"artifact_changed", "The temporary file changed before it could be uploaded, so the upload didn't start. Capture or select the file again.", {}}; return {}; }
         Plan request;
         if (!plan(artifact, fileName, request, error)) return {};
         if (cancelled.load()) { error = stoppedError(); return {}; }
@@ -731,15 +731,15 @@ private:
         // led; with no redirect it would be the request's own address, secret parameters
         // and all, which is never a link.
         ResponseValues values{r.text(), r.headers, answered ? r.url.toString(QUrl::FullyEncoded) : QString(), fileName, nullptr, false};
-        static const QString resend = QStringLiteral(" The file may be stored on the server. This uploader cannot check, so Retry sends it again and may leave a second copy.");
+        static const QString resend = QStringLiteral(" The file may already be on the server. This uploader can't check, so Retry upload sends it again and may leave a second copy.");
         if (r.status == 0) {
             QJsonObject details{{"requestStage", "upload"}, {"transport", r.detail}};
             if (!r.reached && !answered) {
                 // The whole request never left: nothing can be stored.
                 if (r.stopped) { error = stoppedError(); return {{"status", "failed"}}; }
                 error = {r.connected ? "http_upload_interrupted" : "http_connect_failed",
-                         r.connected ? "The connection ended before the upload was sent (" + r.detail + "). Nothing was stored; retry when the server is reachable."
-                                     : "The server could not be reached (" + r.detail + "). Check the request URL and the network.", details};
+                         r.connected ? "The connection ended before the upload finished sending (" + r.detail + "), so nothing was stored. Select Retry upload when the server is reachable."
+                                     : "Couldn't reach the server (" + r.detail + "), so the upload didn't start. Check Request URL and your network.", details};
                 return {{"status", "failed"}};
             }
             uncertain = true;
@@ -757,9 +757,9 @@ private:
                 uncertain = true;
                 error.code = "http_outcome_unknown";
                 const auto words = said(values);
-                error.message = (answered ? QString("The server redirected the upload, and the address it named answered HTTP %1").arg(r.status)
+                error.message = (answered ? QString("The server redirected the upload, and the target returned HTTP %1").arg(r.status)
                                  : gaveUp ? QString("The server gave up before answering (HTTP %1)").arg(r.status)
-                                          : QString("The server failed after the upload was sent (HTTP %1)").arg(r.status)) + words + resend;
+                                          : QString("The server returned an error after receiving the upload (HTTP %1)").arg(r.status)) + words + resend;
                 return {{"status", "unknown"}};
             }
             return {{"status", "failed"}};
@@ -767,7 +767,7 @@ private:
         if (r.cut) {
             // Whatever its first bytes look like, a reply that ended early is not a reply.
             uncertain = true;
-            error = {"http_outcome_unknown", QString("The server's reply was cut off before it was complete (HTTP %1; %2).").arg(r.status).arg(r.detail) + resend,
+            error = {"http_outcome_unknown", QString("The server's reply was cut off (HTTP %1, %2).").arg(r.status).arg(r.detail) + resend,
                      {{"requestStage", "response"}, {"httpStatus", r.status}, {"transport", r.detail}}};
             return {{"status", "unknown"}};
         }
@@ -799,13 +799,13 @@ private:
             // arrived whole and cannot be read, which is said as what it is.
             const auto coding = compressed(r.headers);
             if (!coding.isEmpty() && why.isEmpty())
-                error = {"http_response_unreadable", QString("The server accepted the upload (HTTP %1), but it compressed its reply (%2) although put.gd asks for replies as they are, and put.gd does not unpack them. "
-                         "The file may be stored on the server; Retry sends it again. Turn off compression for this address on the server, or put the link in a reply header.").arg(r.status).arg(shown(coding, 32)),
+                error = {"http_response_unreadable", QString("The server accepted the upload (HTTP %1), but compressed its reply (%2), which put.gd doesn't unpack. "
+                         "The file may already be on the server, and Retry upload will send it again. Turn off response compression for this endpoint, or return the link in a response header.").arg(r.status).arg(shown(coding, 32)),
                          {{"requestStage", "response"}, {"httpStatus", r.status}, {"replyBytes", double(r.body.size())}, {"contentEncoding", shown(coding, 32)}}};
             else
                 error = {"http_response_unreadable", QString("The server accepted the upload (HTTP %1), but ").arg(r.status) +
-                         (why.isEmpty() ? QStringLiteral("its reply has no link where this destination looks for one.") : "the link in its reply cannot be used: " + why + ".") +
-                         " The file may be stored on the server. Check the URL value under Response, then Retry; that sends the file again.",
+                         (why.isEmpty() ? QStringLiteral("no usable link was found in its reply.") : "no usable link was found in its reply (" + why + ").") +
+                         " The file may already be on the server. Check URL under Response, then select Retry upload (this sends the file again).",
                          {{"requestStage", "response"}, {"httpStatus", r.status}, {"replyBytes", double(r.body.size())}, {"contentType", shown(r.header("content-type"), 96)}}};
             QJsonObject out{{"status", "unknown"}};
             if (request_["includeReply"].toBool() && coding.isEmpty()) out["replyExcerpt"] = shown(values.body, 600);
@@ -817,10 +817,10 @@ private:
         if (const auto key = storedValueIn(link, secrets_); !key.isEmpty()) {
             uncertain = true;
             const bool row = !key.startsWith(extraSecretsList() + '/') && key != dataSecretKey();
-            error = {"http_link_holds_secret", QString("The server accepted the upload (HTTP %1), but the link it returned contains a credential of this destination (%2). "
-                     "put.gd does not record or copy such a link. The file is probably stored on the server, and Retry would send it again with the same result. "
-                     "If that value is not a credential, %3; otherwise change what the server puts in its links.").arg(r.status).arg(secretLabel(key))
-                     .arg(row ? QStringLiteral("clear Secret on its row") : key == dataSecretKey() ? QStringLiteral("take it out of the request body") : QStringLiteral("write it into the address itself and remove it from Other secret values")),
+            error = {"http_link_holds_secret", QString("The server accepted the upload (HTTP %1), but the returned link contains a saved secret (%2), so put.gd didn't save or copy it. "
+                     "The file is likely on the server, and Retry upload would fail the same way. "
+                     "If that value isn't a credential, %3. Otherwise, change what the server includes in links.").arg(r.status).arg(secretLabel(key))
+                     .arg(row ? QStringLiteral("turn off Secret on its row") : key == dataSecretKey() ? QStringLiteral("remove it from Body text") : QStringLiteral("write it into the address itself and remove it from Other secret values")),
                      {{"requestStage", "response"}, {"httpStatus", r.status}, {"storedValue", secretLabel(key)}}};
             return {{"status", "unknown"}};
         }
@@ -899,7 +899,7 @@ private:
         stored.secrets = &secrets_;
         for (const auto& key : secretReferences(recorded))
             if (!secrets_.contains(key)) {
-                error = {"credential_setup_required", "Deleting this upload needs a stored value of its destination (" + secretLabel(key) + "). Unlock or store the destination's credentials, then try again.", {}};
+                error = {"credential_setup_required", "Deleting this upload requires a saved secret (" + secretLabel(key) + "). Unlock saved credentials, or enter them in Destinations and select Save to keychain or Use for this session, then select Retry deletion.", {}};
                 return {{"status", "failed"}, {"progress", progress}};
             }
         const bool named = !secretReferences(recorded).isEmpty();
@@ -913,11 +913,11 @@ private:
         bool unresolved = false;
         const auto unusable = client_.fetchProblem(url, allowInsecure(), &unresolved);
         if (unresolved) {
-            error = {"http_connect_failed", "The server could not be reached (host not found). Nothing was deleted.", {{"requestStage", "delete"}}};
+            error = {"http_connect_failed", "Couldn't reach the server (host not found), so nothing was deleted.", {{"requestStage", "delete"}}};
             return {{"status", "failed"}, {"progress", progress}};
         }
         if (!unusable.isEmpty()) {
-            error = {"http_delete_unsupported", "This upload's deletion URL cannot be used: " + unusable + ". put.gd cannot delete this upload from the server.", {}};
+            error = {"http_delete_unsupported", "Can't use this upload's deletion URL (" + unusable + "), so put.gd can't delete it from the server.", {}};
             return {{"status", "unsupported_safe_removal"}, {"progress", progress}};
         }
         // A stored value goes to the destination's own host or nowhere, whatever a record says.
@@ -952,7 +952,7 @@ private:
             // The server received the request and answered with a redirect that is not
             // followed: whether it deleted the file is not known. Retry asks again.
             uncertain = true;
-            error = {"http_outcome_unknown", "The server answered the deletion request, but " + refused + ". It may have deleted the file; Retry asks again.", details};
+            error = {"http_outcome_unknown", "The server answered the deletion request, but " + refused + ". The file may already be deleted. Select Retry deletion to try again.", details};
             return {{"status", "unknown"}, {"progress", progress}};
         }
         bool confirmed = false;
@@ -992,29 +992,29 @@ private:
             if (r.status == 202) {
                 uncertain = true;
                 error = {"http_delete_pending", after.status
-                    ? QString("The server accepted the deletion for later (HTTP 202), but the link still answers (HTTP %1). Retry checks again, or check the file on the server.").arg(after.status)
-                    : "The server accepted the deletion for later (HTTP 202), and checking the link got no reply (" + after.detail + "). Retry checks again, or check the file on the server.", details};
+                    ? QString("The server queued the deletion (HTTP 202), but the link still responds (HTTP %1). Select Retry deletion later, or check the file on the server.").arg(after.status)
+                    : "The server queued the deletion (HTTP 202), and checking the link got no reply (" + after.detail + "). Select Retry deletion later, or check the file on the server.", details};
                 return {{"status", "unknown"}, {"progress", progress}};
             }
             if (gone(after) && alreadyGone) return finish(phase == "delete_intent" ? "removed" : "missing");
             if (before.status == 200 && after.status == 200 && whole(before) && whole(after) && !before.body.isEmpty() && after.body == before.body) {
                 // The whole file, byte for byte, is still there: the deletion did not work.
-                error = {"http_delete_unconfirmed", QString("The server answered the deletion request (HTTP %1), but the link still serves the file. Nothing is deleted. "
-                         "This server may want the deletion confirmed on its own page, or may serve a cached copy for a while; Retry checks again, or delete it on the server.").arg(r.status), details};
+                error = {"http_delete_unconfirmed", QString("The server answered the deletion request (HTTP %1), but the link still serves the file, so it wasn't deleted. "
+                         "The server may require confirmation on its own page or may be serving a cached copy. Select Retry deletion later, or delete it on the server.").arg(r.status), details};
                 return {{"status", "failed"}, {"progress", progress}};
             }
             uncertain = true;
             if (after.status == 0) details["checkTransport"] = after.detail;
-            error = {"http_outcome_unknown", QString("The server answered the deletion request (HTTP %1), and the link then answered %2, which shows neither that the file is gone nor that it is still there. "
-                     "Retry asks again, or remove it from History.").arg(r.status).arg(after.status ? QString("HTTP %1").arg(after.status) : after.detail), details};
+            error = {"http_outcome_unknown", QString("The server answered the deletion request (HTTP %1), and the link returned %2, so put.gd can't confirm whether the file was deleted. "
+                     "Select Retry deletion, or check the file on the server.").arg(r.status).arg(after.status ? QString("HTTP %1").arg(after.status) : after.detail), details};
             return {{"status", "unknown"}, {"progress", progress}};
         }
         if (r.status == 0) {
             details["transport"] = r.detail;
             uncertain = r.reached;
             error = {r.reached ? "http_outcome_unknown" : "http_connect_failed",
-                     r.reached ? "The deletion request was sent, but no reply arrived (" + r.detail + "). Retry asks the server again."
-                               : "The server could not be reached (" + r.detail + "). Nothing was deleted.", details};
+                     r.reached ? "The deletion request was sent, but no reply arrived (" + r.detail + "). Select Retry deletion to try again."
+                               : "Couldn't reach the server (" + r.detail + "), so nothing was deleted.", details};
             return {{"status", r.reached ? "unknown" : "failed"}, {"progress", progress}};
         }
         error = {"http_delete_refused", QString("The server refused the deletion (HTTP %1).").arg(r.status), details};
@@ -1030,7 +1030,7 @@ private:
         QTemporaryDir dir;
         const auto path = dir.filePath(image ? "synthetic.png" : "synthetic.txt");
         QFile file(path);
-        if (!dir.isValid() || !file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size()) { error = {"synthetic_artifact_failed", "Could not create the private synthetic file", {}}; return out; }
+        if (!dir.isValid() || !file.open(QIODevice::WriteOnly) || file.write(bytes) != bytes.size()) { error = {"synthetic_artifact_failed", "Couldn't create a temporary test file. Check free disk space and permissions in your temp folder.", {}}; return out; }
         file.close();
         Artifact artifact;
         artifact.id = "synthetic-" + synthetic;
@@ -1079,14 +1079,14 @@ private:
         } else out["cleanupStatus"] = "unsupported";
         if (cleanup) error = cleanup;
         else if (!fetched.blocked.isEmpty())
-            error = {"public_url_unreachable", "The upload worked, but put.gd did not open the returned link: " + fetched.blocked + ". " +
-                     (fetched.blocked.contains("plain HTTP") ? QStringLiteral("Turn on Allow plain HTTP for this destination, or have the server return an https link.") : QStringLiteral("Check the URL value under Response.")),
+            error = {"public_url_unreachable", "The upload worked, but put.gd didn't open the returned link (" + fetched.blocked + "). " +
+                     (fetched.blocked.contains("plain HTTP") ? QStringLiteral("Turn on Allow plain HTTP for this destination, or return an https:// link from the server.") : QStringLiteral("Check URL under Response.")),
                      {{"httpStatus", 0}}};
         else if (fetched.cut && fetched.status >= 200 && fetched.status < 300)
-            error = {"public_url_unreachable", QString("The upload worked, but the returned link's reply was cut off (HTTP %1; %2). Test again.").arg(fetched.status).arg(fetched.detail), {{"httpStatus", fetched.status}}};
+            error = {"public_url_unreachable", QString("The upload worked, but the returned link's reply was cut off (HTTP %1, %2). Select Test upload and link to try again.").arg(fetched.status).arg(fetched.detail), {{"httpStatus", fetched.status}}};
         else if (!out["publicReachable"].toBool())
-            error = {"public_url_unreachable", fetched.status ? QString("The upload worked, but the returned link did not open (HTTP %1). Check the URL value under Response.").arg(fetched.status)
-                                                              : "The upload worked, but the returned link did not open (" + (refused.isEmpty() ? fetched.detail : refused) + "). Check the URL value under Response.",
+            error = {"public_url_unreachable", fetched.status ? QString("The upload worked, but the returned link didn't open (HTTP %1). Check URL under Response.").arg(fetched.status)
+                                                              : "The upload worked, but the returned link didn't open (" + (refused.isEmpty() ? fetched.detail : refused) + "). Check URL under Response.",
                      {{"httpStatus", fetched.status}}};
         return out;
     }

@@ -6,7 +6,7 @@
 #include <QJsonDocument>
 namespace putgd {
 namespace {
-Error accessError() { return {"credential_setup_required", "Credentials are not loaded for this destination. Unlock saved credentials, or enter the B2 application key and choose Save to keychain or Use for this session.", {}}; }
+Error accessError() { return {"credential_setup_required", "Credentials for this destination are locked or missing. Unlock saved credentials, or enter the B2 application key and select Save to keychain or Use for this session.", {}}; }
 Error parseError(const QJsonObject& value) { return {value["code"].toString("b2_failed"), value["message"].toString("Backblaze B2 request failed"), value["details"].toObject()}; }
 // Errors the worker reports before any request that could change B2.
 bool definite(const QString& code) {
@@ -51,7 +51,7 @@ QJsonObject B2Provider::call(const QString& method, const Destination& destinati
                              std::shared_ptr<std::atomic_bool> cancellation, std::function<void(const UploadProgress&)> progress,
                              DurableCheckpoint checkpoint, std::shared_ptr<std::atomic_bool> kill, std::function<int()> lanes) {
     if (uncertain) *uncertain = false;
-    if (stopping_.load()) { error = {"operation_cancelled", "The application is stopping", {}}; return {}; }
+    if (stopping_.load()) { error = {"operation_cancelled", "put.gd is closing, so the request didn't start.", {}}; return {}; }
     if (auto e = b2::validateSettings(destination.settings)) { error = e; return {}; }
     const auto credential = credentials_.cached(destination.profileId, destination.credentialReference);
     if (!credential || credential->accessKey.isEmpty() || credential->secretKey.isEmpty()) { error = accessError(); return {}; }
@@ -61,11 +61,13 @@ QJsonObject B2Provider::call(const QString& method, const Destination& destinati
     params["credentials"] = QJsonObject{{"keyId", credential->accessKey}, {"applicationKey", credential->secretKey}};
     ++active_;
     struct Release { std::atomic_int& count; ~Release() { --count; } } release{active_};
+    const bool mutation = method != "checkName" && method != "stat";
+    const auto ending = worker::unconfirmedEnding(method, mutation, "the bucket", ", so the file may already be uploaded. Select Retry upload to check before sending again.");
     const worker::ExchangePolicy policy{"b2", "B2", "B2", "b2_transport_unknown",
-        "The Backblaze B2 helper could not start; reinstall put.gd",
-        "The B2 helper stopped responding; reconcile its saved identity before retrying",
-        "The B2 helper ended without a confirmed result; reconcile before retrying",
-        {"upload", "remove", "testDestination"}, method != "checkName" && method != "stat", true};
+        "Couldn't start the Backblaze B2 helper. Reinstall put.gd.",
+        "The Backblaze B2 helper stopped responding" + ending,
+        "The Backblaze B2 helper exited without confirming the result" + ending,
+        {"upload", "remove", "testDestination"}, mutation, true};
     // File data has no request timeout (#1782), only the worker's stall limit: never cut a worker
     // while one of its requests may still be inside that limit.
     const auto perRequest = qMax(destination.settings["requestTimeoutMs"].toInt(600000), qMax(destination.settings["connectTimeoutMs"].toInt(10000), 30000));
@@ -87,7 +89,7 @@ void B2Provider::checkName(const Destination& destination, const QString& candid
 }
 void B2Provider::upload(const UploadRequest& request, std::function<void(UploadResult)> reply) {
     if (request.condition != "absent") {
-        reply({"failed", {}, {"unsupported_capability", "Backblaze B2 cannot replace a recorded file version safely; choose rename or skip for name collisions", {}}});
+        reply({"failed", {}, {"unsupported_capability", "Backblaze B2 can't safely replace an existing file. Change When a name exists in Settings → Capture to Add a unique suffix or Skip duplicate names.", {}}});
         return;
     }
     // A new large upload starts with a part plan; an existing journal keeps its own.

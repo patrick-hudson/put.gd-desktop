@@ -107,8 +107,8 @@ ProviderCapabilities SftpProvider::capabilities(const Destination& destination) 
     caps.urls = destination.settings["publicUrlBase"].isString();
     caps.maximumNameBytes = 255;
     caps.deletionEffect = QStringLiteral(
-        "Removes the file after checking that it is still the one put.gd uploaded: a regular file of the same size, time and owner, and up to 32 MB the "
-        "same bytes. SFTP has no conditional delete, so a file replaced between that check and the removal is removed too; web caches may keep serving it.");
+        "Deletes the file after checking that it is unchanged (same size, timestamp, owner, and bytes up to 32 MB). "
+        "SFTP has no atomic conditional delete, so a file replaced right after the check will still be deleted, and web caches may keep serving it.");
     return caps;
 }
 QJsonObject SftpProvider::diagnosticSettings(const QJsonObject& settings) const {
@@ -194,7 +194,7 @@ QJsonObject SftpProvider::call(const QString& method, const Destination& destina
                                std::shared_ptr<std::atomic_bool> cancellation, std::function<void(const UploadProgress&)> progress, DurableCheckpoint checkpoint,
                                std::shared_ptr<std::atomic_bool> kill, std::function<void(const QString&)> notice) {
     if (uncertain) *uncertain = false;
-    if (stopping_.load()) { error = {"operation_cancelled", "The application is stopping", {}}; return {}; }
+    if (stopping_.load()) { error = {"operation_cancelled", "put.gd is closing, so the request didn't start.", {}}; return {}; }
     if (auto e = sftp::validate(destination.settings, false)) { error = e; return {}; }
     // A keychain destination whose secrets aren't loaded still signs in with the agent and key files.
     const auto credential = credentials_.cached(destination.profileId, destination.credentialReference);
@@ -216,7 +216,7 @@ QJsonObject SftpProvider::call(const QString& method, const Destination& destina
     if (!session) {
         session = std::make_unique<Session>();
         if (!session->process.start(workerPath(), {"--session"}, QProcessEnvironment::systemEnvironment())) {
-            error = {"sftp_worker_start", "put.gd couldn't start its SFTP helper. Try again; if it keeps failing, reinstall put.gd.", {}};
+            error = {"sftp_worker_start", "Couldn't start the SFTP helper. Try again, or reinstall put.gd if it keeps failing.", {}};
             return {};
         }
     }
@@ -228,7 +228,7 @@ QJsonObject SftpProvider::call(const QString& method, const Destination& destina
     const auto written = session->process.write(bytes, 10000);
     bytes.fill('\0');
     if (written != bytes.size()) {
-        error = {"sftp_worker_start", "The SFTP helper did not take its request. Try again.", {}};
+        error = {"sftp_worker_start", "The SFTP helper didn't accept the request. Try again.", {}};
         return {};
     }
     QByteArray pending;
@@ -242,13 +242,13 @@ QJsonObject SftpProvider::call(const QString& method, const Destination& destina
         // The provider is going away: the helper is stopped at once, not asked.
         if (stopping_.load() && method == QLatin1String("connect")) {
             session->process.kill();
-            error = {"operation_cancelled", "The application is stopping", {}};
+            error = {"operation_cancelled", "put.gd is closing, so the request didn't start.", {}};
             return {};
         }
         if (stopping_.load() && !quitClock.isValid()) quitClock.start();
         if ((kill && kill->load()) || (quitClock.isValid() && quitClock.elapsed() > quitGraceMs)) {
             session->process.kill();
-            error = withPath({"sftp_transport_unknown", "put.gd quit while the SFTP helper was working; check the server before retrying", {{"reason", "quit"}}});
+            error = withPath({"sftp_transport_unknown", "put.gd quit while the SFTP helper was running, so the file may already be on the server. Check the server before retrying.", {{"reason", "quit"}}});
             if (uncertain) *uncertain = mutation;
             return {};
         }
@@ -259,7 +259,7 @@ QJsonObject SftpProvider::call(const QString& method, const Destination& destina
         }
         if ((cancelSent && cancelClock.elapsed() > cancelGraceMs) || silence.elapsed() > silenceLimitMs) {
             session->process.kill();
-            error = withPath({"sftp_transport_unknown", "The SFTP helper stopped responding; check the server before retrying", {{"reason", cancelSent ? "cancelled" : "deadline"}}});
+            error = withPath({"sftp_transport_unknown", "The SFTP helper stopped responding, so the file may already be on the server. Check the server before retrying.", {{"reason", cancelSent ? "cancelled" : "deadline"}}});
             if (uncertain) *uncertain = mutation;
             return {};
         }
@@ -306,7 +306,7 @@ QJsonObject SftpProvider::call(const QString& method, const Destination& destina
         if (broken) break;
     }
     if (!got) {
-        error = withPath({"sftp_transport_unknown", "The SFTP helper ended without a confirmed result; check the server before retrying", {}});
+        error = withPath({"sftp_transport_unknown", "The SFTP helper exited without confirming the result, so the file may already be on the server. Check the server before retrying.", {}});
         if (uncertain) *uncertain = mutation;
         return {};
     }
@@ -329,7 +329,7 @@ void SftpProvider::checkName(const Destination& destination, const QString& cand
 }
 void SftpProvider::upload(const UploadRequest& request, std::function<void(UploadResult)> reply) {
     if (request.condition != "absent") {
-        reply({"failed", {}, {"unsupported_capability", "SFTP uploads never replace a file on the server; choose rename or skip for name collisions", {}}});
+        reply({"failed", {}, {"unsupported_capability", "SFTP uploads can't replace an existing file. Change When a name exists in Settings → Capture to Add a unique suffix or Skip duplicate names.", {}}});
         return;
     }
     if (auto e = sftp::validate(request.destination.settings, true)) { reply({"failed", {}, e}); return; }
@@ -386,7 +386,7 @@ QJsonObject SftpProvider::setup(const QString& kind, const Destination& destinat
         if (auto e = sftp::validate(destination.settings, true)) { error = e; return {}; }
         // Only the folder the destination names: the request repeats it, so a stale form can't create another.
         if (input["name"].toString() != destination.settings["folder"].toString()) {
-            error = {"sftp_settings_invalid", "Create folder makes the destination's own Folder on server; save that folder first", {{"field", "folder"}}};
+            error = {"sftp_settings_invalid", "Create folder only creates the saved Folder on server. Save your settings first.", {{"field", "folder"}}};
             return {};
         }
         // The path the test reported missing: the worker makes it only if the folder resolves there still.
