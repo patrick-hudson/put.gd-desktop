@@ -563,7 +563,7 @@ The tool row's free middle shows one message at a time; a lower one waits instea
 squeezed in, and nothing is truncated to an unreadable fragment at 1440 px. In order:
 
 1. **Placing a cover:** "Draw the redaction · 0:08.2 – 0:12.6" (or "· whole recording"), or
-   "Draw the blur (may be reversible) · …", with a **Cancel** button (Esc); "Loading the frame
+   "Draw the blur (text can be recovered) · …", with a **Cancel** button (Esc); "Loading the frame
    to draw on…" while the frame waits more than 100 ms.
 2. **A frame error** with **Retry preview**. While a placement waits for its frame the error
    comes before the prompt, so the reason shows.
