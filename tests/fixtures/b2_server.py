@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Offline Backblaze B2 native-API (b2api v3) oracle for #282. Synthetic keys only; loopback only.
 
-Control endpoints (POST): /__reset {buckets, capabilities, restricted, versions, uploadPace}, /__rules {rules}, GET /__state
+Control endpoints (POST): /__reset {buckets, capabilities, restricted, versions, uploadPace, partsTogether}, /__rules {rules}, GET /__state
 (state includes maxPartsInFlight, the most part bodies read at once).
 A rule: {"call": name|"upload_file"|"upload_part"|"download", "status", "code", "remaining", "drop": true,
 "store": true (store, then drop the connection), "noFileId": true (act, then answer 2xx without a fileId), "competitor": true (another upload of the same name lands first),
@@ -108,12 +108,17 @@ class Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get('Content-Length', 0))
         # 'uploadPace' (reset option): read file and part bodies at that many bytes per second.
         # 'maxPartsInFlight' (state): the most part bodies read at the same time (#1792).
+        # 'partsTogether' (reset option): hold each part's body until that many parts have been
+        # in flight at once, so a count of parallel lanes doesn't hang on how fast bytes move (#1318).
         part = self.path.startswith('/upload_part/')
         with lock:
             pace = state.get('uploadPace') if self.path.startswith('/upload') else None
             if part:
                 state['partsInFlight'] += 1
                 state['maxPartsInFlight'] = max(state['maxPartsInFlight'], state['partsInFlight'])
+                together = state.get('partsTogether')
+                if together:
+                    self.wait_for(lambda: state['maxPartsInFlight'] >= together, timeout=5)
         try:
             return self.read_body(length, pace)
         finally:
@@ -191,7 +196,7 @@ class Handler(BaseHTTPRequestHandler):
                 state.clear()
                 state.update(fresh())
                 options = json.loads(data or b'{}')
-                for k in ('capabilities', 'restricted', 'buckets', 'uploadPace'):
+                for k in ('capabilities', 'restricted', 'buckets', 'uploadPace', 'partsTogether'):
                     if k in options:
                         state[k] = options[k]
                 for v in options.get('versions', []):
