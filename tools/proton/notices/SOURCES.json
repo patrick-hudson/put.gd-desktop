@@ -21,13 +21,11 @@
     "openpgpModifiedCompiledRoundtripVerified": true,
     "nativeBunRelinkVerified": true,
     "argon2WasmRebuildVerified": true,
-    "finalPackageAcceptanceVerified": false,
+    "finalPackageAcceptanceVerified": true,
     "nativeCompiledHelperSourceSelectionVerified": true,
     "argon2ModifiedCompiledCryptoVerified": true
   },
-  "openGates": [
-    "Fresh final-helper desktop functional/resource and actual package acceptance (P6) for helper 7fc568ce70ee; the retained receipt describes Bun 1.4.4 helper 34dda9fa8550"
-  ],
+  "openGates": [],
   "artifacts": [
     {
       "filename": "putgd-proton-build-controls.tar.gz",
@@ -194,20 +192,20 @@
     "scope": "Fresh Aurora Toolbx source build of Bun 1.4.5 with Bun Rust, JavaScriptCore and TinyCC markers from the published packet, and current-overlay helper relink. Native byte identity is not claimed. Retained archive verified by full readback."
   },
   "desktopResourceAcceptance": {
-    "helperSha256": "34dda9fa8550029058b84b95f3a8bbb97f8c377fdd68007bfedf5d4dab21c09b",
+    "helperSha256": "7fc568ce70eeb6bbebe7e1fe676419b258e6b5f371b6daa538b6e300abef9fd0",
     "status": "passed",
-    "receipt": "tools/proton/native_relink/evidence/desktop-resource-34dda9fa.json",
-    "receiptSha256": "f95788fde0b4b7183c9efce65f282e8d602af61498da2b0884ed63afb93793a1",
+    "receipt": "tools/proton/native_relink/evidence/desktop-resource-7fc568ce.json",
+    "receiptSha256": "8117d6a525ac2310d2c72241d44639b2a9c7f1e6ca7f5ea8d3d8b69e30fecde6",
     "historicalProofTransferred": false,
     "sourcePins": {
       "sdk": "8a44654aece1609f0f7218be51c205103945abd8",
       "crypto": "68b93b7d2cadd043cd08203710af382706ed1458",
       "openpgp": "36198c3369ab8d4a02d70372d62f1aa8bc247dcb",
-      "bun": "38afee6c84fcf48c0edb2466aa4b27d287a59c30",
+      "bun": "a7733435cf40429e3b35c36072769df2052b80f1",
       "webkit": "d6375c72affe0f70222cdcb45012b10f0bf3a9d5",
       "tinycc": "05f0fafaa3be31e31d7b4b5c17dc60f62c991171",
       "argon2id": "6fc76bcf69fbe07b5ec532a7912772d28f1ea43a"
     },
-    "scope": "Current-helper successful nightly push CI packages: installed-package functional, region-helper lifetime, normal UI exit plus 180-second-settle and two quiet >=300-second windows on each physical Cinnamon/GNOME/KDE desktop; five installer Proton audits."
+    "scope": "Current-helper published scheduled nightly v26.1125.7045-nightly packages: installed-package functional, region-helper lifetime, normal UI exit plus 180-second-settle and two quiet >=300-second windows on each physical Cinnamon/GNOME/KDE desktop; seven installer Proton audits."
   }
 }

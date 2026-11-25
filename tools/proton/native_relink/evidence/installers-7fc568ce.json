@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "passed": true,
+  "scope": "CI installer Proton integrity, embedded runtime identity and official Bun advisories only",
+  "date": "2026-11-25T10:48:48.319366+00:00",
+  "host": "debian",
+  "auditorCommit": "9d9f65eb8f7c4e9a7eddaf8b0c7938b95e805d40",
+  "auditorScriptSha256": "0c33599863785670956ff4dd44b8b758538a645654076bad0479af7afb00ef51",
+  "packages": [
+    {
+      "file": "putgd-26.1125.7045-nightly-archlinux-x86_64.pkg.tar.zst",
+      "sha256": "0ae898290146a119a898048444af96d59c5cfbb987e5e2975c01d377227f40d0",
+      "helperSha256": "7fc568ce70eeb6bbebe7e1fe676419b258e6b5f371b6daa538b6e300abef9fd0",
+      "identity": {
+        "schemaVersion": 1,
+        "runtime": "putgd-proton-runtime",
+        "appVersion": "external-drive-put_gd@0.1.1-alpha",
+        "sdkVersion": "js@0.23.0",
+        "bunVersion": "1.4.5",
+        "protocolVersion": 1
+      },
+      "sourceCatalogSha256": "846e49f23a2946982c69eb03a9c76b42c7a4529d188512af6cc4043c43302d85"
+    },
+    {
+      "file": "putgd-26.1125.7045-nightly-debian13-x86_64.deb",
+      "sha256": "dde5dfb7cb1bccea69231eb378f02e3baecaf330b801e60d6dff32e9f0c8a767",
+      "helperSha256": "7fc568ce70eeb6bbebe7e1fe676419b258e6b5f371b6daa538b6e300abef9fd0",
+      "identity": {
+        "schemaVersion": 1,
+        "runtime": "putgd-proton-runtime",
+        "appVersion": "external-drive-put_gd@0.1.1-alpha",
+        "sdkVersion": "js@0.23.0",
+        "bunVersion": "1.4.5",
+        "protocolVersion": 1
+      },
+      "sourceCatalogSha256": "846e49f23a2946982c69eb03a9c76b42c7a4529d188512af6cc4043c43302d85"
+    },
+    {
+      "file": "putgd-26.1125.7045-nightly-fedora44-x86_64.rpm",
+      "sha256": "d6677099f86f2f665f2082313b336009a51969a2c67680652c67c908934a423e",
+      "helperSha256": "7fc568ce70eeb6bbebe7e1fe676419b258e6b5f371b6daa538b6e300abef9fd0",
+      "identity": {
+        "schemaVersion": 1,
+        "runtime": "putgd-proton-runtime",
+        "appVersion": "external-drive-put_gd@0.1.1-alpha",
+        "sdkVersion": "js@0.23.0",
+        "bunVersion": "1.4.5",
+        "protocolVersion": 1
+      },
+      "sourceCatalogSha256": "846e49f23a2946982c69eb03a9c76b42c7a4529d188512af6cc4043c43302d85"
+    },
+    {
+      "file": "putgd-26.1125.7045-nightly-fedora45-x86_64.rpm",
+      "sha256": "e1f5e224476fa9c71d1646bf60ee9df5f29e76ee47b7af0f69639315dbd46779",
+      "helperSha256": "7fc568ce70eeb6bbebe7e1fe676419b258e6b5f371b6daa538b6e300abef9fd0",
+      "identity": {
+        "schemaVersion": 1,
+        "runtime": "putgd-proton-runtime",
+        "appVersion": "external-drive-put_gd@0.1.1-alpha",
+        "sdkVersion": "js@0.23.0",
+        "bunVersion": "1.4.5",
+        "protocolVersion": 1
+      },
+      "sourceCatalogSha256": "846e49f23a2946982c69eb03a9c76b42c7a4529d188512af6cc4043c43302d85"
+    },
+    {
+      "file": "putgd-26.1125.7045-nightly-ubuntu24.04-x86_64.deb",
+      "sha256": "c30b68a1ec8a01715d54ed0112e361e02ebb09f1cbd570b9642ce6700ab2806a",
+      "helperSha256": "7fc568ce70eeb6bbebe7e1fe676419b258e6b5f371b6daa538b6e300abef9fd0",
+      "identity": {
+        "schemaVersion": 1,
+        "runtime": "putgd-proton-runtime",
+        "appVersion": "external-drive-put_gd@0.1.1-alpha",
+        "sdkVersion": "js@0.23.0",
+        "bunVersion": "1.4.5",
+        "protocolVersion": 1
+      },
+      "sourceCatalogSha256": "846e49f23a2946982c69eb03a9c76b42c7a4529d188512af6cc4043c43302d85"
+    },
+    {
+      "file": "putgd-26.1125.7045-nightly-ubuntu26.04-x86_64.deb",
+      "sha256": "33a44c8eb74198daf9ef33b87c7a72a443ce24a317694c1d1b1fb56564b78cd7",
+      "helperSha256": "7fc568ce70eeb6bbebe7e1fe676419b258e6b5f371b6daa538b6e300abef9fd0",
+      "identity": {
+        "schemaVersion": 1,
+        "runtime": "putgd-proton-runtime",
+        "appVersion": "external-drive-put_gd@0.1.1-alpha",
+        "sdkVersion": "js@0.23.0",
+        "bunVersion": "1.4.5",
+        "protocolVersion": 1
+      },
+      "sourceCatalogSha256": "846e49f23a2946982c69eb03a9c76b42c7a4529d188512af6cc4043c43302d85"
+    },
+    {
+      "file": "putgd-26.1125.7045-nightly-x86_64.AppImage",
+      "sha256": "24e34afb7bc46f7595f6233381a9d4b0a9b1196cc696ab06a93e9de3380e59b3",
+      "helperSha256": "7fc568ce70eeb6bbebe7e1fe676419b258e6b5f371b6daa538b6e300abef9fd0",
+      "identity": {
+        "schemaVersion": 1,
+        "runtime": "putgd-proton-runtime",
+        "appVersion": "external-drive-put_gd@0.1.1-alpha",
+        "sdkVersion": "js@0.23.0",
+        "bunVersion": "1.4.5",
+        "protocolVersion": 1
+      },
+      "sourceCatalogSha256": "846e49f23a2946982c69eb03a9c76b42c7a4529d188512af6cc4043c43302d85"
+    }
+  ],
+  "errors": [],
+  "bunFindings": [],
+  "packageProducer": {
+    "workflow": "nightly.yml",
+    "event": "schedule",
+    "run": 45595103925,
+    "conclusion": "success",
+    "headSha": "9d9f65eb8f7c4e9a7eddaf8b0c7938b95e805d40",
+    "release": "v26.1125.7045-nightly",
+    "requiredMergeCommit": "6ef035770caf22621921d82d4fa33382c882cea4",
+    "requiredMergeAncestryVerified": true,
+    "assetsVerifiedAgainst": "SHA256SUMS of the published release"
+  },
+  "advisoryTransport": "Public official Bun GitHub advisory JSON fetched on the workstation (SHA-256 c6225bca6a012700cb51a7c8e53a5e9888ad385b882a394ae48aefa9cd05aa8a), transported without credentials, then served by an exact-argument gh wrapper on d69. Snapshot and wrapper retained in evidence."
+}

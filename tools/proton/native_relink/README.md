@@ -142,8 +142,9 @@ which verifies the final runner and the complete large-output pipe regression.
 ## Historical desktop/resource acceptance (helper 9fd4d72f)
 
 This section and its receipt describe an earlier helper, not the Bun 1.4.5 helper
-`7fc568ce`. Desktop/resource and package acceptance (P6) for `7fc568ce` is still an
-open gate in `../notices/SOURCES.json` (#2025).
+`7fc568ce`. The current desktop/resource and package acceptance (P6) for `7fc568ce`
+is [desktop-resource-7fc568ce.json](evidence/desktop-resource-7fc568ce.json) (#2025),
+bound in `../notices/SOURCES.json`.
 
 The [receipt](evidence/desktop-resource-current.json) records live Proton
 upload, share-link inspection and revocation on Cinnamon/X11 (m74),
