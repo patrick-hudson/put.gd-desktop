@@ -222,7 +222,7 @@ QJsonObject probeMedia() {
         // An image-copy session records one output, so a desktop of several isn't a target.
         targets = imageCopy.outputs > 1 ? QJsonArray{"monitor", "region"} : QJsonArray{"monitor", "desktop", "region"};
         if (imageCopy.windows) targets.append("window");
-        if (imageCopy.outputs > 1) result["targetReasons"] = QJsonObject{{"desktop", QStringLiteral("Recording the whole desktop here covers one output; record a monitor instead")}};
+        if (imageCopy.outputs > 1) result["targetReasons"] = QJsonObject{{"desktop", QStringLiteral("Recording the whole desktop only covers one monitor here. Record a monitor instead.")}};
     }
     else if ((portalOk || nativeOk) && liveSource) { targets = QJsonArray{"monitor", "desktop", "region"}; if (nativeOk || (portalOk && (sourceTypes & int(PortalScreenCast::Window)))) targets.append("window"); }
     result["targets"] = targets;

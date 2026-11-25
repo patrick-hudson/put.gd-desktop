@@ -18,9 +18,9 @@ namespace putgd {
 namespace {
 QList<CaptureFrame> graphicalLayout(){QList<CaptureFrame> out;for(auto* s:QGuiApplication::screens()){CaptureFrame frame;frame.identity=s->name();frame.logicalRect=s->geometry();frame.density=s->devicePixelRatio();frame.rotation=s->angleBetween(s->nativeOrientation(),s->orientation());frame.nativeRect=QRect(QPoint(qRound(s->geometry().x()*frame.density),qRound(s->geometry().y()*frame.density)),QSize(qRound(s->geometry().width()*frame.density),qRound(s->geometry().height()*frame.density)));out.append(frame);}return out;}
 
-const QString cleanupMessage="Region helper exited before confirming surface cleanup; restart put.gd before capturing again";
+const QString cleanupMessage="The region helper exited without confirming overlay removal. Restart put.gd before capturing again.";
 struct WindowSnapshot {QImage image;Error error;bool done=false;std::function<void(PayloadResult)> accepted;ResourceLimits acceptedLimits;};
-PayloadResult imageResult(const QImage& image,const ResourceLimits& limits,Error error={}){if(error)return {{},error};if(image.isNull())return {{},{"capture_failed","KWin provided no image",{}}};if(qint64(image.width())*image.height()>limits.imagePixels||image.sizeInBytes()>limits.imageBytes)return {{},{"input_excessive","Capture exceeds accepted operation resource limits",{}}};ClipboardPayload payload;payload.kind="image";payload.mime="image/png";payload.image=image;return {payload,{}};}
+PayloadResult imageResult(const QImage& image,const ResourceLimits& limits,Error error={}){if(error)return {{},error};if(image.isNull())return {{},{"capture_failed","KWin provided no image",{}}};if(qint64(image.width())*image.height()>limits.imagePixels||image.sizeInBytes()>limits.imageBytes)return {{},{"input_excessive","Capture exceeds the image size limit.",{}}};ClipboardPayload payload;payload.kind="image";payload.mime="image/png";payload.image=image;return {payload,{}};}
 }
 KdeSourceAdapter::KdeSourceAdapter(QObject* parent):QObject(parent),core_(!qobject_cast<QGuiApplication*>(QCoreApplication::instance())){connect(&outputs_,&WaylandOutputs::changed,this,[this]{if(region_.busy())region_.cancel({"display_changed","Display layout changed during region selection",{}});emit capabilitiesChanged();});connect(&capture_,&KWinCapture::changed,this,&KdeSourceAdapter::capabilitiesChanged);connect(&clipboard_,&DataControlClipboard::changed,this,&KdeSourceAdapter::capabilitiesChanged);connect(&shortcuts_,&KdeShortcuts::changed,this,&KdeSourceAdapter::capabilitiesChanged);connect(&shortcuts_,&KdeShortcuts::activated,this,&KdeSourceAdapter::actionRequested);connect(&clipboard_,&DataControlClipboard::keyboardChanged,this,[this]{shortcuts_.setKeyboardMap(clipboard_.keyboardMap());});shortcuts_.setKeyboardMap(clipboard_.keyboardMap());}
 KdeSourceAdapter::~KdeSourceAdapter(){region_.shutdown();cancelAcquisition();clipboard_.cancel();for(auto* worker:workers_){worker->wait();delete worker;}const auto selectors=findChildren<LayerShellRegionOverlay*>(QString{},Qt::FindDirectChildrenOnly);for(auto* selector:selectors)delete selector;}
@@ -35,7 +35,7 @@ QJsonObject KdeSourceAdapter::capabilities()const{
  const QJsonObject outputs=core_?outputs_.status():QJsonObject{{"available",!layout().isEmpty()},{"protocol","qt-screens"}};
  if(core_&&!outputs["available"].toBool()){const auto error=outputs["error"];for(auto* status:{&region,&desktop}){(*status)["available"]=false;(*status)["error"]=error;status->remove("code");}}
 #if !defined(PUTGD_HAVE_LAYER_SHELL) || QT_VERSION < QT_VERSION_CHECK(6,5,0)
- region["available"]=false;region["error"]="Native region selection requires current distro per-window LayerShellQt and Qt 6.5 or later";region.remove("code");
+ region["available"]=false;region["error"]="This build has no region selector (requires LayerShellQt and Qt 6.5 or later).";region.remove("code");
 #endif
  if(core_&&region_.cleanupRequired()){for(auto* status:{&region,&window,&desktop}){(*status)["available"]=false;(*status)["error"]=cleanupMessage;(*status)["code"]="capture_cleanup_pending";}}
  const QJsonObject helper=region_.diagnostics();
@@ -55,7 +55,7 @@ SourceAdapter::PreparedAcquisition KdeSourceAdapter::prepareAcquisition(const QS
  if(action=="window"){
   if(core_&&region_.cleanupRequired())return [](const ResourceLimits&,std::function<void(PayloadResult)> cb){cb({{},{"capture_cleanup_pending",cleanupMessage,{}}});};
   if(region_.busy())return [](const ResourceLimits&,std::function<void(PayloadResult)> cb){cb({{},{"busy_selecting","Region selection is already active",{}}});};
-  if(!core_&&QGuiApplication::applicationState()==Qt::ApplicationActive&&QGuiApplication::focusWindow())return [](const ResourceLimits&,std::function<void(PayloadResult)> cb){cb({{},{"target_unavailable","Focus an external window and invoke the window hotkey or CLI",{}}});};
+  if(!core_&&QGuiApplication::applicationState()==Qt::ApplicationActive&&QGuiApplication::focusWindow())return [](const ResourceLimits&,std::function<void(PayloadResult)> cb){cb({{},{"target_unavailable","put.gd can't capture its own window. Focus another app's window and capture again.",{}}});};
   // ScreenShot2 freezes active focus at method invocation. Starting this bounded
   // request now prevents persistence or GUI focus changes from retargeting it.
   auto snapshot=std::make_shared<WindowSnapshot>();const auto generation=generation_;
@@ -64,7 +64,7 @@ SourceAdapter::PreparedAcquisition KdeSourceAdapter::prepareAcquisition(const QS
   const bool checkUi=uiProcess_!=0;
   auto complete=[guard,snapshot,generation](QImage image,Error error){
    snapshot->done=true;
-   if(!guard||guard->generation_!=generation)snapshot->error={"cancelled","Window acquisition cancelled",{}};
+   if(!guard||guard->generation_!=generation)snapshot->error={"cancelled","Window capture cancelled.",{}};
    else{snapshot->error=std::move(error);if(!snapshot->error)snapshot->image=std::move(image);}
    if(snapshot->accepted){auto cb=std::move(snapshot->accepted);cb(imageResult(snapshot->image,snapshot->acceptedLimits,snapshot->error));}
   };
@@ -74,7 +74,7 @@ SourceAdapter::PreparedAcquisition KdeSourceAdapter::prepareAcquisition(const QS
    // adapter for persistence/publication until the native identity is checked.
    guard->verifyExternalWindow(metadata.value("windowId").toString(),[complete,image=std::move(image)](Error error)mutable{complete(std::move(image),std::move(error));});
   });
-  return [guard,snapshot,generation](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(!guard||guard->generation_!=generation){cb({{},{"cancelled","Window acquisition cancelled",{}}});return;}if(snapshot->done)cb(imageResult(snapshot->image,limits,snapshot->error));else{snapshot->acceptedLimits=limits;snapshot->accepted=std::move(cb);}};
+  return [guard,snapshot,generation](const ResourceLimits& limits,std::function<void(PayloadResult)> cb){if(!guard||guard->generation_!=generation){cb({{},{"cancelled","Window capture cancelled.",{}}});return;}if(snapshot->done)cb(imageResult(snapshot->image,limits,snapshot->error));else{snapshot->acceptedLimits=limits;snapshot->accepted=std::move(cb);}};
  }
  const auto frozen=layout();const auto revision=core_?outputs_.revision():0;
  if(action=="monitor"){
@@ -113,7 +113,7 @@ SourceAdapter::PreparedAcquisition KdeSourceAdapter::prepareAcquisition(const QS
 void KdeSourceAdapter::captureArea(QList<CaptureFrame> frozen,quint64 revision,QRectF selection,ResourceLimits limits,std::function<void(PayloadResult)> cb){
  if(core_&&region_.cleanupRequired()){cb({{},{"capture_cleanup_pending",cleanupMessage,{}}});return;}
  if(overlay_||region_.busy()){cb({{},{"busy_selecting","Region selection is already active",{}}});return;}
- if(frozen.isEmpty()||!unchanged(frozen,revision)){cb({{},{"display_changed","Display layout changed after invocation",{}}});return;}
+ if(frozen.isEmpty()||!unchanged(frozen,revision)){cb({{},{"display_changed","Display layout changed before capture started.",{}}});return;}
  captureScreens(std::move(frozen),revision,selection,limits,std::move(cb));
 }
 std::function<void(PayloadResult)> KdeSourceAdapter::remembering(QRectF selection,QList<CaptureFrame> layout,std::function<void(PayloadResult)> cb,bool remember){
@@ -168,7 +168,7 @@ void KdeSourceAdapter::verifyExternalWindow(const QString& windowId,std::functio
   if(result.isError()||!text(info.value("uuid"))||QUuid(info.value("uuid").toString())!=frozenId||!text(info.value("resourceClass"))||!text(info.value("desktopFile"))){reply({"target_unavailable","KWin could not verify the captured window identity",{}});return;}
   // Plasma 6.3/6.6 exposes the native xdg app ID here, not a verified PID.
   // The supervised helper sets this dedicated ID before creating any surface.
-  if(info.value("resourceClass").toString()=="putgd-ui"||info.value("desktopFile").toString()=="putgd-ui"){reply({"target_unavailable","Focus an external window and invoke the window hotkey or CLI",{}});return;}
+  if(info.value("resourceClass").toString()=="putgd-ui"||info.value("desktopFile").toString()=="putgd-ui"){reply({"target_unavailable","put.gd can't capture its own window. Focus another app's window and capture again.",{}});return;}
   reply({});
  });
 }
@@ -189,10 +189,10 @@ void KdeSourceAdapter::capture(QString action,QList<CaptureFrame> frozen,quint64
  if(action!="region"&&action!="desktop"){cb({{},{"source_unsupported","Unknown capture action",{}}});return;}
  if(core_&&region_.cleanupRequired()){cb({{},{"capture_cleanup_pending",cleanupMessage,{}}});return;}
 #if !defined(PUTGD_HAVE_LAYER_SHELL) || QT_VERSION < QT_VERSION_CHECK(6,5,0)
- if(action=="region"){cb({{},{"region_unavailable","Native region selection requires current distro per-window LayerShellQt",{}}});return;}
+ if(action=="region"){cb({{},{"region_unavailable","This build has no region selector (requires LayerShellQt and Qt 6.5 or later).",{}}});return;}
 #endif
  if(overlay_||region_.busy()){cb({{},{"busy_selecting","Region selection is already active",{}}});return;}
- if(frozen.isEmpty()||!unchanged(frozen,revision)){cb({{},{"display_changed","Display layout changed after invocation",{}}});return;}
+ if(frozen.isEmpty()||!unchanged(frozen,revision)){cb({{},{"display_changed","Display layout changed before capture started.",{}}});return;}
  if(action=="region"&&screenshotFirst){selectFrozen(std::move(frozen),revision,limits,std::move(cb),outcome,remember);return;}
  if(action=="region"){
   if(core_){
@@ -265,10 +265,10 @@ void KdeSourceAdapter::captureFrames(QList<CaptureFrame> frames,QList<CaptureFra
   [](CaptureFrame& frame,QImage image,const QVariantMap& metadata,const ResourceLimits& remaining)->Error{
    if(metadata.value("screen").toString()!=frame.identity)return {"capture_metadata","KWin returned a different capture output",{}};
    const auto scale=metadata.value("scale").toDouble();
-   if(std::abs(image.width()/scale-frame.logicalRect.width())>1.0||std::abs(image.height()/scale-frame.logicalRect.height())>1.0)return {"display_changed","KWin native image does not match frozen output geometry",{}};
+   if(std::abs(image.width()/scale-frame.logicalRect.width())>1.0||std::abs(image.height()/scale-frame.logicalRect.height())>1.0)return {"display_changed","Captured monitor size doesn't match the current display layout.",{}};
    const auto pixels=qint64(image.width())*image.height();
-   if(pixels>remaining.imagePixels)return {"input_excessive","Desktop frame snapshots exceed image pixel limits",{}};
-   if(image.sizeInBytes()>remaining.imageBytes)return {"input_excessive","Desktop frame snapshots exceed resource limits",{}};
+   if(pixels>remaining.imagePixels)return {"input_excessive","Captured desktop exceeds the image pixel limit.",{}};
+   if(image.sizeInBytes()>remaining.imageBytes)return {"input_excessive","Captured desktop exceeds the image size limit.",{}};
    frame.pixels=std::move(image);frame.density=scale;
    frame.nativeRect=QRect(QPoint(qRound(frame.logicalRect.x()*scale),qRound(frame.logicalRect.y()*scale)),frame.pixels.size());
    return {};
@@ -276,7 +276,7 @@ void KdeSourceAdapter::captureFrames(QList<CaptureFrame> frames,QList<CaptureFra
 }
 void KdeSourceAdapter::compose(QList<CaptureFrame> frames,QList<CaptureFrame> frozen,quint64 revision,QRectF selection,const ResourceLimits& limits,std::function<void(PayloadResult)> cb){
  const auto generation=generation_;auto result=std::make_shared<PayloadResult>();auto* worker=QThread::create([frames=std::move(frames),selection,limits,result]{result->payload.image=composeOutputFrames(frames,selection,std::min(limits.imagePixels,limits.imageBytes/4),result->error);result->payload.kind="image";result->payload.mime="image/png";});workers_.append(worker);
- connect(worker,&QThread::finished,this,[this,worker,generation,frozen=std::move(frozen),revision,result,cb=std::move(cb)]()mutable{workers_.removeOne(worker);worker->deleteLater();if(generation!=generation_)cb({{},{"cancelled","Capture acquisition cancelled",{}}});else if(!unchanged(frozen,revision))cb({{},{"display_changed","Display layout changed during capture composition",{}}});else cb(std::move(*result));});worker->start();
+ connect(worker,&QThread::finished,this,[this,worker,generation,frozen=std::move(frozen),revision,result,cb=std::move(cb)]()mutable{workers_.removeOne(worker);worker->deleteLater();if(generation!=generation_)cb({{},{"cancelled","Capture cancelled.",{}}});else if(!unchanged(frozen,revision))cb({{},{"display_changed","Display layout changed during capture.",{}}});else cb(std::move(*result));});worker->start();
 }
 void KdeSourceAdapter::cancelAcquisition(){countdown_.cancel();++generation_;capture_.cancel();clipboard_.cancel();region_.cancel();if(overlay_)overlay_->cancel();}
 void KdeSourceAdapter::copy(const CopyPayload& payload,std::function<void(Error)> cb){clipboard_.copy(payload,std::move(cb));}

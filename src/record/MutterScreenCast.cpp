@@ -184,7 +184,7 @@ void MutterScreenCast::close() {
     } else QDBusConnection::sessionBus().asyncCall(QDBusMessage::createMethodCall(service, session_, sessionInterface, "Stop"), 5000);
     debugLog("mutter screencast: session stopped");
     { std::lock_guard lock(paths_); session_.clear(); stream_.clear(); remote_.clear(); }
-    if (auto done = std::exchange(done_, {})) done({"cancelled", "Screen cast canceled", {}}, {});
+    if (auto done = std::exchange(done_, {})) done({"cancelled", "Screen cast cancelled", {}}, {});
 }
 }
 #include "MutterScreenCast.moc"

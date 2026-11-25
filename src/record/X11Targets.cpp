@@ -28,7 +28,7 @@ Error windowRect(unsigned long window, QRect& out) {
     std::unique_ptr<xcb_translate_coordinates_reply_t, decltype(&free)> origin(geometry ? xcb_translate_coordinates_reply(connection, xcb_translate_coordinates(connection, xcb_window_t(window), root, 0, 0), nullptr) : nullptr, free);
     xcb_disconnect(connection);
     if (!attributes || attributes->map_state != XCB_MAP_STATE_VIEWABLE || !geometry || !origin || geometry->width < 2 || geometry->height < 2)
-        return {"recording_target", "The window is not viewable on this display", {{"identity", QString::number(window)}}};
+        return {"recording_target", "The window isn't visible on this display.", {{"identity", QString::number(window)}}};
     out = QRect(origin->dst_x, origin->dst_y, geometry->width, geometry->height);
     return {};
 }
@@ -49,10 +49,10 @@ Error resolveX11Target(const RecordingTarget& target, ResolvedTarget& out) {
             const auto output = value.toObject();
             if (output["identity"].toString() == target.identity || (target.identity.isEmpty() && (output["primary"].toBool() || resolved.rect.isEmpty()))) resolved.rect = rectangle(output["native"].toArray());
         }
-        if (resolved.rect.isEmpty()) return {"recording_target", "No connected monitor has this identity", {{"identity", target.identity}}};
+        if (resolved.rect.isEmpty()) return {"recording_target", "No connected monitor has this name.", {{"identity", target.identity}}};
     } else if (target.kind == "region") {
         resolved.rect = target.rect;
-        if (!root.contains(resolved.rect)) return {"recording_target", "The region must lie inside the X11 root window", {{"root", QJsonArray{root.x(), root.y(), root.width(), root.height()}}}};
+        if (!root.contains(resolved.rect)) return {"recording_target", "The region must stay inside the desktop area.", {{"root", QJsonArray{root.x(), root.y(), root.width(), root.height()}}}};
     } else if (target.kind == "window") {
         bool ok = false;
         if (target.identity.isEmpty()) return {"recording_target", "Window targets need an X window id on X11", {}};

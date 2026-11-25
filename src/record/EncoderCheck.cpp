@@ -145,7 +145,7 @@ bool h264DecoderUsable(QString& decoder, QString& failure) {
 QString h264Hint(const QString& reason) {
     if (runsFromAppImage())
         return QStringLiteral("The AppImage tries your graphics driver's encoder (VA-API or NVIDIA NVENC) and then its own x264, "
-                              "and neither started here; use the put.gd DEB or RPM package, and please report this.");
+                              "and neither started here. Use the put.gd DEB or RPM package, and please report this.");
     const auto id = osRelease("ID");
     const auto like = osRelease("ID_LIKE").split(' ', Qt::SkipEmptyParts);
     // Fedora's openh264enc and FFmpeg link libopenh264, which defaults to the

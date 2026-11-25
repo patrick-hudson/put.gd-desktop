@@ -262,7 +262,7 @@ SetupStatus runExtensionSetup(const SetupInputs& in){
  const auto major=shellMajor(shell.version);
  QJsonObject details{{"shellVersion",shell.version}};
  if(major!=50)return status("unsupported_shell","gnome_shell_unsupported",
-  QStringLiteral("put.gd's GNOME extension needs GNOME 50; this session runs GNOME %1.").arg(shell.version),details);
+  QStringLiteral("put.gd's GNOME extension requires GNOME 50. This session runs GNOME %1.").arg(shell.version),details);
 
  const auto userDir=QDir(in.dataHome).filePath(QStringLiteral("gnome-shell/extensions/")+extensionUuid);
  auto userCopy=inspectUserCopy(userDir);
@@ -383,7 +383,7 @@ SetupStatus removeOwnedUserCopy(const SetupInputs& in){
    if(!write.started||write.exitCode!=0)return settingsUnavailable(write);
   }
  }
- if(copy.managed&&!removeCopyFiles(userDir,copy.files))return installFailed(QStringLiteral("cannot remove the files in %1").arg(userDir));
+ if(copy.managed&&!removeCopyFiles(userDir,copy.files))return status("install_failed","gnome_extension_install_failed",QStringLiteral("put.gd couldn't remove its GNOME extension files from %1.").arg(userDir));
  return ready({{"removed",copy.managed}});
 }
 
@@ -397,7 +397,7 @@ SetupStatus reportedSetup(const SetupStatus& last,bool helperReady,int loadedVer
  // A failed gsettings read is the exception: the files are in place and the loaded
  // extension proves it is already enabled.
  if(last.needsUser()&&last.state!="login_required"&&last.state!="settings_unavailable")return last;
- return {"login_required","gnome_extension_updated",QStringLiteral("The put.gd GNOME Shell extension was updated; log out and back in to load the new version"),
+ return {"login_required","gnome_extension_updated",QStringLiteral("The put.gd GNOME Shell extension was updated. Log out and back in once to load the new version."),
   {{"loaded",loadedVersion},{"packaged",packagedVersion}}};
 }
 

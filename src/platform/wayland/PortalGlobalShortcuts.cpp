@@ -146,7 +146,7 @@ QJsonObject PortalGlobalShortcuts::status()const{
   else if(paused_)entry["state"]="recording";
   else if(it.value().isEmpty())entry["state"]="unbound";
   else if(!stage_.isEmpty())entry["state"]="pending";
-  else if(bound_&&triggers_.contains(it.key())&&triggers_.value(it.key()).isEmpty()){entry["state"]="pending";entry["error"]="The desktop registered this hotkey without a key; assign one in the desktop's shortcut settings";}
+  else if(bound_&&triggers_.contains(it.key())&&triggers_.value(it.key()).isEmpty()){entry["state"]="pending";entry["error"]="The desktop registered this hotkey without a key. Assign one in your desktop's shortcut settings.";}
   else if(bound_&&triggers_.contains(it.key())){entry["state"]="bound";entry["bound"]=true;}
   else{entry["state"]="shortcut_unavailable";entry["error"]=error_.isEmpty()?QStringLiteral("The portal did not report this hotkey"):error_;}
   out[it.key()]=entry;

@@ -20,22 +20,22 @@ QRectF rect(const QJsonValue& value,bool& valid){
  return r;
 }
 PayloadResult image(const QByteArray& bytes,const ResourceLimits& limits){
- if(bytes.size()>limits.imageBytes)return fail("input_excessive","GNOME image bytes exceed resource limits");
+ if(bytes.size()>limits.imageBytes)return fail("input_excessive","Image exceeds the size limit.");
  PayloadResult result;result.payload.kind="image";result.payload.mime="image/png";
  if(imageFormatHint(bytes)=="png"){
   // Qt 6.4.2 and 6.8.2 instantiate every installed image plugin for a named
   // format unless detection is off; the PNG signature was checked above.
   QBuffer buffer;buffer.setData(bytes);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer,"png");reader.setAutoDetectImageFormat(false);const auto size=reader.size();
-  if(!size.isValid())return fail("source_unsupported","GNOME image is not decodable");
+  if(!size.isValid())return fail("source_unsupported","Couldn't decode the image from GNOME.");
   const qint64 pixels=qint64(size.width())*size.height();
-  if(pixels>limits.imagePixels||pixels>limits.imageBytes/4)return fail("input_excessive","GNOME image dimensions exceed resource limits");
+  if(pixels>limits.imagePixels||pixels>limits.imageBytes/4)return fail("input_excessive","Image dimensions exceed the size limit.");
   result.payload.image=reader.read();
  }else{
   // Other formats need Qt's image plugins; the transient image job decodes
   // them so the Core resident never instantiates those codecs.
   Error error;result.payload.image=ImageJob().decode(bytes,limits,error);if(error)return {{},error};
  }
- if(result.payload.image.isNull())return fail("source_unsupported","GNOME image decoding failed");
+ if(result.payload.image.isNull())return fail("source_unsupported","Couldn't decode the image from GNOME.");
  return result;
 }
 }
@@ -44,7 +44,7 @@ PayloadResult decodeTransfer(const QJsonObject& metadata,const QByteArray& bytes
  if(metadata["version"].toInt()!=protocolVersion||requestId.isEmpty()||metadata["requestId"].toString()!=requestId||!length.isDouble()||length.toDouble()!=bytes.size())return fail("bridge_protocol","GNOME transfer identity, version, or length is invalid");
  const auto mime=metadata["mime"].toString();
  if(mime=="application/x-putgd-capture"){
-  if(bytes.size()>limits.imageBytes)return fail("input_excessive","GNOME capture bytes exceed resource limits");
+  if(bytes.size()>limits.imageBytes)return fail("input_excessive","Captured image exceeds the size limit.");
   const auto entries=metadata["frames"].toArray();if(entries.isEmpty()||entries.size()>64)return fail("bridge_protocol","GNOME capture frame count is invalid");
   QList<CaptureFrame> frames;QSet<QString> identities;qint64 offset=0,pixels=0;bool valid=true;
   for(const auto& value:entries){
@@ -55,7 +55,7 @@ PayloadResult decodeTransfer(const QJsonObject& metadata,const QByteArray& bytes
    frame.nativeRect=native.toRect();frame.density=entry["density"].toDouble(0);frame.rotation=entry["rotation"].toInt(-1);
    if(frame.identity.isEmpty()||identities.contains(frame.identity)||!std::isfinite(frame.density)||frame.density<=0||frame.density>16||!(frame.rotation==0||frame.rotation==90||frame.rotation==180||frame.rotation==270))return fail("bridge_protocol","GNOME capture identity, density, or orientation is invalid");
    const qint64 count=qint64(frame.nativeRect.width())*frame.nativeRect.height();
-   if(count>limits.imagePixels-pixels||count>limits.imageBytes/4-pixels)return fail("input_excessive","GNOME capture frames exceed resource limits");
+   if(count>limits.imagePixels-pixels||count>limits.imageBytes/4-pixels)return fail("input_excessive","Captured display frames exceed the image size limit.");
    pixels+=count;
    auto decoded=image(bytes.mid(offset,qint64(lengthValue)),limits);if(decoded.error)return decoded;
    frame.pixels=std::move(decoded.payload.image);if(frame.pixels.size()!=frame.nativeRect.size())return fail("bridge_protocol","GNOME decoded dimensions do not match capture metadata");
@@ -68,13 +68,13 @@ PayloadResult decodeTransfer(const QJsonObject& metadata,const QByteArray& bytes
  if(mime=="text/uri-list"){
   // URI-list bytes contain only references; the shared artifact service validates
   // every referenced local file before publishing the acquired batch.
-  if(bytes.size()>limits.clipboardTextBytes)return fail("input_excessive","GNOME file URI list exceeds resource limits");
+  if(bytes.size()>limits.clipboardTextBytes)return fail("input_excessive","Clipboard file list exceeds the size limit.");
   QMimeData data;QList<QUrl> urls;for(auto line:bytes.split('\n')){line=line.trimmed();if(!line.isEmpty()&&!line.startsWith('#'))urls.append(QUrl::fromEncoded(line,QUrl::StrictMode));}
   data.setUrls(urls);return ClipboardPayload::fromMime(data,limits);
  }
  if(mime=="text/plain"||mime=="text/plain;charset=utf-8"||mime=="UTF8_STRING"){
   if(bytes.isEmpty())return fail("source_unsupported","GNOME clipboard is empty");
-  if(bytes.size()>limits.clipboardTextBytes)return fail("input_excessive","GNOME clipboard text exceeds resource limits");
+  if(bytes.size()>limits.clipboardTextBytes)return fail("input_excessive","Clipboard text exceeds the size limit.");
   PayloadResult result;result.payload.kind="text";result.payload.mime="text/plain";result.payload.bytes=bytes;return result;
  }
  return fail("source_unsupported","GNOME clipboard MIME type is unsupported");

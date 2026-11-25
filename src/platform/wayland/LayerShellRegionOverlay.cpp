@@ -119,7 +119,7 @@ LayerShellRegionOverlay::~LayerShellRegionOverlay(){
 }
 void LayerShellRegionOverlay::start(){
 #ifndef PUTGD_NATIVE_REGION
- cancel({"region_unavailable","Native region selection requires current distro Qt and per-window LayerShellQt",{}});return;
+ cancel({"region_unavailable","This build has no region selector (requires LayerShellQt and Qt 6.5 or later).",{}});return;
 #else
  connect(qGuiApp,&QGuiApplication::screenAdded,this,[this]{cancel({"display_changed","Display changed during region selection",{}});});connect(qGuiApp,&QGuiApplication::screenRemoved,this,[this]{cancel({"display_changed","Display changed during region selection",{}});});
  keyboardScreen_=0;for(int i=0;i<frames_.size();++i)if(frames_[i].logicalRect.contains(QCursor::pos()))keyboardScreen_=i;

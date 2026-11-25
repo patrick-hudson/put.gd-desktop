@@ -64,7 +64,7 @@ MicrophoneChoice chooseMicrophone(const MicrophoneList& list, const QString& wan
         if (recording::monitorSourceName(wanted)) { choice.reason = QStringLiteral("microphone_is_monitor"); choice.message = QStringLiteral("The chosen device is an output's monitor, not a microphone."); return choice; }
         for (const auto& device : list.devices) if (device.id == wanted) { choice.device = device; return choice; }
         choice.reason = QStringLiteral("microphone_missing");
-        choice.message = QStringLiteral("The microphone chosen in Settings is not connected.");
+        choice.message = QStringLiteral("The microphone chosen in Settings → Capture isn't connected.");
         return choice;
     }
     for (const auto& device : list.devices) if (device.isDefault) { choice.device = device; return choice; }
@@ -72,8 +72,8 @@ MicrophoneChoice chooseMicrophone(const MicrophoneList& list, const QString& wan
     // The default source is an output's monitor (nothing is plugged in), or the
     // server named none: put.gd never guesses another input in its place.
     choice.reason = list.defaultIsMonitor ? QStringLiteral("default_is_monitor") : QStringLiteral("no_default_microphone");
-    choice.message = list.defaultIsMonitor ? QStringLiteral("The system's default input is the monitor of an output, not a microphone. Plug one in, or choose a device in Settings.")
-                                           : QStringLiteral("The system has no default input. Choose a microphone in Settings.");
+    choice.message = list.defaultIsMonitor ? QStringLiteral("The system's default input is an output monitor, not a microphone. Plug in a microphone, or choose one in Settings → Capture.")
+                                           : QStringLiteral("The system has no default input. Choose a microphone in Settings → Capture.");
     return choice;
 }
 

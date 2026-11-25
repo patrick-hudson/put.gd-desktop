@@ -46,7 +46,7 @@ KWinCapture::~KWinCapture(){cancel();for(auto* worker:workers_){worker->wait();d
 void KWinCapture::probe(){
  const auto generation=++probeGeneration_;permissionDenied_=false;entryMatches_=installedEntryMatches();auto message=QDBusMessage::createMethodCall(service,path,"org.freedesktop.DBus.Properties","Get");message.setArguments({iface,"Version"});message.setAutoStartService(false);
  auto* call=new QDBusPendingCallWatcher(QDBusConnection::sessionBus().asyncCall(message,3000),this);
- connect(call,&QDBusPendingCallWatcher::finished,this,[this,call,generation]{QDBusPendingReply<QDBusVariant> reply=*call;call->deleteLater();if(generation!=probeGeneration_)return;if(reply.isError()){version_=0;error_="KWin ScreenShot2 service is unavailable";}else{version_=reply.value().variant().toUInt();error_=version_<4?"ScreenShot2 version 4 or later is required":!entryMatches_?"Install the restricted desktop entry against this resident executable":QString{};}emit changed();});
+ connect(call,&QDBusPendingCallWatcher::finished,this,[this,call,generation]{QDBusPendingReply<QDBusVariant> reply=*call;call->deleteLater();if(generation!=probeGeneration_)return;if(reply.isError()){version_=0;error_="KWin ScreenShot2 service is unavailable";}else{version_=reply.value().variant().toUInt();error_=version_<4?"ScreenShot2 version 4 or later is required":!entryMatches_?"KWin screenshot permission is missing. Install the restricted KWin screenshot desktop entry matching this put.gd executable. Restart put.gd.":QString{};}emit changed();});
 }
 QJsonObject KWinCapture::status()const{
  QJsonObject status{{"available",available()},{"interface","org.kde.KWin.ScreenShot2"},{"interface_version",int(version_)},{"permission_entry_matches_executable",entryMatches_},{"permission_rejected",permissionDenied_},{"permission","restricted-desktop-entry"},{"mode","compositor-native"},{"error",error_}};
@@ -73,10 +73,10 @@ void KWinCapture::request(const QString& method,const QVariantList& args,const R
  auto pending=QDBusConnection::sessionBus().asyncCall(message,10000);close(pipes[1]);auto* call=new QDBusPendingCallWatcher(pending,transfer);
  connect(call,&QDBusPendingCallWatcher::finished,transfer,[this,call,guard,maybeDecode]{
   QDBusPendingReply<QVariantMap> reply=*call;call->deleteLater();if(!guard||guard->finished)return;
-  if(reply.isError()){const auto name=reply.error().name();Error error{"capture_failed","KWin capture failed; check desktop integration and retry",{{"dbus_error",name}}};if(name.endsWith(".NoAuthorized")){error={"capture_permission","KWin rejected screenshot permission; install the restricted entry against the running executable",{}};permissionDenied_=true;error_=error.message;emit changed();}else if(name.endsWith(".Cancelled"))error={"cancelled","KWin capture cancelled",{}};else if(name.endsWith(".InvalidWindow")||name.endsWith(".NoActiveWindow"))error={"target_changed","The invocation window is no longer available",{}};guard->finish({},error);return;}
+  if(reply.isError()){const auto name=reply.error().name();Error error{"capture_failed","KWin capture failed. Check desktop integration and try again.",{{"dbus_error",name}}};if(name.endsWith(".NoAuthorized")){error={"capture_permission","KWin denied screenshot permission. Install the restricted KWin screenshot desktop entry matching this put.gd executable. Restart put.gd.",{}};permissionDenied_=true;error_=error.message;emit changed();}else if(name.endsWith(".Cancelled"))error={"cancelled","KWin capture cancelled",{}};else if(name.endsWith(".InvalidWindow")||name.endsWith(".NoActiveWindow"))error={"target_changed","The active window is no longer available.",{}};guard->finish({},error);return;}
   guard->metadata=reply.value();Error error;auto layout=validateKWinMetadata(guard->metadata,guard->limits,error);if(error){guard->finish({},error);return;}
   guard->dbusDone=true;guard->reader.setBound(layout.bytes);if(guard&&!guard->finished)maybeDecode();
  });
 }
-void KWinCapture::cancel(){const auto requests=requests_;for(auto* request:requests)static_cast<Transfer*>(request)->finish({},{"cancelled","KWin capture acquisition cancelled",{}});}
+void KWinCapture::cancel(){const auto requests=requests_;for(auto* request:requests)static_cast<Transfer*>(request)->finish({},{"cancelled","KWin capture cancelled.",{}});}
 }

@@ -498,7 +498,7 @@ Error encodeFrame(AVFormatContext* output, Encoder& encoder, AVFrame* frame, AVP
     AVFrame* uploaded = nullptr;
     if (frame && encoder.hardware()) {
         uploaded = av_frame_alloc();
-        if (!uploaded || av_hwframe_get_buffer(encoder.frames, uploaded, 0) < 0 || av_hwframe_transfer_data(uploaded, frame, 0) < 0) { av_frame_free(&uploaded); return fail("recording_export_failed", "Cannot upload a frame to the GPU"); }
+        if (!uploaded || av_hwframe_get_buffer(encoder.frames, uploaded, 0) < 0 || av_hwframe_transfer_data(uploaded, frame, 0) < 0) { av_frame_free(&uploaded); return fail("recording_export_failed", "Couldn't send a video frame to the graphics card for encoding."); }
         uploaded->pts = frame->pts;
         uploaded->pict_type = frame->pict_type;
         frame = uploaded;
@@ -567,7 +567,7 @@ struct PaletteStats {
         return rc < 0 ? fail("recording_export_failed", "Cannot build the GIF palette", rc) : Error{};
     }
     Error finish(FramePtr& palette) {
-        if (!last) return {"recording_export_failed", "The retained interval produced no frames", {}};
+        if (!last) return {"recording_export_failed", "The trimmed clip produced no frames.", {}};
         if (last->format != AV_PIX_FMT_RGB24) return {"recording_export_failed", "Unexpected GIF palette frame format", {}};
         FramePtr inverted(av_frame_alloc());
         inverted->format = last->format; inverted->width = last->width; inverted->height = last->height;
@@ -601,7 +601,7 @@ Error snapToFrames(const QString& path, const recording::KeptSpans& kept, const 
     const qint64 tickUs = av_rescale_q(1, timeBase, microseconds);
     const qint64 slack = tickUs <= 1000 ? tickUs / 2 : 0;
     grid.slackUs = slack;
-    const Error canceled{"cancelled", "Export canceled", {}};
+    const Error canceled{"cancelled", "Export cancelled", {}};
     std::set<qint64> frames, keys;
     PacketPtr packet(av_packet_alloc());
     bool positioned = false, ended = false;
@@ -719,7 +719,7 @@ Error snapToFrames(const QString& path, const recording::KeptSpans& kept, const 
 // when the picture there is only a repeat (it would never be shown otherwise).
 Error driveVideo(const QString& path, Graph& graph, const FrameGrid& grid, const std::atomic_bool& cancelled, const std::function<Error(AVFrame*)>& consume) {
     const auto& spans = grid.map.spans();
-    if (spans.isEmpty()) return {"recording_export_failed", "The retained interval produced no frames", {}};
+    if (spans.isEmpty()) return {"recording_export_failed", "The trimmed clip produced no frames.", {}};
     // A fresh demuxer per pass: seeking a Matroska file back after EOF lands on a later keyframe.
     Input input;
     if (auto e = input.open(path, false)) return e;
@@ -777,7 +777,7 @@ Error driveVideo(const QString& path, Graph& graph, const FrameGrid& grid, const
         return e;
     };
     while (!inputDone) {
-        if (cancelled.load()) return {"cancelled", "Export canceled", {}};
+        if (cancelled.load()) return {"cancelled", "Export cancelled", {}};
         int rc = input.read(packet.get());
         if (rc == AVERROR_EOF) { avcodec_send_packet(input.video, nullptr); inputDone = true; }
         else if (rc < 0) return fail("recording_export_failed", "Reading the working clip failed", rc);
@@ -980,10 +980,10 @@ Error exportClip(const ExportRequest& request, ExportResult& result, const std::
     const auto outputSize = recording::outputSize(request.canvas, request.config.maxEdge);
     // #1613: the output is the kept spans laid end to end, on the clip's frame grid.
     const recording::KeptSpans kept(request.edit, request.durationUs);
-    if (kept.outputDuration() <= 0) return {"invalid_request", "The retained interval is empty", {}};
+    if (kept.outputDuration() <= 0) return {"invalid_request", "The trimmed clip has no frames.", {}};
     FrameGrid grid;
     if (auto e = snapToFrames(request.input, kept, request.edit.masks, cancelled, grid)) return e;
-    if (grid.map.empty()) return {"recording_export_failed", "The retained interval produced no frames", {}};
+    if (grid.map.empty()) return {"recording_export_failed", "The trimmed clip produced no frames.", {}};
     const bool animation = request.config.animation();
     const int fps = std::max(1, animation ? std::min(request.config.fps, 15) : request.config.fps);
     // GIF/WebP: the length limit was checked on the edit's kept time, so the
@@ -1048,13 +1048,13 @@ Error exportClip(const ExportRequest& request, ExportResult& result, const std::
     };
     if (auto e = driveVideo(request.input, graph, grid, cancelled, consume)) return e;
     if (auto e = encodeFrame(output, video, nullptr, packet.get())) return e;
-    if (frames < 1) return {"recording_export_failed", "The retained interval produced no frames", {}};
+    if (frames < 1) return {"recording_export_failed", "The trimmed clip produced no frames.", {}};
 
     if (audio.context) {
         // A fresh demuxer for the audio pass: the video pass consumed the file.
         Input audioInput;
         if (auto e = audioInput.open(request.input, true)) return e;
-        if (audioInput.audioIndex < 0) return {"recording_export_failed", "The clip audio disappeared", {}};
+        if (audioInput.audioIndex < 0) return {"recording_export_failed", "The recording's audio track couldn't be found.", {}};
         Input& input = audioInput;
         const auto audioTimeBase = input.format->streams[input.audioIndex]->time_base;
         // The clip timeline starts at the first video frame, as the video trim
@@ -1116,7 +1116,7 @@ Error exportClip(const ExportRequest& request, ExportResult& result, const std::
         bool done = false;
         const auto untilPts = end + av_rescale_q(2000000, microseconds, audioTimeBase);
         while (!done) {
-            if (cancelled.load()) return {"cancelled", "Export canceled", {}};
+            if (cancelled.load()) return {"cancelled", "Export cancelled", {}};
             int r = input.read(packet.get());
             if (r == AVERROR_EOF) { avcodec_send_packet(input.audio, nullptr); done = true; }
             else if (r < 0) return fail("recording_export_failed", "Reading the clip audio failed", r);
@@ -1136,7 +1136,7 @@ Error exportClip(const ExportRequest& request, ExportResult& result, const std::
             }
         }
         while (!keptAudio.finished()) {
-            if (cancelled.load()) return {"cancelled", "Export canceled", {}};
+            if (cancelled.load()) return {"cancelled", "Export cancelled", {}};
             if (auto e = keptAudio.finish(frameSize)) return e;
             if (auto e = encodeQueued(false)) return e;
         }

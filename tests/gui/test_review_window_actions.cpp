@@ -44,7 +44,7 @@ void doubleClickTail(QWidget* button) {
 }
 QJsonObject answer(quint64 proposal, const QString& refusedCode = {}) {
     QJsonObject a{{"proposal", double(proposal)}};
-    if (!refusedCode.isEmpty()) a["refused"] = QJsonObject{{"code", refusedCode}, {"message", "At most 64 masks are supported"}, {"revision", 2}};
+    if (!refusedCode.isEmpty()) a["refused"] = QJsonObject{{"code", refusedCode}, {"message", "You can add at most 64 covers"}, {"revision", 2}};
     return a;
 }
 }
@@ -790,7 +790,7 @@ private slots:
             QCOMPARE(uploads.size(), 0);
             QCOMPARE(saves.size(), 0);
             QCOMPARE(retries.size(), 0);
-            QVERIFY2(status().contains("Upload cancelled"), qPrintable(status()));
+            QVERIFY2(status().contains("The upload didn't start"), qPrintable(status()));
             if (trigger == "timeout") QVERIFY2(status().contains("wasn't confirmed in time"), qPrintable(status()));
             if (trigger == "refusal" || trigger == "local refusal" || trigger == "agent refusal") QVERIFY2(status().contains("wasn't applied"), qPrintable(status()));
         } else {
@@ -814,7 +814,7 @@ private slots:
         ctrlEnter(window);
         window.setEdit(edit, answer(1, "invalid_request"));
         QVERIFY(window.drive({{"action", "dismissStatus"}}).code.isEmpty());
-        QVERIFY(window.inspect()["status"].toString().contains("Upload cancelled"));
+        QVERIFY(window.inspect()["status"].toString().contains("The upload didn't start"));
         QVERIFY(!window.inspect()["status"].toString().contains("That change wasn't applied"));
     }
     // U44 on a real clip: the decoded frame's own time decides, so the cover set
@@ -1643,7 +1643,7 @@ private slots:
         rightClickWhileHeld(save);  // U4
         releaseNow(save);
         QVERIFY(!window.inspect()["fileDialog"].toObject()["open"].toBool());
-        QVERIFY(window.inspect()["status"].toString().contains("No copy was saved"));
+        QVERIFY(window.inspect()["status"].toString().contains("o copy was saved"));
         // U1: a double-click's second press and release open nothing either.
         doubleClickTail(save);
         QVERIFY(!window.inspect()["fileDialog"].toObject()["open"].toBool());
@@ -1678,7 +1678,7 @@ private slots:
         releaseNow(upload);
         QCOMPARE(uploads.size(), 0);
         QVERIFY(!window.inspect()["uploadWaiting"].toBool());
-        QVERIFY2(window.inspect()["status"].toString().contains("Nothing was uploaded"), qPrintable(window.inspect()["status"].toString()));
+        QVERIFY2(window.inspect()["status"].toString().contains("the upload didn't start"), qPrintable(window.inspect()["status"].toString()));
         QVERIFY(window.isVisible());
         // U1: the click was the first of a double-click; its second press
         // (a MouseButtonDblClick) and release still upload nothing.

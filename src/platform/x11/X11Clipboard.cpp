@@ -30,7 +30,7 @@ X11Clipboard::X11Clipboard(QObject* parent):QObject(parent) {
  fixesEvent_=fixes->first_event;xcb_xfixes_select_selection_input(connection_,window_,clipboard_,XCB_XFIXES_SELECTION_EVENT_MASK_SET_SELECTION_OWNER|XCB_XFIXES_SELECTION_EVENT_MASK_SELECTION_WINDOW_DESTROY|XCB_XFIXES_SELECTION_EVENT_MASK_SELECTION_CLIENT_CLOSE);
  xcb_flush(connection_);notifier_=new QSocketNotifier(xcb_get_file_descriptor(connection_),QSocketNotifier::Read,this);
  connect(notifier_,&QSocketNotifier::activated,this,[this]{events();});timeout_.setSingleShot(true);
- connect(&timeout_,&QTimer::timeout,this,[this]{complete(failure("clipboard_timeout","Clipboard owner did not provide data; copy the source again and retry"));});
+ connect(&timeout_,&QTimer::timeout,this,[this]{complete(failure("clipboard_timeout","Clipboard owner didn't respond in time. Copy the item again and retry."));});
 
  outgoingTimer_.setInterval(1000);
  connect(&outgoingTimer_,&QTimer::timeout,this,[this]{expireOutgoing();});
@@ -55,7 +55,7 @@ quint64 X11Clipboard::revision()const {
 void X11Clipboard::acquire(const ResourceLimits& limits,std::function<void(PayloadResult)> cb,quint64 expectedRevision) {
  if(closing_){cb(failure("cancelled","Clipboard adapter is closing"));return;}
  const auto count=pending_.size()+((callback_||decoding_)?1:0);
- if(count>=qint64(limits.pendingOperations)+limits.concurrentUploads){cb(failure("queue_full","Clipboard source queue reached the accepted operation limit"));return;}
+ if(count>=qint64(limits.pendingOperations)+limits.concurrentUploads){cb(failure("queue_full","Clipboard upload queue is full. Wait for queued uploads to finish and try again."));return;}
  const auto frozen=expectedRevision?expectedRevision:revision();
  pending_.enqueue({limits,std::move(cb),frozen});pump();
 }
@@ -69,12 +69,12 @@ void X11Clipboard::pump(){
 void X11Clipboard::beginImport(ImportRequest request){
  auto cb=std::move(request.callback);
  if(!available()){cb(failure("clipboard_unavailable","X11 clipboard ownership monitoring is unavailable"));return;}
- const auto current=revision();if(request.revision!=current){cb(failure("clipboard_changed","Clipboard changed after invocation; invoke sharing again"));return;}
- if(owner_==XCB_WINDOW_NONE){cb(failure("source_unsupported","Clipboard has no owner"));return;}
+ const auto current=revision();if(request.revision!=current){cb(failure("clipboard_changed","Clipboard changed before reading started. Try uploading the clipboard again."));return;}
+ if(owner_==XCB_WINDOW_NONE){cb(failure("source_unsupported","Clipboard is empty."));return;}
  ++generation_;cancelled_=std::make_shared<std::atomic_bool>(false);limits_=request.limits;callback_=std::move(cb);acquiredRevision_=current;bytes_.clear();incremental_=false;timeout_.start(5000);convert(targets_);
 }
 void X11Clipboard::nextTarget(){
- if(offered_.isEmpty()){complete(failure("source_unsupported","Clipboard contains no supported source format"));return;}
+ if(offered_.isEmpty()){complete(failure("source_unsupported","Clipboard has no supported files, image, or text."));return;}
  const auto target=offered_.takeFirst();imageFormat_=imageFormats_.value(target);convert(target);
 }
 void X11Clipboard::convert(xcb_atom_t target){target_=target;xcb_delete_property(connection_,window_,property_);xcb_convert_selection(connection_,window_,clipboard_,target,property_,XCB_CURRENT_TIME);xcb_flush(connection_);}
@@ -91,10 +91,10 @@ void X11Clipboard::events(){
    if(e->state==XCB_PROPERTY_DELETE)outgoingDeleted(e->window,e->atom);
    if(callback_&&incremental_&&e->window==window_&&e->atom==property_&&e->state==XCB_PROPERTY_NEW_VALUE)property(true);
   }
-  else if(type==fixesEvent_+XCB_XFIXES_SELECTION_NOTIFY){auto* e=reinterpret_cast<xcb_xfixes_selection_notify_event_t*>(raw);owner_=e->owner;++revision_;if(callback_&&revision_!=acquiredRevision_)complete(failure("clipboard_changed","Clipboard owner changed during acquisition"));}
+  else if(type==fixesEvent_+XCB_XFIXES_SELECTION_NOTIFY){auto* e=reinterpret_cast<xcb_xfixes_selection_notify_event_t*>(raw);owner_=e->owner;++revision_;if(callback_&&revision_!=acquiredRevision_)complete(failure("clipboard_changed","Clipboard changed before reading finished."));}
   else if(type==XCB_SELECTION_NOTIFY&&callback_) {auto* e=reinterpret_cast<xcb_selection_notify_event_t*>(raw);if(e->requestor!=window_||e->selection!=clipboard_||e->target!=target_)continue;if(e->property==XCB_ATOM_NONE){complete(failure("source_unsupported","Clipboard owner rejected the requested data format"));continue;}property(false);}
  }
- if(xcb_connection_has_error(connection_)&&callback_)complete(failure("clipboard_unavailable","X11 connection closed during clipboard acquisition"));
+ if(xcb_connection_has_error(connection_)&&callback_)complete(failure("clipboard_unavailable","X11 connection closed while reading the clipboard."));
  dispatching_=false;
 }
 void X11Clipboard::property(bool incremental){
@@ -102,16 +102,16 @@ void X11Clipboard::property(bool incremental){
  const uint32_t words=uint32_t(std::min<qint64>((bound+3)/4+1,UINT32_MAX));
  auto r=reply(xcb_get_property_reply(connection_,xcb_get_property(connection_,incremental?1:0,window_,property_,XCB_GET_PROPERTY_TYPE_ANY,0,words),nullptr));
  if(!r){complete(failure("clipboard_unavailable","Cannot read the clipboard selection response"));return;}
- if(r->bytes_after){complete(failure("input_excessive","Clipboard data exceeds resource limits"));return;}
+ if(r->bytes_after){complete(failure("input_excessive","Clipboard data exceeds the size limit."));return;}
  if(r->type==incr_&&!incremental){if(r->format!=32||xcb_get_property_value_length(r.get())!=4){complete(failure("source_unsupported","Malformed incremental clipboard transfer"));return;}
-  uint32_t advertised=0;memcpy(&advertised,xcb_get_property_value(r.get()),4);if(advertised>bound){complete(failure("input_excessive","Clipboard transfer exceeds resource limits"));return;}incremental_=true;bytes_.clear();xcb_delete_property(connection_,window_,property_);xcb_flush(connection_);return;
+  uint32_t advertised=0;memcpy(&advertised,xcb_get_property_value(r.get()),4);if(advertised>bound){complete(failure("input_excessive","Clipboard data exceeds the size limit."));return;}incremental_=true;bytes_.clear();xcb_delete_property(connection_,window_,property_);xcb_flush(connection_);return;
  }
  const int length=xcb_get_property_value_length(r.get());
  if(target_==targets_){if(r->type!=XCB_ATOM_ATOM||r->format!=32||incremental){complete(failure("source_unsupported","Malformed clipboard target list"));return;}
   chooseTargets(static_cast<const xcb_atom_t*>(xcb_get_property_value(r.get())),length/4);return;
  }
  if(r->format!=8){complete(failure("source_unsupported","Malformed clipboard data format"));return;}
- if(qint64(bytes_.size())+length>bound){complete(failure("input_excessive","Clipboard data exceeds resource limits"));return;}
+ if(qint64(bytes_.size())+length>bound){complete(failure("input_excessive","Clipboard data exceeds the size limit."));return;}
  bytes_.append(static_cast<const char*>(xcb_get_property_value(r.get())),length);
  if(!incremental)xcb_delete_property(connection_,window_,property_);
  xcb_flush(connection_);
@@ -158,7 +158,7 @@ void X11Clipboard::offer(const QList<QByteArray>& targets,const QHash<QByteArray
  }
 }
 void X11Clipboard::received(){
- timeout_.stop();if(revision()!=acquiredRevision_){complete(failure("clipboard_changed","Clipboard changed during acquisition"));return;}
+ timeout_.stop();if(revision()!=acquiredRevision_){complete(failure("clipboard_changed","Clipboard changed before reading finished."));return;}
  decoding_=true;const auto generation=generation_;
  const auto data=bytes_;const auto target=target_;const auto limits=limits_;const bool uris=target==atom("text/uri-list"),image=!imageFormat_.isEmpty();const auto cancelled=cancelled_;auto callback=std::move(callback_);callback_={};incremental_=false;bytes_.clear();
  // Parsing/decoding potentially large owner data must not run on the session thread.
@@ -169,7 +169,7 @@ void X11Clipboard::received(){
    if(imageFormatHint(data)=="png"){
     // Qt 6.4.2 and 6.8.2 instantiate every installed image plugin for a
     // named format unless detection is off; the signature is already checked.
-    QBuffer buffer;buffer.setData(data);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer,"png");reader.setAutoDetectImageFormat(false);const auto size=reader.size();if(!size.isValid()||qint64(size.width())*size.height()>limits.imagePixels||qint64(size.width())*size.height()*4>limits.imageBytes){*result=failure("input_excessive","Clipboard image dimensions exceed resource limits");return;}decoded=reader.read();
+    QBuffer buffer;buffer.setData(data);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer,"png");reader.setAutoDetectImageFormat(false);const auto size=reader.size();if(!size.isValid()||qint64(size.width())*size.height()>limits.imagePixels||qint64(size.width())*size.height()*4>limits.imageBytes){*result=failure("input_excessive","Clipboard image dimensions exceed the size limit.");return;}decoded=reader.read();
    }else{
     // Other formats need Qt's image plugins; the transient image job decodes
     // them so the resident never instantiates those codecs.
@@ -177,15 +177,15 @@ void X11Clipboard::received(){
    }
    mime.setImageData(decoded);
   }
-  else {if(data.size()>limits.clipboardTextBytes){*result=failure("input_excessive","Clipboard text exceeds resource limits");return;}mime.setText(QString::fromUtf8(data));}
+  else {if(data.size()>limits.clipboardTextBytes){*result=failure("input_excessive","Clipboard text exceeds the size limit.");return;}mime.setText(QString::fromUtf8(data));}
   *result=ClipboardPayload::fromMime(mime,limits);
  });decoders_.append(worker);connect(worker,&QThread::finished,this,[this,worker,result,noLocal,generation,callback=std::move(callback)]() mutable {
   decoders_.removeOne(worker);worker->deleteLater();decoding_=false;
-  if(generation!=generation_){callback(failure("cancelled","Clipboard acquisition cancelled"));pump();return;}
+  if(generation!=generation_){callback(failure("cancelled","Clipboard import cancelled."));pump();return;}
   // A remote URI list is not a file source. Use the owner's actual image/text
   // representations before relying on Qt's synthesized URI-list text.
   if(*noLocal&&!offered_.isEmpty()){
-   if(revision()!=acquiredRevision_){callback(failure("clipboard_changed","Clipboard changed before importing its next representation"));pump();return;}
+   if(revision()!=acquiredRevision_){callback(failure("clipboard_changed","Clipboard changed while reading it."));pump();return;}
    callback_=std::move(callback);bytes_.clear();timeout_.start(5000);nextTarget();return;
   }
   callback(std::move(*result));pump();
@@ -194,8 +194,8 @@ void X11Clipboard::received(){
 void X11Clipboard::complete(PayloadResult result){timeout_.stop();incremental_=false;bytes_.clear();if(callback_){cancelled_->store(true);auto cb=std::move(callback_);callback_={};cb(std::move(result));}pump();}
 void X11Clipboard::cancel(){
  ++generation_;cancelled_->store(true);auto pending=std::move(pending_);pending_.clear();
- if(callback_)complete(failure("cancelled","Clipboard acquisition cancelled"));
- for(auto& request:pending)request.callback(failure("cancelled","Clipboard acquisition cancelled"));
+ if(callback_)complete(failure("cancelled","Clipboard import cancelled."));
+ for(auto& request:pending)request.callback(failure("cancelled","Clipboard import cancelled."));
 }
 // Real server time keeps TIMESTAMP and stale SelectionRequest handling correct.
 // The reply orders the private property event before we drain the XCB queue;
@@ -220,13 +220,13 @@ void X11Clipboard::copy(const CopyPayload& payload,std::function<void(Error)> fi
   if(!payload.encodedImage.startsWith(QByteArray::fromHex("89504e470d0a1a0a"))){callback({"artifact_invalid","Clipboard image is not a PNG",{}});return;}
   bytes=payload.encodedImage;content->targets={atom("image/png")};
  }else if(payload.kind=="files"){
-  for(const auto& path:payload.files){const auto uri=QUrl::fromLocalFile(path).toEncoded()+"\r\n";if(bytes.size()+uri.size()>bound){callback({"input_excessive","Clipboard file list exceeds resource limits",{}});return;}bytes+=uri;}
+  for(const auto& path:payload.files){const auto uri=QUrl::fromLocalFile(path).toEncoded()+"\r\n";if(bytes.size()+uri.size()>bound){callback({"input_excessive","Clipboard file list exceeds the size limit.",{}});return;}bytes+=uri;}
   content->targets={atom("text/uri-list"),atom("UTF8_STRING"),atom("text/plain;charset=utf-8"),atom("text/plain")};
  }else if(payload.kind=="text"){
-  if(payload.text.size()>bound){callback({"input_excessive","Clipboard text exceeds resource limits",{}});return;}
+  if(payload.text.size()>bound){callback({"input_excessive","Clipboard text exceeds the size limit.",{}});return;}
   bytes=payload.text.toUtf8();content->targets={atom("UTF8_STRING"),atom("text/plain;charset=utf-8"),atom("text/plain")};
  }else{callback({"source_unsupported","Unsupported clipboard result type",{}});return;}
- if(bytes.size()>bound){callback({"input_excessive","Clipboard result exceeds resource limits",{}});return;}
+ if(bytes.size()>bound){callback({"input_excessive","Clipboard result exceeds the size limit.",{}});return;}
  // Keep an implicitly shared encoded lease for genuine native ownership.
  // Writing an entire accepted result to disk here blocks the listener; staging
  // it asynchronously would open an invocation-eligibility publication gap.
@@ -234,13 +234,13 @@ void X11Clipboard::copy(const CopyPayload& payload,std::function<void(Error)> fi
  content->data=std::move(bytes);
  const auto timestamp=serverTimestamp();
  if(!timestamp){callback({"clipboard_copy_failed","Cannot establish clipboard server time",{}});return;}
- if(revision()!=frozen){callback({"copy_suppressed","Clipboard changed before result ownership",{}});return;}
+ if(revision()!=frozen){callback({"copy_suppressed","Clipboard changed before put.gd could copy the result.",{}});return;}
  content->timestamp=timestamp;
  xcb_set_selection_owner(connection_,window_,clipboard_,timestamp);
  auto actual=reply(xcb_get_selection_owner_reply(connection_,xcb_get_selection_owner(connection_,clipboard_),nullptr));
- if(!actual||actual->owner!=window_){callback({"clipboard_copy_failed","Unable to own the X11 clipboard",{}});return;}
+ if(!actual||actual->owner!=window_){callback({"clipboard_copy_failed","Couldn't write to the X11 clipboard.",{}});return;}
  owned_=std::move(content);revision();
- if(owner_!=window_){owned_.reset();callback({"copy_suppressed","Clipboard ownership changed before the result was acknowledged",{}});return;}
+ if(owner_!=window_){owned_.reset();callback({"copy_suppressed","Clipboard changed before the copy could be confirmed.",{}});return;}
  lastCopyRevision_=revision_;callback({});
 }
 void X11Clipboard::selectionRequest(const xcb_selection_request_event_t& request){

@@ -754,7 +754,7 @@ Error RecordingPipeline::start(const Options& options) {
         failures.clear();
         if (launchAny(without, without.audio ? audioEncoder : QString(), failures, nullptr)) {
             microphone_.lost.store(true);
-            microphoneLostReason_ = QStringLiteral("The microphone could not be opened; the recording has no microphone audio.");
+            microphoneLostReason_ = QStringLiteral("Couldn't open the microphone. This recording has no microphone audio.");
             return {};
         }
         if (pipewireUnreachable_) return pipewireUnreachable(failures);
@@ -817,7 +817,7 @@ QJsonObject RecordingPipeline::status() const {
             {"framesEncoded", double(framesEncoded())}, {"framesDropped", double(framesDropped())}};
     // What the audio track holds, and a microphone that went away mid-recording (#1364).
     status["audioSources"] = QJsonObject{{"system", recordsSystemAudio()}, {"microphone", recordsMicrophone()}};
-    if (microphone_.lost.load()) status["microphoneLost"] = microphoneLostReason_.isEmpty() ? QStringLiteral("The microphone was disconnected; the rest of the recording has no microphone audio.") : microphoneLostReason_;
+    if (microphone_.lost.load()) status["microphoneLost"] = microphoneLostReason_.isEmpty() ? QStringLiteral("The microphone disconnected. The rest of the recording has no microphone audio.") : microphoneLostReason_;
     // What the source delivered (a compositor sends what changed, at most its
     // own pace, #983), the frames kept for the clip before videorate's repeats,
     // the rate kept now and, after the adaptive rate lowered it, when and why.
@@ -867,7 +867,7 @@ void RecordingPipeline::stop(std::function<void(Error, qint64)> done) {
         debugLog(kept ? QStringLiteral("stop: drain timed out; keeping the clip as written") : QStringLiteral("stop: drain timed out with nothing written"));
         auto callback = std::move(stopCallback_);
         stopCallback_ = {};
-        callback(kept ? Error{} : Error{"recording_stop_timeout", "The capture did not drain in time", {}}, retained);
+        callback(kept ? Error{} : Error{"recording_stop_timeout", "Stopping the recording timed out before the video finished saving.", {}}, retained);
     });
 }
 void RecordingPipeline::cancel() {
@@ -899,14 +899,14 @@ void RecordingPipeline::poll() {
             gst_object_unref(bus);
             if (relaunchThrottled()) return;
             if (pipewireUnreachable_) { emit failed(pipewireUnreachable(relaunchFailures_)); return; }
-            emit failed({"recording_failed", "Capture failed: the stream ended before its first frame and could not be started again", {{"attempts", QJsonArray::fromStringList(relaunchFailures_)}}});
+            emit failed({"recording_failed", "Recording failed. The video stream ended before its first frame and couldn't be started again.", {{"attempts", QJsonArray::fromStringList(relaunchFailures_)}}});
             return;
         }
         // #1364: a microphone that goes away must not end or damage the recording.
         // Its source then sends EOS down its own branch; the mixer and the muxer go
         // on with what is left, and the rest of the clip is silent on that input.
         if (GST_MESSAGE_SRC(message) && QByteArrayView(GST_OBJECT_NAME(GST_MESSAGE_SRC(message))) == "msrc") {
-            const QString reason = QStringLiteral("The microphone was disconnected; the rest of the recording has no microphone audio.");
+            const QString reason = QStringLiteral("The microphone disconnected. The rest of the recording has no microphone audio.");
             debugLog(QStringLiteral("microphone: source error: %1").arg(e ? QString::fromUtf8(e->message) : QString()));
             if (e) g_error_free(e);
             g_free(debug);
@@ -935,7 +935,7 @@ void RecordingPipeline::poll() {
         // failure plus low free space does not establish ENOSPC. Keep its diagnosis.
         if (e && e->domain == GST_RESOURCE_ERROR && e->code == GST_RESOURCE_ERROR_NO_SPACE_LEFT) {
             const auto cause = error.toJson();
-            error = {"recording_disk_full", "The disk filled before the recording could be finalized. No reviewable clip was retained and nothing was uploaded. Free up space and try again.", disk.toJson()};
+            error = {"recording_disk_full", "The disk filled up before the recording could finish saving. No reviewable recording was saved. Free up space and try again.", disk.toJson()};
             error.details["reason"] = "disk_space";
             error.details["finalized"] = false;
             error.details["cause"] = cause;
@@ -957,14 +957,14 @@ void RecordingPipeline::poll() {
     gst_object_unref(bus);
     // The tap saw the stream moved to another source: report it once.
     if (microphone_.lost.load() && microphoneLostReason_.isEmpty() && options_.microphone)
-        loseMicrophone(QStringLiteral("The microphone was disconnected; the rest of the recording has no microphone audio."));
+        loseMicrophone(QStringLiteral("The microphone disconnected. The rest of the recording has no microphone audio."));
     // A source that went away can also leave its stream connected to nothing:
     // no error and no buffers. An open microphone delivers buffers all the
     // time, silence included, so two seconds without one means it is gone.
     if (options_.microphone && !microphone_.lost.load() && !stopping_) {
         const gint64 seen = microphone_.buffers.load();
         if (seen != microphoneSeen_ || !microphoneQuiet_.isValid()) { microphoneSeen_ = seen; microphoneQuiet_.start(); }
-        else if (seen > 0 && microphoneQuiet_.elapsed() > 2000) loseMicrophone(QStringLiteral("The microphone was disconnected; the rest of the recording has no microphone audio."));
+        else if (seen > 0 && microphoneQuiet_.elapsed() > 2000) loseMicrophone(QStringLiteral("The microphone disconnected. The rest of the recording has no microphone audio."));
     }
     if (budgetSignalled_ || stopping_) return;
     observeRate();
@@ -1063,7 +1063,7 @@ bool RecordingPipeline::reopenSource() {
     return true;
 }
 Error RecordingPipeline::pipewireUnreachable(const QStringList& attempts) {
-    return {"recording_start_failed", "PipeWire is not running, so the screen could not be recorded; try again once it is back", {{"reason", "pipewire_unreachable"}, {"attempts", QJsonArray::fromStringList(attempts)}}};
+    return {"recording_start_failed", "PipeWire isn't running, so the screen couldn't be recorded. Try again once it's back.", {{"reason", "pipewire_unreachable"}, {"attempts", QJsonArray::fromStringList(attempts)}}};
 }
 bool RecordingPipeline::relaunchThrottled() {
     pipewireUnreachable_ = false;

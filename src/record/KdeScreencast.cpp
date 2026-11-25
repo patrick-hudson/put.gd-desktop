@@ -132,7 +132,7 @@ void KdeScreencast::streamOutput(const QString& name, Done done, bool pointerHid
     if (d_->done || d_->stream) { done({"recording_state", "A KWin screen cast is already open", {}}, {}); return; }
     Impl::Output* chosen = nullptr;
     for (auto* output : std::as_const(d_->outputs)) if (name.isEmpty() || output->name == name) { chosen = output; break; }
-    if (!chosen) { done({"recording_target", "No connected output has this name", {{"identity", name}}}, {}); return; }
+    if (!chosen) { done({"recording_target", "No connected monitor has this name.", {{"identity", name}}}, {}); return; }
     d_->pending = {0, chosen->logical, chosen->name};
     d_->done = std::move(done);
     d_->stream = zkde_screencast_unstable_v1_stream_output(d_->screencast, chosen->native, Impl::pointerMode(pointerHidden));
@@ -186,6 +186,6 @@ void KdeScreencast::close() {
     // `close` is the protocol's destructor request: it ends the stream and frees
     // the proxy, so the proxy must not be destroyed a second time.
     if (d_->stream) { zkde_screencast_stream_unstable_v1_close(d_->stream); d_->stream = nullptr; if (d_->display) wl_display_flush(d_->display); debugLog("kde screencast: stream closed"); }
-    if (auto done = std::exchange(d_->done, {})) done({"cancelled", "Screen cast canceled", {}}, {});
+    if (auto done = std::exchange(d_->done, {})) done({"cancelled", "Screen cast cancelled", {}}, {});
 }
 }

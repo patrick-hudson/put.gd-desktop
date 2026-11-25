@@ -217,7 +217,7 @@ BudgieClicks::~BudgieClicks() {
 }
 QJsonObject BudgieClicks::clickCapability() const {
     QJsonObject capability{{"route", "labwc-mouse-binds"}, {"drawnBy", "recorder"}, {"needsPointer", true}, {"beforeCapture", true},
-        {"targetReasons", QJsonObject{{"window", "A window recording on labwc has no pointer position: the compositor's window capture source has no cursor source, and labwc reports no window geometry."}}}};
+        {"targetReasons", QJsonObject{{"window", "Window recordings on labwc can't highlight clicks. labwc's window capture has no cursor source and reports no window geometry."}}}};
     QString reason, message;
     auto bus = QDBusConnection::sessionBus();
     const QFileInfo rc(rcPath_);
@@ -234,7 +234,7 @@ QJsonObject BudgieClicks::clickCapability() const {
 Error BudgieClicks::sync() {
     QFile file(rcPath_);
     if (!file.open(QIODevice::ReadOnly)) return {"labwc_config_missing", "Cannot read labwc's configuration " + rcPath_, {}};
-    if (file.size() > maximumRcBytes) return {"labwc_config_invalid", "labwc's configuration " + rcPath_ + " is too large to edit", {}};
+    if (file.size() > maximumRcBytes) return {"labwc_config_invalid", "labwc's configuration " + rcPath_ + " is over 4 MB and can't be edited.", {}};
     const QString text = QString::fromUtf8(file.readAll());
     file.close();
     QString error;
@@ -246,7 +246,7 @@ Error BudgieClicks::sync() {
     // What `labwc --reconfigure` does: SIGHUP has labwc read rc.xml again.
     if (!fixedPath_) {
         if (!isLabwc(labwc_)) labwc_ = runningLabwc().value_or(LabwcSession{}).pid;
-        if (!isLabwc(labwc_) || ::kill(pid_t(labwc_), SIGHUP) != 0) return {"labwc_not_running", "labwc could not be told to read its configuration again", {}};
+        if (!isLabwc(labwc_) || ::kill(pid_t(labwc_), SIGHUP) != 0) return {"labwc_not_running", "Couldn't tell labwc to reload its configuration.", {}};
     }
     logging::info(logRecording(), watching_ ? "labwc mouse binds for click highlights added" : "labwc mouse binds for click highlights removed", {});
     return {};

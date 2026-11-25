@@ -92,7 +92,7 @@ private slots:
  // screen source refuse straight away with the adapter's own error, delayed or
  // not, and the next capture is not left busy_selecting.
  void knownPermissionRefusalShowsNoSelector() {
-  Fixture f;const QJsonObject refused{{"available",false},{"code","capture_permission"},{"error","Install the restricted desktop entry against this resident executable"}};
+  Fixture f;const QJsonObject refused{{"available",false},{"code","capture_permission"},{"error","KWin screenshot permission is missing. Install the restricted KWin screenshot desktop entry matching this put.gd executable. Restart put.gd."}};
   f.source.capture={{"region",refused},{"window",refused},{"desktop",refused},{"monitor",refused},{"repeat",refused}};
   for(const auto& [action,options]:QList<std::pair<QString,QJsonObject>>{{"region",{}},{"region",{{"delaySeconds",3}}},{"window",{}},{"desktop",{{"delaySeconds",3}}},{"monitor",{}},{"edit",{}}}){
    const auto operation=f.run(action,options);

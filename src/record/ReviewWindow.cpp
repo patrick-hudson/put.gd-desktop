@@ -2471,7 +2471,7 @@ void ReviewWindow::upload(std::optional<quint64> refusalsAtPress) {
     view_->commitNudge();
     panel_->flushStrength();
     if (refusals_ != mark) {
-        uploadNotice_ = {QStringLiteral("Nothing was uploaded: a change wasn't applied. Check the edits, then upload again."), QStringLiteral("warning"), {}};
+        uploadNotice_ = {QStringLiteral("Couldn't apply an edit, so the upload didn't start. Check your edits, then select Upload again."), QStringLiteral("warning"), {}};
         refreshAll();
         return;
     }
@@ -2497,7 +2497,7 @@ void ReviewWindow::cancelUpload(const QString& why) {
     uploadWaiting_ = false;
     uploadWait_.stop();
     // Its own status line, kept when the awaited answer arrives.
-    uploadNotice_ = {QStringLiteral("Upload cancelled: %1. Press Upload again.").arg(why.isEmpty() ? QStringLiteral("you changed the clip") : why), QStringLiteral("warning"), {}};
+    uploadNotice_ = {QStringLiteral("The upload didn't start because %1. Select Upload again.").arg(why.isEmpty() ? QStringLiteral("the clip changed") : why), QStringLiteral("warning"), {}};
     refreshAll();
 }
 void ReviewWindow::emitConfig() {
@@ -2680,7 +2680,7 @@ QList<ReviewWindow::StatusEntry> ReviewWindow::statusEntries() const {
     if (config_.animation() && animationMaxEdge_ > 0 && !options_.canvas.isEmpty()) {
         const auto size = recording::outputSize(options_.canvas, config_.maxEdge);
         if (std::max(size.width(), size.height()) > animationMaxEdge_) {
-            StatusEntry edge{QStringLiteral("%1 is limited to %2 px and this recording is %3 × %4 px, so the export will be refused.").arg(formatShort(config_.format)).arg(animationMaxEdge_).arg(size.width()).arg(size.height()), QStringLiteral("warning"), {}};
+            StatusEntry edge{QStringLiteral("%1 is limited to %2 px, and this recording is %3 × %4 px. Choose a smaller size or another format before exporting.").arg(formatShort(config_.format)).arg(animationMaxEdge_).arg(size.width()).arg(size.height()), QStringLiteral("warning"), {}};
             if (const auto mp4 = offerCompatibleVideo()) edge.actions.append(*mp4);
             entries.append(edge);
         }
@@ -2696,7 +2696,7 @@ void ReviewWindow::refreshStatus() {
         if (raw.contains("No space left", Qt::CaseInsensitive) || (raw.contains("disk", Qt::CaseInsensitive) && (raw.contains("full", Qt::CaseInsensitive) || raw.contains("space", Qt::CaseInsensitive))))
             entry.text = QStringLiteral("Disk is full. Free up space, then try again.");
         else if (raw.contains("Permission denied", Qt::CaseInsensitive))
-            entry.text = QStringLiteral("Couldn't save the copy: permission denied. Choose another location, then try again.");
+            entry.text = QStringLiteral("Couldn't save the copy because permission was denied. Choose another location, then try again.");
         else {
             entry.text = raw.section('\n', 0, 0);
             if (std::any_of(entry.actions.cbegin(), entry.actions.cend(), [](const auto& action) { return action.second["action"] == "retryExport"; }) && !entry.text.contains("save", Qt::CaseInsensitive) && !entry.text.contains("export", Qt::CaseInsensitive) && !entry.text.contains("upload", Qt::CaseInsensitive))
@@ -3026,7 +3026,7 @@ ReviewWindow::DriveResult ReviewWindow::driveAction(const QJsonObject& params) {
     if (action == "saveCopyDialog") {
         if (placing_) return {"recording_state", "Place or cancel the cover first", {}};
         if (!saveWaitingPath_.isEmpty()) return {"recording_state", "A chosen copy is waiting for your last change to be saved", {}};
-        if (!chooseCopy() && !chooser_->isOpen()) return {"recording_state", "No copy was saved: a change wasn't applied. Check the edits, then save again.", {}};
+        if (!chooseCopy() && !chooser_->isOpen()) return {"recording_state", "Couldn't apply an edit, so no copy was saved. Check your edits, then select Save a copy… again.", {}};
         return done();
     }
     if (action == "discard") { askDiscard(); return done(); }
@@ -3543,15 +3543,15 @@ void ReviewWindow::showFrameError(qint64 at, const QString& message) {
     debugLog("review: preview failed " + message);
     QString reason;
     const QFileInfo clip(options_.workingClip);
-    if (!clip.exists()) reason = QStringLiteral("the private recording file is missing");
-    else if (!clip.isReadable()) reason = QStringLiteral("the private recording file isn't readable; check its permissions");
-    else if (message.startsWith("Cannot open") || message.startsWith("Cannot read") || message.startsWith("Reading")) reason = QStringLiteral("the private recording file couldn't be read; check that it is intact");
-    else if (message.startsWith("The working clip has no video")) reason = QStringLiteral("the private recording has no readable video track");
-    else if (message.startsWith("No frame")) reason = QStringLiteral("no video frame is available at this time; try a nearby frame");
-    else reason = QStringLiteral("the video frame couldn't be decoded; try a nearby frame or retry the preview");
+    if (!clip.exists()) reason = QStringLiteral("Couldn't show the frame at %1. The recording file is missing.");
+    else if (!clip.isReadable()) reason = QStringLiteral("Couldn't read the recording at %1. Check file permissions.");
+    else if (message.startsWith("Cannot open") || message.startsWith("Cannot read") || message.startsWith("Reading")) reason = QStringLiteral("Couldn't read the recording at %1. The file may be damaged.");
+    else if (message.startsWith("The working clip has no video")) reason = QStringLiteral("Couldn't show the frame at %1. The recording has no readable video track.");
+    else if (message.startsWith("No frame")) reason = QStringLiteral("No frame at %1. Try a nearby frame.");
+    else reason = QStringLiteral("Couldn't decode the frame at %1. Select Retry preview.");
     // A retry asks again even for the same time.
     frameAsked_.reset();
-    view_->setPreviewError(QStringLiteral("The frame at %1 couldn't be decoded (%2).").arg(durationText(at), reason));
+    view_->setPreviewError(reason.arg(durationText(at)));
 }
 void ReviewWindow::decodeFrameNow() {
     QImage image;
@@ -3678,7 +3678,7 @@ bool ReviewWindow::chooseCopy(std::optional<quint64> refusalsAtPress) {
     if (exporting_ || placing_ || chooser_->isOpen() || !saveWaitingPath_.isEmpty()) return false;
     view_->commitNudge();
     panel_->flushStrength();
-    if (refusals_ != mark) { showError(QStringLiteral("No copy was saved: a change wasn't applied. Check the edits, then save again."), false); return false; }
+    if (refusals_ != mark) { showError(QStringLiteral("Couldn't apply an edit, so no copy was saved. Check your edits, then select Save a copy… again."), false); return false; }
     saveAwaits_ = proposalSeq_;
     saveRefusalMark_ = mark;
     const auto extension = config_.extension();
@@ -3686,7 +3686,7 @@ bool ReviewWindow::chooseCopy(std::optional<quint64> refusalsAtPress) {
     return chooser_->open(options, [this, extension](const FileDialog::Result& result) {
         if (result.failed()) { showError("Couldn't save a copy there: " + result.error, false); return; }
         if (!result.chosen() || exporting_) return;
-        if (refusals_ != saveRefusalMark_) { showError(QStringLiteral("No copy was saved: a change wasn't applied. Check the edits, then save again."), false); return; }
+        if (refusals_ != saveRefusalMark_) { showError(QStringLiteral("Couldn't apply an edit, so no copy was saved. Check your edits, then select Save a copy… again."), false); return; }
         const auto& path = result.path;
         saveWaitingPath_ = path.endsWith("." + extension, Qt::CaseInsensitive) ? path : path + "." + extension;
         saveWait_.start();
@@ -3703,7 +3703,7 @@ void ReviewWindow::cancelSaveCopy(const QString& why) {
     if (saveWaitingPath_.isEmpty()) return;
     saveWaitingPath_.clear();
     saveWait_.stop();
-    showError(QStringLiteral("No copy was saved: %1. Check the edits, then save again.").arg(why), false);
+    showError(QStringLiteral("No copy was saved because %1. Check your edits, then select Save a copy… again.").arg(why), false);
 }
 void ReviewWindow::hideEvent(QHideEvent* e) {
     // Upload, cancel and a stop elsewhere hide the review: its chooser goes too

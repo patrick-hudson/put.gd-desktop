@@ -36,13 +36,13 @@ bool missingEndpoint(const QDBusMessage& message){
 QJsonObject parse(const QDBusMessage& message,Error& error,bool hello=false){
  if(message.type()==QDBusMessage::ErrorMessage){
   const auto guidance="GNOME capture needs the put.gd Shell extension, which is not running yet.";
-  error={"helper_unavailable",hello&&missingEndpoint(message)?guidance:"GNOME native helper did not complete the request",{{"dbusError",message.errorName()}}};
+  error={"helper_unavailable",hello&&missingEndpoint(message)?guidance:"The put.gd GNOME Shell extension didn't complete the request.",{{"dbusError",message.errorName()}}};
   if(hello&&missingEndpoint(message))error.details["helperEndpointMissing"]=true;return {};
  }
- if(message.arguments().size()!=1||message.arguments().first().metaType().id()!=QMetaType::QString){error={"bridge_protocol","GNOME helper returned an invalid reply",{}};return {};}
- const auto bytes=message.arguments().first().toString().toUtf8();if(bytes.size()>262144){error={"bridge_protocol","GNOME reply exceeds the control-message limit",{}};return {};}
- QJsonParseError e;const auto document=QJsonDocument::fromJson(bytes,&e);if(e.error!=QJsonParseError::NoError||!document.isObject()){error={"bridge_protocol","GNOME helper reply is not a JSON object",{}};return {};}
- auto result=document.object();if(result.contains("error")){const auto value=result["error"].toObject();error={value["code"].toString("helper_unavailable"),value["message"].toString("GNOME helper request failed"),value["details"].toObject()};}return result;
+ if(message.arguments().size()!=1||message.arguments().first().metaType().id()!=QMetaType::QString){error={"bridge_protocol","The put.gd GNOME Shell extension returned an invalid reply.",{}};return {};}
+ const auto bytes=message.arguments().first().toString().toUtf8();if(bytes.size()>262144){error={"bridge_protocol","The put.gd GNOME Shell extension reply exceeded the 256 KB limit.",{}};return {};}
+ QJsonParseError e;const auto document=QJsonDocument::fromJson(bytes,&e);if(e.error!=QJsonParseError::NoError||!document.isObject()){error={"bridge_protocol","The put.gd GNOME Shell extension reply isn't a JSON object.",{}};return {};}
+ auto result=document.object();if(result.contains("error")){const auto value=result["error"].toObject();error={value["code"].toString("helper_unavailable"),value["message"].toString("The put.gd GNOME Shell extension request failed."),value["details"].toObject()};}return result;
 }
 QString accelerator(const QString& text){
  const auto seq=QKeySequence::fromString(text,QKeySequence::PortableText);if(seq.count()!=1)return {};
@@ -60,8 +60,8 @@ QString accelerator(const QString& text){
 GnomeAdapter::GnomeAdapter(QObject* parent):QObject(parent),bus_(QDBusConnection::sessionBus()),watcher_(service,bus_,QDBusServiceWatcher::WatchForOwnerChange,this){
  const auto graphical=qobject_cast<QGuiApplication*>(QCoreApplication::instance());
  const bool supported=graphical?QGuiApplication::platformName().startsWith("wayland"):gnomeCoreSessionEnvironment();
- if(!supported){helperError_={"session_unsupported","GNOME adapter requires a native GNOME Wayland session",{}};return;}
- ownsName_=bus_.registerService(client);if(!ownsName_){helperError_={"helper_unavailable","Another resident process owns the GNOME bridge client name",{}};return;}
+ if(!supported){helperError_={"session_unsupported","GNOME capture requires a native GNOME Wayland session.",{}};return;}
+ ownsName_=bus_.registerService(client);if(!ownsName_){helperError_={"helper_unavailable","Another put.gd instance is already connected to GNOME Shell.",{}};return;}
  connect(&watcher_,&QDBusServiceWatcher::serviceOwnerChanged,this,[this]{helperChanged();});
  // Discovery follows events: the Shell's owner change and the extension's
  // CapabilitiesChanged, which it sends after exporting on every enable and unlock.
@@ -101,7 +101,7 @@ QJsonObject GnomeAdapter::sync(const QString& method,const QVariantList& args,Er
  return result;
 }
 void GnomeAdapter::call(const QString& method,const QVariantList& args,Reply reply,int timeout){
- if(owner_.isEmpty()||stopping_){reply({"helper_unavailable","GNOME helper is unavailable",{}},{});return;}
+ if(owner_.isEmpty()||stopping_){reply({"helper_unavailable","The put.gd GNOME Shell extension isn't available.",{}},{});return;}
  auto message=QDBusMessage::createMethodCall(owner_,path,interface,method);message.setArguments(args);const auto serial=++callSerial_;pending_.insert(serial,std::move(reply));
  auto* watcher=new QDBusPendingCallWatcher(bus_.asyncCall(message,timeout),this);const auto owner=owner_;
  connect(watcher,&QDBusPendingCallWatcher::finished,this,[this,watcher,serial,owner,method]{const auto callback=pending_.take(serial);const QDBusMessage message=watcher->reply();watcher->deleteLater();if(!callback)return;Error error;const auto result=parse(message,error,method=="Hello");
@@ -130,7 +130,7 @@ void GnomeAdapter::discover(){
  const auto owner=bus_.interface()->serviceOwner(service);followOwner(owner.isValid()?owner.value():QString());
  if(owner_.isEmpty()){helperUnavailable({"helper_unavailable","GNOME Shell is unavailable on the session bus",{}});return;}
  call("Hello",{},[this](Error error,QJsonObject hello){
-  if(!error&&(hello["version"].toInt()!=gnome::protocolVersion||hello["shellMajor"].toInt()!=50))error={"helper_incompatible","GNOME helper requires protocol 1 and GNOME Shell 50",{}};
+  if(!error&&(hello["version"].toInt()!=gnome::protocolVersion||hello["shellMajor"].toInt()!=50))error={"helper_incompatible","The put.gd GNOME Shell extension requires protocol 1 and GNOME Shell 50.",{}};
   if(error){helperUnavailable(error);evaluateSetup();return;}
   discoveryRetry_.stop();retryMs_=retryFirstMs_;
   ready_=true;helperError_={};helper_=hello;setUiProcess(uiProcess_);helperRevision_=quint64(hello["clipboardRevision"].toDouble());++revision_;bindShortcuts(requested_);emit capabilitiesChanged();
@@ -152,7 +152,7 @@ void GnomeAdapter::setUiProcess(qint64 pid){
  uiProcess_=pid>0&&pid<=std::numeric_limits<quint32>::max()?pid:0;uiProcessError_={};
  if(!ready_)return;
  if(helper_["uiProcessVersion"].toInt()!=1){
-  if(uiProcess_)uiProcessError_={"helper_incompatible","Update the GNOME extension to exclude the UI process from window capture",{}};
+  if(uiProcess_)uiProcessError_={"helper_incompatible","Update the put.gd GNOME Shell extension to use window capture while put.gd is open.",{}};
  }else{
   // Ack registration before the supervisor can let its child display a window.
   // A failed update disables window acquisition, including Shell hotkey tickets.
@@ -164,7 +164,7 @@ void GnomeAdapter::setUiProcess(qint64 pid){
 void GnomeAdapter::helperChanged(){
  // A real change: rediscover now and restart the backoff from its first step.
  discoveryRetry_.stop();retryMs_=retryFirstMs_;setupCheckedForOwner_=false;
- ready_=false;invalidateShortcutBindings();helper_={};++revision_;cancelAll("helper_unavailable","GNOME helper disabled or Shell restarted");emit capabilitiesChanged();discover();
+ ready_=false;invalidateShortcutBindings();helper_={};++revision_;cancelAll("helper_unavailable","The put.gd GNOME Shell extension was disabled or GNOME Shell restarted.");emit capabilitiesChanged();discover();
 }
 void GnomeAdapter::invalidateShortcutBindings(){
  bindings_={};for(const auto& action:Settings::invocableActionNames()){
@@ -216,7 +216,7 @@ SourceAdapter::PreparedAcquisition GnomeAdapter::prepareAcquisition(const QStrin
  // Monitor and repeat exist only in capture version 2; a repeat needs its region.
  else if((action=="monitor"||action=="repeat")&&captureVersionError()){error=captureVersionError();if(hotkey)release(id);}
  else if(action=="repeat"&&!lastRegion_){error=noLastRegion();if(hotkey)release(id);}
- else if(!hotkey){const auto result=sync("Prepare",{id,action},error);if(!error&&(result["version"].toInt()!=gnome::protocolVersion||result["requestId"].toString()!=id))error={"bridge_protocol","GNOME preparation identity is invalid",{}};if(!error){prepared_.append(id);QTimer::singleShot(120000,this,[this,id]{if(prepared_.removeOne(id))release(id);});}}
+ else if(!hotkey){const auto result=sync("Prepare",{id,action},error);if(!error&&(result["version"].toInt()!=gnome::protocolVersion||result["requestId"].toString()!=id))error={"bridge_protocol","The put.gd GNOME Shell extension returned an invalid capture request reply.",{}};if(!error){prepared_.append(id);QTimer::singleShot(120000,this,[this,id]{if(prepared_.removeOne(id))release(id);});}}
  if(hotkey&&!error)prepared_.append(id);
  // Show a live selection at the press; Acquire waits for the journal and takes
  // up its geometry. Screenshot first freezes the stage only after both saves.
@@ -248,7 +248,7 @@ void GnomeAdapter::countdown(int seconds,std::function<void(Error)> reply){
  call("Countdown",{id,json({{"seconds",seconds},{"appearance",captureAppearance_}})},[this,id,generation,reply=std::move(reply)](Error error,QJsonObject result){
   if(countdownId_==id)countdownId_.clear();
   if(!error&&generation!=generation_)error={"cancelled","Capture countdown cancelled",{}};
-  if(!error&&(result["version"].toInt()!=gnome::protocolVersion||result["requestId"].toString()!=id))error={"bridge_protocol","GNOME countdown identity is invalid",{}};
+  if(!error&&(result["version"].toInt()!=gnome::protocolVersion||result["requestId"].toString()!=id))error={"bridge_protocol","The put.gd GNOME Shell extension returned an invalid countdown reply.",{}};
   lockAware(std::move(error),reply);
  },(seconds+15)*1000);
 }
@@ -268,7 +268,7 @@ void GnomeAdapter::lockAware(Error error,std::function<void(Error)> reply,int at
 void GnomeAdapter::sessionLocked(std::function<void(bool)> reply){querySessionLocked(this,std::move(reply));}
 void GnomeAdapter::acquire(const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> reply){prepareAcquisition(action)(limits,std::move(reply));}
 void GnomeAdapter::start(const QString& id,const QString& action,const ResourceLimits& limits,std::function<void(PayloadResult)> reply,const QString& outcome,bool screenshotFirst,int delaySeconds,const std::optional<RegionMemory>& repeat,bool remember){
- if(!prepared_.removeOne(id)){reply({{},{"bridge_protocol","GNOME preparation expired or was cancelled",{}}});return;}
+ if(!prepared_.removeOne(id)){reply({{},{"bridge_protocol","GNOME capture request expired or was cancelled.",{}}});return;}
  // A delayed live region counts down inside Acquire: the same lock question as countdown().
  if(delaySeconds>0){auto inner=std::move(reply);reply=[this,inner=std::move(inner)](PayloadResult result){if(!result.error){inner(std::move(result));return;}lockAware(std::move(result.error),[inner](Error error){inner({{},std::move(error)});});};}
  auto transfer=std::make_shared<Transfer>();transfer->id=id;transfer->outcome=outcome;transfer->action=action;transfer->delaySeconds=delaySeconds;if(repeat){transfer->area=repeat->area;transfer->layoutKey=repeat->layoutKey;}transfer->screenshotFirst=screenshotFirst;transfer->remember=remember;transfer->limits=limits;transfer->reply=std::move(reply);transfer->generation=generation_;transfers_[id]=transfer;
@@ -302,7 +302,7 @@ void GnomeAdapter::requestTransfer(const std::shared_ptr<Transfer>& transfer,con
  call("Acquire",{transfer->id,json(bounds)},[this,transfer](Error error,QJsonObject metadata){
   if(!transfers_.contains(transfer->id))return;
   const auto bytes=metadata["bytes"].toDouble(-1);const auto bound=std::max(transfer->limits.clipboardTextBytes,transfer->limits.imageBytes);
-  if(!error&&(metadata["version"].toInt()!=gnome::protocolVersion||metadata["requestId"].toString()!=transfer->id||bytes<0||bytes>bound||bytes!=std::floor(bytes)))error={"bridge_protocol","GNOME transfer metadata exceeds limits or has invalid identity",{}};
+  if(!error&&(metadata["version"].toInt()!=gnome::protocolVersion||metadata["requestId"].toString()!=transfer->id||bytes<0||bytes>bound||bytes!=std::floor(bytes)))error={"bridge_protocol","The put.gd GNOME Shell extension returned invalid or out-of-bounds transfer metadata.",{}};
   if(error){transfers_.remove(transfer->id);release(transfer->id);auto reply=std::move(transfer->reply);reply({{},error});return;}
   transfer->metadata=metadata;read(transfer);
  },125000);
@@ -319,7 +319,7 @@ void GnomeAdapter::read(const std::shared_ptr<Transfer>& transfer){
 }
 void GnomeAdapter::decode(const std::shared_ptr<Transfer>& transfer){
  auto result=std::make_shared<PayloadResult>();auto* worker=QThread::create([transfer,result]{*result=gnome::decodeTransfer(transfer->metadata,transfer->bytes,transfer->id,transfer->limits);});workers_.append(worker);
- connect(worker,&QThread::finished,this,[this,worker,transfer,result]{workers_.removeOne(worker);worker->deleteLater();if(!transfers_.remove(transfer->id))return;auto reply=std::move(transfer->reply);if(transfer->generation!=generation_){reply({{},{"cancelled","GNOME acquisition cancelled",{}}});return;}
+ connect(worker,&QThread::finished,this,[this,worker,transfer,result]{workers_.removeOne(worker);worker->deleteLater();if(!transfers_.remove(transfer->id))return;auto reply=std::move(transfer->reply);if(transfer->generation!=generation_){reply({{},{"cancelled","GNOME transfer cancelled.",{}}});return;}
   // Repeat last region remembers a region that was captured, here in memory only.
   const auto selection=transfer->metadata["selection"].toArray();const auto key=transfer->metadata["layoutKey"].toString();
   if(!result->error&&transfer->remember&&transfer->action=="region"&&selection.size()==4&&!key.isEmpty())lastRegion_=RegionMemory{selection,key};
@@ -343,14 +343,14 @@ void GnomeAdapter::selectRegionImpl(RecordingShell::Reply reply,bool scroll){
  // The user drags at their own pace; the extension's request deadline (120 s) ends it first.
  call("SelectArea",{json(QJsonObject{{"id",id},{"appearance",captureAppearance_}})},[this,id,reply](Error error,QJsonObject result){
   if(recordingSelection_==id)recordingSelection_.clear();
-  if(!error&&(result["requestId"].toString()!=id||!result["rect"].isArray()||result["rect"].toArray().size()!=4))error={"bridge_protocol","GNOME helper returned an invalid selection",{}};
+  if(!error&&(result["requestId"].toString()!=id||!result["rect"].isArray()||result["rect"].toArray().size()!=4))error={"bridge_protocol","The put.gd GNOME Shell extension returned an invalid selection.",{}};
   reply(error,error?QJsonObject{}:QJsonObject{{"rect",result["rect"]}});
  },125000);
 }
 void GnomeAdapter::cancelSelection(){if(recordingSelection_.isEmpty())return;const auto id=std::exchange(recordingSelection_,QString{});release(id);}
 void GnomeAdapter::showFrame(const QJsonObject& frame,RecordingShell::Reply reply){showFrameImpl(frame,std::move(reply),false);}
 void GnomeAdapter::showFrameImpl(const QJsonObject& shown,RecordingShell::Reply reply,bool scroll){
- if(!(scroll?scrollShell_.selectsRegions():selectsRegions())){reply(outdated()?recordingShellError():Error{"helper_incompatible","Update the GNOME extension to frame recordings",{}},{});return;}
+ if(!(scroll?scrollShell_.selectsRegions():selectsRegions())){reply(outdated()?recordingShellError():Error{"helper_incompatible","Update the put.gd GNOME Shell extension to show recording frames.",{}},{});return;}
  // A scroll capture reads its frames from Mutter's area stream, which sends
  // one only for damage inside the area: the Shell keeps one pixel of it
  // repainting while the frame shows, or a page that has come to rest gives
@@ -367,7 +367,7 @@ void GnomeAdapter::listWindows(RecordingWindows::Reply reply){
  if(!ready_){reply(helperAvailabilityError(true),{});return;}
  if(helper_["recordingVersion"].toInt()<2){reply({"helper_incompatible","Update the put.gd GNOME extension to record windows",{}},{});return;}
  call("RecordingWindows",{},[reply](Error error,QJsonObject result){
-  if(!error&&!result["windows"].isArray())error={"bridge_protocol","GNOME helper returned an invalid window list",{}};
+  if(!error&&!result["windows"].isArray())error={"bridge_protocol","The put.gd GNOME Shell extension returned an invalid window list.",{}};
   if(error){reply(error,{});return;}
   QJsonArray windows;
   for(const auto& value:result["windows"].toArray()){
@@ -449,17 +449,17 @@ void GnomeAdapter::cancelAll(const QString& code,const QString& message){
 void GnomeAdapter::cancelAcquisition(){
  // Releasing the countdown's request removes its pill; its call then answers cancelled.
  if(!countdownId_.isEmpty())release(std::exchange(countdownId_,{}));
- cancelAll("cancelled","GNOME acquisition cancelled");
+ cancelAll("cancelled","GNOME transfer cancelled.");
 }
 void GnomeAdapter::copy(const CopyPayload& payload,std::function<void(Error)> answer){
  auto reply=[answer=std::move(answer)](Error e){logging::debug(logClipboard(),"Native copy finished",{{"writer","gnome-helper"},{"ok",!e},{"code",e.code}});answer(std::move(e));};
- if(!ready_){reply({"clipboard_unavailable","GNOME helper cannot own CLIPBOARD",{}});return;}
+ if(!ready_){reply({"clipboard_unavailable","The put.gd GNOME Shell extension can't write to the clipboard.",{}});return;}
  QByteArray bytes;QString mime;
  if(payload.kind=="image"){mime="image/png";bytes=payload.encodedImage;}else if(payload.kind=="text"){mime="text/plain;charset=utf-8";bytes=payload.text.toUtf8();}else if(payload.kind=="files"){mime="text/uri-list";for(const auto& file:payload.files)bytes+=QUrl::fromLocalFile(file).toEncoded()+"\r\n";}else {reply({"source_unsupported","GNOME cannot copy this result type",{}});return;}
  const auto ticket=++copyGeneration_;const auto id=uuid();call("BeginCopy",{id,mime,qulonglong(bytes.size())},[this,id,bytes,ticket,reply=std::move(reply)](Error error,QJsonObject)mutable{if(error){reply(error);return;}writeCopy(id,bytes,0,ticket,std::move(reply));});
 }
 void GnomeAdapter::writeCopy(const QString& id,const QByteArray& bytes,qsizetype offset,quint64 ticket,std::function<void(Error)> reply){
- if(ticket!=copyGeneration_){release(id);reply({"copy_suppressed","A newer invocation superseded GNOME result copying",{}});return;}
+ if(ticket!=copyGeneration_){release(id);reply({"copy_suppressed","A newer action replaced this clipboard copy.",{}});return;}
  if(offset==bytes.size()){call("CommitCopy",{id},[this,id,reply=std::move(reply)](Error error,QJsonObject result){release(id);if(!error){helperClipboardChanged(qulonglong(result["clipboardRevision"].toDouble()));lastCopyRevision_=revision_;}reply(error);});return;}
  const auto chunk=bytes.mid(offset,gnome::chunkBytes);call("WriteCopy",{id,qulonglong(offset),QString::fromLatin1(chunk.toBase64())},[this,id,bytes,offset,ticket,count=chunk.size(),reply=std::move(reply)](Error error,QJsonObject)mutable{if(error){release(id);reply(error);return;}writeCopy(id,bytes,offset+count,ticket,std::move(reply));});
 }

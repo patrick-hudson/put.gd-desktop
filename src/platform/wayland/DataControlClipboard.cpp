@@ -61,7 +61,7 @@ struct DataControlClipboard::Impl:QObject {
  std::optional<quint64> lastCopyRevision;
  std::function<void(Error)> copyReply;QString copyToken;wl_callback* copyFence=nullptr;QHash<QString,QByteArray> pendingCopyData;bool copyCommitted=false;quint64 copyEpoch=0,copyRevision=0,pendingCopyEpoch=0;
  struct Import {ResourceLimits limits;std::function<void(PayloadResult)> reply;quint64 revision;QStringList formats;QString mime;ImageJob::Cancel cancelled=std::make_shared<std::atomic_bool>(false);};QQueue<std::shared_ptr<Import>> pending;std::shared_ptr<Import> active;QPointer<AsyncFdReader> reader;QList<QThread*> workers;
- explicit Impl(DataControlClipboard& q):q(q){reconnect.setInterval(1000);connect(&reconnect,&QTimer::timeout,this,[this]{if(!display)open();});copyTimer.setSingleShot(true);connect(&copyTimer,&QTimer::timeout,this,[this]{finishCopy({"clipboard_copy_failed","Data-control ownership acknowledgement timed out",{}});});const bool graphical=qobject_cast<QGuiApplication*>(QCoreApplication::instance())!=nullptr;const bool allowed=graphical?QGuiApplication::platformName().startsWith("wayland"):waylandCoreSessionEnvironment();if(allowed){open();reconnect.start();}else error="A native Wayland Core session or Qt Wayland platform is required";}
+ explicit Impl(DataControlClipboard& q):q(q){reconnect.setInterval(1000);connect(&reconnect,&QTimer::timeout,this,[this]{if(!display)open();});copyTimer.setSingleShot(true);connect(&copyTimer,&QTimer::timeout,this,[this]{finishCopy({"clipboard_copy_failed","Timed out waiting for the Wayland clipboard to confirm the copy.",{}});});const bool graphical=qobject_cast<QGuiApplication*>(QCoreApplication::instance())!=nullptr;const bool allowed=graphical?QGuiApplication::platformName().startsWith("wayland"):waylandCoreSessionEnvironment();if(allowed){open();reconnect.start();}else error="A native Wayland Core session or Qt Wayland platform is required";}
  ~Impl() override{closing=true;reconnect.stop();cancel();finishCopy({"cancelled","Clipboard adapter closed",{}});for(auto* worker:workers){worker->wait();delete worker;}reset();}
  bool available()const{return display&&manager&&seat&&device&&selectionReady;}
  void notify(){emit q.changed();}
@@ -84,7 +84,7 @@ struct DataControlClipboard::Impl:QObject {
   selectionReady=false;assumedEmpty=false;selection=nullptr;for(auto* offer:offers.keys())ext_data_control_offer_v1_destroy(offer);offers.clear();for(auto* source:sources){ext_data_control_source_v1_destroy(source->native);delete source;}sources.clear();
   if(initialSync){wl_callback_destroy(initialSync);initialSync=nullptr;}if(deviceSync){wl_callback_destroy(deviceSync);deviceSync=nullptr;}if(device){ext_data_control_device_v1_destroy(device);device=nullptr;}if(manager){ext_data_control_manager_v1_destroy(manager);manager=nullptr;}clearKeyboard();if(seat){if(wl_seat_get_version(seat)>=WL_SEAT_RELEASE_SINCE_VERSION)wl_seat_release(seat);else wl_seat_destroy(seat);seat=nullptr;}if(registry){wl_registry_destroy(registry);registry=nullptr;}if(display){wl_display_disconnect(display);display=nullptr;}managerName=seatName=wlrName=wlrVersion=0;protocol=nullptr;
  }
- void lost(){if(dispatching){if(!lossPending){lossPending=true;QTimer::singleShot(0,this,[this]{lossPending=false;lost();});}return;}selectionReady=false;error="Wayland data-control connection closed; restart the app if the Qt session also disconnected";++revision;cancel();finishCopy({"clipboard_unavailable",error,{}});reset();notify();}
+ void lost(){if(dispatching){if(!lossPending){lossPending=true;QTimer::singleShot(0,this,[this]{lossPending=false;lost();});}return;}selectionReady=false;error="Wayland clipboard connection closed. Restart put.gd if the session disconnected.";++revision;cancel();finishCopy({"clipboard_unavailable",error,{}});reset();notify();}
  void bindWlr(){if(manager||!wlrName||!registry)return;
   manager=static_cast<ext_data_control_manager_v1*>(wl_registry_bind(registry,wlrName,&zwlr_data_control_manager_v1_interface,std::min(uint32_t(2),wlrVersion)));managerName=wlrName;protocol="wlr-data-control-unstable-v1";makeDevice();
  }
@@ -147,20 +147,20 @@ struct DataControlClipboard::Impl:QObject {
   // After an assumed-empty sync (Mir announces no initial selection) only a late null announcement is
   // not a change; any owner arriving then is a real copy and must bump the revision (review #1275).
   if(!assumed||o)++s->revision;if(initial)s->notify();if(prior&&prior!=o){s->offers.remove(prior);ext_data_control_offer_v1_destroy(prior);}
-  if(s->active&&s->active->revision!=s->revision)s->complete(failure("clipboard_changed","Clipboard owner changed during acquisition"));
-  if(s->copyReply){if(!s->copyCommitted)s->finishCopy({"copy_suppressed","A newer clipboard owner superseded the unsent result copy",{}});else if(o&&s->offers.value(o).contains(s->copyToken))s->finishCopy({});else s->finishCopy({"clipboard_copy_failed","Clipboard ownership changed before the result could be confirmed",{}});}
+  if(s->active&&s->active->revision!=s->revision)s->complete(failure("clipboard_changed","Clipboard changed before reading finished."));
+  if(s->copyReply){if(!s->copyCommitted)s->finishCopy({"copy_suppressed","Clipboard changed before put.gd could copy the result.",{}});else if(o&&s->offers.value(o).contains(s->copyToken))s->finishCopy({});else s->finishCopy({"clipboard_copy_failed","Clipboard ownership changed before the result could be confirmed",{}});}
  }
  static void primary(void* data,ext_data_control_device_v1*,ext_data_control_offer_v1* o){auto* s=static_cast<Impl*>(data);if(o&&o!=s->selection){s->offers.remove(o);ext_data_control_offer_v1_destroy(o);}}
- static void finished(void* data,ext_data_control_device_v1* device){auto* s=static_cast<Impl*>(data);ext_data_control_device_v1_destroy(device);s->device=nullptr;s->selectionReady=false;s->error="The compositor finished the data-control session";++s->revision;s->cancel();s->finishCopy({"clipboard_unavailable",s->error,{}});s->notify();QTimer::singleShot(0,s,[s]{s->makeDevice();});}
+ static void finished(void* data,ext_data_control_device_v1* device){auto* s=static_cast<Impl*>(data);ext_data_control_device_v1_destroy(device);s->device=nullptr;s->selectionReady=false;s->error="The compositor ended the Wayland clipboard session.";++s->revision;s->cancel();s->finishCopy({"clipboard_unavailable",s->error,{}});s->notify();QTimer::singleShot(0,s,[s]{s->makeDevice();});}
  void acquire(const ResourceLimits& limits,std::function<void(PayloadResult)> cb,quint64 expected){events();if(!available()){cb(failure("clipboard_unavailable","Native Wayland data-control clipboard import is unavailable"));return;}
-  if(pending.size()+(active||!workers.isEmpty()?1:0)>=qint64(limits.pendingOperations)+limits.concurrentUploads){cb(failure("queue_full","Clipboard acquisition queue reached resource limits"));return;}
+  if(pending.size()+(active||!workers.isEmpty()?1:0)>=qint64(limits.pendingOperations)+limits.concurrentUploads){cb(failure("queue_full","Clipboard upload queue is full. Wait for queued uploads to finish and try again."));return;}
   auto request=std::make_shared<Import>();request->limits=limits;request->reply=std::move(cb);request->revision=expected;pending.enqueue(request);pump();
  }
  void pump(){if(closing||active||!workers.isEmpty()||pending.isEmpty())return;active=pending.dequeue();
   const auto dispatchedRequest=active;const auto dispatchedGeneration=generation;QPointer<Impl> self(this);
   events();if(!self||active!=dispatchedRequest||generation!=dispatchedGeneration)return;
-  if(!available()){complete(failure("clipboard_unavailable","Data-control clipboard is unavailable"));return;}if(active->revision!=revision){complete(failure("clipboard_changed","Clipboard changed after invocation; invoke sharing again"));return;}
-  if(!selection){complete(failure("source_unsupported","Clipboard has no owner"));return;}
+  if(!available()){complete(failure("clipboard_unavailable","Data-control clipboard is unavailable"));return;}if(active->revision!=revision){complete(failure("clipboard_changed","Clipboard changed before reading started. Try uploading the clipboard again."));return;}
+  if(!selection){complete(failure("source_unsupported","Clipboard is empty."));return;}
   const auto offered=offers.value(selection);bool needsDiscovery=false;
   active->formats=dataControlImportFormats(offered,[&]{needsDiscovery=true;return QList<QByteArray>{};});
   if(!needsDiscovery){nextFormat();return;}
@@ -194,7 +194,7 @@ struct DataControlClipboard::Impl:QObject {
      // Qt 6.4.2 and 6.8.2 instantiate every installed image plugin for a
      // named format unless detection is off; the signature was checked above.
      QBuffer buffer;buffer.setData(bytes);buffer.open(QIODevice::ReadOnly);QImageReader reader(&buffer,"png");reader.setAutoDetectImageFormat(false);
-     const auto size=reader.size();if(!size.isValid()||qint64(size.width())*size.height()>limits.imagePixels||qint64(size.width())*size.height()>limits.imageBytes/4){*result=failure("input_excessive","Clipboard image dimensions exceed resource limits");return;}
+     const auto size=reader.size();if(!size.isValid()||qint64(size.width())*size.height()>limits.imagePixels||qint64(size.width())*size.height()>limits.imageBytes/4){*result=failure("input_excessive","Clipboard image dimensions exceed the size limit.");return;}
      image=reader.read();if(image.isNull()){*result=failure("source_unsupported","Clipboard image could not be decoded");return;}
     }else{
      Error error;image=ImageJob().decode(bytes,limits,error,cancelled);if(error){*result={{},error};return;}
@@ -206,7 +206,7 @@ struct DataControlClipboard::Impl:QObject {
   });workers.append(worker);connect(worker,&QThread::finished,this,[this,worker,result,noLocal,currentGeneration,request]{workers.removeOne(worker);worker->deleteLater();if(currentGeneration!=generation||active!=request){pump();return;}QPointer<Impl> self(this);events();if(!self)return;if(currentGeneration!=generation||active!=request)return;if(active->revision!=revision){complete(failure("clipboard_changed","Clipboard changed during decoding"));return;}if(*noLocal&&!active->formats.isEmpty()){nextFormat();return;}complete(std::move(*result));});worker->start();
  }
  void complete(PayloadResult result){++generation;auto request=std::move(active);active.reset();if(request)request->cancelled->store(true);if(reader){auto* transfer=reader.data();reader=nullptr;transfer->cancel();transfer->deleteLater();}QPointer<Impl> self(this);if(request&&request->reply){auto cb=std::move(request->reply);cb(std::move(result));}if(self)QTimer::singleShot(0,this,[this]{pump();});}
- void cancel(){++generation;auto queued=std::move(pending);pending.clear();if(active)complete(failure("cancelled","Clipboard acquisition cancelled"));for(auto& request:queued)request->reply(failure("cancelled","Clipboard acquisition cancelled"));}
+ void cancel(){++generation;auto queued=std::move(pending);pending.clear();if(active)complete(failure("cancelled","Clipboard import cancelled."));for(auto& request:queued)request->reply(failure("cancelled","Clipboard import cancelled."));}
  void finishCopy(Error e){if(!e)lastCopyRevision=revision;copyTimer.stop();if(copyFence){wl_callback_destroy(copyFence);copyFence=nullptr;}pendingCopyData.clear();copyCommitted=false;auto cb=std::move(copyReply);copyReply={};copyToken.clear();if(cb){logging::debug(logClipboard(),"Native copy finished",{{"writer","data-control"},{"ok",!e},{"code",e.code}});cb(std::move(e));}}
  // Drains what the compositor has sent, briefly: a hung compositor must not hold up quitting.
  void settleForExit(){
@@ -221,11 +221,11 @@ struct DataControlClipboard::Impl:QObject {
  // Called on the way out. Only the result still on the clipboard is handed over. The first
  // pass commits a copy still waiting on its fence; the second sees that copy's selection.
  void keepAfterExit(){settleForExit();if(copyReply)settleForExit();if(!available()||!selection)return;const auto types=offers.value(selection);for(auto* source:std::as_const(sources))if(types.contains(source->token)){if(!startClipboardKeeper(source->data))logging::info(logClipboard(),"Clipboard result not kept after quitting");return;}}
- void invalidateCopy(){++copyEpoch;if(copyReply&&!copyCommitted)finishCopy({"copy_suppressed","A newer sharing invocation superseded this unsent native result copy",{}});}
+ void invalidateCopy(){++copyEpoch;if(copyReply&&!copyCommitted)finishCopy({"copy_suppressed","A newer action replaced this clipboard copy.",{}});}
  void commitCopy(){
   if(!copyReply)return;
-  if(pendingCopyEpoch!=copyEpoch||revision!=copyRevision){finishCopy({"copy_suppressed","A newer invocation or clipboard owner superseded the result copy",{}});return;}
-  if(!available()){finishCopy({"clipboard_unavailable","Native clipboard disappeared before result copying",{}});return;}
+  if(pendingCopyEpoch!=copyEpoch||revision!=copyRevision){finishCopy({"copy_suppressed","Clipboard changed or a newer action replaced this copy.",{}});return;}
+  if(!available()){finishCopy({"clipboard_unavailable","Wayland clipboard became unavailable before copying.",{}});return;}
   auto* native=ext_data_control_manager_v1_create_data_source(manager);auto* source=new Source{this,native,std::move(pendingCopyData),copyToken};sources[native]=source;
   static const ext_data_control_source_v1_listener listener={send,sourceCancelled};ext_data_control_source_v1_add_listener(native,&listener,source);for(auto it=source->data.cbegin();it!=source->data.cend();++it)ext_data_control_source_v1_offer(native,it.key().toUtf8().constData());
   copyCommitted=true;ext_data_control_device_v1_set_selection(device,native);flush();
@@ -233,8 +233,8 @@ struct DataControlClipboard::Impl:QObject {
   // is sent, cancellation cannot restore the previous owner and must not clear it.
  }
  static void send(void* data,ext_data_control_source_v1*,const char* mime,int fd){auto* source=static_cast<Source*>(data);new FdWriter(fd,source->data.value(QString::fromUtf8(mime)),source->owner);}
- static void sourceCancelled(void* data,ext_data_control_source_v1* native){auto* source=static_cast<Source*>(data);auto* owner=source->owner;if(owner->copyToken==source->token)owner->finishCopy({"clipboard_copy_failed","The compositor cancelled result ownership",{}});owner->sources.remove(native);ext_data_control_source_v1_destroy(native);delete source;}
- void copy(const CopyPayload& payload,std::function<void(Error)> cb){events();if(!available()){cb({"clipboard_unavailable","Native Wayland data-control result copying is unavailable",{}});return;}if(copyReply){cb({"clipboard_copy_failed","Another result copy is awaiting ownership acknowledgement",{}});return;}
+ static void sourceCancelled(void* data,ext_data_control_source_v1* native){auto* source=static_cast<Source*>(data);auto* owner=source->owner;if(owner->copyToken==source->token)owner->finishCopy({"clipboard_copy_failed","The compositor cancelled the clipboard copy.",{}});owner->sources.remove(native);ext_data_control_source_v1_destroy(native);delete source;}
+ void copy(const CopyPayload& payload,std::function<void(Error)> cb){events();if(!available()){cb({"clipboard_unavailable","Native Wayland data-control result copying is unavailable",{}});return;}if(copyReply){cb({"clipboard_copy_failed","Another clipboard copy is still waiting for confirmation.",{}});return;}
   QHash<QString,QByteArray> data;if(payload.kind=="image"&&!payload.encodedImage.isEmpty())data["image/png"]=payload.encodedImage;
   else if(payload.kind=="files"&&!payload.files.isEmpty()){QByteArray uris;for(const auto& file:payload.files){uris.append(QUrl::fromLocalFile(file).toEncoded());uris.append("\r\n");}data["text/uri-list"]=uris;}
   else if(payload.kind=="text"){const auto bytes=payload.text.toUtf8();data["text/plain;charset=utf-8"]=bytes;data["text/plain"]=bytes;data["UTF8_STRING"]=bytes;}

@@ -124,7 +124,7 @@ RecordSession::RecordSession(QObject* parent) : QObject(parent), pipeline_(this)
                 error = previewFrame(workingClip_, {}, config_, 0, 64, resolved_.canvas, frame);
             }
             if (error || durationUs < 1) {
-                if (!error) error = {"recording_failed", "The clip could not be finalized", {}};
+                if (!error) error = {"recording_failed", "Couldn't finish saving the recording.", {}};
                 if (!details.isEmpty()) {
                     // Keep a drain/decoder failure's actual diagnosis. Low space
                     // explains why we stopped, not necessarily why it failed.
@@ -178,7 +178,7 @@ void RecordSession::endCapture(const QString& reason) {
         guard->bounds_.hideAll();
         if (guard->bar_) guard->bar_->hide();
         guard->releaseAcquisition();
-        if (!error && (durationUs < 1 || !QFileInfo(guard->workingClip_).isFile())) error = {"recording_failed", "The recording produced no retained frames", {}};
+        if (!error && (durationUs < 1 || !QFileInfo(guard->workingClip_).isFile())) error = {"recording_failed", "No usable recording was saved.", {}};
         if (error) { error.details["stopReason"] = reason; guard->enterPhase(HelperPhase::Failed); emit guard->event({{"event", "failed"}, {"error", error.toJson()}}); return; }
         guard->durationUs_ = durationUs;
         guard->enterPhase(HelperPhase::Recorded);
@@ -233,7 +233,7 @@ void RecordSession::command(const QString& command, const QJsonObject& params, R
     if (command == "cancel") { cancelLocal(); reply({}, {}); return; }
     if (command == "audio") {
         // recording.audio: the bar's two toggles, set as a click sets them, while the bar is at Ready.
-        if (!bar_) { reply({"recording_state", "The audio sources can be changed only before Record", {}}, {}); return; }
+        if (!bar_) { reply({"recording_state", "Audio sources can only be changed before you select Record.", {}}, {}); return; }
         const bool system = params["system"].toBool(false), microphone = params["microphone"].toBool(false);
         if ((system || microphone) && config_.silent()) { reply({"recording_unsupported", "GIF and WebP are silent", {{"field", "audio"}, {"reason", "silent_format"}}}, {}); return; }
         if (system && !capabilities_["audio"].toObject()["system"].toBool()) { reply({"recording_unsupported", "System audio cannot be recorded here", {{"field", "audio.system"}}}, {}); return; }
@@ -474,7 +474,7 @@ void RecordSession::prepare(const QJsonObject& params, Reply reply) {
 }
 void RecordSession::acquire(Reply reply) {
     // A cancel that arrived while the selector was closing opens nothing.
-    if (phase_ == HelperPhase::Cancelled) { reply({"cancelled", "Recording canceled before the source opened", {}}, {}); return; }
+    if (phase_ == HelperPhase::Cancelled) { reply({"cancelled", "Recording cancelled before the capture source opened.", {}}, {}); return; }
     const auto acquisition = capabilities_["acquisition"].toString();
     if (acquisition == "kde-screencast" || acquisition == "mutter-screencast") { prepareNative(std::move(reply)); return; }
     if (acquisition == "wlr-capture") { prepareImageCopy(std::move(reply)); return; }
@@ -491,7 +491,7 @@ void RecordSession::select(Reply reply) {
     QPointer<RecordSession> guard(this);
     auto cancelled = [guard, reply](const Error& error) {
         if (!guard) return;
-        reply(error.code == "cancelled" ? Error{"cancelled", "Region selection canceled; nothing was recorded", {}} : error, {});
+        reply(error.code == "cancelled" ? Error{"cancelled", "Region selection cancelled before recording started.", {}} : error, {});
     };
     const auto mode = surfaceMode();
     if (mode == SurfaceMode::X11) {
@@ -548,7 +548,7 @@ void RecordSession::select(Reply reply) {
     // GNOME's selector lives in the Shell extension: the resident asks it for the
     // rectangle before the helper starts, and says itself why it cannot (#131).
     // Without one there is no honest region.
-    reply({"region_unavailable", "This desktop has no region selector for recordings; pass target.rect", {}}, {});
+    reply({"region_unavailable", "This desktop has no region selector for recordings. Specify the region with target.rect.", {}}, {});
 }
 void RecordSession::completeSelection(const QJsonObject& params, Reply reply) {
     const auto r = params["rect"].toArray();
@@ -681,12 +681,12 @@ void RecordSession::prepareImageCopy(Reply reply) {
         source.identity = target_.identity;
     } else if (target_.kind == "region") {
         for (QScreen* candidate : screens) if (candidate->geometry().contains(target_.rect)) screen = candidate;
-        if (!screen) { reply({"recording_unsupported", "A region recording here covers one output; this region spans outputs or leaves them", {{"rect", rectJson(target_.rect)}}}, {}); return; }
+        if (!screen) { reply({"recording_unsupported", "A region recording must stay on one monitor. Select a region inside a single monitor.", {{"rect", rectJson(target_.rect)}}}, {}); return; }
     } else if (target_.kind == "monitor") {
         for (QScreen* candidate : screens) if ((target_.identity.isEmpty() && candidate == QGuiApplication::primaryScreen()) || candidate->name() == target_.identity) screen = candidate;
         if (!screen) { reply({"recording_target", "No monitor has this name", {{"identity", target_.identity}}}, {}); return; }
     } else if (target_.kind == "desktop") {
-        if (screens.size() != 1) { reply({"recording_unsupported", "Recording the whole desktop here covers one output; record a monitor instead", {{"outputs", int(screens.size())}}}, {}); return; }
+        if (screens.size() != 1) { reply({"recording_unsupported", "Recording the whole desktop only covers one monitor here. Record a monitor instead.", {{"outputs", int(screens.size())}}}, {}); return; }
         screen = screens.first();
     }
     if (screen) { source.identity = screen->name(); shared = screen->geometry(); }
@@ -751,7 +751,7 @@ void RecordSession::finishWayland(quint32 node, int fd, const QRect& shared, con
 }
 void RecordSession::finishPrepare(Reply reply) {
     // A stream that opened after a cancel shows no ring and no bar.
-    if (phase_ == HelperPhase::Cancelled) { releaseAcquisition(); reply({"cancelled", "Recording canceled before the source opened", {}}, {}); return; }
+    if (phase_ == HelperPhase::Cancelled) { releaseAcquisition(); reply({"cancelled", "Recording cancelled before the capture source opened.", {}}, {}); return; }
     if (!portalTarget_) {
         ResolvedTarget resolved;
         if (auto e = resolveX11Target(target_, resolved)) { reply(e, {}); return; }
@@ -859,7 +859,7 @@ void RecordSession::start(Reply reply) {
     QPointer<RecordSession> guard(this);
     QTimer::singleShot(handleSettleMs, this, [guard, reply = std::move(reply)]() mutable {
         if (!guard) return;
-        if (guard->phase_ == HelperPhase::Cancelled) { reply({"cancelled", "Recording canceled before it started", {}}, {}); return; }
+        if (guard->phase_ == HelperPhase::Cancelled) { reply({"cancelled", "Recording cancelled before it started.", {}}, {}); return; }
         guard->begin(std::move(reply));
     });
 }
@@ -924,7 +924,7 @@ void RecordSession::stop(Reply reply) {
         guard->releaseAcquisition();
         // A second Stop refused while the first drains leaves the capture running.
         if (error) { if (!guard->pipeline_.running()) guard->enterPhase(HelperPhase::Failed); reply(error, {}); return; }
-        if (durationUs < 1 || !QFileInfo(guard->workingClip_).isFile()) { guard->enterPhase(HelperPhase::Failed); reply({"recording_failed", "The recording produced no retained frames", {}}, {}); return; }
+        if (durationUs < 1 || !QFileInfo(guard->workingClip_).isFile()) { guard->enterPhase(HelperPhase::Failed); reply({"recording_failed", "No usable recording was saved.", {}}, {}); return; }
         guard->durationUs_ = durationUs;
         guard->enterPhase(HelperPhase::Recorded);
         guard->noteCaptured();

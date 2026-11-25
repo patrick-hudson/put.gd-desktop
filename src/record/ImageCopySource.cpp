@@ -199,7 +199,7 @@ struct ImageCopySource::Impl {
   if(changed){s->reallocate=true;s->constraintChanges.fetch_add(1);}
   s->constraints=true;
  }
- static void sessionStopped(void* d,ext_image_copy_capture_session_v1*){auto* s=static_cast<Impl*>(d);s->ended=true;s->fail({"recording_target","The recorded window or output is gone; the recording up to here was kept",{}});}
+ static void sessionStopped(void* d,ext_image_copy_capture_session_v1*){auto* s=static_cast<Impl*>(d);s->ended=true;s->fail({"recording_target","The recorded window or output closed. The recording up to that point was kept.",{}});}
  void fail(Error error){if(!failure)failure=std::move(error);}
  bool allocate(){
   dropClean();retireSlots();
@@ -234,7 +234,7 @@ struct ImageCopySource::Impl {
  void frameFailed(uint32_t reason){
   ext_image_copy_capture_frame_v1_destroy(frame);frame=nullptr;inFlight=nullptr;
   // Constraints: fresh ones and done follow; the loop reallocates then.
-  if(reason==EXT_IMAGE_COPY_CAPTURE_FRAME_V1_FAILURE_REASON_STOPPED){ended=true;fail({"recording_target","The recorded window or output is gone; the recording up to here was kept",{}});}
+  if(reason==EXT_IMAGE_COPY_CAPTURE_FRAME_V1_FAILURE_REASON_STOPPED){ended=true;fail({"recording_target","The recorded window or output closed. The recording up to that point was kept.",{}});}
  }
  static void release(gpointer data){
   auto* slot=static_cast<Slot*>(data);const auto shared=slot->shared;bool drop=false;
@@ -518,7 +518,7 @@ Error ImageCopySource::open(const Target& target,QSize* size,QString* identity,Q
   QList<WaylandToplevel> ext,wlr;for(auto* w:std::as_const(d_->extWindows))if(w->done)ext.append(w->current);for(auto* w:std::as_const(d_->wlrWindows))if(w->done)wlr.append(w->current);
   WaylandToplevel chosen;
   if(target.identity.isEmpty()){Error error;const auto active=matchActiveToplevel(ext,wlr,error);if(!active)return {"recording_target",error.message,error.details};chosen=*active;}
-  else{bool found=false;for(const auto& w:std::as_const(ext))if(w.identifier==target.identity){chosen=w;found=true;}if(!found)return {"recording_target","No window has this identity; list them with capture.windows",{}};}
+  else{bool found=false;for(const auto& w:std::as_const(ext))if(w.identifier==target.identity){chosen=w;found=true;}if(!found)return {"recording_target","No window matches this identity. List windows with recording.windows.",{}};}
   if(putgdAppId(chosen.appId))return {"recording_target","put.gd does not record its own windows",{}};
   for(auto* w:std::as_const(d_->extWindows))if(w->done&&w->current.identifier==chosen.identifier)d_->source=ext_foreign_toplevel_image_capture_source_manager_v1_create_source(d_->windowSources,static_cast<ext_foreign_toplevel_handle_v1*>(w->native));
   if(identity)*identity=chosen.identifier;if(appId)*appId=chosen.appId;
@@ -526,7 +526,7 @@ Error ImageCopySource::open(const Target& target,QSize* size,QString* identity,Q
   wl_output* output=nullptr;QString name=target.identity;
   if(name.isEmpty()&&d_->outputs.size()==1)name=d_->outputs.first().name;
   for(const auto& o:std::as_const(d_->outputs))if(o.name==name)output=o.native;
-  if(!output)return {"recording_target","No output has this name",{{"identity",target.identity}}};
+  if(!output)return {"recording_target","No monitor has this name.",{{"identity",target.identity}}};
   d_->source=ext_output_image_capture_source_manager_v1_create_source(d_->outputSources,output);
   for(const auto& o:std::as_const(d_->outputs))if(o.native==output)d_->transform=o.transform;
   recorded=output;

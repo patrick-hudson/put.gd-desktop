@@ -495,7 +495,7 @@ Error ScrollCapture::openSelector() {
         closeSelector();
         const bool user = error.code == "cancelled";
         state_ = user ? State::Cancelled : State::Failed;
-        if (auto reply = std::exchange(selectReply_, {})) reply(user ? Error{"cancelled", "Region selection canceled", {}} : error, {});
+        if (auto reply = std::exchange(selectReply_, {})) reply(user ? Error{"cancelled", "Region selection cancelled.", {}} : error, {});
         if (user) emit event({{"event", "cancelled"}});
         else emit event({{"event", "failed"}, {"error", error.toJson()}});
     };
@@ -535,7 +535,7 @@ Error ScrollCapture::openSelector() {
         return {};
     }
 #endif
-    return unavailable(QStringLiteral("region_unavailable"), QStringLiteral("This desktop has no region selector here; pass rect"));
+    return unavailable(QStringLiteral("region_unavailable"), QStringLiteral("This desktop has no region selector for scrolling capture."));
 }
 
 void ScrollCapture::selected(const QRect& rect) {
@@ -577,7 +577,7 @@ Error ScrollCapture::setRect(const QRect& rect) {
     } else {
         for (QScreen* screen : QGuiApplication::screens()) if (screen->geometry().contains(rect)) { output = screen->geometry(); name = screen->name(); }
     }
-    if (output.isEmpty()) return region(QStringLiteral("The region must lie on one output"));
+    if (output.isEmpty()) return region(QStringLiteral("The region must stay on one monitor."));
     rect_ = chosen;
     screen_ = output;
     screenName_ = name;
@@ -639,7 +639,7 @@ void ScrollCapture::start(Reply reply) {
     auto refused = [guard, reply](const Error& error) {
         if (!guard) return;
         // A cancel closed the source that was opening.
-        if (guard->state_ == State::Cancelled) { reply({"cancelled", "Scroll capture canceled before it started", {}}, {}); return; }
+        if (guard->state_ == State::Cancelled) { reply({"cancelled", "Scrolling capture cancelled before it started.", {}}, {}); return; }
         guard->release();
         guard->state_ = State::Failed;
         reply(error, {});
@@ -695,14 +695,14 @@ void ScrollCapture::start(Reply reply) {
         return;
     }
 #endif
-    refused(unavailable(QStringLiteral("frame_source_unavailable"), QStringLiteral("No frame source for this desktop")));
+    refused(unavailable(QStringLiteral("frame_source_unavailable"), QStringLiteral("No screen capture source is available for this desktop.")));
 }
 
 void ScrollCapture::begin(const FrameTap::Source& source, Reply reply) {
     auto refused = [this, reply](const Error& error) { release(); state_ = State::Failed; reply(error, {}); };
     // A cancel that arrived while the source was opening starts nothing.
-    if (state_ != State::Starting) { release(); reply({"cancelled", "Scroll capture canceled before it started", {}}, {}); return; }
-    if (!injector_ || !injector_->unavailableReason().isEmpty()) { refused(unavailable(QStringLiteral("injection_unavailable"), injector_ ? injector_->unavailableReason() : QStringLiteral("No injector for this desktop"))); return; }
+    if (state_ != State::Starting) { release(); reply({"cancelled", "Scrolling capture cancelled before it started.", {}}, {}); return; }
+    if (!injector_ || !injector_->unavailableReason().isEmpty()) { refused(unavailable(QStringLiteral("injection_unavailable"), injector_ ? injector_->unavailableReason() : QStringLiteral("This desktop doesn't allow put.gd to scroll automatically."))); return; }
     removeFiles();
     if (auto e = tap_.start(source)) { refused(e); return; }
     job_ = std::make_shared<Job>();
@@ -764,7 +764,7 @@ void ScrollCapture::stop(Reply reply) {
     // A Stop behind a Cancel whose worker has not ended yet is answered as the
     // Cancel will end the capture, not as a fault: the resident took the
     // refusal for a failed capture (acceptance of 2026-11-11).
-    if (state_ == State::Capturing && job_ && cancelRequested_) { reply({"cancelled", "Scroll capture canceled", {}}, {}); return; }
+    if (state_ == State::Capturing && job_ && cancelRequested_) { reply({"cancelled", "Scrolling capture cancelled.", {}}, {}); return; }
     if (state_ != State::Capturing || !job_ || cancelRequested_) { reply(stateError("Nothing is being captured"), {}); return; }
     if (stopReply_) { reply(stateError("The capture is already stopping"), {}); return; }
     stopRequested_ = true;
@@ -791,7 +791,7 @@ void ScrollCapture::cancel(Reply reply) {
     }
     // Set first: closing a source that is still opening reports through start().
     if (state_ != State::Failed) state_ = State::Cancelled;
-    if (auto pending = std::exchange(selectReply_, {})) pending({"cancelled", "Scroll capture canceled", {}}, {});
+    if (auto pending = std::exchange(selectReply_, {})) pending({"cancelled", "Scrolling capture cancelled.", {}}, {});
     closeSelector();
     release();
     removeFiles();
@@ -1247,7 +1247,7 @@ void ScrollCapture::finish(std::shared_ptr<Outcome> outcome) {
     if (cancelRequested_) {
         removeFiles();
         state_ = State::Cancelled;
-        if (stopReply) stopReply({"cancelled", "Scroll capture canceled", {}}, {});
+        if (stopReply) stopReply({"cancelled", "Scrolling capture cancelled.", {}}, {});
         if (cancelReply) cancelReply({}, {});
         return;
     }
@@ -1425,7 +1425,7 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
     const bool truncated = reason == "height_cap" || reason == "lost_track" || reason == "top_not_reached";
     const qint64 rows = canvas.bottom() - canvas.top();
     if (spoolFailed)
-        outcome->error = {"encoding_failed", diskFull ? QStringLiteral("The capture could not be written to its staging file: the disk is full") : QStringLiteral("The capture could not be written to its staging file"),
+        outcome->error = {"encoding_failed", diskFull ? QStringLiteral("Couldn't write the capture to its staging file because the disk is full. Free up space and try again.") : QStringLiteral("The capture could not be written to its staging file"),
                           {{"stage", "capture"}, {"check", "spool"}}};
     else if (end == SessionEnd::Discarded) {}
     else if (end == SessionEnd::Finished && (stats.placed == 0 || rows <= 0)) outcome->nothing = true;
@@ -1435,10 +1435,10 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
     else if (!kept) {
         switch (end) {
             case SessionEnd::InjectorFailed: outcome->error = unavailable(QStringLiteral("injection_unavailable"), QStringLiteral("The desktop refused the scroll input")); outcome->error.details["stage"] = "capture"; break;
-            case SessionEnd::NotReady: outcome->error = {"capture_timeout", "A modifier key stayed down, so no wheel step was sent", {{"stage", "capture"}, {"check", "modifiers_released"}}}; break;
+            case SessionEnd::NotReady: outcome->error = {"capture_timeout", "A modifier key stayed held down, so auto-scroll couldn't start. Release the keys and try again.", {{"stage", "capture"}, {"check", "modifiers_released"}}}; break;
             case SessionEnd::FrameSizeChanged: outcome->error = {"display_changed", "The display changed during the capture", {{"stage", "capture"}}}; break;
             case SessionEnd::SourceLost: outcome->error = unavailable(QStringLiteral("frame_source_unavailable"), QStringLiteral("The frame stream ended during the capture")); outcome->error.details["stage"] = "capture"; break;
-            default: outcome->error = {"capture_timeout", "The frame stream delivered no frame", {{"stage", "capture"}, {"check", "first_frame"}}}; break;
+            default: outcome->error = {"capture_timeout", "The screen capture stream didn't send a frame in time. Try again.", {{"stage", "capture"}, {"check", "first_frame"}}}; break;
         }
     } else if (!job->discard.load()) {
         // The spool as one PNG, straight from the file's pages.
@@ -1481,7 +1481,7 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
                     outcome->descriptor["topReached"] = false;
                     if (reason == "top_not_reached" && !stats.toTopGaveUp.empty()) outcome->descriptor["note"] = QString::fromStdString(stats.toTopGaveUp);
                 }
-            } else if (!job->discard.load()) outcome->error = {png.exceeded() ? "input_excessive" : "encoding_failed", png.exceeded() ? "The PNG exceeded its size bound" : "The PNG could not be written", {{"stage", "encode"}, {"check", "png"}}};
+            } else if (!job->discard.load()) outcome->error = {png.exceeded() ? "input_excessive" : "encoding_failed", png.exceeded() ? "The encoded PNG exceeded its size limit." : "Couldn't write the captured PNG. Check free disk space and try again.", {{"stage", "encode"}, {"check", "png"}}};
         }
     }
     canvas.close();
