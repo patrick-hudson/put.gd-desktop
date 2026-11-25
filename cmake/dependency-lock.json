@@ -2,16 +2,16 @@
   "schemaVersion": 1,
   "awsSdk": {
     "repository": "https://github.com/aws/aws-sdk-cpp.git",
-    "release": "1.11.924",
-    "commit": "e8c12a9fd0cbbc4e1ff36b90e35ede7cd20e7bc8",
+    "release": "1.11.937",
+    "commit": "4226000e32bb206beaa754b2bffabe69ba01b8db",
     "submodules": [
       {
         "path": "crt/aws-crt-cpp",
-        "commit": "58bca57cbc8b242468414972a6a35f92676b164d"
+        "commit": "07b1d9a9c0ba16551f6184739fd19f2d0f2f986d"
       },
       {
         "path": "crt/aws-crt-cpp/crt/aws-c-auth",
-        "commit": "055e822f021d1cab11d608b94ac34de250986134"
+        "commit": "7d87eede281b4d096c6ad98d5bbdd92a8f5e9ac5"
       },
       {
         "path": "crt/aws-crt-cpp/crt/aws-c-cal",
@@ -19,7 +19,7 @@
       },
       {
         "path": "crt/aws-crt-cpp/crt/aws-c-common",
-        "commit": "2a29f7ea85397ff15e41ae086fb3662484fd305d"
+        "commit": "45e9307382f196175f0dbb832a178570924bda96"
       },
       {
         "path": "crt/aws-crt-cpp/crt/aws-c-compression",
@@ -31,11 +31,11 @@
       },
       {
         "path": "crt/aws-crt-cpp/crt/aws-c-http",
-        "commit": "afe6411dd17b2368d5262724c25a3b85670b4e06"
+        "commit": "d19eabf4c5dc78ee1e07033a5015e9d50d04ec31"
       },
       {
         "path": "crt/aws-crt-cpp/crt/aws-c-io",
-        "commit": "1831a1943e4c4a034d42f954e8f154cf6b9b492f"
+        "commit": "eac372568ea06c999cb26c4db996633c84b4e86d"
       },
       {
         "path": "crt/aws-crt-cpp/crt/aws-c-mqtt",
@@ -43,11 +43,11 @@
       },
       {
         "path": "crt/aws-crt-cpp/crt/aws-c-s3",
-        "commit": "eeb85f3e4ed89497a93952964bd8228d1f435e6e"
+        "commit": "bc923d67e7aa85fa715c46bd95c0c5711148873c"
       },
       {
         "path": "crt/aws-crt-cpp/crt/aws-c-sdkutils",
-        "commit": "de0fbe807a409158c3fa285bafb88120c8989609"
+        "commit": "66a79c011dbe057fcc6e9620f93a52c2c29843e8"
       },
       {
         "path": "crt/aws-crt-cpp/crt/aws-checksums",
@@ -55,11 +55,11 @@
       },
       {
         "path": "crt/aws-crt-cpp/crt/aws-lc",
-        "commit": "fa9bc8d6f7cfb2cf849b247fb06bbbfc41ecc9d6"
+        "commit": "cd481c207e38f06aeb5766f4a1cdfce10a4c0af8"
       },
       {
         "path": "crt/aws-crt-cpp/crt/s2n",
-        "commit": "b170000016fb44fa4dfdd86ed0b75bd28241e707"
+        "commit": "e7ce83a27fa9525515a621754a7183a51c80246b"
       },
       {
         "path": "crt/aws-crt-cpp/crt/s2n/tests/cbmc/aws-verification-model-for-libcrypto",
