@@ -254,7 +254,7 @@ private slots:
         // Covers: arm (X / B), draw (a drag), the panel's Redact | Blur.
         state = drive({{"action", "armBlur"}}).state;
         QCOMPARE(state["placement"].toObject()["kind"].toString(), QString("blur"));
-        QVERIFY(state["warning"].toString().contains("reversible"));
+        QCOMPARE(state["warning"].toString(), QString("Blurred text can sometimes be recovered. Use Redact for secrets."));
         QCOMPARE(drive({{"action", "redo"}}).code, QString("recording_state"));
         QVERIFY(drive({{"action", "cancelPlacement"}}).state["placement"].isNull());
         QCOMPARE(drive({{"action", "cancelPlacement"}}).code, QString("recording_state"));
