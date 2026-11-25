@@ -586,7 +586,7 @@ private slots:
         const auto with = [&](std::initializer_list<QPair<QString, QJsonValue>> changes) { auto o = base; for (const auto& [k, v] : changes) { if (v.isUndefined()) o.remove(k); else o[k] = v; } return sxcu(o); };
         QTest::newRow("truncated") << sxcu(base).left(40) << "sxcu_invalid" << "JSON object";
         QTest::newRow("select") << with({{"Arguments", QJsonObject{{"album", "{select:a|b}"}}}}) << "sxcu_unsupported" << "value of argument 1 uses a placeholder put.gd cannot send";
-        QTest::newRow("managed header") << with({{"Headers", QJsonObject{{"Content-Length", "12"}, {"authorization", token}}}}) << "" << "left out";
+        QTest::newRow("managed header") << with({{"Headers", QJsonObject{{"Content-Length", "12"}, {"authorization", token}}}}) << "" << "Left out";
     }
     void importCases() {
         QFETCH(QByteArray, file);
