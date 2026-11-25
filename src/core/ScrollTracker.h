@@ -316,6 +316,12 @@ class ScrollTracker {
 
   // atMs: when the frame was grabbed (any monotonic milliseconds), or -1.
   TrackResult addFrame(const FrameView& frame, TrackerHint hint = {}, long long atMs = -1);
+  // No frame came until nowMs (the frames' clock): a skip run of at least
+  // lostAfterSkips frames whose lostAfterMs are up is Lost now. A stream
+  // that sends only damage may send nothing more for a while, and a capture
+  // that ends sends nothing more at all (LLONG_MAX): such a run is never left
+  // Following (Sol on #2071).
+  void expire(long long nowMs);
   // The driver takes back what its hints said since the last placed frame:
   // a step that ended without moving the page. The sum of hints starts again,
   // as after a frame proved still.

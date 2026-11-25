@@ -1832,6 +1832,23 @@ void testLostWindow() {
              r60.skipsToLost, r60.msToLost, r30.wrong + r60.wrong));
   report("frames without a time: lost on the second skipped frame", untimed.skipsToLost == 2 && untimed.wrong == 0,
          fmt("lost on skip %d, %d wrong", untimed.skipsToLost, untimed.wrong));
+  // Two frames skipped 17 ms apart, then none (a damage-only stream that went
+  // quiet, or the capture's end): not Lost before the window is up, Lost once
+  // it is, and Lost at the end whatever the time (Sol on #2071).
+  const auto pending = [&](long long expireAt) {
+    MemoryCanvas canvas(W);
+    ScrollTracker tracker(canvas);
+    for (int i = 0; i < 6; ++i) tracker.addFrame(scene.frame(i * 30, i).view(), {}, i * 17);
+    tracker.addFrame(stray.frame(10, 6).view(), {}, 6 * 17);
+    tracker.addFrame(stray.frame(20, 7).view(), {}, 7 * 17);
+    const bool before = tracker.state() == TrackState::Lost;
+    tracker.expire(expireAt);
+    return std::make_pair(before, tracker.state() == TrackState::Lost);
+  };
+  const auto early = pending(5 * 17 + 40), late = pending(5 * 17 + 60), atEnd = pending(LLONG_MAX);
+  report("two skipped frames and no more: Lost when the window is up, and at the end",
+         !early.first && !early.second && late.second && atEnd.second,
+         fmt("before %d, at +40 ms %d, at +60 ms %d, at the end %d", early.first, early.second, late.second, atEnd.second));
 }
 
 // While the page is lost, a frame matched at a guessed place marks nothing as

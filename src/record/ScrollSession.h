@@ -266,6 +266,7 @@ public:
 private:
     enum class Phase { Off, ToTop, Step, Settle, Recover };
     void feed(const RunFrame&);
+    void expireSkips();
     void feedTracker(const scroll::FrameView&, int64_t t);
     void account(const scroll::TrackResult&, int64_t t);
     scroll::TrackerHint hintFor(int64_t t);

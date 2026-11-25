@@ -4219,6 +4219,11 @@ void ScrollTracker::forgetHints() {
   hintKnown_ = true;
 }
 
+void ScrollTracker::expire(long long nowMs) {
+  if (state_ == TrackState::Lost || capped_ || skipRun_ < opts_.lostAfterSkips) return;
+  if (settledAt_ < 0 || nowMs - settledAt_ >= opts_.lostAfterMs) state_ = TrackState::Lost;
+}
+
 bool ScrollTracker::skipRunLost() const {
   if (skipRun_ < opts_.lostAfterSkips) return false;
   return frameAt_ < 0 || settledAt_ < 0 || frameAt_ - settledAt_ >= opts_.lostAfterMs;

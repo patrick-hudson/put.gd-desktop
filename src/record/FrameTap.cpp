@@ -234,7 +234,10 @@ std::optional<RunFrame> FrameTap::nextFrame(int timeoutMs) {
 void FrameTap::watchPace(bool on) {
     std::lock_guard lock(mailbox_);
     watching_ = on && source_.x11Rect.isValid() && !source_.imageCopy && !source_.pipewireNode;
-    if (watching_) pace_.restart(source_.fps, nowMs());
+    if (!watching_) return;
+    pace_.restart(source_.fps, nowMs());
+    // Frames replaced before the watch began are not the loop's to answer for.
+    if (arrivedCount_ - givenCount_ > 1) givenCount_ = arrivedCount_ - 1;
 }
 
 FrameTap::Rate FrameTap::rate() const {

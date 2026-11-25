@@ -29,7 +29,7 @@ public:
         const double sent = double(arrived_) * 1000.0 / double(now - from_);
         Verdict verdict = Verdict::Keep;
         if (sent < 0.8 * fps_) verdict = Verdict::SourceSlow;
-        else if (4 * missed_ > arrived_) verdict = Verdict::LoopSlow;
+        else if (4 * missed_ >= arrived_ && missed_ > 0) verdict = Verdict::LoopSlow;
         lastSent_ = sent;
         lastMissedShare_ = arrived_ ? double(missed_) / double(arrived_) : 0;
         bad_ = verdict == Verdict::Keep ? 0 : bad_ + 1;
