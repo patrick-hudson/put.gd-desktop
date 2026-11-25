@@ -1255,8 +1255,20 @@ def keep_aside(path):
         shutil.copy2(path, path.with_name(path.name+'.before-recovery-'+uuid.uuid4().hex[:8]))
 
 
+def evidence_file(path):
+    """True for a file guarded cleanup would accept as evidence: owned, regular, single-link, no symlink in its path."""
+    from tools.lab.overlay_cleanup import CleanupError, _regular
+    try:
+        _regular(path)
+        return True
+    except (CleanupError, OSError):
+        return False
+
+
 def put_back(source, target):
     """Make target byte-for-byte the kept copy source, keeping the current target aside."""
+    if os.path.lexists(target) and not evidence_file(target):
+        raise NotRun('guest retained: '+str(target)+' is not an owned single-link regular file; inspect it before recovery')
     keep_aside(target)
     temporary = target.with_name(target.name+'.restore-'+uuid.uuid4().hex[:8])
     shutil.copy2(source, temporary)
@@ -1266,7 +1278,7 @@ def put_back(source, target):
 def kept_copy(out, name, sha256):
     """The current file or a copy an earlier retirement kept aside whose bytes hash to sha256, or None."""
     for path in [out/name, *sorted(out.glob(name+'.before-recovery-*'))]:
-        if path.is_file() and not path.is_symlink() and digest(path) == sha256:
+        if evidence_file(path) and digest(path) == sha256:
             return path
     return None
 
@@ -1336,25 +1348,21 @@ def attempt_files(out, attempts):
 
 
 def earlier_archive(out, attempts):
-    """The archive an interrupted earlier retirement already wrote and hashed, when it still holds exactly these attempts."""
-    manifest = out/'completion-manifest.json'
-    if not manifest.is_file():
-        return None
-    try:
-        files = json.loads(manifest.read_text()).get('files', {})
-    except (OSError, ValueError, AttributeError):
-        return None
+    """An archive an interrupted earlier retirement already wrote that holds exactly these attempts' files."""
+    from tools.lab.surface_driver.collect import require_terminal
+    # The same terminal audit collect() requires before it archives anything.
+    for attempt in attempts:
+        require_terminal(attempt)
     current = None
-    for name, sha256 in files.items() if isinstance(files, dict) else ():
-        archive = out/name
-        if (not re.fullmatch(r'attachments(-recovery-[0-9a-f]{8})?\.tgz', name) or not archive.is_file()
-                or archive.is_symlink() or digest(archive) != sha256):
+    for archive in sorted(out.glob('attachments*.tgz')):
+        if not re.fullmatch(r'attachments(-recovery-[0-9a-f]{8})?\.tgz', archive.name) or not evidence_file(archive):
             continue
         current = attempt_files(out, attempts) if current is None else current
         try:
             if archived_files(archive) == current:
                 return archive
-        except (OSError, tarfile.TarError):
+        except Exception:
+            # A partial or unreadable archive is never reused; a fresh one is written.
             continue
     return None
 

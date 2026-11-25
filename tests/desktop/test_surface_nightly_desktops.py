@@ -1285,6 +1285,15 @@ class NightlyTests(unittest.TestCase):
             root = Path(tmp).resolve()
             stack, run, out, processes = self.retirement_fixture(root)
             with stack:
+                # Interrupted after the archive, before any manifest names it.
+                real_save = nightly.save
+                def stopped(path, value):
+                    if Path(path).name == 'completion.json':
+                        raise nightly.NotRun('guest recovery deadline exhausted; explicit recovery required')
+                    real_save(path, value)
+                with patch.object(nightly, 'save', side_effect=stopped), self.assertRaises(nightly.NotRun):
+                    nightly.retire(run, out, {'idle_memory-1': {'status': 'green'}})
+                self.assertFalse((out/'completion-manifest.json').exists())
                 # Interrupted before guarded cleanup prepared anything: the retry reuses the checked archive.
                 processes.side_effect = nightly.NotRun('guest recovery deadline exhausted; explicit recovery required')
                 with self.assertRaises(nightly.NotRun):
@@ -1325,6 +1334,20 @@ class NightlyTests(unittest.TestCase):
                 # The replaced files stay in the evidence.
                 outcomes = sorted(json.loads(p.read_text())['outcome'] for p in out.glob('completion.json.before-recovery-*'))
                 self.assertIn('failed', outcomes)
+
+    def test_a_retry_never_puts_evidence_back_over_a_symlink(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            stack, run, out, processes = self.retirement_fixture(root)
+            with stack:
+                self.interrupt_after_prepared(run, out, processes)
+                nightly.keep_aside(out/'completion-manifest.json')
+                (out/'completion-manifest.json').unlink()
+                (out/'completion-manifest.json').symlink_to(root/'elsewhere.json')
+                with self.assertRaisesRegex(nightly.NotRun, 'not an owned single-link regular file'):
+                    nightly.retire(run, out, {})
+                self.assertTrue((out/'completion-manifest.json').is_symlink())
+                self.assertTrue((run/'disk.qcow2').exists())
 
     def test_a_retry_refuses_a_manifest_or_member_changed_by_anything_else(self):
         from tools.lab import lab
