@@ -777,7 +777,7 @@ destination settings** when they were for one session only).
 A failed, partial or interrupted operation's notification has a **Save diagnostics
 for this upload** button, and so do failed History rows (in the inspector and the row
 menu). Each builds a package for that one operation, in the remembered folder or the
-default one. The resident then posts **put.gd — diagnostics saved** with the file name,
+default one. The resident then posts **Diagnostics saved** with the file name,
 size and folder, and a **Show in folder** button; after an upload from the dialog it
 also says where the package went, or why it wasn't uploaded. Notification buttons
 need the desktop's notification server to support actions (GNOME, Plasma and
@@ -800,7 +800,7 @@ any other path `diagnostics.bundle` saved a package to in this resident, such as
 must still exist (`diagnostics_package_missing`). The notification's button always
 carries the path the resident just saved, so it works for every saved name. When the
 reveal is refused, for example because the package was moved, the resident logs
-`Show in folder refused` and posts **put.gd — Show in folder** with the reason instead
+`Show in folder refused` and posts **Show in folder failed** with the reason instead
 of doing nothing.
 
 Agents drive the same controls in an open window: `ui.diagnostics` (MCP

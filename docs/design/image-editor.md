@@ -169,8 +169,9 @@ similar), because Qt would otherwise still load the desktop's theme plugin; on
 Plasma that plugin brings in Qt Quick and the GPU driver (about 85 MiB).
 
 Use **Redact** for passwords and other private information. Blur and pixelation
-can leave information that helps reconstruct or infer text; Pixelate shows the
-same warning as Blur ("Pixelation may be reversible.") with **Choose Redact tool**.
+can leave information that helps reconstruct or infer text; Pixelate shows an
+equivalent warning ("Pixelated text can sometimes be recovered.", where Blur's says "Blurred text can
+sometimes be recovered.") with **Switch to Redact**.
 
 **Copy image** (Ctrl+Shift+C, beside **Save a copy…**) puts the same sanitized
 PNG that Upload and Save a copy produce on the clipboard. It uploads nothing,
@@ -386,8 +387,8 @@ what the editor itself guarantees.
   URL's row shows the whole URL so it is in view before Open link is pressed, and Open link opens it
   at once with no dialog. A binary code shows its kind and length only.
 - **Quick redact** adds ordinary Redact marks as one undo step and says "Added 3 suggested
-  redactions" or "No matches found. Text can still be there.". It always carries "Suggestions only.
-  Recognition can miss text.". It never says a page is safe. **Redact is what removes pixels.** If a
+  redactions" or "No matches found. Check the image manually.". It always carries "Check the image before
+  uploading. Detection can miss text.". It never says a page is safe. **Redact is what removes pixels.** If a
   Redact mark or the crop changes while Quick redact waits for recognition or while it matches, it
   ends with `edit_stale` and adds nothing. Its menu is Email addresses, Phone numbers, IP
   addresses, Card numbers, Keys and tokens, **My username and name**, **My redaction list**, All

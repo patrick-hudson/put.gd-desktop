@@ -319,12 +319,12 @@ Plasma, Hyprland and Budgie, so is the pointer anywhere on a clear watch surface
 that leaves holes only at the wheel points, the bar and the pad. On GNOME, so is any position
 the Shell extension reports other than the helper's own targets (extension 24, `pointerWatch`;
 see [GNOME](../desktops/gnome.md#scrolling-capture)). The gate closes at once: nothing more is
-injected, the watch and the pad go, the bar says **Paused: you moved the mouse**, and the
+injected, the watch and the pad go, the bar says **Paused (mouse moved)**, and the
 capture follows the user. **Auto-scroll** (once the mouse has been still for 500 ms) or
 `scroll.autoScroll {on: true}` turns it on again from wherever the page is.
 
 **It hands the wheel back by itself** when the page moves up while it turns it down (you
-scrolled: **Paused: you scrolled**), and when nothing scrolls at any of its wheel points
+scrolled: **Paused (scrolled)**), and when nothing scrolls at any of its wheel points
 (**Nothing scrolled here**). A jump up counts as yours only if the next frame agrees: the
 page stays up or goes on up. One frame placed far up and then the page back on
 auto-scroll's way was a picture out of place: in one run on a starved X server,
@@ -384,14 +384,20 @@ region** (which is Done during a capture) are the controls.
 
 | State | Says | Then |
 | --- | --- | --- |
-| `waiting` | Scroll the page | Done (or the key) when you reach the end |
-| `following` | Following | Done (or the key) when you reach the end |
+| `waiting` | Scroll the page | The finish hint (below) |
+| `following` | Following | The finish hint (below) |
 | `lost` | Lost the page (Auto-scroll lost the page, after it gave up) | Scroll back a little |
 | `scrollingToTop` | Scrolling to the top… | Move the mouse to pause |
 | `autoScrolling` | Auto-scrolling | Move the mouse to pause |
-| `paused` | Paused: you moved the mouse / Paused: you scrolled / Found the page again / Nothing scrolled here | Scroll on, or Auto-scroll to go on / Scroll the page yourself |
+| `paused` | Paused (mouse moved) / Paused (scrolled) / Found the page again / Nothing scrolled here | Scroll, or select Auto-scroll / Scroll the page yourself |
 | `resuming` | Auto-scroll in a moment… | Let go of the mouse |
 | `finishing` | Saving… | |
+
+The finish hint names the keys the bar knows about (`finishKey`, one per line). With none it
+says "Select Done to finish", with one key "Select Done, or press %1", with two "Select Done,
+or press %1 or %2", and with more keys the earlier ones separated by commas and "or" before the
+last (three keys: "press %1, %2 or %3"). On X11 the keys are Esc
+and then the `scroll` hotkey where one is bound.
 
 Beside them, the height so far. Buttons: **Auto-scroll** (a toggle), **Done** (enabled
 from the first frame on, so in every state) and **Cancel**. One size for all states,
@@ -484,11 +490,12 @@ or for Done. The resident refuses a result that breaks these promises:
 `top_not_reached` without `topReached: false`; `lost_track` without `endedLost`;
 `truncated` other than the table says; no frame placed.
 
-`height_cap`, `top_not_reached` and `lost_track` raise a warning notification ("put.gd —
-scrolling capture stopped" or "… incomplete") and put a note on the History row: "Stopped
+`height_cap`, `top_not_reached` and `lost_track` raise a warning notification (titled
+**Scrolling capture stopped** for `height_cap` and **Scrolling capture incomplete** for the
+other two) and put a note on the History row: "Stopped
 at 30,000 px. The page continues below.", "Could not reach the top of the page. The image
-starts partway down." and "Finished while put.gd had lost its place. The image ends where
-it last found the page." The idle bound puts "Finished by itself after 10 minutes without
+starts partway down." and "Lost track of the page before finishing. The image ends where
+it last matched." The idle bound puts "Finished by itself after 10 minutes without
 scrolling." on the row with no notification (a capture in which nothing ever moved has no
 row: it ends like Cancel). When the upload or the local save failed, the
 row's status shows that first and the note follows after a `·`. No confirmation dialog is
@@ -505,7 +512,7 @@ desktop refused the input or the stream ended), `encoding_failed` or `input_exce
 (the spool or the PNG). The codes and what to do are in
 [errors](../user/errors.md#scrolling-capture).
 
-A positive `foundAgain` adds a History note and, when there is no other warning, the notice `scroll_found_again`, titled **put.gd — check the scrolling capture**: "The capture lost the page once and found it again. Rows may be missing there: check the image." For more than one it says "N times" instead of "once". The sentence is appended when another note exists; `endReason` and `truncated` stay unchanged. An existing warning keeps its notice kind.
+A positive `foundAgain` adds a History note and, when there is no other warning, the notice `scroll_found_again`, titled **Scrolling capture may have gaps**: "Lost track of the page once while scrolling. Check the image for missing sections." For more than one it says "N times" instead of "once". The sentence is appended when another note exists; `endReason` and `truncated` stay unchanged. An existing warning keeps its notice kind.
 
 ## Known limits
 

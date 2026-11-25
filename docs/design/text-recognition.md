@@ -921,7 +921,7 @@ other tool active it does not. The user's side is in the
   dialog. A binary code's row shows its kind and length only, with Copy and Open link disabled.
 - **Quick redact** is a menu in the Redact tool's panel (Email addresses, Phone numbers, IP
   addresses, Card numbers, Keys and tokens, My username and name, My redaction list, All of
-  these, and Remove suggestions) with "Suggestions only. Recognition can miss text." always
+  these, and Remove suggestions) with "Check the image before uploading. Detection can miss text." always
   beside it.
   - The second read of uncertain tokens is matched apart from the first. Quick redact matches
     the first read, then a page where each second-read word replaces the first-read words whose
@@ -1640,7 +1640,7 @@ other tool active it does not. The user's side is in the
       `/home/patrick/project` is covered entirely, not only `patrick`. A sub-box estimated from
       character counts could leave part of a name visible in a proportional font, so none is made.
     - **No list saved.** "My redaction list" is disabled in the menu with the tooltip "Add words
-      or patterns in Settings → Capture → Text recognition." when the saved words and patterns are
+      or patterns in Settings → Capture → Text recognition" when the saved words and patterns are
       both empty. A `redactText` whose `categories` is `list` alone with nothing to match (no
       saved list, no `terms`, no `patterns`) answers `created: []` and `counts: {list: 0}`
       at once, without starting recognition, so it cannot fail for lack of a recognizer. The
@@ -1762,7 +1762,7 @@ other tool active it does not. The user's side is in the
     the backtick. The quote is the evidence, so a word such as `add` under a digest with no open
     quote is not taken (#1850).
     Recall wins over that precision. One invocation is one undo step. The result says "Added 3
-    suggested redactions" or "No matches found. Text can still be there.", with a line for each
+    suggested redactions" or "No matches found. Check the image manually.", with a line for each
     skipped pattern. There is no "safe" verdict and no upload confirmation.
   - **Each mark remembers why it was added.** A mark Quick redact adds carries its category
     (`name`, `list`, `email`, and so on), never the recognized text, and the box it was suggested
@@ -1874,11 +1874,11 @@ is never wider than that 90%: the preview shrinks to fit, and a long file or des
 shortened in the middle.
 Focus starts on **Redact and upload**, or on **Cancel** when it isn't offered.
 
-- The title is "Sensitive text found", or "put.gd couldn't finish checking this capture". The body
+- The title is "Sensitive text found", or "Couldn't finish checking this capture". The body
   names what was found by kind and count: "This capture shows a card number and a key or token. It
   hasn't been uploaded." It never shows the text, except as pixels in the preview.
 - A preview shows the image with every suggested Redact and automatic cover applied, when the helper could decode it.
-  Then come "Suggestions only. Recognition can miss text." and the destination.
+  Then come "Check the image before uploading. Detection can miss text." and the destination.
 - **Redact and upload** (the default button) keeps every suggestion, the `warn` kinds found and the
   automatic covers, exactly as the preview shows them. The helper exports and hands off that PNG as an
   automatic cover does, marked as redacted, with no editor step. The resident accepts it only when its
@@ -2118,7 +2118,7 @@ stays available from version 22.
 
 | Surface | Control |
 | --- | --- |
-| Command band | **Copy text**, at the far end of the band's second group, before Upload clipboard; its label never shortens. The glyph `copy-text` is a letter T inside selection corners. Its tooltip says "Select a region and copy the text in it. Nothing is saved or uploaded." It shows no output line, and its unavailable badge follows `text.sources.region` |
+| Command band | **Copy text**, at the far end of the band's second group, before Upload clipboard; its label never shortens. The glyph `copy-text` is a letter T inside selection corners. Its tooltip says "Select a screen region and copy the text in it". It shows no output line, and its unavailable badge follows `text.sources.region` |
 | Tray, both implementations | **Copy text from region**, in the last command group before Upload clipboard. Native menu ID 41, with no output row |
 | Settings, Hotkeys | A row **Copy text from region** in the last group, before Upload clipboard |
 | Settings, Capture | Text recognition: Language, Second language and Third language |

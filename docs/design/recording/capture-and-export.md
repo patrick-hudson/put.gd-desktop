@@ -98,10 +98,10 @@ When the helper stops a capture on its budget, the resident says why (#225). The
 reason is `max_file_bytes` when the Largest file limit set the budget, and `disk_space`
 when free disk set it or the disk has less than two minimum budgets left after the
 capture. The review window shows a banner above the frame, the tray posts
-**put.gd — recording stopped** with the same words, and `recording.inspect` returns
-them as `stopDetails`, for example: "Recording stopped at 1:42: it reached the Largest
-file limit (2 MiB; recording stops at 1 MiB to leave room to finish the file). The clip
-so far is kept for review; raise Largest file in Settings > Uploads to record longer."
+**Recording stopped** with the same words, and `recording.inspect` returns
+them as `stopDetails`, for example: "Recording stopped at 1:42 because it reached the
+Largest file limit (2 MB, stopping at 1 MB to leave room to finish). Raise Largest file
+in **Settings → Advanced → Resource limits** to record longer. The clip so far is ready for review."
 A disk stop gives the free space and the reserve and asks to free up space before the
 next recording. Either way the clip recorded so far stays in review, ready to trim,
 save or upload. The resident logs `Recording stopped on its budget` with the figures.
