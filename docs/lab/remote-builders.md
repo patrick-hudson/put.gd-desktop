@@ -1044,6 +1044,16 @@ reference that can delete the object. The slot stays in
 stops at `guest retained: live remote cleanup unresolved` until a person
 resolves it. The guest stays kept until you finish these steps.
 
+The row's reason names the pass and step that failed, such as `expiring-link
+pass, History delete: History confirms object removal (status=unknown,
+error=s3_transport_unknown, stage=object_head, curl=35, http=-1, …)` (#2051).
+The status and codes are the History deletion's own; the note never carries its
+message, link or key ID. Counters from earlier passes, such as
+`cloudfront_after_delete_status=200`, stay in the cell's full note but are not the
+cause. A deletion's own lookup or DELETE that couldn't connect has already been
+sent again twice by the app (`docs/user/s3.md`), so `curl=35` or `curl=7` here means
+three attempts in a row failed.
+
 The nightly also keeps a guest for other cleanup errors, and the same commands
 recover it. Never retire the overlay, release the lease or remove the slot's
 files by hand. Two cases change the steps:

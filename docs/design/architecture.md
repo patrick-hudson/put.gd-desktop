@@ -165,8 +165,10 @@ does not load AWS libraries. The worker loads the private module from the exact
 build/install path, checks its ABI/build/transport identity, and owns SDK
 initialization, clients, requests and shutdown on its SDK thread. Module code
 stays pinned for that process lifetime; normal worker exit releases its mappings.
-Dispatch lanes and admission are bounded. SDK automatic retries are disabled;
-the adapter reconciles its own bounded attempts. A crashed, timed-out or abnormal
+Dispatch lanes and admission are bounded. SDK automatic retries are disabled,
+except for a request whose connection was never set up (no reply, and libcurl's
+"couldn't connect" or a failed TLS handshake), which reached no server and is sent
+up to twice more (#2051); the adapter reconciles its own bounded attempts. A crashed, timed-out or abnormal
 worker never authorizes blind replay of a possible mutation. See [S3](../user/s3.md).
 
 `putgd-b2-worker` performs B2 HTTP in a fresh process per request, and
