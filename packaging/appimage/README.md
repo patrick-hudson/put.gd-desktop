@@ -38,11 +38,11 @@ other unused database clients are not application dependencies.
 
 Build `extra-cmake-modules` and `layer-shell-qt` at the immutable commits in
 `tools.lock.json`, using their own CMake projects and a private install prefix.
-The locked ECM 6.31.0 requires CMake >=3.30; check `cmake --version` before
+The locked ECM 6.32.0 requires CMake >=3.30; check `cmake --version` before
 provisioning. Ubuntu 24.04's distro CMake 3.28 is too old for this dependency.
 Use a supported builder with CMake >=3.30 already provisioned; do not assemble
-a replacement toolchain. LayerShellQt 6.8.1 requires Qt >=6.11 and ECM >=6.30;
-the locked Qt 6.12.0 and ECM 6.31.0 satisfy those requirements.
+a replacement toolchain. LayerShellQt 6.8.3 requires Qt >=6.11 and ECM >=6.30;
+the locked Qt 6.12.0 and ECM 6.32.0 satisfy those requirements.
 
 ```sh
 cmake -S extra-cmake-modules -B build/ecm -G Ninja -DCMAKE_INSTALL_PREFIX="$DEPENDENCY_PREFIX"
@@ -60,7 +60,7 @@ license/source notices for the official binaries and their ICU 73.2. Pass all
 source roots matching the modules actually bundled.
 
 Build QtKeychain at the immutable `qtKeychain` commit in `tools.lock.json`
-(currently 0.17.0, `875f77d9f61bd97fd84cca47ce3bc71186dfbd09`):
+(currently 0.18.0, `e86bc3cbb50b172be61ed857803a372412b6ad85`):
 
 ```sh
 cmake -S qtkeychain -B build/qtkeychain -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$QT_ROOT" -DCMAKE_INSTALL_PREFIX="$DEPENDENCY_PREFIX" -DBUILD_WITH_QT6=ON -DBUILD_TEST_APPLICATION=OFF -DBUILD_TRANSLATIONS=OFF
