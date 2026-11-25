@@ -609,7 +609,8 @@ void EditorCanvas::mouseReleaseEvent(QMouseEvent* event){
   const auto* shape=doc_.find(original_.id); // the shape the drag made, not whatever is selected now
   // A pen click leaves a dot and a step is placed by its click; neither is too small.
   const bool tiny=!shape||(shape->twoPoint()?QLineF(toWidget(QPointF(shape->from)),toWidget(QPointF(shape->to))).length()<6:shape->kind==Shape::Kind::Pen||shape->kind==Shape::Kind::Step?false:(shape->rect.width()*scale_<4||shape->rect.height()*scale_<4));
-  if(shape&&shape->kind==Shape::Kind::Pen){auto next=*shape;next.points=smoothStroke(next.points);doc_.preview(next);}
+  // preview() rewrites the shape list, so look the stroke up again: the old pointer is freed (#2067).
+  if(shape&&shape->kind==Shape::Kind::Pen){auto next=*shape;next.points=smoothStroke(next.points);doc_.preview(next);shape=doc_.find(original_.id);}
   if(shape&&shape->kind==Shape::Kind::Step)nextStep_=std::min(shape->number+1,maximumStepNumber);
   // A click, or a press that never travelled the drag distance, highlights the word under the pointer.
   const bool click=tiny||QLineF(press_,event->position()).length()<QGuiApplication::styleHints()->startDragDistance();
