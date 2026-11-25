@@ -1011,8 +1011,7 @@ def recover_guest(config, owner, out, cells):
         # An earlier retirement got as far as guarded cleanup (prepared or completed), then stopped or its lease
         # release refused. Finish or re-verify it against its own manifest; retiring again would write new
         # evidence that no longer matches the cleanup receipt.
-        lab.cleanup_overlay(run, evidence_manifest=evidence/'completion-manifest.json',
-                            images_root=Path(lab.state(run)['golden']).parents[1])
+        finish_retirement(run, evidence)
         guest = 'cleanup finished or re-checked from the earlier manifest'
     elif (run/'state.json').exists():
         # retire uses exact QEMU/overlay ownership and the existing evidence gate.
@@ -1250,8 +1249,123 @@ def await_host(config, out, row, *, clock=time.monotonic, sleep=time.sleep, work
             sleep(min(30, max(0, deadline-clock())))
 
 
+def keep_aside(path):
+    """Copy an evidence file aside before a retirement replaces it; earlier copies are never overwritten."""
+    if path.exists():
+        shutil.copy2(path, path.with_name(path.name+'.before-recovery-'+uuid.uuid4().hex[:8]))
+
+
+def put_back(source, target):
+    """Make target byte-for-byte the kept copy source, keeping the current target aside."""
+    keep_aside(target)
+    temporary = target.with_name(target.name+'.restore-'+uuid.uuid4().hex[:8])
+    shutil.copy2(source, temporary)
+    temporary.replace(target)
+
+
+def kept_copy(out, name, sha256):
+    """The current file or a copy an earlier retirement kept aside whose bytes hash to sha256, or None."""
+    for path in [out/name, *sorted(out.glob(name+'.before-recovery-*'))]:
+        if path.is_file() and not path.is_symlink() and digest(path) == sha256:
+            return path
+    return None
+
+
+def settle_earlier_manifest(run, out):
+    """Put back the evidence an earlier retirement's cleanup receipt names (#1681). True when a receipt exists.
+
+    Guarded cleanup records the hash of the completion manifest it checked in run/overlay-cleanup.json.
+    A retirement interrupted after that writes no new evidence on retry: it re-verifies the manifest the
+    receipt names. When a later retry already replaced the manifest or completion.json (an older controller,
+    or the documented manual call of retire), the earlier attempt's exact bytes are still in the evidence as
+    .before-recovery copies, so the retry puts those back. A manifest whose bytes are nowhere in the
+    evidence is a foreign change and is refused here; a member file changed since is refused by cleanup.
+    """
+    receipt_path = run/'overlay-cleanup.json'
+    if not os.path.lexists(receipt_path):
+        return False
+    manifest = out/'completion-manifest.json'
+    try:
+        named = json.loads(receipt_path.read_text()).get('evidence')
+    except (OSError, ValueError, AttributeError):
+        named = None
+    if not (isinstance(named, dict) and named.get('manifest') == str(manifest)
+            and isinstance(named.get('sha256'), str)):
+        # Not a receipt for this evidence: guarded cleanup refuses it with its own reason.
+        return True
+    earlier = kept_copy(out, manifest.name, named['sha256'])
+    if earlier is None:
+        raise NotRun('guest retained: the cleanup receipt names a completion manifest that is not in the evidence; '
+                     'inspect '+str(out)+' before recovery')
+    files = json.loads(earlier.read_text()).get('files')
+    proof = files.get('completion.json') if isinstance(files, dict) else None
+    completion = kept_copy(out, 'completion.json', proof) if isinstance(proof, str) else None
+    if completion is None:
+        raise NotRun('guest retained: the cleanup receipt\'s completion manifest names a completion.json that is '
+                     'not in the evidence; inspect '+str(out)+' before recovery')
+    if earlier != manifest:
+        put_back(earlier, manifest)
+    if completion != out/'completion.json':
+        put_back(completion, out/'completion.json')
+    return True
+
+
+def finish_retirement(run, out):
+    """Guarded cleanup against the manifest an earlier retirement's receipt names."""
+    from tools.lab import lab
+    settle_earlier_manifest(run, out)
+    save(out/'retirement.json', lab.cleanup_overlay(run, evidence_manifest=out/'completion-manifest.json',
+         images_root=Path(lab.state(run)['golden']).parents[1]))
+
+
+def archived_files(archive):
+    """{member name: sha256} of an evidence archive's regular files."""
+    with tarfile.open(archive) as stream:
+        return {member.name: hashlib.sha256(stream.extractfile(member).read()).hexdigest()
+                for member in stream.getmembers() if member.isfile()}
+
+
+def attempt_files(out, attempts):
+    """{relative name: sha256} of every regular file under the attempt directories."""
+    files = {}
+    for attempt in attempts:
+        for path in attempt.rglob('*'):
+            if path.is_file() and not path.is_symlink():
+                files[str(path.relative_to(out))] = digest(path)
+    return files
+
+
+def earlier_archive(out, attempts):
+    """The archive an interrupted earlier retirement already wrote and hashed, when it still holds exactly these attempts."""
+    manifest = out/'completion-manifest.json'
+    if not manifest.is_file():
+        return None
+    try:
+        files = json.loads(manifest.read_text()).get('files', {})
+    except (OSError, ValueError, AttributeError):
+        return None
+    current = None
+    for name, sha256 in files.items() if isinstance(files, dict) else ():
+        archive = out/name
+        if (not re.fullmatch(r'attachments(-recovery-[0-9a-f]{8})?\.tgz', name) or not archive.is_file()
+                or archive.is_symlink() or digest(archive) != sha256):
+            continue
+        current = attempt_files(out, attempts) if current is None else current
+        try:
+            if archived_files(archive) == current:
+                return archive
+        except (OSError, tarfile.TarError):
+            continue
+    return None
+
+
 def retire(run, out, rows):
     from tools.lab import lab
+    if settle_earlier_manifest(run, out):
+        # Guarded cleanup already prepared or finished from earlier evidence: never write new evidence.
+        lab.reset(run)
+        finish_retirement(run, out)
+        return
     info = lab.state(run)
     # Collect only terminal audited run directories. Rehash the archive before
     # writing the existing guarded cleanup manifest; never remove failed evidence.
@@ -1261,20 +1375,19 @@ def retire(run, out, rows):
     # record and receipt are hashed into the completion manifest instead.
     unaudited = sorted((a for a in attempts if unaudited_attempt(a)), key=lambda a: a.name)
     attempts = [a for a in attempts if a not in unaudited]
-    archive = out/'attachments.tgz'
-    if archive.exists():
-        archive = out/('attachments-recovery-'+uuid.uuid4().hex[:8]+'.tgz')
-    if attempts:
+    # A retry after an interruption before guarded cleanup reuses the archive the earlier attempt wrote
+    # and checked, so each retry does not add another copy of the row's evidence.
+    archive = earlier_archive(out, attempts) if attempts else None
+    if attempts and archive is None:
+        archive = out/'attachments.tgz'
+        if archive.exists():
+            archive = out/('attachments-recovery-'+uuid.uuid4().hex[:8]+'.tgz')
         collect(attempts, archive)
-        with tarfile.open(archive) as stream:
-            for member in stream.getmembers():
-                if member.isfile():
-                    content = stream.extractfile(member).read()
-                    if hashlib.sha256(content).hexdigest() != digest(out/member.name):
-                        raise RuntimeError('exported evidence checksum mismatch')
+        for name, sha256 in archived_files(archive).items():
+            if sha256 != digest(out/name):
+                raise RuntimeError('exported evidence checksum mismatch')
     for name in ('completion.json', 'completion-manifest.json'):
-        if (out/name).exists():
-            shutil.copy2(out/name, out/(name+'.before-recovery-'+uuid.uuid4().hex[:8]))
+        keep_aside(out/name)
     completion = dict(schemaVersion=1, kind='vm-overlay-cleanup-evidence', run=str(run),
         runId=info['id'], completed=True, evidenceExportVerified=True,
         outcome='passed' if rows and not unaudited and all(passed(c) for c in rows.values()) else 'failed')
@@ -1285,12 +1398,11 @@ def retire(run, out, rows):
     for attempt in unaudited:
         for name in (UNAUDITED_ATTEMPT, 'receipt.json'):
             files[attempt.name+'/'+name] = digest(attempt/name)
-    if archive.exists():
+    if archive is not None:
         files[archive.name] = digest(archive)
     save(out/'completion-manifest.json', dict(completion, files=files))
     lab.reset(run)
-    save(out/'retirement.json', lab.cleanup_overlay(run, evidence_manifest=out/'completion-manifest.json',
-         images_root=Path(info['golden']).parents[1]))
+    finish_retirement(run, out)
 
 
 def baton_returned(run):
