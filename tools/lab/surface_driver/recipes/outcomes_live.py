@@ -3,12 +3,13 @@
 Only builder guests admitted by #726 can resolve this lane's provider fixture.
 No preuploaded result, fake endpoint, direct provider delete or account sign-in.
 """
+import contextlib
 import io
 import json
 import sys
 from urllib.parse import urlsplit
 
-from ..api import recipe
+from ..api import RecipeFailed, recipe
 from ..browser import default_browser, open_and_verify, live_download_digest, live_link_unavailable
 from ..catalog import image_modules
 from ..fixtures.live_outcomes import (R2_CUSTOM_DOMAIN, capture_name, provider, verify_presigned, verify_r2,
@@ -44,6 +45,36 @@ def _owned(ctx, service, detail, oid):
 
 DELETION_SETTLED = ('removed', 'already_missing', 'failed', 'unknown', 'changed', 'version_retained',
                     'hidden_version_retained', 'unsupported_safe_removal')
+
+
+@contextlib.contextmanager
+def _step(ctx, where):
+    """A failed expectation inside names WHERE (pass and step) in one note, failed_step=… (#2051).
+
+    The nightly row's reason is that note when there is one, not the whole note string, whose
+    earlier passes' counters (cloudfront_after_delete_status=200, say) read like the cause.
+    """
+    try:
+        yield
+    except RecipeFailed as error:
+        if not getattr(error, 'step_noted', False):
+            error.step_noted = True
+            # One "; "-separated note: the failure's own text keeps commas only.
+            ctx.note('failed_step='+where+': '+str(error).replace(';', ','))
+        raise
+
+
+def _deletion_outcome(detail):
+    """The settled History deletion as status and error codes only: no message, link or key ID."""
+    error = detail.get('remoteError') or {}
+    details = error.get('details') or {}
+    parts = ['status='+str(detail.get('remoteStatus'))]
+    if error.get('code'):
+        parts.append('error='+str(error['code']))
+    for name, key in (('stage', 'requestStage'), ('curl', 'curlCode'), ('http', 'httpStatus')):
+        if key in details:
+            parts.append(name+'='+str(details[key]))
+    return ', '.join(parts)
 
 
 def _retry_deletion(ctx, current):
@@ -133,8 +164,12 @@ def _cleanup(ctx, detail):
             if not in_view:
                 # The search that picked the row would hide the next pass's row from History.
                 history._search(ctx, '')
-        ctx.expect(final['remoteStatus'] in ('removed', 'already_missing') and not final['linkAvailable'],
-                   'History confirms object removal')
+        removed = final['remoteStatus'] in ('removed', 'already_missing')
+        if not removed:
+            ctx.note('deletion_settled='+_deletion_outcome(final))
+        ctx.expect(removed and not final['linkAvailable'],
+                   'History confirms object removal ('+_deletion_outcome(final)
+                   + ('' if removed else ', the file stays at the destination')+')')
         ctx.note('deletion_count=1')
     ctx.frame('history-after-remote-cleanup', window='history')
 
@@ -209,8 +244,9 @@ def _region_upload(ctx):
                    'resolved S3 profile uses public-read, CloudFront and this exact acceptance prefix')
         ctx.note('s3_resolved_cloudfront_base_count=1')
     detail, cleaned, owned = None, False, False
+    where = ('public-link' if ctx.destination == 's3' else 'share-link')+' pass, '
     try:
-        with selectors._portal_scope(ctx):
+        with _step(ctx, where+'capture and upload'), selectors._portal_scope(ctx):
             x, y, w, h = scene.rect
             rect = (x+20, y+20, x+w-20, y+h-20)
             service.pending['remote'] = True
@@ -283,9 +319,11 @@ def _region_upload(ctx):
                     browser_error = error
                 # Cleanup is inside the browser guard: its URL stays only in
                 # the private Firefox memory for the fresh negative check.
-                _cleanup(ctx, detail)
+                with _step(ctx, where+'History delete'):
+                    _cleanup(ctx, detail)
                 if ctx.destination == 's3':
-                    verify_s3(ctx, service, detail, absent=True)
+                    with _step(ctx, where+'origin absence'):
+                        verify_s3(ctx, service, detail, absent=True)
                 cleaned = True
                 service.pending['remote'] = False
                 ctx.click('windowClose', window='history')
@@ -313,9 +351,11 @@ def _region_upload(ctx):
         if detail and owned and not cleaned and detail.get('uploadStatus') == 'uploaded':
             failed = sys.exc_info()[0] is not None
             try:
-                _cleanup(ctx, detail)
+                with _step(ctx, where+'History delete after a failure'):
+                    _cleanup(ctx, detail)
                 if ctx.destination == 's3':
-                    verify_s3(ctx, service, detail, absent=True)
+                    with _step(ctx, where+'origin absence after a failure'):
+                        verify_s3(ctx, service, detail, absent=True)
                 service.pending['remote'] = False
             except Exception as error:
                 ctx.review('live UI cleanup failed: '+ctx.evidence.redactor.exception(error))
@@ -344,16 +384,20 @@ def _capture_once(ctx, service, scene, owned):
     return detail, rect
 
 
-def _settle_extra(ctx, service, detail, gone):
+def _settle_extra(ctx, service, detail, gone, where):
     """Delete an extra live object through History and prove it gone (GONE); never hide a failed delete."""
-    _cleanup(ctx, detail)
-    gone(detail)
+    with _step(ctx, where+', History delete'):
+        _cleanup(ctx, detail)
+    with _step(ctx, where+', origin absence'):
+        gone(detail)
     service.pending['remote'] = False
     ctx.click('windowClose', window='history')
 
 
-def _link_pass(ctx, settings, check, gone, *, oracle=None, signed=False):
+def _link_pass(ctx, name, settings, check, gone, *, oracle=None, signed=False):
     """Switch the live destination's link settings, publish one capture, CHECK it, delete it, GONE proves it.
+
+    NAME ("expiring-link pass") leads the failed_step note of a failed step.
 
     Each pass has its own object key, recorded in the cleanup marker before anything is published.
     With ORACLE (the frozen pattern frame) the saved pixels must also equal its crop. A SIGNED link
@@ -375,20 +419,22 @@ def _link_pass(ctx, settings, check, gone, *, oracle=None, signed=False):
         ctx._frames_withheld = 'a signed link may be on screen'
     owned = []
     try:
-        detail, rect = _capture_once(ctx, service, scene, owned)
-        data = outcomes._payload(ctx, detail['local']['path'], 'png', _saved_digest(scope, detail['local']['path']))
-        if oracle is not None:
-            Image, _, _ = image_modules()
-            ctx.expect(outcomes.pixels_equal(Image.open(io.BytesIO(data)), oracle.crop(rect)),
-                       'live region pixels equal independently captured pattern crop (tolerance=0)')
-        check(detail, data)
+        with _step(ctx, name+', capture and upload'):
+            detail, rect = _capture_once(ctx, service, scene, owned)
+            data = outcomes._payload(ctx, detail['local']['path'], 'png', _saved_digest(scope, detail['local']['path']))
+            if oracle is not None:
+                Image, _, _ = image_modules()
+                ctx.expect(outcomes.pixels_equal(Image.open(io.BytesIO(data)), oracle.crop(rect)),
+                           'live region pixels equal independently captured pattern crop (tolerance=0)')
+        with _step(ctx, name+', link check'):
+            check(detail, data)
     finally:
         if owned:
             failed = sys.exc_info()[0] is not None
             try:
                 # The frame guard stays set to the end of the recipe, after-frame included: closing
                 # History is a click, and the window can still be on screen when the runner's frame comes.
-                _settle_extra(ctx, service, owned[0], gone)
+                _settle_extra(ctx, service, owned[0], gone, name)
             except Exception as error:
                 ctx.review('live UI cleanup failed: '+ctx.evidence.redactor.exception(error))
                 if not failed:
@@ -399,7 +445,7 @@ def _link_pass(ctx, settings, check, gone, *, oracle=None, signed=False):
 def _presigned_upload(ctx):
     """#1366: the same S3 destination switched to expiring links publishes a signed link; unsigned is refused."""
     service = ctx._live_service
-    _link_pass(ctx, dict(linkMode='presigned', linkValidityDays=1),
+    _link_pass(ctx, 'expiring-link pass', dict(linkMode='presigned', linkValidityDays=1),
                lambda detail, data: verify_presigned(ctx, service, detail, data, host='s3.'+service.region+'.amazonaws.com'),
                lambda detail: verify_s3(ctx, service, detail, absent=True), signed=True)
     ctx.note('presigned_link_count=1')
@@ -431,7 +477,7 @@ def _r2_flow(ctx):
         def check(detail, data, base=base):
             outcomes._auto_copy(ctx, scope, detail)
             verify_r2(ctx, service, detail, data, base=base)
-        _link_pass(ctx, dict(linkMode='public', publicUrlBase=base), check,
+        _link_pass(ctx, 'R2 '+name+' pass', dict(linkMode='public', publicUrlBase=base), check,
                    lambda detail, base=base: verify_r2(ctx, service, detail, absent=True, base=base),
                    oracle=oracle if name == 'custom domain' else None)
         ctx.note('r2_public_link_count=1; host='+base.split('//', 1)[1])
@@ -440,7 +486,7 @@ def _r2_flow(ctx):
         # R2 refuses an unsigned S3 API request; the status it uses is not AWS's.
         verify_presigned(ctx, service, detail, data, host=service.account+'.r2.cloudflarestorage.com',
                          refused=(400, 401, 403))
-    _link_pass(ctx, dict(linkMode='presigned', linkValidityDays=1), signed,
+    _link_pass(ctx, 'R2 expiring-link pass', dict(linkMode='presigned', linkValidityDays=1), signed,
                lambda detail: verify_r2(ctx, service, detail, absent=True), signed=True)
     ctx.note('r2_presigned_link_count=1')
 
