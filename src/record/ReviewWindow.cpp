@@ -1126,7 +1126,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     messageRow->insertWidget(messageRow->count() - 1, placeBanner_);
     blurBanner_ = new ViewerBanner(ViewerBanner::Tone::Warning, toolMessages_);
     blurBanner_->setObjectName("blurWarning");
-    blurBanner_->setText(QStringLiteral("Blur may be reversible. Use Redact for private information."));
+    blurBanner_->setText(QStringLiteral("Blurred text can sometimes be recovered. Use Redact for secrets."));
     messageRow->insertWidget(messageRow->count() - 1, blurBanner_);
     frameError_ = new ViewerBanner(ViewerBanner::Tone::Error, toolMessages_);
     frameError_->setObjectName("previewError");

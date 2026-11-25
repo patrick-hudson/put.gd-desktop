@@ -12,7 +12,7 @@ public:
  explicit RegionOverlay(QList<CaptureFrame>,QObject* parent=nullptr,QString outcome={},bool frozen=false);
  ~RegionOverlay() override;
  void start() override;
- void cancel(Error error={"cancelled","Region selection canceled",{}}) override;
+ void cancel(Error error={"cancelled","Region selection cancelled.",{}}) override;
 private:
  class Surface;
  void press(QPointF);

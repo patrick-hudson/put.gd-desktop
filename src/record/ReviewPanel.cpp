@@ -72,7 +72,7 @@ qint64 snapToFrame(qint64 us, int fps, qint64 durationUs) {
     return std::clamp<qint64>(std::llround(double(frameOf(us, fps)) * 1e6 / fps), 0, std::max<qint64>(0, durationUs));
 }
 
-QString blurSentence() { return QStringLiteral("Blur may be reversible. Use Redact for private information."); }
+QString blurSentence() { return QStringLiteral("Blurred text can sometimes be recovered. Use Redact for secrets."); }
 QString redactSentence() { return QStringLiteral("Covered pixels are removed from the saved and uploaded clip."); }
 
 QString focusKey(const QWidget* widget) {
