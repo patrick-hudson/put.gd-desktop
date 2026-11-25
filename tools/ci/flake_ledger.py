@@ -11,7 +11,10 @@ with its attempts; a test with a failed attempt and a passed one is flaky.
   flake_ledger.py issues LEDGER [--repo OWNER/NAME]
       For each test that passed only on its retry (a CI ledger), or failed at
       least one run (a stress ledger), add an occurrence comment to its
-      `flaky-test` issue, reopening or creating it as needed. Needs
+      `flaky-test` issue, reopening or creating it as needed. A closed issue
+      is reopened only when the run's commit contains the fix: the commit that
+      closed it, or else the default branch as it stood at the close. A run on
+      an older base only gets the comment. Needs
       GITHUB_TOKEN (or GH_TOKEN) with issues: write; without one it prints a
       warning.
 """
@@ -21,6 +24,7 @@ import os
 from pathlib import Path
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 
 LABEL = 'flaky-test'
@@ -125,6 +129,33 @@ class GitHub:
                 return None
         return None
 
+    def lacks_fix(self, issue, sha):
+        """True when commit `sha` does not contain the fix for closed `issue`: the commit that
+        closed it, or else the default branch's head when it closed. Any doubt is False."""
+        try:
+            fix = None
+            for page in range(1, 11):
+                events = self.call('GET', f"/repos/{self.repo}/issues/{issue['number']}/timeline?per_page=100&page={page}")
+                for event in events:
+                    if event.get('event') == 'closed':
+                        fix = event.get('commit_id') or None
+                if len(events) < 100:
+                    break
+            if not fix:
+                closed = issue.get('closed_at')
+                if not closed:
+                    return False
+                branch = self.call('GET', f'/repos/{self.repo}')['default_branch']
+                heads = self.call('GET', f'/repos/{self.repo}/commits?' +
+                                  urllib.parse.urlencode({'sha': branch, 'until': closed, 'per_page': 1}))
+                if not heads:
+                    return False
+                fix = heads[0]['sha']
+            status = self.call('GET', f'/repos/{self.repo}/compare/{fix}...{sha}')['status']
+            return status in ('behind', 'diverged')
+        except (urllib.error.URLError, OSError, ValueError, KeyError, TypeError, IndexError):
+            return False  # a missed real flake costs more than a false reopen
+
     def ensure_label(self):
         try:
             self.call('POST', f'/repos/{self.repo}/labels',
@@ -133,6 +164,11 @@ class GitHub:
         except urllib.error.HTTPError as error:
             if error.code != 422:  # already exists
                 raise
+
+
+def run_commit(source):
+    """The commit a CI run tested (for a pull request, its merge with the base)."""
+    return source.get('GITHUB_SHA', '')
 
 
 def occurrence(name, test, source):
@@ -191,6 +227,11 @@ def issues(ledger, repo, token):
                 issue = github.call('POST', f'/repos/{repo}/issues',
                                     {'title': f'Flaky test: {name}', 'body': body, 'labels': [LABEL]})
                 print(f"flake_ledger: opened {issue['html_url']}")
+            elif issue['state'] == 'closed' and source.get('kind') != 'stress' and run_commit(source) and \
+                    github.lacks_fix(issue, run_commit(source)):
+                comment = (f"Not reopened: commit `{run_commit(source)[:12]}` does not contain the fix this issue was "
+                           "closed with, so this run tested the code from before it.\n\n") + comment
+                print(f"flake_ledger: {issue['html_url']} stays closed; the run predates its fix")
             elif issue['state'] == 'closed':
                 github.call('PATCH', f"/repos/{repo}/issues/{issue['number']}", {'state': 'open'})
                 comment = ('Reopened: the test failed under stress again.\n\n' if stress else

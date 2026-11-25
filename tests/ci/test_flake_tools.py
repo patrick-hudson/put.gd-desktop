@@ -263,16 +263,7 @@ class Tracker(unittest.TestCase):
                                      'attempts': [{'outcome': 'passed', 'seconds': 1.0, 'details': []}]}}}
 
     def track(self, existing):
-        github = self.FakeGitHub(existing)
-        original = ledger_tool.GitHub
-        ledger_tool.GitHub = lambda repo, token: (setattr(github, 'repo', repo), github)[1]
-        github.find_issue = lambda name: original.find_issue(github, name)
-        github.ensure_label = lambda: None
-        try:
-            ledger_tool.issues(self.flaky_ledger(), 'o/r', 'token')
-        finally:
-            ledger_tool.GitHub = original
-        return github.calls
+        return self.track_with(self.FakeGitHub(existing))
 
     def test_new_flaky_test_opens_one_issue_with_the_run_link(self):
         calls = self.track([])
@@ -291,6 +282,54 @@ class Tracker(unittest.TestCase):
         calls = self.track([issue])
         self.assertEqual([(m, p) for m, p, _ in calls if m != 'GET'], [('POST', '/repos/o/r/issues/7/comments')])
         calls = self.track([dict(issue, state='closed')])
+        self.assertIn(('PATCH', '/repos/o/r/issues/7', {'state': 'open'}), calls)
+
+    # A closed issue stays closed when the run's commit lacks the fix it was closed with (#1845:
+    # a branch cut before the fix reopened it); when GitHub can't answer, it reopens as before.
+    def track_closed(self, compare):
+        issue = {'number': 7, 'state': 'closed', 'html_url': 'u', 'closed_at': '2026-11-24T03:22:39Z',
+                 'body': '<!-- flake-ledger: gui_flaky -->'}
+        github = self.FakeGitHub([issue])
+        plain = github.call
+
+        def call(method, path, body=None):
+            if method == 'GET' and '/timeline' in path:
+                github.calls.append((method, path, body))
+                return [{'event': 'closed', 'commit_id': None}]
+            if method == 'GET' and path == '/repos/o/r':
+                return {'default_branch': 'nightly'}
+            if method == 'GET' and '/commits?' in path:
+                self.assertIn('until=2026-11-24T03%3A22%3A39Z', path)
+                return [{'sha': 'f1x'}]
+            if method == 'GET' and '/compare/' in path:
+                self.assertEqual(path, '/repos/o/r/compare/f1x...abcdef1234567890')
+                return compare()
+            return plain(method, path, body)
+        github.call = call
+        return self.track_with(github)
+
+    def track_with(self, github):
+        original = ledger_tool.GitHub
+        ledger_tool.GitHub = lambda repo, token: (setattr(github, 'repo', repo), github)[1]
+        github.find_issue = lambda name: original.find_issue(github, name)
+        github.lacks_fix = lambda issue, sha: original.lacks_fix(github, issue, sha)
+        github.ensure_label = lambda: None
+        try:
+            ledger_tool.issues(self.flaky_ledger(), 'o/r', 'token')
+        finally:
+            ledger_tool.GitHub = original
+        return github.calls
+
+    def test_a_run_without_the_fix_comments_but_does_not_reopen(self):
+        calls = self.track_closed(lambda: {'status': 'behind'})
+        self.assertNotIn('PATCH', [m for m, _, _ in calls])
+        comment = [b for m, p, b in calls if p == '/repos/o/r/issues/7/comments'][0]['body']
+        self.assertIn('Not reopened: commit `abcdef123456` does not contain the fix', comment)
+
+    def test_a_failed_fix_lookup_reopens_as_before(self):
+        def broken():
+            raise ledger_tool.urllib.error.URLError('down')
+        calls = self.track_closed(broken)
         self.assertIn(('PATCH', '/repos/o/r/issues/7', {'state': 'open'}), calls)
 
     def test_missing_token_warns_and_succeeds(self):
