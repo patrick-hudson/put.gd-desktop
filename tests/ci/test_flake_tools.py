@@ -483,6 +483,17 @@ class SanitizerTracker(unittest.TestCase):
         ledger['summary']['unexplainedCtestFailure'] = True
         self.assertEqual(self.file(ledger)[0], 1)
 
+    def test_a_run_of_no_tests_fails_and_a_long_failure_keeps_its_report(self):
+        empty = self.ledger()
+        empty['tests'] = {}
+        code, calls, _ = self.file(empty)
+        self.assertEqual(code, 1)
+        self.assertIn('no test ran', [b for _, p, b in calls if p.endswith('/comments')][0]['body'])
+        long = {'labels': ['unit'], 'outcome': 'failed', 'attempts': [{'outcome': 'failed', 'details': ['FAIL! x'] * 24,
+                                                                       'sanitizer': ['==3==ERROR: AddressSanitizer: x']}]}
+        comment = [b for _, p, b in self.file(self.ledger(a=long))[1] if p.endswith('/comments')][0]['body']
+        self.assertIn('AddressSanitizer: x', comment)
+
     def test_without_a_token_it_still_fails_the_step(self):
         self.assertEqual(ledger_tool.failures(None, self.TITLE, 'job', 'o/r', ''), 1)
 

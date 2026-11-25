@@ -270,11 +270,16 @@ def run_failures(ledger):
     for name, test in sorted(ledger['tests'].items()):
         first = test['attempts'][0] if test['attempts'] else {}
         if test['outcome'] == 'failed':
-            found.append((name, 'failed', first.get('details') or [first.get('message', '')]))
+            details = first.get('details') or [first.get('message', '')]
+            # The sanitizer's own lines first: the comment shows only the first 24.
+            report = sanitizer_report(first)
+            found.append((name, 'failed', report + [line for line in details if line not in report]))
         elif test['outcome'] == 'passed_on_retry' and sanitizer_report(first):
             found.append((name, 'sanitizer report, then passed its retry', sanitizer_report(first)))
     if ledger.get('summary', {}).get('unexplainedCtestFailure'):
         found.append((None, 'CTest failed without a failed test to show for it', []))
+    if not ledger['tests']:
+        found.append((None, 'no test ran: the preset selected nothing', []))
     return found
 
 

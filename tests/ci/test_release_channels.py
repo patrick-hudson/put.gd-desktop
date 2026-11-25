@@ -37,7 +37,7 @@ class Workflows(unittest.TestCase):
                 self.assertNotIn('gh workflow run', text)
 
     def test_every_action_is_pinned_to_a_full_commit(self):
-        for path in [*WORKFLOWS.glob('*.yml'), *(ROOT / '.github/actions').glob('*/action.yml')]:
+        for path in [*WORKFLOWS.glob('*.yml'), *(ROOT / '.github/actions').rglob('action.yml')]:
             for line in path.read_text().splitlines():
                 use = re.match(r'\s+(?:- )?uses: (\S+)', line)
                 if use and not use[1].startswith('./'):
@@ -206,6 +206,13 @@ class Workflows(unittest.TestCase):
         self.assertIn('all) echo "PUTGD_SANITIZER_PRESET=clang-asan-all"', action)
         self.assertIn('contracts) echo "PUTGD_SANITIZER_PRESET=clang-asan"', action)
         self.assertIn('flake_ledger.py failures', action)
+        # clang-asan-all is the whole set but the two uninstrumented binaries; clang-asan keeps its subset.
+        presets = {preset['name']: preset for preset in json.loads((ROOT / 'CMakePresets.json').read_text())['testPresets']}
+        self.assertEqual(presets['clang-asan-all'].get('filter'),
+                         {'exclude': {'name': '^(ocr_confinement_integration|desktop_icon_assets)$'}})
+        self.assertEqual(presets['clang-asan-all']['inherits'], 'clang-asan-reports-fatal')
+        self.assertIn('include', presets['clang-asan']['filter'])
+        self.assertIn('lsan.supp', presets['clang-asan-reports-fatal']['environment']['LSAN_OPTIONS'])
 
     def test_main_pushes_tag_and_stage_the_stable_release(self):
         # #373: no candidate channel; every push to main tags HEAD's calendar version.
