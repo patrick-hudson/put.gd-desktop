@@ -216,6 +216,17 @@ private slots:
   if(worker.joinable())worker.join();
   QCOMPARE(result.error.code,QString("editor_exit"));QVERIFY(result.png.isEmpty());QCOMPARE(filesUnder(staging),0);QCOMPARE(session->phase(),QString("closed"));
  }
+ // #2011: a helper that handed off its image and then doesn't close is stopped, and the
+ // image it handed off still goes on: the edit is not failed with editor_exit.
+ void helperThatDoesNotCloseAfterHandoffStillHandsOff(){
+  qputenv("PUTGD_TEST_EDITOR_MODE","linger");auto restore=qScopeGuard([]{qunsetenv("PUTGD_TEST_EDITOR_MODE");});
+  QTemporaryDir root;const auto staging=root.filePath("editing");auto session=std::make_shared<EditorSession>();
+  auto image=noise({32,32},7);
+  const auto result=EditorJob(staging,PUTGD_EDITOR_FIXTURE).run(image,"Upload",1024*1024,session);
+  QVERIFY2(!result.error,qPrintable(result.error.code+": "+result.error.message));
+  QCOMPARE(result.width,4);QCOMPARE(result.height,4);QVERIFY(!inspectSanitizedPng(result.png));
+  QCOMPARE(filesUnder(staging),0);QVERIFY(childProcesses("test_editor_hel").isEmpty());
+ }
  // An untrusted helper's bad output never becomes the image. Only the timeout row has
  // short deadlines; the others get ones a slow machine cannot reach first.
  void misbehavingHelpersNeverHandOffAnImage_data(){
