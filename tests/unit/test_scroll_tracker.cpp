@@ -983,8 +983,9 @@ void testChangesAndRecovery() {
     // The page drawn anew while moving (#1764: Chrome switches greyscale
     // antialiasing to subpixel LCD antialiasing mid-scroll and keeps drawing
     // it that way). Verify mid-notch switch (both darkening/LCD fringing and
-    // lightening), scrolling back up over pre-switch rows in the store, and a
-    // wide viewport where bandTol_ is narrow (182).
+    // lightening), scrolling back up over pre-switch rows in the store, wide
+    // viewports where bandTol_ is narrow (182), and negative cases where
+    // colour-shifted look-alikes or partial canvas contradictions must NOT match.
     const auto applyLcdShift = [](Image& f, int lumaShift, int chromaFringe) {
       const Image plain = f;
       for (int y = 0; y < f.h; ++y)
@@ -999,9 +1000,24 @@ void testChangesAndRecovery() {
           f.at(x, y) = (uint32_t(nr) << 16) | (uint32_t(ng) << 8) | uint32_t(nb);
         }
     };
+    const auto applyColourShift = [](Image& f, int dr, int dg, int db) {
+      const Image plain = f;
+      for (int y = 0; y < f.h; ++y)
+        for (int x = 0; x < f.w; ++x) {
+          const uint32_t v = plain.at(x, y);
+          const int cr = int(v >> 16) & 255, cg = int(v >> 8) & 255, cb = int(v) & 255;
+          if (v == kBg || std::max({cr, cg, cb}) - std::min({cr, cg, cb}) > 12 || std::max({cr, cg, cb}) > 0xE8) continue;
+          const int nr = std::clamp(cr + dr, 0, 255);
+          const int ng = std::clamp(cg + dg, 0, 255);
+          const int nb = std::clamp(cb + db, 0, 255);
+          f.at(x, y) = (uint32_t(nr) << 16) | (uint32_t(ng) << 8) | uint32_t(nb);
+        }
+    };
     const int notch[] = {2, 5, 9, 12, 16, 17, 17, 15, 12, 9, 5, 1};
-    // 1. Mid-scroll switch during a smooth-scroll notch (d = 16 px) + scroll
-    //    back up over previously captured greyscale rows, then down to end.
+    // 1. Mid-scroll switch during a smooth-scroll notch (darkening -22 + LCD
+    //    fringing, matching Chrome's Skia LCD shift) + scroll back up over
+    //    previously captured greyscale rows, then down to end. Lift greyscale
+    //    ink by +40 before the switch so darkening -22 does not clamp at 0.
     {
       const Scene scene = scene_of(doc.img, base);
       std::vector<int> pos{0};
@@ -1020,20 +1036,24 @@ void testChangesAndRecovery() {
       // Finish down to the bottom of the page.
       while (pos.back() < end) pushNotch(1);
       const Played r = play(scene, pos, {}, [&](size_t i, Image& f) {
-        if (i >= redrawFrom) applyLcdShift(f, 20, 24);
+        applyColourShift(f, 40, 40, 40);
+        if (i >= redrawFrom) applyLcdShift(f, -22, 28);
         return false;
       });
       int lostFrames = 0;
       for (const TrackResult& t : r.results) lostFrames += t.state == TrackState::Lost;
+      Image liftedDoc = doc.img;
+      applyColourShift(liftedDoc, 40, 40, 40);
       int firstBad = 0;
-      const long long bad = differing(r, pageRows(doc.img, 0, doc.img.h, W), {}, 48, &firstBad);
-      report("page drawn anew mid-scroll (#1764) and scrolled back across switch: full page, nothing lost",
+      const long long bad = differing(r, pageRows(liftedDoc, 0, liftedDoc.h, W), {}, 56, &firstBad);
+      report("page drawn anew mid-scroll (#1764, darkening) and scrolled back across switch: full page, nothing lost",
              r.wrong == 0 && lostFrames == 0 && r.totals.skipped == 0 && bad == 0 && r.totals.bottom == doc.img.h,
              counts(r) + fmt(", %d lost, %d wrong%s, %lld pixels differ (row %d)", lostFrames, r.wrong, r.firstWrong.c_str(),
                              bad, firstBad));
     }
-    // 2. Wide viewport (1920px, bandTol_ = 182): systematic LCD shift exceeds
-    //    2*bandTol_ on dense text bands; redrawBandTol still follows mid-scroll.
+    // 2. Wide viewport (1920px, bandTol_ = 182, lightening +20 + LCD fringing):
+    //    systematic LCD shift exceeds 2*bandTol_ on dense text bands;
+    //    redrawBandTol still follows mid-scroll.
     {
       constexpr int kWideW = 1920, kWideV = 640;
       const Document wdoc = plainPage(93, kWideW, kWideV);
@@ -1053,10 +1073,75 @@ void testChangesAndRecovery() {
       for (const TrackResult& t : r.results) lostFrames += t.state == TrackState::Lost;
       int firstBad = 0;
       const long long bad = differing(r, pageRows(wdoc.img, 0, wdoc.img.h, kWideW), {}, 48, &firstBad);
-      report("wide viewport (1920px) redrawn mid-scroll (#1764): full page, nothing lost",
+      report("wide viewport (1920px) redrawn mid-scroll (#1764, lightening): full page, nothing lost",
              r.wrong == 0 && lostFrames == 0 && r.totals.skipped == 0 && bad == 0 && r.totals.bottom == wdoc.img.h,
              counts(r) + fmt(", %d lost, %d wrong%s, %lld pixels differ (row %d)", lostFrames, r.wrong, r.firstWrong.c_str(),
                              bad, firstBad));
+    }
+    // 3. Negative (Sol S1): near-identical sections whose colours differ (grey
+    //    brightness shift, solid colour tint, or already-LCD-to-LCD colour
+    //    shift with no greyscale<->LCD transition) must NOT match via the
+    //    redraw path.
+    {
+      const Scene scene = scene_of(doc.img, base);
+      const auto probeRejected = [&](const std::function<void(Image&, bool)>& style) {
+        MemoryCanvas canvas(W);
+        ScrollTracker tracker(canvas);
+        for (int step = 0; step < 6; ++step) {
+          Image f = scene.frame(step * 16, step);
+          style(f, false);
+          tracker.addFrame(f.view());
+        }
+        // Frame with sharp 1-px peak at d=16 and ~60-80% strict / ~100% relaxed
+        // cell agreement, but NO greyscale<->LCD rendering switch.
+        Image f = scene.frame(6 * 16, 6);
+        style(f, true);
+        return tracker.addFrame(f.view());
+      };
+      const TrackResult rGrey = probeRejected([&](Image& f, bool shifted) {
+        if (shifted) applyColourShift(f, 24, 24, 24);
+      });
+      const TrackResult rTint = probeRejected([&](Image& f, bool shifted) {
+        if (shifted) applyColourShift(f, 36, 22, 6);
+      });
+      const TrackResult rBothLcd = probeRejected([&](Image& f, bool shifted) {
+        applyLcdShift(f, shifted ? 24 : 0, 28);
+      });
+      report("colour-shifted look-alikes without greyscale<->LCD flip do not match (#1764 S1)",
+             rGrey.status == TrackStatus::Skipped && rTint.status == TrackStatus::Skipped &&
+                 rBothLcd.status == TrackStatus::Skipped,
+             fmt("grey=%s/%s, tint=%s/%s, bothLcd=%s/%s", toString(rGrey.status), toString(rGrey.reason),
+                 toString(rTint.status), toString(rTint.reason), toString(rBothLcd.status), toString(rBothLcd.reason)));
+    }
+    // 4. Negative (Sol S2): a frame whose pair matches the previous frame at
+    //    d = -16 (70% matching, under maxUnexplained=0.35) and whose top 70%
+    //    matches the stored greyscale canvas under LCD redraw (70% > keepShare=0.40)
+    //    while its bottom 30% genuinely contradicts the stored canvas must still
+    //    be refused by contradicted().
+    {
+      const Scene scene = scene_of(doc.img, base);
+      MemoryCanvas canvas(W);
+      ScrollTracker tracker(canvas);
+      int fi = 0;
+      for (int p = 0; p <= 240; p += 16, ++fi) {
+        Image f = scene.frame(p, fi);
+        tracker.addFrame(f.view());
+      }
+      Image modDoc = doc.img;
+      const int cutY = 224 + (V * 7) / 10;
+      const int srcY = std::min(doc.img.h - V, 1800);
+      for (int y = 0; y < V && cutY + y < modDoc.h && srcY + y < doc.img.h; ++y)
+        for (int x = 0; x < W; ++x) modDoc.at(x, cutY + y) = doc.img.at(x, srcY + y);
+      const Scene modScene = scene_of(modDoc, base);
+      Image restLcd = scene.frame(240, fi++);
+      applyLcdShift(restLcd, 20, 28);
+      tracker.addFrame(restLcd.view());
+      Image f = modScene.frame(224, fi++);
+      applyLcdShift(f, 20, 28);
+      const TrackResult res = tracker.addFrame(f.view());
+      report("partial canvas contradiction under LCD redraw is still refused (#1764 S2)",
+             res.status == TrackStatus::Skipped && res.reason == SkipReason::Contradicted,
+             fmt("status=%s reason=%s pos=%lld", toString(res.status), toString(res.reason), res.position));
     }
   }
   {

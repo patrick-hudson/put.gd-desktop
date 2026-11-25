@@ -389,7 +389,8 @@ class ScrollTracker {
   void bandTally(const Signature& cur, const Signature& ref, int d, Tally& t, unsigned tolOverride = 0) const;
   void cellTally(const Signature& cur, const Signature& ref, int d, Tally& t, unsigned tolOverride = 0) const;
   void storeBandTally(const Signature& cur, long long pos, int rowStep, Tally& t, unsigned tolOverride = 0) const;
-  void storeCellSigs(long long from, int n, std::vector<uint16_t>& sigs, std::vector<uint8_t>& have) const;
+  void storeCellSigs(long long from, int n, std::vector<uint16_t>& sigs, std::vector<uint8_t>& have,
+                     std::vector<uint8_t>* fringe = nullptr) const;
   void storeCellTally(const Signature& cur, long long pos, const std::vector<uint16_t>& sigs, const std::vector<uint8_t>& have,
                       long long from, Tally& t, unsigned tolOverride = 0) const;
   void judge(Candidate& c, const Tally& bands, const Tally& cells, int y0, int y1,
@@ -423,7 +424,7 @@ class ScrollTracker {
                       const std::vector<Candidate>* cands, int pick, bool verifyAgreement);
   void snapshotDynamic(const FrameView& frame, long long pos, const Signature& cur, const Signature& ref, int d);
   const Signature* prevSig() const;
-  bool contradicted(const Signature& cur, long long pos, double keepShare) const;
+  bool contradicted(const Signature& cur, long long pos, double keepShare, bool allowRedraw = false) const;
   bool lookAlike(const Signature& cur, long long pos, const std::vector<long long>& known) const;
   double wholeCells(const Signature& cur, const Signature& ref, int d, unsigned tolOverride = 0) const;
   double selfRepeat(const Signature& sig, int y0, int y1, long long sigPos) const;
@@ -591,6 +592,7 @@ class ScrollTracker {
   FrameCopy topCopy_, bottomCopy_;
   uint32_t pageColour_ = 0;
   unsigned pageCell_ = 0;  // its cell value
+  int pageRB_ = 0;         // its R - B bias, for bipolar LCD subpixel fringe detection
   int learnedSteps_ = 0;
   // Placed frames' rows with cells seen once, waiting (their pixels, their
   // bands and texture, and which cells): for the next pair, and while the
