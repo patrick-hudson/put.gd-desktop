@@ -550,7 +550,8 @@ void EditorWindow::setDestination(const QString& destination,bool links){
  if(summary.startsWith("Private upload to ")){summary=summary.mid(18);mode="Private upload";}
  else if(summary.startsWith("Upload to ")){summary=summary.mid(10);if(!links)mode="Upload only";else{if(summary.endsWith(" · Shared link"))summary.chop(14);mode="Shared link";}}
  sharingMode_->setText(mode);sharingMode_->setAccessibleName(mode);
- destination_->setText(summary);destination_->setAccessibleName(summary);const auto description="Upload edited image to "+summary+(mode.isEmpty()?QString{}:mode=="Private upload"?QString(" as a private upload"):mode=="Upload only"?QString(" without a link"):QString(" with a shared link"))+" (Ctrl+Enter)";upload_->setToolTip(description);upload_->setAccessibleDescription(description);placeDestination();}
+ destination_->setText(summary);destination_->setAccessibleName(summary);// No upload route (local archive, or no output): the summary already says what the button does.
+ const auto description=(mode.isEmpty()?summary:"Upload edited image to "+summary+(mode=="Private upload"?QString(" as a private upload"):mode=="Upload only"?QString(" without a link"):QString(" with a shared link")))+" (Ctrl+Enter)";upload_->setToolTip(description);upload_->setAccessibleDescription(description);placeDestination();}
 
 void EditorWindow::placeDestination(){
  if(!footerGrid_)return;
