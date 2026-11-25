@@ -131,7 +131,8 @@ newest, so a frame the loop had no time for is dropped, never queued.
 
 Frames per second while a person scrolls, from the helper's log line `scroll: source N
 frames in M ms` (the tracker takes 2 to 7 ms a frame at 1900 × 950 on the slowest
-builders, so it keeps up with every rate below):
+builders; at 60 frames a second a busy stretch can still fall behind, and X11 then drops to 30,
+below):
 
 | Desktop | Measured while a person scrolled |
 | --- | --- |
@@ -141,13 +142,15 @@ builders, so it keeps up with every rate below):
 
 The X11 source grabs at a fixed rate, so it is the one source whose rate is chosen. It asks
 for 60 frames a second: between two frames a page under a person's wheel moves half as far, and
-fewer of them are lost (#2064). While the session reads, the frame tap judges each second: the
-source is slow when it sent under 48 frames, the loop when a quarter of the frames that came were
-replaced unread. After two slow seconds in a row it restarts `ximagesrc` at 30 for the rest of the
+fewer of them are lost (#2064). While the session reads, the frame tap judges windows of at least
+one second: the source is slow when it sent at a rate under 48 frames a second (four fifths of what
+was asked), the loop when at least a quarter of the frames that came were replaced unread. After two slow seconds in a row it restarts `ximagesrc` at 30 for the rest of the
 capture and never goes back up. On m74 at 1920 × 922 the helper used 60 to 74% of a core at 60
-frames a second (43 to 55% at 30) and Xorg 15 to 17% (10 to 12%); its memory did not change. On a
-3840 × 2160 Xvfb the tracker cannot take 60 frames a second, and the tap went down to 30 after two
-seconds, at the same cost as a capture that asked for 30. The result's `stats.sourceRate` says
+frames a second (43 to 55% at 30) and Xorg 15 to 17% (10 to 12%); peak memory was comparable (378
+to 650 MiB against 362 to 645). On a 3840 × 2160 Xvfb the tracker cannot take 60 frames a second,
+and the tap went down to 30 after two seconds, at the same cost as a capture that asked for 30. In
+the recheck of the final change at 1920 × 922, one brisk Stack Overflow capture fell back too (the
+loop missed 31% of the frames); the other seven stayed at 60. The result's `stats.sourceRate` says
 what was asked, what ran at the end, what was delivered and why it went down.
 
 The frame size is the logical rectangle at the output's scale. Lab runs at 125% on Plasma
@@ -202,8 +205,10 @@ up or down, and composes the page into a canvas the helper owns. In brief:
 - A frame it cannot place is skipped and nothing of it is written. After at least two in a
   row, and 60 ms since the last frame it placed or took as still, it is lost (the bar says
   **Scroll back a little**): the second skipped frame at 30 frames a second, the fourth at 60,
-  so a faster source does not lose the page sooner (#2064). Frames without a time (the replay
-  tool) count two frames. It finds a later frame again in the
+  so a faster source does not lose the page sooner (#2064). A stream that sends only damage may
+  send nothing more after two skipped frames: the run is lost when its 60 ms are up all the same,
+  and a capture that ends with such a run pending ends lost, however short it was. Frames
+  without a time (the replay tool) count two frames. It finds a later frame again in the
   image it has built, so scrolling back brings it back.
 - Content that changes in place (a video, a carousel, a hover effect) is taken as first
   seen and ends nothing. Once the tracker has lost the page, a frame matched at a guessed
@@ -221,7 +226,7 @@ up or down, and composes the page into a canvas the helper owns. In brief:
 - A place found again needs `recoverCells` (0.95) agreement from its layer's cells and `recoverKeepShare` (0.80) agreement over its candidate tile area, with `keepShare` as a floor. Another place fitting within `recoverTie` (0.05) makes it ambiguous.
 - Under auto-scroll's hint, a pair match outside the hint's tolerance that moved more than half the frame's height from the last placed frame also needs `recoverCells` from its layer's cells, as a place found again does. The other checks still apply on top, for example after skipped frames or where the image already holds every row of the frame. If the pair match is refused, an image match at the same offset must pass the usual checks of a place found again. On the X11 ruler page under a starved X server, a late frame of the first step was placed 452 rows up at 0.75 of its cells, against 1.00 where the page was, and the image kept 425 extra rows. Moves of up to half a frame off the hint get no new requirement: under load the frames come late and the page is often some way past the hint, and a sticky header that appears while the page moves keeps a true move under `recoverCells` ([#1999](https://github.com/patrick-hudson/put.gd-desktop/issues/1999)).
 - When the expected offset breaks a tie and the pick agrees in less than 90% of the whole overlap (`wholeCells`, `kWholeShare`), the tracker may switch to another match. It does so only when exactly one other accepted match scores within `tieCells` of the pick or better, moves a nonzero, shorter distance in the same direction, and agrees in at least 90% of the whole overlap. Otherwise the pick goes on through the usual checks. At the page's end the page moves less than the step: the true +2 and a look-alike at +28 tied in their own cells, the hint chose +28 (0.47 of the whole overlap against 1.00), and the image got 26 rows too many. The switch goes only to a shorter move because a longer move leaves fewer rows to compare, and a few repeated rows can agree even at the wrong offset: on a repeating page with a panel over the true overlap, a move one period longer agreed in all of its rows ([#1999](https://github.com/patrick-hudson/put.gd-desktop/issues/1999)).
-- After skipped frames, without a hint, a pair match is rejected if the frame or its reference repeats itself about as well as the pair matches (`selfRepeat`, within `kRepeatMargin` of 0.05). The tracker stays lost and the bar asks to scroll back; repeated rows alone do not prove the place (#1556).
+- After skipped frames, without a hint, a pair match is rejected if the frame or its reference repeats itself about as well as the pair matches (`selfRepeat`, within `kRepeatMargin` of 0.05). The frame is skipped, the tracker is lost under the rule above and the bar asks to scroll back; repeated rows alone do not prove the place (#1556).
 - With no hint, no skipped frames in a row and a placed move before it, a pair match that turns back against that move by more than half the frame's height loses to another accepted match that goes on the way the page went. The other match must reach `recoverCells`, score no more than `recoverTie` below the turn back, move at least as many tiles, and share at least half the moving columns of whichever match has fewer. A turn back that passes the whole-overlap check (`wholeAgrees`) stays where it is. For example, a person flicking back hard after a pause is placed where the page went. On GitHub's pull request page with frames dropped, the turn back was a look-alike one table away, and taking it left every later frame a table short ([#1797](https://github.com/patrick-hudson/put.gd-desktop/issues/1797)).
 - Frames narrower or lower than 16 px (two cells, two block rows) are refused.
 
@@ -488,7 +493,7 @@ helper exit until the resident has admitted them.
 | `note` | Why, for `lost_track`, `top_not_reached`, the idle bound and auto-scroll stopped at a blank stretch |
 | `hiddenCells`, `hiddenRows` | Cells of the page that only the bar inside the region ever covered (filled with their column's plain colour), and the rows that hold them. `hiddenRows` also counts rows that no placed frame covered (since a frame is placed on the hint only where it overlaps the image, none should occur). Absent when there are none |
 | `foundAgain` | Times the tracker lost the page while the user scrolled and found it again; included in the helper result, `scroll.inspect`, `putgd-cli` and MCP `get_scroll_capture` |
-| `stats` | `steps`, `pixelsPerNotch` (auto-scroll's), `lowConfidenceSteps` (frames placed by expectation or on the hint), `elapsedMs`, `frames`, `recovered`, `pinnedRegions`, `framesPerSecond`, `rowsAtDone` (rows that Done's fresh frame added), and for X11 `sourceRate`: `asked` and `atEnd` (frames a second), `delivered` (what the source sent while the session read) and `fallback` (why it went down to 30, only when it did) |
+| `stats` | `steps`, `pixelsPerNotch` (auto-scroll's), `lowConfidenceSteps` (frames placed by expectation or on the hint), `elapsedMs`, `frames`, `recovered`, `pinnedRegions`, `framesPerSecond`, `rowsAtDone` (rows that Done's fresh frame added), and for X11 `sourceRate`: `asked` and `atEnd` (frames a second), `delivered` (the source's average frames a second while the session read, over both rates when it fell back; frames the tracker took are `framesPerSecond`) and `fallback` (why it went down to 30, only when it did) |
 
 | `endReason` | `truncated` | Meaning |
 | --- | --- | --- |
