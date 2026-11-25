@@ -1,5 +1,12 @@
 # Bun 1.4.4 native modification/relink replay
 
+This recipe is historical. The helper now uses Bun 1.4.5 and the current
+catalog lists the Bun 1.4.5 source packet, so `prepare.py` at this commit can't
+stage the 1.4.4 replay. To repeat it, run these steps from a checkout of
+`fe463abedd8f3ab5e7d9b799ce71a00f7cdca199`, the last commit whose
+`../notices/SOURCES.json`, `../runtime-lock.json` and helper overlay describe
+Bun 1.4.4. The Bun 1.4.5 relink is tracked in #2024.
+
 Run on d69 or another authorized builder, using a new private directory. This
 adapts the published 1.4.2 supplement to the current source packet. The original
 sealed packets and historical receipts remain unchanged. No account, keychain,
