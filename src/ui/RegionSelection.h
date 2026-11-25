@@ -52,7 +52,7 @@ inline QList<CaptureFrame> regionScreenFrames() {
     for (auto* screen : QGuiApplication::screens()) {
         const auto bounds = screen->geometry();
         const auto density = screen->devicePixelRatio();
-        frames.append({screen->name(), bounds, QRect(QPoint(), QSizeF(bounds.size() * density).toSize()), density, 0, {}});
+        frames.append(CaptureFrame{screen->name(), bounds, QRect(QPoint(), QSizeF(bounds.size() * density).toSize()), density, 0, {}});
     }
     return frames;
 }
