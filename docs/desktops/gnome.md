@@ -91,8 +91,8 @@ load the update (see **One state** above), window and desktop
 screenshots keep working (an extension too old to report `uiProcessVersion` refuses
 window capture with `helper_incompatible` while the put.gd UI is open), and a region capture, a window recording, `recording.windows`
 or a region recording that needs the Shell's selector is refused with
-`helper_outdated`: "The put.gd GNOME Shell extension was updated; log out and back in
-to load the new version" (#131), or the setup state's own message when a logout
+`helper_outdated`: "The put.gd GNOME Shell extension was updated. Log out and back in
+once to load the new version." (#131), or the setup state's own message when a logout
 can't help. A recording request that already carries its
 rectangle skips that selector check.
 Bump `metadata.json`'s `version` whenever the extension's D-Bus interface changes.
