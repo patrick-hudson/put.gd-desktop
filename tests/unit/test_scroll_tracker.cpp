@@ -1780,6 +1780,60 @@ void testJumpPastLookAlikes() {
          fmt("%d wrong%s, %d frames past the jump not placed, %d placed right on the way back", wrong, first.c_str(), lostAfterJump, foundBack));
 }
 
+// ------------------------------------------------------------------ lost window
+
+// Lost is a wall-clock window (#2064): frames of another page after the
+// page was followed make the state Lost about 60 ms after the last placed
+// frame, whether the source sends 30 or 60 frames a second, and the page is
+// found again when it comes back. Without frame times two skipped frames are
+// Lost, as before.
+void testLostWindow() {
+  std::printf("\n[lost] the same wall-clock window at 30 and 60 frames a second\n");
+  const int W = 480, V = 400;
+  const Document doc = plainPage(13, W, V);
+  const Document other = plainPage(77, W, V);
+  SceneSpec ss;
+  ss.width = W;
+  ss.height = V;
+  const Scene scene(doc.img, ss), stray(other.img, ss);
+  // Returns the skipped frames before Lost, the ms from the last placed frame
+  // to Lost, and whether every placed frame was where the page was.
+  struct Run { int skipsToLost = -1; long long msToLost = -1; int wrong = 0; bool foundAgain = false; };
+  const auto run = [&](double fps) {
+    Run out;
+    MemoryCanvas canvas(W);
+    ScrollTracker tracker(canvas);
+    long long placedAt = -1;
+    int skips = 0;
+    for (int i = 0; i < 40; ++i) {
+      const bool away = i >= 12 && i < 24;  // twelve frames of another page
+      const int p = i < 12 ? i * 30 : 360 + (i - 24) * 30;
+      const Image f = away ? stray.frame(37 * i, i) : scene.frame(p, i);
+      const long long at = fps > 0 ? (long long)std::llround(i * 1000.0 / fps) : -1;
+      const TrackResult t = tracker.addFrame(f.view(), {}, at);
+      if (t.status == TrackStatus::Placed) {
+        if (away || t.position != p) ++out.wrong;
+        if (i >= 24) out.foundAgain = true;
+        placedAt = at;
+      }
+      if (away && t.status == TrackStatus::Skipped) ++skips;
+      if (out.skipsToLost < 0 && t.state == TrackState::Lost) {
+        out.skipsToLost = skips;
+        out.msToLost = at - placedAt;
+      }
+    }
+    return out;
+  };
+  const Run r30 = run(30), r60 = run(60), untimed = run(0);
+  report("lost after the same time at 30 and 60 frames a second, found again",
+         r30.skipsToLost == 2 && r60.skipsToLost == 4 && r30.msToLost >= 60 && r60.msToLost >= 60 &&
+             std::abs(r30.msToLost - r60.msToLost) <= 17 && r30.wrong + r60.wrong == 0 && r30.foundAgain && r60.foundAgain,
+         fmt("30/s: lost on skip %d after %lld ms; 60/s: lost on skip %d after %lld ms; %d wrong", r30.skipsToLost, r30.msToLost,
+             r60.skipsToLost, r60.msToLost, r30.wrong + r60.wrong));
+  report("frames without a time: lost on the second skipped frame", untimed.skipsToLost == 2 && untimed.wrong == 0,
+         fmt("lost on skip %d, %d wrong", untimed.skipsToLost, untimed.wrong));
+}
+
 // While the page is lost, a frame matched at a guessed place marks nothing as
 // changing in place (#1795). The scene came out of a randomized search over
 // look-alike tables (seed 17884), kept exactly because the guess depends on
@@ -2986,6 +3040,7 @@ int main() {
   testTurnBackLookAlike();
   testBorderedHeaderEdgeRow();
   testPlayingVideo();
+  testLostWindow();
   std::printf("\n%d passed, %d failed\n", g_pass, g_fail);
   return g_fail == 0 ? 0 : 1;
 }

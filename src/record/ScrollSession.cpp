@@ -290,7 +290,7 @@ void ScrollSession::feedTracker(const FrameView& view, int64_t t) {
     ++framesSinceStep_;
     lastFrameAt_ = clock_.nowMs();
     const TrackerHint hint = hintFor(t);
-    const TrackResult r = tracker_->addFrame(view, hint);
+    const TrackResult r = tracker_->addFrame(view, hint, t);
     // A frame that shows nothing of the page: fewer rows with texture than
     // the tracker needs as evidence, outside what it has learned as pinned (a
     // header, a footer), put.gd's bar inside the region and the side margins.

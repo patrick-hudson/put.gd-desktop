@@ -1394,7 +1394,9 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
         Primed frames(*job->tap, *first, job->sourceGone);
         SteadyClock clock;
         ScrollSession session(job->gate, frames, clock, canvas, options);
+        job->tap->watchPace(true);
         if (!spoolFailed) end = session.run(job->stop, job->discard);
+        job->tap->watchPace(false);
         stats = session.stats();
         if (canvas.failed()) spoolFailed = true;
         if (canvas.error() == ENOSPC) diskFull = true;
@@ -1471,6 +1473,16 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
                     {"stats", QJsonObject{{"steps", stats.steps}, {"pixelsPerNotch", std::round(stats.pxPerNotch * 10) / 10}, {"lowConfidenceSteps", stats.byExpectation + stats.onHint}, {"elapsedMs", double(stats.elapsedMs)},
                                           {"frames", stats.framesSeen}, {"recovered", stats.recovered}, {"pinnedRegions", stats.pinnedRegions}, {"framesPerSecond", fps},
                                           {"rowsAtDone", double(stats.rowsAtDone)}}}};
+                // A fixed-rate source (X11): the rate asked for, the rate at the
+                // end, what it delivered while the session read, and why it went
+                // down (#2064). For this capture alone, not a shared log.
+                if (const FrameTap::Rate rate = job->tap->rate(); rate.asked > 0) {
+                    QJsonObject source{{"asked", rate.asked}, {"atEnd", rate.now}, {"delivered", std::round(rate.delivered * 10) / 10}};
+                    if (!rate.fallback.isEmpty()) source["fallback"] = rate.fallback;
+                    QJsonObject statsObject = outcome->descriptor["stats"].toObject();
+                    statsObject["sourceRate"] = source;
+                    outcome->descriptor["stats"] = statsObject;
+                }
                 // Rows under the bar inside the region that no frame showed clear (#1519).
                 if (stats.hiddenCells > 0) { outcome->descriptor["hiddenCells"] = double(stats.hiddenCells); outcome->descriptor["hiddenRows"] = double(stats.hiddenRows); }
                 if (end == SessionEnd::Idle) outcome->descriptor["note"] = QStringLiteral("nobody scrolled or used the bar for %1 minutes, so the capture ended there").arg(SessionOptions{}.idleLimitMs / 60000);
