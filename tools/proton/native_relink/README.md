@@ -58,7 +58,7 @@ The named `ubuntu` user has UID/GID 1000. On d69, `docker cp -a` rejects a
 container configured with the numeric `1000:1000` user before staging; the named
 user avoids that Docker lookup failure without changing build privilege.
 
-The recorded run began with two C/C++ jobs. Once d69's other heavy jobs finished,
+The 2026-10-31 Bun 1.4.4 run on d69 began with two C/C++ jobs. Once d69's other heavy jobs finished,
 both Ninja processes were intentionally interrupted, their logs retained, and
 the same prepared tree resumed with `resume_build.py` and four CPUs/C/C++ jobs.
 Rust retained two jobs and the container retained its 12 GiB/no-swap limit.
@@ -139,9 +139,13 @@ the intermediate runner and its configured deadline. Its file-backed stdout
 diagnostic is superseded by the [pipe-backed replay](evidence/pipe-backed-replay.json),
 which verifies the final runner and the complete large-output pipe regression.
 
-## Current helper desktop/resource acceptance
+## Historical desktop/resource acceptance (helper 9fd4d72f)
 
-The [current receipt](evidence/desktop-resource-current.json) records live Proton
+This section and its receipt describe an earlier helper, not the Bun 1.4.5 helper
+`7fc568ce`. Desktop/resource and package acceptance (P6) for `7fc568ce` is still an
+open gate in `../notices/SOURCES.json` (#2025).
+
+The [receipt](evidence/desktop-resource-current.json) records live Proton
 upload, share-link inspection and revocation on Cinnamon/X11 (m74),
 GNOME/Wayland (d69) and KDE/Wayland (k72), followed by two 301-second idle
 observations on each same used resident. All RSS, CPU, swap and helper gates
