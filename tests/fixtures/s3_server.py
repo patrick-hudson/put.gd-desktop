@@ -19,6 +19,8 @@ TIME_SCALE = _time_scale()
 
 lock = threading.RLock()
 barriers = {}
+# Requests held by 'together' rules so far, since the last reset or rules.
+gathered = {'arrived': 0}
 state = {'events': [], 'objects': {}, 'versioning': '', 'versionless': False, 'ignoreConditions': False, 'rules': [], 'sequence': 0, 'uploads': {}}
 # Large bodies (multipart parts and the objects they complete) stay out of the
 # JSON state so /__state remains bounded; events and versions record their digest.
@@ -106,6 +108,7 @@ class Handler(BaseHTTPRequestHandler):
                 blobs.clear()
                 state.update({'private': False, 'events': [], 'objects': {}, 'versioning': '', 'versioningReported': None, 'versionless': False, 'versionIgnored': False, 'ignoreConditions': False, 'rules': [], 'sequence': 0, 'uploads': {}, 'putPace': None})
                 state.update(json.loads(body))
+                gathered['arrived'] = 0
                 state['sequence'] = max([state['sequence']] + [int(v['version']) for versions in state['objects'].values() for v in versions if v['version'].isdigit()])
                 self.respond(200, b'{}')
             elif self.path == '/__clear_events':
@@ -113,6 +116,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.respond(200, b'{}')
             elif self.path == '/__rules':
                 state['rules'] = json.loads(body)['rules']
+                gathered['arrived'] = 0
                 self.respond(200, b'{}')
             elif self.path == '/__tamper':
                 # Make a stored multipart part differ from what the client sent.
@@ -180,6 +184,16 @@ class Handler(BaseHTTPRequestHandler):
                     break
             if signed and not event['signatureValid']:
                 self.error(403, 'SignatureDoesNotMatch'); return
+            if rule and rule.get('together'):
+                # 'together': n, hold this request, its body read, until n requests matched by
+                # 'together' rules have arrived; any 'delay' then counts from there, so replies
+                # come in a set order however far apart the client sent them (#1318).
+                gathered['arrived'] += 1
+                deadline = time.monotonic() + 10 * TIME_SCALE
+                while gathered['arrived'] < rule['together'] and time.monotonic() < deadline:
+                    lock.release()
+                    time.sleep(0.01)
+                    lock.acquire()
             if rule and rule.get('barrier'):
                 barrier = barriers.setdefault(rule['barrier'], threading.Event())
                 lock.release()
