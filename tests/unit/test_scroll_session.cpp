@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "fixtures/ScrollSynthetic.h"
+#include "record/FramePace.h"
 #include "record/ScrollSession.h"
 #include "record/ScrollSpool.h"
 
@@ -1159,6 +1160,46 @@ void testAutoStartTakesAFrameAfterTheRest() {
          fmt("moved at %lld, waiting frame given %d (from %lld), first frame fed at %lld", (long long)moved, source.given, (long long)source.heldAt, (long long)firstFed));
 }
 
+// The X11 source's pace (#2064): 60 frames a second kept while the source
+// sends them and the loop takes them; down to 30 only after two slow seconds
+// in a row, of the source or of the loop; one slow second is a hiccup.
+void testFramePace() {
+  std::printf("\n[pace] when the 60 frames a second source goes down to 30\n");
+  // Plays `seconds` of a source sending `sent` frames a second, of which the
+  // loop takes every `takeEvery`th; returns the first verdict other than Keep
+  // and the second it came in (0 for none).
+  struct Out { FramePace::Verdict verdict = FramePace::Verdict::Keep; int second = 0; };
+  const auto play = [](const std::vector<std::pair<int, int>>& seconds) {
+    FramePace pace(60);
+    pace.restart(60, 0);
+    Out out;
+    int64_t t = 0;
+    uint64_t unread = 0;
+    for (size_t s = 0; s < seconds.size() && out.second == 0; ++s) {
+      const auto [sent, takeEvery] = seconds[s];
+      for (int k = 0; k < sent && out.second == 0; ++k) {
+        t = int64_t(s) * 1000 + int64_t(k) * 1000 / sent + 1;
+        pace.arrived();
+        if ((k + 1) % takeEvery) { ++unread; continue; }
+        const FramePace::Verdict v = pace.taken(t, unread);
+        unread = 0;
+        if (v != FramePace::Verdict::Keep) out = {v, int(s) + 1};
+      }
+    }
+    return out;
+  };
+  const Out kept = play({{60, 1}, {59, 1}, {60, 1}, {58, 1}, {60, 1}});
+  report("60 sent and taken: kept", kept.second == 0, fmt("verdict at second %d", kept.second));
+  const Out source = play({{60, 1}, {40, 1}, {40, 1}, {40, 1}});
+  report("the source sends 40 for two seconds: down, for the source", source.verdict == FramePace::Verdict::SourceSlow && source.second == 4,
+         fmt("verdict %d at second %d", int(source.verdict), source.second));
+  const Out loop = play({{60, 1}, {60, 2}, {60, 2}, {60, 2}});
+  report("the loop takes every second frame for two seconds: down, for the loop", loop.verdict == FramePace::Verdict::LoopSlow && loop.second == 4,
+         fmt("verdict %d at second %d", int(loop.verdict), loop.second));
+  const Out hiccup = play({{60, 1}, {40, 1}, {60, 1}, {60, 2}, {60, 1}, {60, 1}});
+  report("slow seconds that are not in a row: kept", hiccup.second == 0, fmt("verdict %d at second %d", int(hiccup.verdict), hiccup.second));
+}
+
 int main() {
   testUserScrolls();
   testAutoScroll();
@@ -1186,6 +1227,7 @@ int main() {
   testBlankStretch();
   testCapAndIdle();
   testDoneAndCancel();
+  testFramePace();
   std::printf("\n%d passed, %d failed\n", g_pass, g_fail);
   return g_fail == 0 ? 0 : 1;
 }

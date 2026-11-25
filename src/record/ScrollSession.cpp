@@ -211,6 +211,7 @@ SessionEnd ScrollSession::run(const std::atomic<bool>& stop, const std::atomic<b
         const bool correcting = !auto_ && pausedBy_ == HandBack::Pointer && clock_.nowMs() - handBackAt_ < 1000;
         if (auto frame = source_.nextFrame(auto_ ? 15 : correcting ? 10 : 40)) feed(*frame);
         else if (source_.lost()) return done(SessionEnd::SourceLost);
+        else expireSkips();
         // Nothing more can be written: the capture ends here, with a reason.
         if (canvas_.failed()) return done(SessionEnd::CanvasFailed);
         if (sizeChanged_) return done(SessionEnd::FrameSizeChanged);
@@ -239,6 +240,8 @@ void ScrollSession::takeScreenAtDone() {
 }
 
 void ScrollSession::finishTracker() {
+    // No frame comes after this one: skipped frames still pending are Lost.
+    tracker_->expire(LLONG_MAX);
     stats_.endedLost = tracker_->state() == TrackState::Lost;
     const auto totals = tracker_->finish();
     stats_.frames = totals.frames;
@@ -290,7 +293,7 @@ void ScrollSession::feedTracker(const FrameView& view, int64_t t) {
     ++framesSinceStep_;
     lastFrameAt_ = clock_.nowMs();
     const TrackerHint hint = hintFor(t);
-    const TrackResult r = tracker_->addFrame(view, hint);
+    const TrackResult r = tracker_->addFrame(view, hint, t);
     // A frame that shows nothing of the page: fewer rows with texture than
     // the tracker needs as evidence, outside what it has learned as pinned (a
     // header, a footer), put.gd's bar inside the region and the side margins.
@@ -448,7 +451,15 @@ bool ScrollSession::pump(int ms) {
         if (left <= 0) return true;
         if (auto frame = source_.nextFrame(int(left))) feed(*frame);
         else if (source_.lost()) return false;
+        else expireSkips();
     }
+}
+
+// No frame came: frames skipped before it may be Lost by now (#2064).
+void ScrollSession::expireSkips() {
+    if (tracker_->state() == TrackState::Lost) return;
+    tracker_->expire(clock_.nowMs());
+    if (tracker_->state() == TrackState::Lost) lostSincePlaced_ = true;
 }
 
 void ScrollSession::applyRequests() {

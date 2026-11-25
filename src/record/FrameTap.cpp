@@ -47,7 +47,15 @@ Error FrameTap::start(const Source& source) {
     frames_.store(0);
     width_.store(0);
     height_.store(0);
-    { std::lock_guard lock(mailbox_); arrivedCount_ = givenCount_ = 0; }
+    {
+        std::lock_guard lock(mailbox_);
+        arrivedCount_ = givenCount_ = 0;
+        watching_ = false;
+        askedFps_ = source.x11Rect.isValid() ? source.fps : 0;
+        watchedFirst_ = watchedLast_ = -1;
+        watchedFrames_ = 0;
+        fallback_.clear();
+    }
     if (sink_) g_signal_connect(sink_, "new-sample", G_CALLBACK(&FrameTap::arrived), this);
     { std::lock_guard lock(mutex_); reason_.clear(); }
     if (source.imageCopy) {
@@ -95,7 +103,7 @@ std::optional<RunFrame> FrameTap::freshFrame(int timeoutMs) {
     // ximagesrc grabs the screen for every frame. What is in the mailbox, and
     // a frame already on its way, were grabbed before now: the one wanted
     // arrives a whole frame interval after the call began.
-    { std::lock_guard lock(mailbox_); givenCount_ = arrivedCount_; }
+    { std::lock_guard lock(mailbox_); givenCount_ = arrivedCount_; pace_.begin(nowMs()); }
     const int interval = 1000 / std::max(1, source_.fps) + 1;
     for (;;) {
         const int left = timeoutMs - int(nowMs() - began);
@@ -179,6 +187,12 @@ void FrameTap::take(GstSample* sample) {
         latestAt_ = nowMs();
         latestSession_ = GST_BUFFER_OFFSET(buffer);
         ++arrivedCount_;
+        if (watching_) {
+            pace_.arrived();
+            if (watchedFirst_ < 0) watchedFirst_ = latestAt_;
+            watchedLast_ = latestAt_;
+            ++watchedFrames_;
+        }
         if (debugLogEnabled()) {
             // Lab timeline: every buffer the stream delivered, with a sum over
             // every sixteenth row (never the pixels), so a buffer that shows
@@ -201,14 +215,76 @@ std::optional<RunFrame> FrameTap::nextFrame(int timeoutMs) {
         noteBus();
         return std::nullopt;
     }
+    const quint64 missed = arrivedCount_ - givenCount_ - 1;
     givenCount_ = arrivedCount_;
+    const FramePace::Verdict pace = watching_ ? pace_.taken(nowMs(), missed) : FramePace::Verdict::Keep;
     // The loop's copy: the mailbox takes the next frame while the loop works on this one.
     std::swap(frame_, latest_);
     const int width = latestWidth_, height = latestHeight_;
     const int64_t at = latestAt_;
+    lock.unlock();
     width_.store(width);
     height_.store(height);
     frames_.fetch_add(1);
+    // frame_ is the loop's until its next call: a restart writes only the mailbox.
+    if (pace != FramePace::Verdict::Keep && source_.fallbackFps > 0 && source_.fps > source_.fallbackFps) fallBack(pace);
     return RunFrame{scroll::FrameView{frame_.data(), width, height, std::ptrdiff_t(width) * 4}, at};
+}
+
+void FrameTap::watchPace(bool on) {
+    std::lock_guard lock(mailbox_);
+    watching_ = on && source_.x11Rect.isValid() && !source_.imageCopy && !source_.pipewireNode;
+    if (!watching_) return;
+    pace_.restart(source_.fps, nowMs());
+    // Frames replaced before the watch began are not the loop's to answer for.
+    if (arrivedCount_ - givenCount_ > 1) givenCount_ = arrivedCount_ - 1;
+}
+
+FrameTap::Rate FrameTap::rate() const {
+    std::lock_guard lock(mailbox_);
+    Rate rate;
+    rate.asked = askedFps_;
+    rate.now = askedFps_ ? source_.fps : 0;
+    if (watchedFrames_ > 1 && watchedLast_ > watchedFirst_) rate.delivered = double(watchedFrames_ - 1) * 1000.0 / double(watchedLast_ - watchedFirst_);
+    rate.fallback = fallback_;
+    return rate;
+}
+
+// ximagesrc grabs and copies every frame whether or not the loop takes it:
+// at the lower rate for the rest of the capture, never back up (#2064).
+void FrameTap::fallBack(FramePace::Verdict why) {
+    QString reason;
+    int64_t first = -1, last = -1;
+    quint64 watched = 0;
+    int asked = 0;
+    {
+        std::lock_guard lock(mailbox_);
+        reason = why == FramePace::Verdict::SourceSlow
+            ? QStringLiteral("the source sent %1 frames a second").arg(pace_.lastSent(), 0, 'f', 1)
+            : QStringLiteral("the loop missed %1% of the frames").arg(100 * pace_.lastMissedShare(), 0, 'f', 0);
+        first = watchedFirst_;
+        last = watchedLast_;
+        watched = watchedFrames_;
+        asked = askedFps_;
+    }
+    debugLog(QStringLiteral("scroll tap: %1 frames a second not kept (%2), now %3").arg(source_.fps).arg(reason, QString::number(source_.fallbackFps)));
+    Source lower = source_;
+    lower.fps = source_.fallbackFps;
+    const qint64 given = frames_.load();
+    stop();
+    if (start(lower)) {
+        { std::lock_guard lock(mutex_); if (reason_.isEmpty()) reason_ = QStringLiteral("the source could not be started again at a lower rate"); }
+        lost_.store(true);
+        return;
+    }
+    frames_.store(given);
+    std::lock_guard lock(mailbox_);
+    askedFps_ = asked;
+    fallback_ = reason;
+    watchedFirst_ = first;
+    watchedLast_ = last;
+    watchedFrames_ = watched;
+    watching_ = true;
+    pace_.restart(lower.fps, nowMs());
 }
 }

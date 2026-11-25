@@ -1,4 +1,5 @@
 #pragma once
+#include "FramePace.h"
 #include "ScrollSession.h"
 #include "core/Error.h"
 #include <QRect>
@@ -33,7 +34,21 @@ public:
         // A whole-output source: the region inside its frames, in stream pixels.
         QSize streamSize;
         QRect crop;
-        int fps = 30;  // ximagesrc's grab rate; the other sources send on damage
+        // ximagesrc's grab rate; the other sources send on damage. 60 a
+        // second halves the distance a page moves between two frames, which
+        // kept a person's fast scrolling on Cinnamon (#2064). While the tap
+        // watches its pace, a source or a loop that cannot keep it up for
+        // two seconds in a row is restarted at fallbackFps for the rest of
+        // the capture (FramePace).
+        int fps = 60;
+        int fallbackFps = 30;
+    };
+    // The rate a fixed-rate source was asked for and runs at now, the frames
+    // a second it delivered while watched, and why it went down (empty: it did not).
+    struct Rate {
+        int asked = 0, now = 0;
+        double delivered = 0;
+        QString fallback;
     };
     FrameTap() = default;
     ~FrameTap() override;
@@ -53,6 +68,10 @@ public:
     // whose first frame is copied whether or not the source changed.
     std::optional<RunFrame> freshFrame(int timeoutMs) override;
     bool lost() const override { return lost_.load(); }
+    // Watch the pace from now (the session reads), or stop watching. Only a
+    // fixed-rate source with a lower rate to go to is watched.
+    void watchPace(bool on);
+    Rate rate() const;
     QString lostReason() const;
     QSize frameSize() const { return QSize(width_.load(), height_.load()); }
     qint64 frames() const { return frames_.load(); }
@@ -63,19 +82,28 @@ private:
     // The sink's new-sample callback, on a streaming thread.
     static GstFlowReturn arrived(GstElement* sink, gpointer self);
     void take(GstSample* sample);
+    // The loop's thread: the source again at the lower rate.
+    void fallBack(FramePace::Verdict why);
     GstElement* pipeline_ = nullptr;
     GstElement* sink_ = nullptr;
     ImageCopySource* imageCopy_ = nullptr;
     Source source_;
     // The mailbox: the newest frame, its size and arrival time, and a count
     // that says whether the loop has had it. frame_ is what the loop was given.
-    std::mutex mailbox_;
+    mutable std::mutex mailbox_;
     std::condition_variable fresh_;
     std::vector<uint8_t> latest_, frame_;
     int latestWidth_ = 0, latestHeight_ = 0;
     int64_t latestAt_ = 0;
     guint64 latestSession_ = 0;  // image-copy: the capture session the newest frame came from
     quint64 arrivedCount_ = 0, givenCount_ = 0;
+    // Pace, under the mailbox lock: the watch, and what the source delivered while watched.
+    FramePace pace_;
+    bool watching_ = false;
+    int askedFps_ = 0;
+    int64_t watchedFirst_ = -1, watchedLast_ = -1;
+    quint64 watchedFrames_ = 0;
+    QString fallback_;
     std::atomic<bool> lost_{false};
     std::atomic<int> width_{0}, height_{0};
     std::atomic<qint64> frames_{0};

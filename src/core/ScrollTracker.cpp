@@ -4219,9 +4219,20 @@ void ScrollTracker::forgetHints() {
   hintKnown_ = true;
 }
 
-TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
+void ScrollTracker::expire(long long nowMs) {
+  if (state_ == TrackState::Lost || capped_ || skipRun_ < opts_.lostAfterSkips) return;
+  if (settledAt_ < 0 || nowMs - settledAt_ >= opts_.lostAfterMs) state_ = TrackState::Lost;
+}
+
+bool ScrollTracker::skipRunLost() const {
+  if (skipRun_ < opts_.lostAfterSkips) return false;
+  return frameAt_ < 0 || settledAt_ < 0 || frameAt_ - settledAt_ >= opts_.lostAfterMs;
+}
+
+TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint, long long atMs) {
   TrackResult r;
   ++totals_.frames;
+  frameAt_ = atMs;
   // A frame narrower than two cells or lower than two block rows is too small
   // to track (the bottommost frame's copy starts a block row above its middle).
   if (finished_ || !frame.data || frame.width < 2 * opts_.cellPx || frame.height < 2 * opts_.blockRows ||
@@ -4298,6 +4309,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     prevPlaceKnown_ = true;
     prevViewMoved_ = false;
     r.confidence = 1;
+    settledAt_ = frameAt_;
     r.state = state_ = TrackState::Following;
     return r;
   }
@@ -4366,6 +4378,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     r.confidence = share;
     ++totals_.noMovement;
     skipRun_ = 0;
+    settledAt_ = frameAt_;
     r.state = state_ = TrackState::Following;
     return r;
   };
@@ -4437,7 +4450,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     // frame showed over those rows: GitHub's sticky header over a commit
     // hash, once the page was found again (#1795). A playing video is met
     // while following, as the retry at rest below has it.
-    if (!otherViewMoved && skipRun_ < opts_.lostAfterSkips &&
+    if (!otherViewMoved && state_ != TrackState::Lost &&
         observeOnce(cur, *other, upos, otherPos, &cands, unexplainedPick, true)) {
       computeExcluded(cur, ref, lastPos_);
       cands = searchPair(cur, ref, expected);
@@ -4464,7 +4477,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
       upos = prevPos_ + prevCands[size_t(pIdx)].d;
       refusedKnown = prevPlaceKnown_;
       // Once lost, only from a place the image lookup found (#1795).
-      if (skipRun_ < opts_.lostAfterSkips || prevPlaceKnown_)
+      if (state_ != TrackState::Lost || prevPlaceKnown_)
         marked = observeOnce(cur, *prevSig(), upos, prevPos_, &prevCands, pIdx, true);
     }
     computeExcluded(cur, ref, lastPos_);
@@ -4668,7 +4681,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
       const Signature* other = usePrev ? prevSig() : &ref;
       const long long otherPos = usePrev ? prevPos_ : lastPos_;
       const bool otherViewMoved = usePrev ? prevViewMoved_ : viewMoved_;
-      if (!otherViewMoved && skipRun_ < opts_.lostAfterSkips &&
+      if (!otherViewMoved && state_ != TrackState::Lost &&
           observeOnce(cur, *other, pos, otherPos, &cands, pick, true)) {
         refreshRefIncl(lastPos_);
         Tally tb, tc;
@@ -4757,7 +4770,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
   // standing strictly still against both ref and prev while the video keeps
   // changing (#1537). Require share >= minArea against ref first so a foreign
   // page with a playing video never marks the real page's rows dynamic.
-  if (pick < 0 && why != SkipReason::Ambiguous && !still && skipRun_ < opts_.lostAfterSkips &&
+  if (pick < 0 && why != SkipReason::Ambiguous && !still && state_ != TrackState::Lost &&
       share < opts_.stillFallback && share >= opts_.minArea) {
     if (prevHasPos_ && prevPos_ == lastPos_ && prevSig() &&
         observeOnce(cur, *prevSig(), lastPos_, lastPos_, nullptr, -1, true)) {
@@ -4799,7 +4812,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     if (fp >= 0 && (elsewhere || skipRun_ > 0) && !hintSays(found[size_t(fp)].d) && refused(found[size_t(fp)], true)) {
       bool retried = false;
       const long long fpos = lastPos_ + found[size_t(fp)].d;
-      if (prevHasPos_ && prevSig() && !prevViewMoved_ && skipRun_ < opts_.lostAfterSkips &&
+      if (prevHasPos_ && prevSig() && !prevViewMoved_ && state_ != TrackState::Lost &&
           observeOnce(cur, *prevSig(), fpos, prevPos_, &found, fp, true)) {
         refreshRefIncl(lastPos_);
         Tally tb, tc;
@@ -4874,7 +4887,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
     ++skipRun_;
     ++skipsSincePlaced_;
     totals_.longestSkipRun = std::max(totals_.longestSkipRun, skipRun_);
-    r.state = state_ = skipRun_ >= opts_.lostAfterSkips ? TrackState::Lost : state_;
+    r.state = state_ = skipRunLost() ? TrackState::Lost : state_;
     return r;
   }
   r.confidence = r.onHint ? 0.0 : cands[size_t(pick)].cells;
@@ -4895,6 +4908,7 @@ TrackResult ScrollTracker::addFrame(const FrameView& frame, TrackerHint hint) {
   prevPlaceKnown_ = true;
   prevViewMoved_ = viewMoved_;
   skipRun_ = 0;
+  settledAt_ = frameAt_;
   r.state = state_ = capped_ ? TrackState::Capped : TrackState::Following;
   return r;
 }

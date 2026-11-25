@@ -280,6 +280,13 @@ private slots:
         QCOMPARE(done.result["truncated"].toBool(true), false);
         QCOMPARE(done.result["scrolledBy"].toString(), QString("user"));
         QCOMPARE(done.result["framesSkipped"].toInt(), 0);
+        // #2064: this capture's own source rate, from its result: asked for 60
+        // frames a second, still at 60 at the end, and 60 delivered (within
+        // the four fifths below which the tap goes down to 30).
+        const QJsonObject rate = done.result["stats"].toObject()["sourceRate"].toObject();
+        const QByteArray rateText = QJsonDocument(rate).toJson(QJsonDocument::Compact);
+        QVERIFY2(rate["asked"].toInt() == 60 && rate["atEnd"].toInt() == 60 && !rate.contains("fallback"), rateText.constData());
+        QVERIFY2(rate["delivered"].toDouble() >= 48 && rate["delivered"].toDouble() <= 62, rateText.constData());
         const QImage image(done.result["path"].toString());
         const auto verdict = ruler::verify(image, 0, 0, 0, 59);
         QVERIFY2(verdict.problem.isEmpty(), qPrintable(verdict.problem));

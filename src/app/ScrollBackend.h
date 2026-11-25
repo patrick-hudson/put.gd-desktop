@@ -47,7 +47,11 @@ public:
     //              endReason: "end_of_content"|"top_not_reached"|"height_cap"|"done"|"lost_track",
     //              truncated, appliedMaxHeight, topReached?: false, note?,
     //              scrolledBy: "user"|"putgd"|"both"|"none", framesPlaced, framesSkipped, endedLost, reachedEnd, foundAgain,
-    //              stats: {steps, pixelsPerNotch, lowConfidenceSteps, elapsedMs, frames, recovered, pinnedRegions, framesPerSecond}}
+    //              stats: {steps, pixelsPerNotch, lowConfidenceSteps, elapsedMs, frames, recovered, pinnedRegions, framesPerSecond,
+    //                      sourceRate?: {asked, atEnd, delivered, fallback?}}}
+    //             sourceRate: a source that grabs at a fixed rate (X11) only:
+    //             frames a second asked for and at the end, what it sent
+    //             while the capture read, and why it went down to 30.
     //             end_of_content: auto-scroll proved the end of the page and
     //             no frame was skipped. top_not_reached: the same, but the way
     //             to the top (fromTop) could not prove the top. done: finished

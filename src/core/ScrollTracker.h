@@ -171,8 +171,15 @@ struct TrackerOptions {
   double closeWidthFraction = 0.15;
   // Height cap of the image, all rows.
   long long maxOutputRows = 32000;
-  // After this many frames in a row that could not be placed the state is Lost.
+  // Frames in a row that could not be placed make the state Lost once there
+  // are at least lostAfterSkips of them and, for frames that carry a time,
+  // lostAfterMs have passed since the last frame placed or taken as still.
+  // A wall-clock window, so a faster source does not lose the page sooner:
+  // at 30 frames a second the second skipped frame comes about 67 ms after
+  // the last placed one, at 60 the fourth (#2064). Frames without a time
+  // (the replay tool, tests) count frames only.
   int lostAfterSkips = 2;
+  int lostAfterMs = 60;
 };
 
 // The image is written to a canvas the caller owns: page rows, 0 the first
@@ -307,7 +314,14 @@ class ScrollTracker {
   ScrollTracker(const ScrollTracker&) = delete;
   ScrollTracker& operator=(const ScrollTracker&) = delete;
 
-  TrackResult addFrame(const FrameView& frame, TrackerHint hint = {});
+  // atMs: when the frame was grabbed (any monotonic milliseconds), or -1.
+  TrackResult addFrame(const FrameView& frame, TrackerHint hint = {}, long long atMs = -1);
+  // No frame came until nowMs (the frames' clock): a skip run of at least
+  // lostAfterSkips frames whose lostAfterMs are up is Lost now. A stream
+  // that sends only damage may send nothing more for a while, and a capture
+  // that ends sends nothing more at all (LLONG_MAX): such a run is never left
+  // Following (Sol on #2071).
+  void expire(long long nowMs);
   // The driver takes back what its hints said since the last placed frame:
   // a step that ended without moving the page. The sum of hints starts again,
   // as after a frame proved still.
@@ -521,6 +535,10 @@ class ScrollTracker {
   long long hintSum_ = 0, hintUnc_ = 0;
   bool hintKnown_ = false;
   int skipRun_ = 0;
+  // The time of this frame and of the last one placed or taken as still (-1: none).
+  long long frameAt_ = -1, settledAt_ = -1;
+  // The skip run lasted long enough to be Lost (lostAfterSkips, lostAfterMs).
+  bool skipRunLost() const;
   // The pinned mask, per block: steps it stayed, steps it moved, pinned.
   std::vector<uint8_t> stayed_, wandering_, pinned_, closed_, stillNow_;
   // Page position span [min, max] seen while wandering_ > 0, so an in-page
