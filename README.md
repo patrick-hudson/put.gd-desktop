@@ -106,7 +106,7 @@ A few desktops need one more thing:
    | `Ctrl+Shift+2` | The active window |
    | `Ctrl+Shift+3` | The whole desktop |
 
-The capture uploads and its link is on your clipboard. Every capture is also in the main window and the tray menu.
+The capture uploads, and its link is on your clipboard when the destination gives one. Every capture is also in the main window and the tray menu.
 **Settings → Hotkeys** lets you change any key and says why one couldn't be set, for
 example when another app already uses it. Closing the window leaves put.gd running in the
 tray. The [quick start](https://app.put.gd/userguide/quickstart.html) walks through it
@@ -132,7 +132,7 @@ numbers, keys, tokens, secret QR codes, your own username and name, and words or
 patterns you list. The editor uploads only when you select **Upload**; you can also save
 or copy the image without uploading. **Check captures for sensitive text before
 uploading** can warn or cover text in screenshots before they upload. It doesn't check
-captures you edit, recordings, files or retries. Recognition can miss text, so look
+captures you edit, recordings, retries, or files other than PNG and JPEG images. Recognition can miss text, so look
 before you share.
 [The editor →](https://app.put.gd/userguide/edit.html) · [Sensitive text check →](https://app.put.gd/userguide/sensitive-text.html) · [Capture style →](https://app.put.gd/userguide/style.html)
 
@@ -190,10 +190,9 @@ gives AI agents the same controls.
 - Text recognition runs in a sandboxed helper on your computer. put.gd never saves, logs
   or uploads the text it reads on its own. Text you copy goes to your clipboard, where a
   clipboard manager may keep it.
-- Passwords, tokens and keys you give put.gd live in your system keychain (or in memory
-  for the current session), never in its config files. A custom uploader value you don't
-  mark **Secret** is saved as ordinary settings. SFTP uses your own SSH keys and agent and
-  never changes your `~/.ssh` files.
+- Passwords, tokens and keys that put.gd saves as secrets live in your system keychain
+  (or in memory for the current session), never in its config files. SFTP uses your own SSH
+  keys and agent and never changes your `~/.ssh` files.
 - put.gd checks app.put.gd for updates once a day. You can turn that off.
 
 ## More
