@@ -174,7 +174,8 @@ Repeat the affected sanitizer contracts with
 `payload_contract|archive_contract|upload_naming_contract|settings_contract|operations_contract|gui_settings_[a-z]+|gui_history_view|collision_policy_integration`
 as the CTest `-R` expression, using the ASan/UBSan settings in [build.md](../release/build.md)
 and the instrumented Qt environment in [thread-sanitizer.md](thread-sanitizer.md).
-To run every test under ASan/UBSan, as the nightly workflow does once a day, build
+To run every test under ASan/UBSan, as the nightly workflow does for each new nightly
+source, build
 the `clang-asan` preset and run `ctest --preset clang-asan-all`
 ([ci.md](../release/ci.md#every-test-under-the-sanitizers-nightly)). The `clang-asan` test
 preset alone runs only the core contracts the per-pull-request job runs. Both presets read

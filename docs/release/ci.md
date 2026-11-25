@@ -164,41 +164,6 @@ report already is. Waits and test timeouts scale by 5 there, and the same
 it has run green on `nightly` for a while. Its steps live in the composite action
 `.github/actions/sanitizers`, which the nightly run of every test shares.
 
-### Every test under the sanitizers, nightly
-
-The subset leaves most tests unchecked: the first run of the whole set (#2065) found a
-heap-use-after-free in the image editor (#2067), in a test the per-PR job doesn't run. So
-`nightly.yml`'s `sanitizers (every test, clang ASan/UBSan)` job builds the same
-`clang-asan` tree and runs the `clang-asan-all` test preset: every test, the `nightly`
-label included, with the linux job's CPU pool and the same retry policy. It runs once
-per new nightly source and skips when `plan` skips.
-
-- **A failure shows.** The job fails, which fails the nightly workflow run, and its
-  summary and a workflow error list each failure with its first report lines.
-- **It is filed.** `tools/ci/flake_ledger.py failures` adds one comment per failed run to
-  the open issue *Tests fail under ASan/UBSan in the nightly run of every test*
-  (label `area: tests`), or opens it. A failed test counts, and so do CTest failing
-  without a failed test, a run that stopped before its tests finished, and a test whose
-  sanitizer report only its retry hid. Close the issue once a run passes; the next
-  failure opens a new one.
-- **It never gates publication.** `publish` doesn't wait for it. The run holds the
-  `nightly-publication` concurrency group while it runs, so a manual nightly started
-  meanwhile waits for it.
-
-Two tests stay out of the full set: `ocr_confinement_integration` and
-`desktop_icon_assets`. Their binaries aren't instrumented, so they can't load the
-instrumented QtCore (confinement forbids what the sanitizers need; the icon renderer
-is a build tool).
-
-Leaks from inside third-party libraries are suppressed in `tests/sanitizer/lsan.supp`,
-with the reason beside each: Ubuntu 26.04's fontconfig keeps its parsed configuration
-when Qt adds an application font, and libdbus keeps a connection read buffer at exit.
-Neither shows on Fedora 45. Suppress nothing from put.gd's own frames; fix it.
-
-To check a fix on a branch, start `ci.yml` by hand with `full_sanitizers` (Actions >
-CI > Run workflow): contracts and the full sanitizer run, about 10 minutes. Locally,
-build the `clang-asan` preset and run `ctest --preset clang-asan-all`.
-
 Distro Qt is not instrumented, so ASan can't check loads made inside it. The bug
 [#76](https://github.com/patrick-hudson/put.gd-desktop/pull/76) fixed kept a
 `QJsonValueRef` to a destroyed temporary `QJsonObject`, and only exported QtCore
@@ -435,6 +400,50 @@ the operator's own `gh` login (see [releases](release.md#stable)).
 `tests/ci/test_release_channels.py` pins the nightly step and forbids every other
 `/dispatches` call in the workflows: workflows never start one another.
 
+### Every test under the sanitizers, nightly
+
+The subset leaves most tests unchecked: the first run of the whole set (#2065) found a
+heap-use-after-free in the image editor (#2067), in a test the per-PR job doesn't run. So
+`nightly.yml`'s `sanitizers (every test, clang ASan/UBSan)` job builds the same
+`clang-asan` tree and runs the `clang-asan-all` test preset: every registered test, the
+`nightly` label included, with the linux job's CPU pool and the same retry policy. It
+runs whenever `plan` doesn't skip, so it doesn't run on a day whose source is already a
+published nightly, and a run started again for the same source runs it again.
+
+- **A failure shows.** The job fails, which fails the nightly workflow run. A workflow
+  error names the failed tests; the job summary lists each with its first report lines.
+- **It is filed.** `tools/ci/flake_ledger.py failures` adds one comment per failed run to
+  the open issue *Tests fail under ASan/UBSan in the nightly run of every test*, found by
+  its exact title, or opens it (label `area: tests`). A failed test counts, and so do
+  CTest failing without a failed test, a run that stopped before its tests finished, and
+  a test whose sanitizer report only its retry hid. Manual `full_sanitizers` runs on a
+  branch comment on the same issue, naming their branch. Close it after a full run that
+  contains the fix passes; the next failure opens a new one.
+- **It never gates publication.** `publish` doesn't wait for it. The run holds the
+  `nightly-publication` concurrency group while it runs, so a manual nightly started
+  meanwhile waits for it.
+
+What the full set doesn't cover:
+
+- `ocr_confinement_integration` and `desktop_icon_assets`, which the preset leaves out.
+  Their binaries aren't instrumented, so they can't load the instrumented QtCore
+  (confinement forbids what the sanitizers need; the icon renderer is a build tool).
+- `ui_catalog_render`, which the sanitizer build doesn't register
+  (`PUTGD_UI_CATALOG_RENDER` stays off), and cases that skip by design there: the
+  Nextcloud test without its server, `native_tray_integration` outside its own
+  invocation, and the allocator and crash-handler cases that sanitizers replace.
+
+Leaks from inside third-party libraries are suppressed in `tests/sanitizer/lsan.supp`,
+with the reason beside each: Ubuntu 26.04's fontconfig keeps its parsed configuration
+when Qt adds an application font, and libdbus keeps a connection read buffer at exit.
+Neither showed on Fedora 45: on aurora-amd every test that loads the fonts or starts the
+D-Bus-using capture and record helpers passed under LeakSanitizer. Suppress nothing from
+put.gd's own frames; fix it.
+
+To check a fix on a branch, start `ci.yml` by hand with `full_sanitizers` (Actions >
+CI > Run workflow): contracts and the full sanitizer run, about 10 minutes. Locally,
+build the `clang-asan` preset and run `ctest --preset clang-asan-all`.
+
 ### Sanitizers job runtime
 
 Caches: the instrumented QtCore is 29 MiB compressed, the SDK prefix 4 MiB and the
@@ -446,8 +455,8 @@ container.
 
 Measured run times from 2026-10-19 are in [the CI records](../history/ci-records.md#sanitizers-job-runtime-2026-10-19).
 
-The nightly run of every test restores these same caches and saves none of them
-except a missing SDK prefix or QtCore, so it adds no cache entries. On 2026-11-25 its
+The nightly run of every test restores these same caches. It saves no compiler cache,
+and saves the SDK prefix or QtCore only when one is missing, like the per-PR job. On 2026-11-25 its
 job took 520 s with warm caches, 347 s of it testing 170 tests at `--parallel 4`.
 
 ## Speed measures
@@ -895,8 +904,8 @@ package caches:
 
 - **linux and sanitizers:** the build and test packages that `ci.yml` used to
   install, plus the unprivileged `putgd-ci` user CTest runs as. Both carry the
-  GStreamer plugins the recording and scroll-capture tests need, since the nightly
-  sanitizer job runs those too.
+  GStreamer plugins the recording and scroll-capture tests need, and labwc for
+  `budgie_labwc_integration`, since the nightly sanitizer job runs those too.
 - **native:** `git` and `ca-certificates`, then `tools/releases/install-native-deps.sh`;
   Arch also gets the `builder` user `makepkg` needs.
 - **appimage:** the base dependencies, `tools/ci/appimage-packages.txt`, `weston` and
