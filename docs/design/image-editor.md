@@ -229,7 +229,7 @@ generation `1`. UiControl's known frame types gained `editing`, `finalizing`,
    failure checkpoint carries `edit_cancelled`, `source_unsupported`,
    `input_excessive`, `edit_export_failed` or `image_job_io`. Every checkpoint
    returns `recentColors`; the resident saves a changed list to settings.
-5. `checkpointAccepted`; the helper exits 0.
+5. `checkpointAccepted`; the helper exits 0 within 5 s.
 
 Startup is limited to 20 s and finalization to 120 s; editing itself has no
 deadline. Each agent command must answer within 8 s, and at most 16 may wait;
@@ -242,6 +242,11 @@ the PNG contains only IHDR, PLTE, tRNS, gAMA, cHRM, sRGB, pHYs, IDAT and a final
 IEND with valid CRCs and no trailing bytes. Text, EXIF, ICC, time and private
 chunks are refused. Those exact bytes become the operation's single immutable
 artifact (`image/png`); they are not re-encoded, and retry reuses them.
+A helper still running 5 s after `checkpointAccepted` is the one exception (#2011): the
+image is already in the resident's pinned staging, so the resident stops the helper, logs
+why (`not_closed_after_handoff`), and runs the same checks on the image it handed off. A
+crash or an error exit after the handoff still fails the edit with `editor_exit`, and the
+message says it came after the handoff.
 
 ## Copy image
 
