@@ -306,7 +306,7 @@ private slots:
   OperationService ops(root,settings,registry,source);ops.setRecoveryRetryForTesting(40);
   PUTGD_TRY_VERIFY(ops.notReadyError().code=="journal_busy");
   const auto message=ops.notReadyError().message;
-  QCOMPARE(message,QString("The operation journal lock could not be acquired. If no other put.gd is running, quit put.gd, remove %1 and start it again.").arg(QDir::toNativeSeparators(lockPath)));
+  QCOMPARE(message,QString("Couldn't lock put.gd's data folder. If no other put.gd is running, quit put.gd, remove %1 and start put.gd again.").arg(QDir::toNativeSeparators(lockPath)));
   QCOMPARE(ops.notReadyError().details["lockPath"].toString(),QDir::toNativeSeparators(lockPath));
   PUTGD_VERIFY_STEADY(!ops.ready(),500);   // several retries later: still busy
   QFile lock(lockPath);QVERIFY(lock.open(QIODevice::ReadOnly));QCOMPARE(lock.readAll(),QByteArray("not a lock"));

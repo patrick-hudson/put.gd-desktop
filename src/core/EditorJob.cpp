@@ -47,7 +47,7 @@ void EditorSession::decide(const QString& choice,int prompt,Reply reply){
   std::lock_guard lock(mutex_);
   if(phase_=="prompt"&&(prompt<1||prompt==prompts_)&&queue_.size()<EditorJob::maximumQueuedCommands){queue_.append({QStringLiteral("decide"),{{"choice",choice}},std::move(reply)});return;}
  }
- reply({"sensitive_decision_unavailable","This operation is not waiting for that sensitive text decision",{}},{});
+ reply({"sensitive_decision_unavailable","This capture isn't waiting for that sensitive text decision.",{}},{});
 }
 void EditorSession::setAppearance(const QString& scheme){std::lock_guard lock(mutex_);pendingAppearance_=scheme=="light"?QStringLiteral("light"):QStringLiteral("dark");}
 QString EditorSession::takeAppearance(){std::lock_guard lock(mutex_);return std::exchange(pendingAppearance_,{});}
@@ -82,13 +82,13 @@ bool recentColorList(const QJsonValue& value,QStringList& colors){
  return true;
 }
 Error failure(const QString& code){
- if(code=="edit_cancelled"||code=="cancelled")return {"cancelled","Edit discarded; nothing was uploaded",{}};
- if(code=="input_excessive")return {"edit_input_too_large","This image is too large to edit; use a smaller copy",{}};
+ if(code=="edit_cancelled"||code=="cancelled")return {"cancelled","Edit discarded. The upload didn't start.",{}};
+ if(code=="input_excessive")return {"edit_input_too_large","This image is too large to edit. Use a smaller copy.",{}};
  if(code=="source_unsupported")return {"source_unsupported","The image could not be opened for editing",{}};
  if(code=="edit_export_failed")return {"edit_export_failed","The edited image could not be prepared",{}};
  if(code=="editor_timeout")return {code,"The image editor did not respond in time",{}};
  if(code=="editor_start")return {code,"The image editor could not start",{}};
- if(code=="edit_staging_failed")return {code,"Could not save the image for editing; check free disk space",{}};
+ if(code=="edit_staging_failed")return {code,"Couldn't save the image for editing. Check free disk space and try again.",{}};
  if(code=="sensitive_check_timeout")return {code,"put.gd couldn't check the capture for sensitive text in time, so it wasn't uploaded",{}};
  if(code=="editor_unavailable")return {code,"The image editor is not available on this platform",{}};
  if(code=="editor_output_invalid"||code=="edit_output_invalid")return {"edit_output_invalid","The editor returned an image that is not a sanitized PNG",{}};

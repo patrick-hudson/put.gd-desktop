@@ -40,7 +40,7 @@ HelperSupervisor::~HelperSupervisor() {
     stopDeadline_.stop();
     probeDeadline_.stop();
     if (probe_) { probe_->disconnect(this); probe_->kill(); probe_->waitForFinished(1000); }
-    const auto closing = fault(HelperFault::Closed, "The resident is shutting down");
+    const auto closing = fault(HelperFault::Closed, "put.gd is shutting down.");
     if (child_) {
         if (child_->control) child_->control->stop();
         // The helper's pipe closes with it: nothing more is captured or injected.
@@ -209,7 +209,7 @@ void HelperSupervisor::receive(quint64 generation, const QString& type, const QJ
     if (payload["role"] != "record" || payload["nonce"] != child_->nonce || payload["generation"] != QString::number(child_->generation)) { failChild(generation, fault(HelperFault::Protocol, the() + " answered with a foreign envelope")); return; }
     if (type == "ready") {
         if (child_->ready || payload.size() != 4) { failChild(generation, fault(HelperFault::Protocol, "Unexpected ready frame")); return; }
-        if (payload["build"].toObject() != build()) { failChild(generation, fault(HelperFault::Build, the() + " does not match this build; reinstall the package and restart")); return; }
+        if (payload["build"].toObject() != build()) { failChild(generation, fault(HelperFault::Build, the() + " doesn't match this version of put.gd. Reinstall put.gd and restart it.")); return; }
         child_->ready = true;
         startup_.stop();
         auto found = child_->outstanding.find("prepare");
@@ -284,7 +284,7 @@ void HelperSupervisor::exited(quint64 generation, int code, QProcess::ExitStatus
     if (child_->control) child_->control->stop();
     const bool clean = child_->shuttingDown && status == QProcess::NormalExit && code == 0;
     if (!clean) {
-        const auto error = fault(status == QProcess::NormalExit ? HelperFault::Exited : HelperFault::Crashed, the() + " ended unexpectedly; nothing was " + policy_.lost);
+        const auto error = fault(status == QProcess::NormalExit ? HelperFault::Exited : HelperFault::Crashed, the() + " stopped unexpectedly. Nothing was " + policy_.lost + ".");
         auto outstanding = std::move(child_->outstanding);
         child_->outstanding.clear();
         const bool notify = !child_->shuttingDown;

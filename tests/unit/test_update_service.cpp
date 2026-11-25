@@ -345,7 +345,7 @@ private slots:
   error={};updates->install({{"confirm",false}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_confirm_required"));
   error={};updates->install({{"confirm",true},{"method","torrent"}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("invalid_request"));
   error={};updates->install({{"confirm",true},{"image","/tmp/other"}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("invalid_request"));
-  updates->setBusy([]{return QString("A recording is running; install the update when it has finished");});
+  updates->setBusy([]{return QString("A recording is running. Install the update after it finishes");});
   error={};updates->install({{"confirm",true}},[&](Error e,QJsonObject){error=e;});QCOMPARE(error.code,QString("update_install_busy"));
   QVERIFY(calls().isEmpty());
   updates->setBusy({});
@@ -375,7 +375,7 @@ private slots:
  void aFailedInstallKeepsItsReasonAndNothingWaits(){
   SettingsService settings(dir.filePath("config.json"));configure(settings);
   auto updates=service(settings,build("0.1.0"));updates->setImage(dir.filePath("putgd.AppImage"));updates->start();
-  answerLines({{{"schemaVersion",1},{"ok",false},{"result",QJsonObject{}},{"error",QJsonObject{{"code","update_verification_failed"},{"message","The download doesn't match the release's SHA256SUMS; nothing was changed"},{"details",QJsonObject{{"check","sha256"}}}}}}},1);
+  answerLines({{{"schemaVersion",1},{"ok",false},{"result",QJsonObject{}},{"error",QJsonObject{{"code","update_verification_failed"},{"message","The download doesn't match the release's SHA256SUMS. Your current AppImage wasn't changed."},{"details",QJsonObject{{"check","sha256"}}}}}}},1);
   updates->install({{"confirm",true},{"method","download"}},[](Error,QJsonObject){});
   PUTGD_TRY_COMPARE(updates->status()["install"].toObject()["state"].toString(),QString("failed"));
   const auto install=updates->status()["install"].toObject();

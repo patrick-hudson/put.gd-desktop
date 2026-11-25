@@ -84,28 +84,28 @@ Error writeCandidate(const QString& path,const ProfileValidator& validator,const
     const auto parent = QFileInfo(path).absolutePath();
     if (!QDir(parent).exists()) {
         if (!QDir().mkpath(parent) || !QFile::setPermissions(parent, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner))
-            return {"config_unwritable", "Cannot create a private configuration directory.", {}};
+            return {"config_unwritable", "Couldn't create put.gd's configuration folder.", {}};
     }
     QLockFile lock(path + QStringLiteral(".lock"));
     lock.setStaleLockTime(30000);
     if (!lock.tryLock(0)) {
         if (lock.error() == QLockFile::LockFailedError)
-            return {"config_busy", "Another cooperative writer holds the configuration lock.", {}};
-        return {"config_unwritable", "Cannot create the configuration lock file.", {}};
+            return {"config_busy", "Another process is saving settings. Try again.", {}};
+        return {"config_unwritable", "Couldn't lock the configuration file for saving. Check folder permissions.", {}};
     }
     QByteArray current;
     bool exists = false;
     if (auto error = readConfig(path, current, exists)) return error;
     const auto actualRevision = exists ? revisionOf(current) : QString{};
     if (actualRevision != expectedRevision)
-        return {"config_conflict", "Configuration changed; reload or rebase before saving.", {{"observedRevision", actualRevision}}};
+        return {"config_conflict", "Settings changed elsewhere. Reload them before saving.", {{"observedRevision", actualRevision}}};
     if (validator)
         if (auto error = currentRules(proposed, current, validator)) return error;
     QSaveFile output(path);
     output.setDirectWriteFallback(false);
     if (!output.open(QIODevice::WriteOnly) || !output.setPermissions(QFile::ReadOwner | QFile::WriteOwner) ||
         output.write(bytes) != bytes.size() || !output.commit())
-        return {"config_unwritable", "Atomic configuration save failed; prior bytes were preserved.", {}};
+        return {"config_unwritable", "Couldn't save settings. Your earlier settings were kept.", {}};
     return {};
 }
 

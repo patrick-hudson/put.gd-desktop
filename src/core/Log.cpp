@@ -353,7 +353,7 @@ void cleanup() {if(const auto writer=current())writer->push({Command::Cleanup,{}
 QJsonObject clear(Error& error) {
  if(!current()){error={"logging_unavailable","Logging is not running in this process",{}};return {};}
  bool completed=false;auto result=wait(Command::Clear,10000,&completed);
- if(!completed)error={"logging_busy","The log writer did not finish clearing; try again",{}};
+ if(!completed)error={"logging_busy","Couldn't finish clearing the logs. Try again.",{}};
  return result;
 }
 void flush() {wait(Command::Flush,10000);}

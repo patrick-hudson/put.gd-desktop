@@ -38,7 +38,7 @@ HelperPolicy policy() {
     p.process = "putgd-record";
     p.lost = "uploaded";
     p.discarded = "The recording session was discarded";
-    p.active = {"recording_active", "A recording helper is already running", {}};
+    p.active = {"recording_active", "A recording is already running. Stop or cancel it first.", {}};
     p.timeoutEndsHelper = false;
     p.error = recordingError;
     p.probe.argument = "--capabilities";

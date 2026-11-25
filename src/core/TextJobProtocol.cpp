@@ -168,7 +168,7 @@ Error failure(const QString& code,const QString& language){
  if(code=="text_job_io")return {code,"Text recognition could not read the image or write its result",{}};
  if(code=="language_unavailable")return {code,"Text recognition data for this language is not installed",validLanguage(language)?QJsonObject{{"language",language}}:QJsonObject{}};
  if(code=="engine_unavailable")return {code,"Text recognition needs the Tesseract English data. Install tesseract-ocr-eng (Debian, Ubuntu, Mint), tesseract-langpack-eng (Fedora) or tesseract-data-eng (Arch)",{}};
- if(code=="helper_sandbox_unavailable")return {code,"Text recognition is unavailable: this system cannot confine the recognition helper",{}};
+ if(code=="helper_sandbox_unavailable")return {code,"Text recognition isn't available because this system can't confine the recognition helper.",{}};
  if(code=="text_job_timeout")return {code,"Text recognition timed out",{}};
  if(code=="text_incompatible")return {code,"The text recognition helper does not match this build of put.gd",{}};
  if(code=="text_busy")return {code,busyNotification,{}};

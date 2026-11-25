@@ -225,7 +225,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
     auto root=doc;root.remove("captureDefaults");
     if (!keys(root, {"schemaVersion", "actions", "profiles", "archive", "naming", "limits", "retention", "preferences"}))
         return invalid("/", "Configuration has missing or unsupported fields.");
-    if (!integer(doc["schemaVersion"], 1, 1)) return invalid("/schemaVersion", "Unsupported configuration schema version.");
+    if (!integer(doc["schemaVersion"], 1, 1)) return invalid("/schemaVersion", "Unsupported configuration version.");
     if (!doc["profiles"].isArray() || doc["profiles"].toArray().size() > 32)
         return invalid("/profiles", "Profiles must be an array of at most 32 destinations.");
     QStringList profileIds;
@@ -243,7 +243,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         if (!keys(credentials, {"mode", "reference"}) || !choice(credentials["mode"], {"keychain", "session"}) ||
             (credentials["mode"] == "keychain" && !text(credentials["reference"], 1, 256)) ||
             (credentials["mode"] == "session" && !credentials["reference"].isNull()))
-            return invalid("/profiles/credentials", "Use a keychain reference or explicitly selected session credentials.");
+            return invalid("/profiles/credentials", "Choose Save to keychain or Use for this session.");
         if (!validateProfile) return invalid("/profiles/provider", "Provider validation is unavailable.");
         // The refused destination, as the submitted document names it (#1675).
         if (auto error = validateProfile(profile["provider"].toString(), profile["settings"].toObject())) {
@@ -278,10 +278,10 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         const auto action = value.toObject();
         // Repeat last region is a key only: it always uses the region route.
         if (name == repeatActionName() && !(value.isObject() && keys(action, {"shortcut"})))
-            return invalid("/actions/" + name, "Repeat last region holds only a hotkey; it uses the region capture's output.");
+            return invalid("/actions/" + name, "Repeat last region only takes a hotkey. It uses the Capture region output.");
         // Copy text has no route: nothing but its hotkey is accepted.
         if (name == textActionName() && !(value.isObject() && keys(action, {"shortcut"})))
-            return invalid("/actions/" + name, "Copy text holds only a hotkey; it has no output.");
+            return invalid("/actions/" + name, "Copy text only takes a hotkey and has no upload or local output.");
         // A shortcut-only record entry follows the region route.
         const bool inheritedRecord = (name == recordingActionName() || name == repeatActionName() || name == textActionName()) && value.isObject() && keys(action, {"shortcut"});
         if (inheritedRecord) {
@@ -351,7 +351,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         if (key == "concurrentUploads") maximum = 32;
         if (key == "imagePixels") maximum = 1000000000;
         if (artifactByteLimitKeys().contains(key)) {
-            if (!byteLimit(limits[key])) return invalid("/limits/" + key, ByteSize::labels("File, batch and waiting-upload limits are a positive byte count up to 1 TiB, \"auto\" or null for no limit."));
+            if (!byteLimit(limits[key])) return invalid("/limits/" + key, ByteSize::labels("File, batch and queued-file limits must be a positive size up to 1 TiB, \"auto\" or null for no limit."));
             continue;
         }
         if (!integer(limits[key], 1, maximum)) return invalid("/limits/" + key, "Resource limits must be positive bounded integers.");
@@ -364,7 +364,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         !integer(retention["failedArtifactDays"], 0, 36500) || !integer(retention["recentActivityLimit"], 1, 10000) ||
         !integer(retention["previewCacheBytes"], 0, 1099511627776LL) ||
         !(retention["historyRetentionDays"].isNull() || integer(retention["historyRetentionDays"], 1, 36500)))
-        return invalid("/retention", "Retention limits are invalid; null history retention means no automatic expiry.");
+        return invalid("/retention", "Retention limits are invalid. To turn off automatic expiry, change Keep history for to Forever (null in the configuration file).");
     if (retention.contains("logDays") && !integer(retention["logDays"], 1, 365))
         return invalid("/retention/logDays", "Log retention is 1 to 365 days.");
     if (retention.contains("logBytes") && !integer(retention["logBytes"], 1048576, 1073741824))
@@ -415,7 +415,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
              overrides["dark"].toObject().isEmpty() && overrides["light"].toObject().isEmpty());
         if (!preferences["appearance"].isObject() || !keys(appearance, appearanceKeys) || !choice(appearance["theme"], {"system", "dark", "light"}) ||
             (appearance.contains("accent") && !appearance["accent"].isNull()) || !overridesEmpty)
-            return invalid("/preferences/appearance", "Appearance holds theme (system, dark or light); accent is null and overrides are {\"dark\": {}, \"light\": {}} until custom colours are supported.");
+            return invalid("/preferences/appearance", "Appearance takes theme (system, dark or light). Accent must be null and overrides must be {\"dark\": {}, \"light\": {}} until custom colors are supported.");
     }
     if (preferences.contains("uploadClipboardBehavior") && !choice(preferences["uploadClipboardBehavior"], {"each_link", "list"}))
         return invalid("/preferences/uploadClipboardBehavior", "Choose each_link or list for upload clipboard behavior.");
@@ -433,7 +433,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
     if (preferences.contains("recordingMicrophone") && !preferences["recordingMicrophone"].isBool())
         return invalid("/preferences/recordingMicrophone", "The recording microphone toggle is true or false.");
     if (preferences.contains("recordingMicrophoneDevice") && !recording::validMicrophoneDevice(preferences["recordingMicrophoneDevice"]))
-        return invalid("/preferences/recordingMicrophoneDevice", "The recording microphone is the name of an input device, at most 256 characters; leave it empty for the system default.");
+        return invalid("/preferences/recordingMicrophoneDevice", "The recording microphone must be an input device name of at most 256 characters. Leave it empty for System default.");
     if (preferences.contains("recordingClickHighlights") && !preferences["recordingClickHighlights"].isBool())
         return invalid("/preferences/recordingClickHighlights", "Click highlights in recordings are true or false.");
     if (preferences.contains("unhingedMode") && !preferences["unhingedMode"].isBool())
@@ -483,7 +483,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
     // #1820: kinds gives each one off, warn or redact; categories is #1804's list, each one read as warn.
     if (preferences.contains("sensitiveTextCheck")) {
         const auto check = preferences["sensitiveTextCheck"].toObject();
-        const char* const wrong = "The sensitive text check is an object with enabled (true or false) and kinds: each of email, phone, ip, card, key, name and list set to off, warn or redact. An older categories list (one to seven of those names) may stay beside it.";
+        const char* const wrong = "The sensitive text check must be an object with enabled (true or false) and kinds, with each of email, phone, ip, card, key, name and list set to off, warn or redact. An older categories list (one to seven of those names) may stay beside it.";
         if (!preferences["sensitiveTextCheck"].isObject() || !check["enabled"].isBool() || !(check.contains("categories") || check.contains("kinds")))
             return invalid("/preferences/sensitiveTextCheck", wrong);
         for (auto it = check.begin(); it != check.end(); ++it)

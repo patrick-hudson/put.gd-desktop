@@ -150,7 +150,7 @@ private slots:
   QCOMPARE(locations.error.code,QString("storage_busy"));QCOMPARE(snapshot(d.path()),before);
   // The same step as journal recovery gives: no owner named, the lock's path to remove by hand (#1576).
   QCOMPARE(locations.error.details["lockPath"].toString(),QDir::toNativeSeparators(legacyData(d.path())+"/resident.lock"));
-  QVERIFY2(locations.error.message.startsWith("The operation journal lock could not be acquired. If no other put.gd is running, quit put.gd, remove "),qPrintable(locations.error.message));
+  QVERIFY2(locations.error.message.startsWith("Couldn't lock put.gd's data folder. If no other put.gd is running, quit put.gd, remove "),qPrintable(locations.error.message));
   running.unlock();verifyMoved(d.path(),StorageLocations::prepare(d.filePath("c"),d.filePath("d")));
  }
  // A lock file that cannot be created is not a held lock: no removal step for a file that never existed (#1576).

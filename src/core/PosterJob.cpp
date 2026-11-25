@@ -39,7 +39,7 @@ Error failure(const QString& code){
  if(code=="cancelled")return {code,"Video preview cancelled",{}};
  if(code=="input_excessive")return {code,"The video exceeds the preview limits",{}};
  if(code=="poster_timeout")return {code,"Video preview timed out",{}};
- if(code=="poster_helper_missing")return {code,"Video previews need the putgd-record helper",{}};
+ if(code=="poster_helper_missing")return {code,"Video previews need the putgd-record helper. Reinstall put.gd.",{}};
  return {code,"The video preview could not be made",{}};
 }
 }

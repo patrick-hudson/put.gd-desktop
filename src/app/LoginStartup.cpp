@@ -29,7 +29,7 @@ Error commit(const QString& path,const QByteArray& bytes,QFile::Permissions perm
     current.permissions().testFlags(permissions)&&!(current.permissions()&shared))return {};
  current.close();
  QSaveFile file(path);file.setDirectWriteFallback(false);
- if(!file.open(QIODevice::WriteOnly)||!file.setPermissions(permissions)||file.write(bytes)!=bytes.size()||!file.commit())return {"autostart_io","Cannot commit "+what,{}};
+ if(!file.open(QIODevice::WriteOnly)||!file.setPermissions(permissions)||file.write(bytes)!=bytes.size()||!file.commit())return {"autostart_io","Couldn't save the "+what+".",{}};
  return {};
 }
 // Remove put.gd's own login script; never a file it did not write.

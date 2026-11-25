@@ -69,14 +69,14 @@ QJsonObject HistoryService::copyableLink(const QString& id,Error& e) {
   HistoryStore store(operations_.databasePath());auto data=store.detail(id,&e);if(e)return QJsonObject{};
   if(data["linkRefreshable"].toBool()) {
    auto receipt=StorageReceipt::fromJson(data["receipt"].toObject());auto provider=operations_.providers().find(receipt.destination.providerId);
-   if(!provider){e={"provider_unavailable","Restore access to the original destination",{}};return QJsonObject{};}
+   if(!provider){e={"provider_unavailable","Destination is unavailable. Restore access to it in Destinations.",{}};return QJsonObject{};}
    auto lock=operations_.objectLock(receipt.destination,receipt.objectReference,{});std::unique_lock guard(*lock);
    data=store.detail(id,&e);if(e)return QJsonObject{};
    if(data["linkRefreshable"].toBool()) {
     receipt=StorageReceipt::fromJson(data["receipt"].toObject());
     // Quit kills a renewal helper waiting on a stalled server; a link not renewed stays as recorded (#1602).
     auto result=awaitProvider<StatResult>([&](auto cb){provider->refreshLinkForCopy(receipt,quitting_,cb);});
-    if(result.error||result.status!="own"){e=result.error?result.error:Error{"link_refresh_failed","The original uploaded object is no longer available",{}};return QJsonObject{};}
+    if(result.error||result.status!="own"){e=result.error?result.error:Error{"link_refresh_failed","Couldn't confirm the original uploaded file, so its link wasn't refreshed.",{}};return QJsonObject{};}
     if((e=store.refreshLink(id,receipt,result.receipt)))return QJsonObject{};
     data=store.detail(id,&e);
    }
@@ -89,7 +89,7 @@ void HistoryService::unlockLinkCredentials(const QString& id,JsonReply reply) {
   if(e){reply(e,{});return;}
   const auto receipt=StorageReceipt::fromJson(data["receipt"].toObject());
   auto provider=operations_.providers().find(receipt.destination.providerId);
-  if(!data["linkRefreshable"].toBool()||!provider||receipt.destination.credentialReference["mode"]!="keychain"){reply({"credential_setup_required","Restore the original destination credentials in Settings",{}},{});return;}
+  if(!data["linkRefreshable"].toBool()||!provider||receipt.destination.credentialReference["mode"]!="keychain"){reply({"credential_setup_required","Credentials for this destination are unavailable. Restore them in Destinations.",{}},{});return;}
   provider->unlockLinkCredentials(receipt,[reply](Error e){reply(e,{{"unlocked",!e}});});
  });
 }
@@ -100,7 +100,7 @@ void HistoryService::unlockItemCredentials(const QString& id,JsonReply reply) {
   if(e){reply(e,{});return;}
   const auto receipt=StorageReceipt::fromJson(data["receipt"].toObject());
   auto provider=operations_.providers().find(receipt.destination.providerId);
-  if(receipt.validate()||!provider){reply({"provider_unavailable","Restore access to the original destination",{}},{});return;}
+  if(receipt.validate()||!provider){reply({"provider_unavailable","Destination is unavailable. Restore access to it in Destinations.",{}},{});return;}
   if(receipt.destination.credentialReference["mode"]!="keychain"){reply({"credential_setup_required","This file's destination used credentials for one session only. Enter them again in Destinations.",{{"profileId",receipt.destination.profileId}}},{});return;}
   provider->unlockLinkCredentials(receipt,[reply,profileId=receipt.destination.profileId](Error e){reply(e,{{"unlocked",!e},{"profileId",profileId}});});
  });
@@ -110,7 +110,7 @@ void HistoryService::copyLink(const QString& id,JsonReply reply) {
  const auto ticket=operations_.invalidateCopyEligibility();
  operations_.background([this,id](Error& e) {return copyableLink(id,e); },[this,id,reply,ticket](Error e,QJsonObject data) {
   if(e){reply(e,{});return;}
-  if(!data["linkAvailable"].toBool()){reply({"link_unavailable","This recorded link is no longer available",{}},{});return;}
+  if(!data["linkAvailable"].toBool()){reply({"link_unavailable","This link is no longer available.",{}},{});return;}
   notifyChanged();
   operations_.copyHistoryUrl(data["receipt"].toObject()["directUrl"].toString(),[this,id,reply](Error e,QJsonObject result) {
    if(e||!result["copied"].toBool()){reply(e,result);return;}
@@ -128,7 +128,7 @@ void HistoryService::copyLinks(const QStringList& ids,JsonReply reply) {
  const auto ticket=operations_.invalidateCopyEligibility();
  operations_.background([this,ids](Error& e) {
   QStringList urls;
-  for(const auto& id:ids){const auto data=copyableLink(id,e);if(e)return QJsonObject{};if(!data["linkAvailable"].toBool()){e={"link_unavailable","This recorded link is no longer available",{{"historyId",id}}};return QJsonObject{};}urls.append(data["receipt"].toObject()["directUrl"].toString());}
+  for(const auto& id:ids){const auto data=copyableLink(id,e);if(e)return QJsonObject{};if(!data["linkAvailable"].toBool()){e={"link_unavailable","This link is no longer available.",{{"historyId",id}}};return QJsonObject{};}urls.append(data["receipt"].toObject()["directUrl"].toString());}
   return QJsonObject{{"text",urls.join('\n')}};
  },[this,ids,reply,ticket](Error e,QJsonObject links) {
   if(e){reply(e,{});return;}
@@ -191,16 +191,16 @@ namespace {
 // after a warning (#1763); any other may still be reaching the file.
 QString readdedMessage(const QString& status,const QString& found,bool credentials,const Error& checkError) {
  const bool wayOut=status=="unsupported_safe_removal"||status=="version_retained";
- const QString why=credentials?QStringLiteral("This deletion started with other credentials for the destination added back, so put.gd won't finish it with its current ones. "):QStringLiteral("This deletion started before its destination was removed, so put.gd won't finish it through the destination added back. ");
- const QString restore=credentials?QStringLiteral(" Restore those credentials in Destinations to finish it."):QString();
- const QString forget=wayOut?QStringLiteral(" You can also remove it from History only."):QString();
- if(found=="own")return why+QStringLiteral("The recorded file is still there; Advanced file details show its exact name and version. Delete that file at the destination yourself, then choose Retry deletion: put.gd checks again and ends this deletion once it is gone.")+restore+forget;
+ const QString why=credentials?QStringLiteral("This deletion started with different credentials, so it won't continue with the current ones. "):QStringLiteral("This deletion started before its destination was removed, so it won't continue through the re-added destination. ");
+ const QString restore=credentials?QStringLiteral(" Restore the original credentials in Destinations to finish it."):QString();
+ const QString forget=wayOut?QStringLiteral(" You can also select Remove from History only."):QString();
+ if(found=="own")return why+QStringLiteral("The file is still at the destination. Open Advanced file details for its exact name and version, delete it there yourself, then select Retry deletion to confirm it is gone.")+restore+forget;
  if(found=="unknown"){auto reason=checkError.message.trimmed();while(reason.endsWith('.'))reason.chop(1);
-  return why+QStringLiteral("put.gd couldn't check whether the file is still there")+(reason.isEmpty()?QString():QStringLiteral(" (")+reason+QStringLiteral(")"))+QStringLiteral(". Choose Retry deletion to check again.")+restore+forget;}
- return why+QStringLiteral("Check the file at the destination")+(wayOut?QStringLiteral(", or remove it from History only."):QStringLiteral("; Remove from History only is not offered while it may be there."))+restore;
+  return why+QStringLiteral("Couldn't check whether the file is still there")+(reason.isEmpty()?QString():QStringLiteral(" (")+reason+QStringLiteral(")"))+QStringLiteral(". Select Retry deletion to check again.")+restore+forget;}
+ return why+QStringLiteral("Check the file at the destination")+(wayOut?QStringLiteral(", or select Remove from History only."):QStringLiteral(". Remove from History only isn't available while the file may still be there."))+restore;
 }
 Error destinationRemovedError(const QString& historyId) {
- return {"destination_removed","This file's destination was removed from Settings, so put.gd can't delete it there. The file stays where it was uploaded; add a destination for the same place to delete it, or remove it from History only.",{{"historyId",historyId}}};
+ return {"destination_removed","This file's destination was removed, so put.gd can't delete it there. The file stays at the destination. Add a destination for the same place to delete it, or select Remove from History only.",{{"historyId",historyId}}};
 }
 // An uploaded file whose recorded destination is gone from Settings, with nothing else at the same place (#1759).
 bool destinationGone(const QJsonObject& record,const QJsonArray& profiles) {
@@ -219,36 +219,36 @@ QJsonObject HistoryService::prepare(const QStringList& ids,const QJsonArray& pro
  for(const auto& id:ids) {
   if(seen.contains(id)) {e={"invalid_selection","Duplicate history ID",{}};return {};}seen.insert(id);
   auto data=store.detail(id,&e);if(e)return {};
-  if(data["uploadStatus"]!="uploaded") {e={"delete_target_invalid","Only confirmed uploaded entries can be deleted",{{"historyId",id}}};return {};}
+  if(data["uploadStatus"]!="uploaded") {e={"delete_target_invalid","Only completed uploads can be deleted from their destination.",{{"historyId",id}}};return {};}
   auto receipt=StorageReceipt::fromJson(data["receipt"].toObject());if(auto error=receipt.validate()) {e=error;return {};}
   const auto remote=data["remoteStatus"].toString();
   // #1759: a removed destination is said before anything else, even after an earlier attempt
   // that failed or ended unknown; this preview offers Remove from History only, never a deletion.
   const auto current=Settings::profileForDestination(receipt.destination.toJson(),profiles);
-  if(current.isEmpty()&&remote!="removed"&&remote!="already_missing"){const auto blocker=store.forgetBlocker(id,running);targets.append(QJsonObject{{"historyId",id},{"receipt",receipt.toJson()},{"destinationRemoved",true},{"forgettable",blocker.isEmpty()},{"retainedBy",blocker},{"effect",QStringLiteral("This file's destination was removed from Settings. The file stays where it was uploaded.")}});continue;}
-  if(remote=="pending"||remote=="deleting"||remote=="unknown"||remote=="changed"||remote=="hidden_version_retained") {e={"delete_target_changed","Resolve or retry the existing deletion identity",{{"historyId",id}}};return {};}
+  if(current.isEmpty()&&remote!="removed"&&remote!="already_missing"){const auto blocker=store.forgetBlocker(id,running);targets.append(QJsonObject{{"historyId",id},{"receipt",receipt.toJson()},{"destinationRemoved",true},{"forgettable",blocker.isEmpty()},{"retainedBy",blocker},{"effect",QStringLiteral("This file's destination was removed. The file stays at the destination.")}});continue;}
+  if(remote=="pending"||remote=="deleting"||remote=="unknown"||remote=="changed"||remote=="hidden_version_retained") {e={"delete_target_changed","A deletion of this file is already running or didn't finish. Check its status in History.",{{"historyId",id}}};return {};}
   // An earlier deletion that may have sent a request keeps its checkpoint for Retry (#1763): a new one would start without it.
-  if(data["deleteProgress"].toObject().contains("phase")&&!QStringList{"removed","already_missing","changed"}.contains(remote)) {e={"delete_target_changed","An earlier deletion of this file saved its progress. Retry that deletion from History instead.",{{"historyId",id},{"deleteOperationId",data["deleteOperationId"]}}};return {};}
-  auto provider=operations_.providers().find(receipt.destination.providerId);if(!provider) {e={"provider_unavailable","Restore access to the original destination",{{"historyId",id}}};return {};}
+  if(data["deleteProgress"].toObject().contains("phase")&&!QStringList{"removed","already_missing","changed"}.contains(remote)) {e={"delete_target_changed","An earlier deletion of this file saved its progress. Select Retry deletion in History instead.",{{"historyId",id},{"deleteOperationId",data["deleteOperationId"]}}};return {};}
+  auto provider=operations_.providers().find(receipt.destination.providerId);if(!provider) {e={"provider_unavailable","Destination is unavailable. Restore access to it in Destinations.",{{"historyId",id}}};return {};}
   // A destination added back for the same place under another ID deletes it with its own
   // credentials when the deletion runs (runDelete); the receipt stays as recorded.
   QJsonObject target{{"historyId",id}};
   if(current["id"].toString()!=receipt.destination.profileId)target["currentProfileId"]=current["id"];
-  auto caps=provider->receiptCapabilities(receipt);if(!caps.safeRemoval()) {e={"unsupported_capability",caps.removeUnavailable.isEmpty()?QStringLiteral("This provider can't safely delete this recorded object"):caps.removeUnavailable,{{"historyId",id}}};return {};}
+  auto caps=provider->receiptCapabilities(receipt);if(!caps.safeRemoval()) {e={"unsupported_capability",caps.removeUnavailable.isEmpty()?QStringLiteral("This destination can't safely delete this file."):caps.removeUnavailable,{{"historyId",id}}};return {};}
   target["receipt"]=receipt.toJson();target["effect"]=caps.deletionEffect;targets.append(target);
  }
  const auto digest=QString::fromLatin1(QCryptographicHash::hash(QJsonDocument(targets).toJson(QJsonDocument::Compact),QCryptographicHash::Sha256).toHex());
  return {{"targets",targets},{"acknowledgement",digest},{"localCopiesPreserved",true},{"cacheNotice","Copies already cached by browsers or a CDN can stay visible for a while"}};
 }
 void HistoryService::prepareDelete(const QStringList& ids,JsonReply reply) {if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}const auto running=QSet<QString>(active_.keyBegin(),active_.keyEnd());operations_.background([this,ids,running](Error& e) {return prepare(ids,currentProfiles(),running,e);},reply);}
-namespace {Error quittingError() {return {"cancelled","put.gd is quitting; delete or retry after it starts again",{}};}}
+namespace {Error quittingError() {return {"cancelled","put.gd is quitting. Try again after it restarts.",{}};}}
 void HistoryService::stopDeletions() {quitting_->store(true);}
 void HistoryService::deleteConfirmed(const QStringList& ids,const QString& acknowledgement,JsonReply reply) {
  if(quitting_->load()) {reply(quittingError(),{});return;}
   const auto running=QSet<QString>(active_.keyBegin(),active_.keyEnd());
  operations_.background([this,ids,acknowledgement,running](Error& e) {auto preview=prepare(ids,currentProfiles(),running,e);if(e)return QJsonObject{};
   // Nothing is deleted while any target's destination is gone (#1759): the preview offered Remove from History only.
-  for(const auto& target:preview["targets"].toArray())if(target.toObject()["destinationRemoved"].toBool()){e=destinationRemovedError(target.toObject()["historyId"].toString());return QJsonObject{};}if(acknowledgement.isEmpty()||preview["acknowledgement"]!=acknowledgement) {e={"delete_confirmation_changed","Acknowledge the current exact target set and effect",{}};return QJsonObject{};}
+  for(const auto& target:preview["targets"].toArray())if(target.toObject()["destinationRemoved"].toBool()){e=destinationRemovedError(target.toObject()["historyId"].toString());return QJsonObject{};}if(acknowledgement.isEmpty()||preview["acknowledgement"]!=acknowledgement) {e={"delete_confirmation_changed","The files to delete or their status changed. Review the confirmation and try again.",{}};return QJsonObject{};}
   // Each item keeps the file's name from the journal, so its outcome names it wherever it is shown (#1753).
   HistoryStore names(operations_.databasePath());
   QJsonArray items;for(auto target:preview["targets"].toArray()) {auto item=target.toObject();item["status"]="pending";item["progress"]=QJsonObject{{"schemaVersion",1}};Error ignored;const auto name=names.detail(item["historyId"].toString(),&ignored)["name"].toString();if(!name.isEmpty())item["name"]=name;items.append(item);}
@@ -272,7 +272,7 @@ void HistoryService::changeSharing(const QString& historyId,const QString& actio
  operations_.background([this,path,historyId,action,options,stopped](Error& e){
   HistoryStore store(path);auto item=store.detail(historyId,&e);if(e)return QJsonObject{};
   auto receipt=StorageReceipt::fromJson(item["receipt"].toObject());auto provider=operations_.providers().find(receipt.destination.providerId);
-  if(receipt.validate()||!provider||!provider->capabilities(receipt.destination).sharing){e={"sharing_unsupported","This provider can't manage share links",{}};return QJsonObject{};}
+  if(receipt.validate()||!provider||!provider->capabilities(receipt.destination).sharing){e={"sharing_unsupported","This destination doesn't support managing share links.",{}};return QJsonObject{};}
   auto lock=operations_.objectLock(receipt.destination,receipt.objectReference,{});std::unique_lock guard(*lock);
   item=store.detail(historyId,&e);if(e)return QJsonObject{};
   const auto previousId=item["shareOperationId"].toString();
@@ -283,8 +283,8 @@ void HistoryService::changeSharing(const QString& historyId,const QString& actio
    item=store.detail(historyId,&e);if(e)return QJsonObject{};
   }
   // A new link needs a file still stored as uploaded; revoke and inspect also reach older states (#1496).
-  if(item["uploadStatus"]!="uploaded"||QStringList{"pending","deleting","unknown","removed","already_missing","changed"}.contains(item["remoteStatus"].toString())||(action=="create"&&!OperationItem::shareableRemote(item["remoteStatus"].toString()))){e={"share_unavailable","This item has no available confirmed upload",{}};return QJsonObject{};}
-  if(item["shareStatus"]=="pending"||(action!="inspect"&&item["shareStatus"]=="unknown")){e={"share_result_unknown","Wait for or inspect the previous sharing result before another mutation",{}};return QJsonObject{};}
+  if(item["uploadStatus"]!="uploaded"||QStringList{"pending","deleting","unknown","removed","already_missing","changed"}.contains(item["remoteStatus"].toString())||(action=="create"&&!OperationItem::shareableRemote(item["remoteStatus"].toString()))){e={"share_unavailable","This item isn't uploaded or is no longer available at the destination.",{}};return QJsonObject{};}
+  if(item["shareStatus"]=="pending"||(action!="inspect"&&item["shareStatus"]=="unknown")){e={"share_result_unknown","A previous share link change is still pending or unconfirmed. Wait for it or inspect the link before changing it again.",{}};return QJsonObject{};}
   receipt=StorageReceipt::fromJson(item["receipt"].toObject());
   // Nextcloud (#1872): what identifies the link already made goes with the request: the share ID
   // its step recorded and, for a revoke, a digest of the recorded link's token (never the link,
@@ -309,14 +309,14 @@ void HistoryService::runSharing(QJsonObject doc,std::shared_ptr<std::atomic_bool
  const auto path=operations_.databasePath(),id=doc["id"].toString();
  operations_.background([this,path,doc,cancelled](Error& e) mutable {
   HistoryStore store(path);auto receipt=StorageReceipt::fromJson(doc["receipt"].toObject());auto provider=operations_.providers().find(receipt.destination.providerId);
-  if(!provider){e={"provider_unavailable","Restore access to the original destination",{}};return doc;}
+  if(!provider){e={"provider_unavailable","Destination is unavailable. Restore access to it in Destinations.",{}};return doc;}
   auto lock=operations_.objectLock(receipt.destination,receipt.objectReference,{});std::unique_lock guard(*lock);
   doc["state"]="running";if((e=store.saveSharing(doc)))return doc;
   auto checkpoint=[path,&doc](const QJsonObject& progress,std::function<void(Error)> ack){auto proposed=doc;proposed["progress"]=progress;HistoryStore durable(path);const auto error=durable.saveSharing(proposed);if(!error)doc=std::move(proposed);ack(error);};
   ShareRequest request{doc["id"].toString(),doc["action"].toString(),receipt,doc["options"].toObject(),doc["progress"].toObject(),cancelled};
   auto result=awaitProvider<ShareResult>([&](auto cb){provider->share(request,checkpoint,cb);});
   if(!shareResultMatchesReceipt(result,receipt)){
-   result.status="unknown";result.receipt=receipt;result.expiresAt.clear();result.error={"share_identity_changed","Sharing did not confirm the recorded publication identity",{}};
+   result.status="unknown";result.receipt=receipt;result.expiresAt.clear();result.error={"share_identity_changed","Couldn't confirm that the share link belongs to this uploaded file.",{}};
   }
   if(!result.expiresAt.isEmpty())doc["expiresAt"]=result.expiresAt;
   if(result.status!="shared")result.receipt.directUrl.clear();
@@ -350,11 +350,11 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
    Error e;QString outcome;QJsonObject progress=item["progress"].toObject();
    // #1759: the destination serving this receipt now, read for each item, since Settings can change mid-batch.
    const auto current=Settings::profileForDestination(receipt.destination.toJson(),currentProfiles());
-   if(!provider) {e={"provider_unavailable","Restore access to the recorded destination",{}};outcome="failed";}
+   if(!provider) {e={"provider_unavailable","Destination is unavailable. Restore access to it in Destinations.",{}};outcome="failed";}
    // Removed from Settings (#1759): said plainly, not as credentials not loaded. An earlier outcome that still
    // needs reconciling (unknown, a version left) and its checkpoint are kept; only a pending item becomes failed.
    else if(current.isEmpty()) {e=destinationRemovedError(item["historyId"].toString());outcome=status=="pending"?QStringLiteral("failed"):status;}
-   else if(!provider->receiptCapabilities(receipt).safeRemoval()) {e={"unsupported_capability","This provider can't safely delete this recorded target",{}};outcome="failed";}
+   else if(!provider->receiptCapabilities(receipt).safeRemoval()) {e={"unsupported_capability","This destination can't safely delete this file.",{}};outcome="failed";}
    else {
     // Another job on the same object (a link refresh, a sharing change) may hold it on
     // a stalled request: Quit stops this wait and leaves the item as it was.
@@ -394,7 +394,7 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
       if(found.status=="unknown"&&quitting->load())return doc;
      }
      if(found.status=="missing")outcome="already_missing";
-     else if(found.status=="foreign"){outcome="changed";e={"delete_target_changed","The recorded target has changed",{}};}
+     else if(found.status=="foreign"){outcome="changed";e={"delete_target_changed","The file at the destination changed, so it wasn't deleted.",{}};}
      else {
       const auto answer=found.status.isEmpty()?QString():found.status=="own"?QStringLiteral("own"):QStringLiteral("unknown");
       QJsonObject details{{"historyId",item["historyId"]}};if(!answer.isEmpty())details["found"]=answer;if(found.error)details["checkError"]=found.error.toJson();
@@ -417,8 +417,8 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
     if(stat.status=="unknown"&&quitting->load())return doc;
     if(stat.status=="missing")outcome="already_missing";
     else if(stat.status=="foreign")outcome="changed";
-    else if(stat.status!="own"||stat.error) {outcome="unknown";e=stat.error?stat.error:Error{"delete_unknown","Couldn't reconcile the recorded object identity",{}};}
-    else if(stat.receipt.publicationId!=receipt.publicationId||stat.receipt.objectReference!=receipt.objectReference||stat.receipt.concurrencyToken!=receipt.concurrencyToken||stat.receipt.destination.toJson()!=receipt.destination.toJson()) {outcome="changed";e={"delete_target_changed","The recorded target has changed",{}};}
+    else if(stat.status!="own"||stat.error) {outcome="unknown";e=stat.error?stat.error:Error{"delete_unknown","Couldn't confirm whether the file at the destination is still the one put.gd uploaded.",{}};}
+    else if(stat.receipt.publicationId!=receipt.publicationId||stat.receipt.objectReference!=receipt.objectReference||stat.receipt.concurrencyToken!=receipt.concurrencyToken||stat.receipt.destination.toJson()!=receipt.destination.toJson()) {outcome="changed";e={"delete_target_changed","The file at the destination changed, so it wasn't deleted.",{}};}
     else {
      const auto before=items[index].toObject();
      item["status"]="deleting";item["deletingProfileId"]=receipt.destination.profileId;items[index]=item;doc["items"]=items;if((error=store.saveDeletion(doc)))return doc;committed();
@@ -453,7 +453,7 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
      };
      DeleteRequest request{doc["id"].toString(),receipt,progress,cancelled,quitting};
      auto result=awaitProvider<DeleteResult>([&](auto cb) {provider->remove(request,checkpoint,cb);});outcome=result.status=="missing"?"already_missing":result.status;progress=result.progress.isEmpty()?items[index].toObject()["progress"].toObject():result.progress;e=result.error;
-     const QStringList allowed{"removed","already_missing","changed","failed","unknown","hidden_version_retained","version_retained","unsupported_safe_removal"};if(!allowed.contains(outcome)) {outcome="unknown";e={"delete_unknown","Provider returned an unrecognized deletion result",{}};}
+     const QStringList allowed{"removed","already_missing","changed","failed","unknown","hidden_version_retained","version_retained","unsupported_safe_removal"};if(!allowed.contains(outcome)) {outcome="unknown";e={"delete_unknown","Couldn't confirm whether the file was deleted.",{}};}
      // Killed at quit before any checkpoint of this attempt: nothing was sent that
      // deletes, so the item goes back to what it recorded before (pending, or an
      // earlier attempt's unknown with its intent).
@@ -466,7 +466,7 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
      // retained) stands.
      if(quitting->load()&&outcome=="failed") {
       outcome="unknown";progress=items[index].toObject()["progress"].toObject();
-      e={"delete_unknown","put.gd quit before this deletion's outcome was known; Retry asks again",{{"reportedError",e.toJson()}}};
+      e={"delete_unknown","put.gd quit before confirming whether the file was deleted. Select Retry deletion to check again.",{{"reportedError",e.toJson()}}};
      }
     }
     }
@@ -482,8 +482,8 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
 void HistoryService::inspectDelete(const QString& id,JsonReply reply) {const auto path=operations_.databasePath();operations_.background([path,id](Error& e) {HistoryStore store(path);return store.deletion(id,&e);},reply);}
 void HistoryService::retryDelete(const QString& id,JsonReply reply) {
  if(quitting_->load()) {reply(quittingError(),{});return;}
- if(active_.contains(id)) {reply({"delete_busy","Deletion is active",{}},{});return;}
- inspectDelete(id,[this,reply](Error e,QJsonObject doc) {if(e) {reply(e,{});return;}if(quitting_->load()) {reply(quittingError(),{});return;}auto id=doc["id"].toString();if(active_.contains(id)) {reply({"delete_busy","Deletion is active",{}},{});return;}auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(id,flag);reply({},{{"deleteOperationId",id},{"retryAccepted",true}});runDelete(doc,flag);});
+ if(active_.contains(id)) {reply({"delete_busy","This deletion is already running.",{}},{});return;}
+ inspectDelete(id,[this,reply](Error e,QJsonObject doc) {if(e) {reply(e,{});return;}if(quitting_->load()) {reply(quittingError(),{});return;}auto id=doc["id"].toString();if(active_.contains(id)) {reply({"delete_busy","This deletion is already running.",{}},{});return;}auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(id,flag);reply({},{{"deleteOperationId",id},{"retryAccepted",true}});runDelete(doc,flag);});
 }
-void HistoryService::cancelDelete(const QString& id,JsonReply reply) {if(active_.contains(id)) {active_[id]->store(true);reply({},{{"deleteOperationId",id},{"cancellationRequested",true},{"effect","Already sent deletion can't be rolled back"}});return;}reply({"delete_not_active","Deletion is not active",{}},{});}
+void HistoryService::cancelDelete(const QString& id,JsonReply reply) {if(active_.contains(id)) {active_[id]->store(true);reply({},{{"deleteOperationId",id},{"cancellationRequested",true},{"effect","Already sent deletion can't be rolled back"}});return;}reply({"delete_not_active","This deletion isn't running.",{}},{});}
 }

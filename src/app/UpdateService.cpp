@@ -177,11 +177,11 @@ void UpdateService::install(const QJsonObject& params,JsonReply reply) {
  if((params.contains("channel")&&!params["channel"].isString())||(params.contains("allowOlder")&&!params["allowOlder"].isBool())){reply({"invalid_request","channel is stable or nightly and allowOlder true or false",{}},{});return;}
  if(const auto reason=installUnavailable();!reason.isEmpty()){
   const auto message=reason=="no_release"?"There's no "+channel()+" release yet, so there is nothing to switch to":
-   reason=="not_checked"?"Check the "+channel()+" channel first: put.gd only switches to a release it has found":QString("Only an AppImage installs updates itself");
+   reason=="not_checked"?"Check the "+channel()+" channel first. Select Check now before switching":QString("Only an AppImage installs updates itself");
   reply({"update_install_unavailable",message,{{"reason",reason}}},{});return;
  }
  if(installer_){reply({"update_install_busy","An update is already being installed",{}},{});return;}
- if(restartRequired()){reply({"update_restart_required","Restart put.gd to finish the update that is already installed",{{"installed",installState_["installed"].toObject()["version"]}}},{});return;}
+ if(restartRequired()){reply({"update_restart_required","An update is already installed. Restart put.gd to finish updating",{{"installed",installState_["installed"].toObject()["version"]}}},{});return;}
  // A switch names where it goes, so a stale confirmation can't land elsewhere,
  // and an older version is installed only when asked for (#344).
  const auto offer=switchOffer();
@@ -216,7 +216,7 @@ void UpdateService::install(const QJsonObject& params,JsonReply reply) {
   installDeadline_.stop();*buffer+=process->readAllStandardOutput();
   if(const auto line=buffer->trimmed();QJsonDocument::fromJson(line).object().contains("schemaVersion"))*last=line;
   installer_=nullptr;process->deleteLater();
-  installFinished(status==QProcess::NormalExit&&(code==0||code==1)?*last:QByteArray(),{"update_install_failed","The update install stopped without a result",{}});
+  installFinished(status==QProcess::NormalExit&&(code==0||code==1)?*last:QByteArray(),{"update_install_failed","The update installer stopped unexpectedly",{}});
  });
  QStringList arguments{"--install-update",channel(),"--method",method,"--state",stateRoot_};
  if(!offer.isEmpty())arguments<<"--switch";
@@ -269,7 +269,7 @@ void UpdateService::restart(const QJsonObject& params,JsonReply reply) {
  if(!restartRequired()){reply({"update_restart_unavailable","No installed update is waiting for a restart",{}},{});return;}
  if(installer_){reply({"update_install_busy","An update is being installed",{}},{});return;}
  if(busy_)if(const auto reason=busy_();!reason.isEmpty()){reply({"update_install_busy",reason,{}},{});return;}
- if(!quit_||!restarter_||!restarter_(QCoreApplication::applicationPid(),image_)){reply({"update_restart_failed","Cannot start put.gd again",{}},{});return;}
+ if(!quit_||!restarter_||!restarter_(QCoreApplication::applicationPid(),image_)){reply({"update_restart_failed","Couldn't restart put.gd. Start it manually from your applications menu",{}},{});return;}
  const auto version=installState_["installed"].toObject()["version"].toString();
  logging::info(logApp(),"Restarting into the installed update",{{"version",version}});
  reply({},{{"restarting",true},{"version",version}});
@@ -289,7 +289,7 @@ void UpdateService::openSoftwareUpdates(JsonReply reply) {
  connect(process,&QProcess::readyReadStandardOutput,process,[process,output]{*output+=process->readAllStandardOutput();if(output->size()>maximumOutput)process->kill();});
  connect(process,&QProcess::errorOccurred,this,[process,done](QProcess::ProcessError error){
   if(error!=QProcess::FailedToStart||!*done)return;
-  std::exchange(*done,{})({"software_updates_failed","Cannot start the update child",{}},{});process->deleteLater();
+  std::exchange(*done,{})({"software_updates_failed","Couldn't start the software updater",{}},{});process->deleteLater();
  });
  connect(process,&QProcess::finished,this,[process,output,done]{
   *output+=process->readAllStandardOutput();process->deleteLater();if(!*done)return;
@@ -317,7 +317,7 @@ void UpdateService::run(bool manual) {
   if(process_!=process)return;
   deadline_.stop();*output+=process->readAllStandardOutput();process_=nullptr;process->deleteLater();
   // The child exits 1 for a reported failure; anything else without a reply line is a crash or timeout.
-  finished(manualRunning_,status==QProcess::NormalExit&&(code==0||code==1)?*output:QByteArray(),{"update_check_failed","The update check stopped without a result",{}});
+  finished(manualRunning_,status==QProcess::NormalExit&&(code==0||code==1)?*output:QByteArray(),{"update_check_failed","The update check stopped unexpectedly",{}});
  });
  logging::info(logApp(),"Checking for updates",{{"channel",channel()},{"manual",manual}});
  deadline_.start();process->start(program_,prefix_+QStringList{"--check-update",channel()},QIODevice::ReadOnly);

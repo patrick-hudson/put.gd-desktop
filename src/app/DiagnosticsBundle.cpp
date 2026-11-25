@@ -185,7 +185,7 @@ Error DiagnosticsBundles::parse(const QJsonObject& params,BundleRequest& request
  return {};
 }
 void DiagnosticsBundles::create(const BundleRequest& request,JsonReply reply) {
- if(running_){reply({"diagnostics_busy","A diagnostics package is already being created; try again when it finishes",{}},{});return;}
+ if(running_){reply({"diagnostics_busy","A diagnostics package is already being created. Try again when it finishes.",{}},{});return;}
  const auto snapshot=operations_.settingsSnapshot();
  Context context;
  context.databasePath=operations_.databasePath();context.logsDirectory=stateRoot_+"/logs";context.defaultFolder=defaultFolder(snapshot);
@@ -264,7 +264,7 @@ void DiagnosticsBundles::check(const QString& profileId,std::function<void(Error
   const auto tested=guarded->tested_.value(profileId);const auto failedAt=QDateTime::fromString(last["created"].toString(),Qt::ISODateWithMs);
   const bool testedSince=tested.isValid()&&failedAt.isValid()&&tested>failedAt;
   if(!testedSince&&QStringList{"failed","partial"}.contains(last["state"].toString())&&credentialOrConfigurationError({lastError["code"].toString(),{},{}})) {
-   done({"diagnostics_destination_failing","The last upload to this destination failed with a credential or configuration error, so the package was not uploaded. Fix the destination in Settings, then upload it.",
+   done({"diagnostics_destination_failing","The last upload to this destination failed due to a credential or configuration error, so the upload didn't start. Fix the destination in Destinations, then try again.",
     {{"profileId",profileId},{"operationId",last["operationId"]},{"lastError",lastError["code"]}}},target);return;
   }
   const auto previous=guarded->checked_.value(profileId);
@@ -275,7 +275,7 @@ void DiagnosticsBundles::check(const QString& profileId,std::function<void(Error
    // A provider test may answer on its worker thread; continue on the session thread.
    QMetaObject::invokeMethod(owner,[guarded,profileId,revision,target,done,tested] {
     if(!guarded)return;
-    if(tested){guarded->checked_.remove(profileId);done({"diagnostics_destination_unavailable","Test connection failed for this destination, so the package was not uploaded",{{"profileId",profileId},{"error",tested.toJson()}}},target);return;}
+    if(tested){guarded->checked_.remove(profileId);done({"diagnostics_destination_unavailable","Connection test failed for this destination, so the upload didn't start.",{{"profileId",profileId},{"error",tested.toJson()}}},target);return;}
     guarded->checked_.insert(profileId,{revision,QDateTime::currentDateTimeUtc()});guarded->destinationTested(profileId);
     done({},target);
    },Qt::QueuedConnection);
@@ -298,7 +298,7 @@ void DiagnosticsBundles::upload(QJsonObject result,const BundleRequest& request,
   if(error){result["uploadError"]=error.toJson();logging::warning(logApp(),"Diagnostics package not uploaded",{{"error",logging::errorFields(error)}});}
   reply({},result);
  };
- if(profileId.isEmpty()){settle(result,{"diagnostics_no_destination","No upload destination is set up, so the package was saved locally only",{}});return;}
+ if(profileId.isEmpty()){settle(result,{"diagnostics_no_destination","No upload destination is set up, so the upload didn't start. The package was saved locally.",{}});return;}
  QPointer<DiagnosticsBundles> guarded(this);
  const auto path=result["path"].toString();const bool copyLink=request.copyLink;
  check(profileId,[guarded,result,settle,profileId,path,copyLink](Error error,QJsonObject target) mutable {
@@ -315,10 +315,10 @@ void DiagnosticsBundles::upload(QJsonObject result,const BundleRequest& request,
    if(item.artifact.id.size())upload["historyId"]=item.artifact.id;
    result["upload"]=upload;
    if(op.state()!=OperationState::Completed||item.uploadStatus!="uploaded") {
-    auto error=item.error?item.error:op.error?op.error:Error{"diagnostics_upload_failed","The package was not uploaded",{}};
+    auto error=item.error?item.error:op.error?op.error:Error{"diagnostics_upload_failed","Couldn't upload the diagnostics package. The local copy was saved.",{}};
     error.details["operationId"]=op.id;settle(result,error);return;
    }
-   if(!item.linkAvailable()){settle(result,{"diagnostics_link_unavailable","The package was uploaded, but this destination gives it no link",{{"operationId",op.id}}});return;}
+   if(!item.linkAvailable()){settle(result,{"diagnostics_link_unavailable","The diagnostics package uploaded, but this destination doesn't create links.",{{"operationId",op.id}}});return;}
    result["link"]=item.receipt.directUrl;
    logging::info(logApp(),"Diagnostics package uploaded",{{"operationId",op.id},{"provider",op.destination.providerId},{"profileId",op.destination.profileId}});
    if(!copyLink){settle(result,{});return;}
@@ -539,7 +539,7 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
  }else {
   const QFileInfo info(request.output);
   if(info.isDir())path=uniqueName(info.absoluteFilePath(),now);
-  else if(info.exists()||info.isSymLink()){error={"diagnostics_output_exists","A file already exists at the output path; choose another name or a folder",{{"path",request.output}}};return {};}
+  else if(info.exists()||info.isSymLink()){error={"diagnostics_output_exists","A file already exists at that path. Choose another name or a folder.",{{"path",request.output}}};return {};}
   else if(!request.output.endsWith(".zip",Qt::CaseInsensitive)){error={"invalid_request","The output path must be a folder or end in .zip",{}};return {};}
   else if(!info.dir().exists()){error={"diagnostics_output_unavailable","The output folder does not exist",{{"path",info.absolutePath()}}};return {};}
   else path=info.absoluteFilePath();

@@ -250,11 +250,11 @@ private slots:
   const auto id=[]{return QUuid::createUuid().toString(QUuid::WithoutBraces);};
   ResourceLimits limits;limits.maxFileBytes=2*mib;
   auto r=store.acquire(id(),p,limits);QCOMPARE(r.error.code,QString("input_excessive"));QCOMPARE(r.error.details["itemIndex"].toInt(),1);
-  QVERIFY2(r.error.message.startsWith("Photos (folder) totals 3 MB; the Largest file limit is 2 MB"),qPrintable(r.error.message));
+  QVERIFY2(r.error.message.startsWith("Photos (folder) totals 3 MB. The Largest file limit is 2 MB"),qPrintable(r.error.message));
   limits=ResourceLimits{};limits.maxBatchBytes=3*mib+mib/2;r=store.acquire(id(),p,limits);
-  QVERIFY2(r.error.message.contains("Photos (folder) totals 3 MB; this batch would pass the Largest batch limit"),qPrintable(r.error.message));
+  QVERIFY2(r.error.message.contains("Photos (folder) totals 3 MB. This batch would pass the Largest batch limit"),qPrintable(r.error.message));
   r=store.acquire(id(),p,ResourceLimits{},"clipboard",Settings::fromValidated(Settings::defaults()),{},2*mib);
-  QCOMPARE(r.error.code,QString("destination_object_too_large"));QVERIFY2(r.error.message.startsWith("Photos (folder) totals 3 MB; this destination accepts"),qPrintable(r.error.message));
+  QCOMPARE(r.error.code,QString("destination_object_too_large"));QVERIFY2(r.error.message.startsWith("Photos (folder) totals 3 MB. This destination accepts"),qPrintable(r.error.message));
   // The zip's own bound is checked too: many empty files total nothing but still take headers.
   const auto many=d.filePath("Many");for(int i=0;i<300;++i)QVERIFY(make(many+QStringLiteral("/empty-file-with-a-long-name-%1.txt").arg(i),{}));
   p.files={many};limits=ResourceLimits{};limits.maxFileBytes=32*1024;r=store.acquire(id(),p,limits);
@@ -265,7 +265,7 @@ private slots:
   QCOMPARE(r.error.code,QString("disk_space_insufficient"));QCOMPARE(r.error.details["requiredBytes"].toInteger(),plan.peakBytes+mib);
   // The archive's real size counts toward the waiting-uploads limit like any artifact.
   limits=ResourceLimits{};limits.pendingArtifactBytes=mib+1024;r=store.acquire(id(),p,limits);
-  QCOMPARE(r.error.code,QString("input_excessive"));QVERIFY(r.error.message.contains("Waiting uploads"));QCOMPARE(r.error.details["itemIndex"].toInt(),1);
+  QCOMPARE(r.error.code,QString("input_excessive"));QVERIFY(r.error.message.contains("Space for queued files"));QCOMPARE(r.error.details["itemIndex"].toInt(),1);
   limits.pendingArtifactBytes=2*mib;r=store.acquire(id(),p,limits);QVERIFY2(!r.error,qPrintable(r.error.message));
   QCOMPARE(entriesOf(d.filePath("spool")).size(),1);
  }

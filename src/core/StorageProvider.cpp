@@ -39,9 +39,9 @@ QJsonObject ProviderCapabilities::toJson() const {
 }
 void ProviderRegistry::add(const QString& id,std::shared_ptr<StorageProvider> p) {providers_.insert(id,std::move(p));}
 std::shared_ptr<StorageProvider> ProviderRegistry::find(const QString& id) const {return providers_.value(id);}
-Error ProviderRegistry::validate(const QString& id,const QJsonObject& s) const {auto p=find(id); return p?p->validateSettings(s):Error{"provider_unavailable","No validator registered for this provider",{}};}
-Error ProviderRegistry::validateStored(const QString& id,const QJsonObject& s) const {auto p=find(id); return p?p->validateStoredSettings(s):Error{"provider_unavailable","No validator registered for this provider",{}};}
-Error ProviderRegistry::validateCredentials(const QString& id,const QJsonObject& reference) const {auto p=find(id);return p?p->validateCredentials(reference):Error{"provider_unavailable","No validator registered for this provider",{}};}
+Error ProviderRegistry::validate(const QString& id,const QJsonObject& s) const {auto p=find(id); return p?p->validateSettings(s):Error{"provider_unavailable","This destination provider isn't available in this build of put.gd.",{}};}
+Error ProviderRegistry::validateStored(const QString& id,const QJsonObject& s) const {auto p=find(id); return p?p->validateStoredSettings(s):Error{"provider_unavailable","This destination provider isn't available in this build of put.gd.",{}};}
+Error ProviderRegistry::validateCredentials(const QString& id,const QJsonObject& reference) const {auto p=find(id);return p?p->validateCredentials(reference):Error{"provider_unavailable","This destination provider isn't available in this build of put.gd.",{}};}
 QJsonObject ProviderRegistry::capabilities() const {QJsonObject o; for(auto it=providers_.cbegin();it!=providers_.cend();++it) o[it.key()]=it.value()->capabilities({}).toJson();return o;}
 QJsonObject ProviderRegistry::diagnostics() const {QJsonObject o; for(auto it=providers_.cbegin();it!=providers_.cend();++it) o[it.key()]=it.value()->diagnostics();return o;}
 }

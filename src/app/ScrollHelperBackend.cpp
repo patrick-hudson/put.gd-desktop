@@ -30,8 +30,8 @@ HelperPolicy policy() {
     p.process = "putgd-record (scroll)";
     p.session = "scroll";
     p.lost = "captured";
-    p.discarded = "The scroll capture was discarded";
-    p.active = {"scroll_active", "A scroll capture is already running", {}};
+    p.discarded = "The scrolling capture was cancelled.";
+    p.active = {"scroll_active", "A scrolling capture is already running. Stop or cancel it first.", {}};
     // A helper that stopped answering may still be turning the wheel: end it.
     p.timeoutEndsHelper = true;
     p.error = scrollError;
@@ -54,7 +54,7 @@ QString defaultPath(QString path) { return path.isEmpty() ? QCoreApplication::ap
 ScrollHelperBackend::ScrollHelperBackend(QString helperPath, QObject* parent) : QObject(parent), helper_(policy(), defaultPath(std::move(helperPath))) {}
 void ScrollHelperBackend::setTimeouts(int startupMs, int commandMs) { helper_.setStartupMs(startupMs); commandMs_ = commandMs; }
 void ScrollHelperBackend::prepare(const QString& id, const QJsonObject& params, const QString& staging, Reply reply) {
-    if (!helper_.executable()) { reply({"scroll_unavailable", "Scrolling capture is not available on this installation", {{"reason", "recording_helper_missing"}}}, {}); return; }
+    if (!helper_.executable()) { reply({"scroll_unavailable", "Scrolling capture isn't available because putgd-record is missing. Reinstall put.gd.", {{"reason", "recording_helper_missing"}}}, {}); return; }
     auto prepared = params;
     prepared["id"] = id;
     prepared["staging"] = staging;

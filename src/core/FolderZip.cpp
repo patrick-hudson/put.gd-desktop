@@ -26,7 +26,7 @@ void put64(QByteArray& out,quint64 value) {put32(out,quint32(value));put32(out,q
 bool deflateStart(z_stream& z) {z={};return deflateInit2(&z,Z_DEFAULT_COMPRESSION,Z_DEFLATED,-MAX_WBITS,8,Z_DEFAULT_STRATEGY)==Z_OK;}
 QString shown(const QByteArray& name) {return QString::fromUtf8(name.endsWith('/')?name.chopped(1):name);}
 Error unreadable(const QString& name,int code) {return {"source_unavailable",QStringLiteral("Cannot read %1: %2").arg(name,QString::fromLocal8Bit(std::strerror(code))),{}};}
-Error changed(const QString& name) {return {"source_changed",QStringLiteral("%1 changed while put.gd was zipping it; try again").arg(name),{}};}
+Error changed(const QString& name) {return {"source_changed",QStringLiteral("%1 changed while put.gd was zipping it. Try again.").arg(name),{}};}
 // DOS date (high half) and time (low half) in local time, clamped to 1980-2107.
 quint32 dosTime(time_t seconds) {
  tm local{};if(!localtime_r(&seconds,&local)||local.tm_year<80)return (1u<<5|1u)<<16;

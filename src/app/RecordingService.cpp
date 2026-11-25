@@ -38,7 +38,7 @@ Error diskSpaceError(const ArtifactStore::DiskBudget& disk) {
     const qint64 needed = disk.reserveBytes + disk.reservedBytes + 3 * RecordingService::minimumBudgetBytes;
     const qint64 shortfall = std::max<qint64>(1, needed - disk.freeBytes);
     return {"disk_space_insufficient",
-            QStringLiteral("Not enough free disk space to record: %1 is free, put.gd keeps %2 free for the system, and a recording needs %3 more. Free up at least %4 and try again.")
+            QStringLiteral("Not enough free disk space to record. %1 is free, put.gd reserves %2 for the system, and a recording needs %3 more. Free up at least %4 and try again.")
                 .arg(ArtifactStore::sizeText(disk.freeBytes), ArtifactStore::sizeText(disk.reserveBytes + disk.reservedBytes),
                      ArtifactStore::sizeText(3 * RecordingService::minimumBudgetBytes), ArtifactStore::sizeText(shortfall)),
             {{"freeBytes", double(disk.freeBytes)}, {"reserveBytes", double(disk.reserveBytes)}, {"reservedBytes", double(disk.reservedBytes)},
@@ -86,8 +86,8 @@ Error RecordingService::stalledStart(const Session& s, Error error) {
     auto details = error.details;
     details["reason"] = s.startDaemonGone ? "pipewire_stopped" : "source_failed";
     details["sourceError"] = s.startTrouble;
-    return {"recording_start_failed", s.startDaemonGone ? QStringLiteral("PipeWire stopped while the recording was starting; try again")
-                                                        : QStringLiteral("The screen stream ended while the recording was starting; try again"), details};
+    return {"recording_start_failed", s.startDaemonGone ? QStringLiteral("PipeWire stopped while the recording was starting. Try again.")
+                                                        : QStringLiteral("The screen stream ended while the recording was starting. Try again."), details};
 }
 bool RecordingService::watched(RecordingState state) {
     return state == RecordingState::Starting || state == RecordingState::Recording || state == RecordingState::Paused || state == RecordingState::Stopping;
@@ -181,21 +181,21 @@ void RecordingService::stoppedOnBudget(Session& s, const QJsonObject& observed) 
         }
         details["hint"] = "Free up space in put.gd's data folder before the next recording";
         details["message"] = disk.freeBytes >= 0
-            ? QStringLiteral("Recording stopped at %1: the disk ran out of room. %2 is free and put.gd keeps %3 free for the system, so the recording stopped at %4 to leave room for its export and upload. The clip so far is kept for review; free up space before recording again.")
+            ? QStringLiteral("Recording stopped at %1 because the disk is nearly full. Free up disk space before recording again (%2 free, %3 reserved, %4 recording limit). The clip so far is ready for review.")
                   .arg(at, ArtifactStore::sizeText(disk.freeBytes), ArtifactStore::sizeText(disk.reserveBytes + disk.reservedBytes), budget)
-            : QStringLiteral("Recording stopped at %1: the disk ran out of room at %2. The clip so far is kept for review; free up space before recording again.").arg(at, budget);
+            : QStringLiteral("Recording stopped at %1 because the disk is nearly full. Free up disk space before recording again (%2 recording limit). The clip so far is ready for review.").arg(at, budget);
         if (liveDiskStop) {
             // Keep the triggering sample, even if another writer releases space
             // while EOS drains. It is the reason we stopped, not the byte cap.
             for (const auto* key : {"freeBytes", "reserveBytes", "availableBytes", "requiredBytes", "finalizationReserveBytes", "clipBytes"})
                 if (observed.value(key).isDouble()) details[key] = observed.value(key);
             details["hint"] = "Free up space in put.gd's data folder before exporting or recording again";
-            details["message"] = QStringLiteral("Recording stopped at %1 because free disk space fell: %2 was free, with %3 kept for the system and %4 needed for finalization and copies. The clip so far is kept for private review. Free up space before exporting or recording again; nothing was uploaded.")
+            details["message"] = QStringLiteral("Recording stopped at %1 because free disk space ran low. Free up disk space before exporting or recording again (%2 free, %3 reserved, %4 needed to finish and copy the clip). The clip so far is kept for private review.")
                 .arg(at, ArtifactStore::sizeText(details.value("freeBytes").toInteger()), ArtifactStore::sizeText(details.value("reserveBytes").toInteger()), ArtifactStore::sizeText(details.value("requiredBytes").toInteger()));
         }
     } else {
-        details["hint"] = "Raise Largest file in Settings > Uploads to record longer";
-        details["message"] = QStringLiteral("Recording stopped at %1: it reached the Largest file limit (%2; recording stops at %3 to leave room to finish the file). The clip so far is kept for review; raise Largest file in Settings > Uploads to record longer.")
+        details["hint"] = "Raise Largest file in Settings → Advanced → Resource limits to record longer.";
+        details["message"] = QStringLiteral("Recording stopped at %1 because it reached the Largest file limit (%2, stopping at %3 to leave room to finish). Raise Largest file in Settings → Advanced → Resource limits to record longer. The clip so far is ready for review.")
                                  .arg(at, ArtifactStore::sizeText(maxFile), budget);
     }
     s.stopDetails = details;
@@ -358,7 +358,7 @@ void RecordingService::cancelActive(JsonReply reply) {
     s.op.cancelled = true;
     s.op.advance(OperationState::Cancelled);
     s.op.phase = "cancelled";
-    s.op.error = {"cancelled", "Recording cancelled; nothing was uploaded", {}};
+    s.op.error = {"cancelled", "Recording cancelled.", {}};
     host_.finish(s.op);
     emit changed(s.op.id);
     if (reply) reply({}, {{"recordingId", s.op.id}, {"operationId", s.op.id}, {"state", "cancelled"}});
@@ -516,13 +516,13 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         const auto shown = event["config"].toObject();
         if (s.state == RecordingState::Exporting) refused({"recording_state", "Another export is running, so this one didn't start. Try again when it finishes.", {}}, {});
         else if (kind == "uploadRequested" && !shown.isEmpty() && outputChoice(shown) != outputChoice(s.config.toJson()))
-            refused({"recording_config", "The format or sound changed before the upload started, so nothing was uploaded. Press Upload again.", {}}, {});
+            refused({"recording_config", "Upload didn't start because format or audio changed. Select Upload again.", {}}, {});
         else if (kind == "retryExportRequested") retryExport(refused, refused);
         else exportTo(kind == "uploadRequested" ? "upload" : "saveCopy", params, refused, refused);
     }
 }
 void RecordingService::command(const QString& command, const QJsonObject& params, JsonReply reply) {
-    if (stopping_) { reply({"session_unavailable", "The resident is shutting down", {}}, {}); return; }
+    if (stopping_) { reply({"session_unavailable", "put.gd is shutting down.", {}}, {}); return; }
     QPointer<RecordingService> self(this);
     if (command == "capabilities") {
         backend_->refreshCapabilities([self, reply] {
@@ -602,7 +602,7 @@ void RecordingService::command(const QString& command, const QJsonObject& params
     commandSession(command, params, std::move(reply));
 }
 void RecordingService::startCapture(const QString& id, JsonReply reply) {
-    if (!session_ || session_->op.id != id) { reply({"recording_missing", "The recording is gone", {}}, {}); return; }
+    if (!session_ || session_->op.id != id) { reply({"recording_missing", "The recording session has ended.", {}}, {}); return; }
     auto& s = *session_;
     backend_->control(s.op.id, "start", {}, marshal(s.generation, [this, reply](Error error, QJsonObject result) {
         auto& s = *session_;
@@ -627,7 +627,7 @@ QJsonObject RecordingService::clickCapability() const {
             capability["available"] = false;
             capability["targets"] = QJsonArray{};
             capability["reason"] = "pointer_position_unavailable";
-            capability["message"] = "The compositor offers no pointer cursor session here, so put.gd cannot tell where a click was.";
+            capability["message"] = "This desktop doesn't report pointer position for recordings, so click highlights aren't available.";
         }
         return capability;
     }
@@ -635,7 +635,7 @@ QJsonObject RecordingService::clickCapability() const {
     const auto probed = backend_->capabilities()["clickHighlights"].toObject();
     if (!probed.isEmpty()) return probed;
     return {{"available", false}, {"route", "none"}, {"drawnBy", "recorder"}, {"targets", QJsonArray{}}, {"reason", "click_route_missing"},
-            {"message", "This desktop gives put.gd no pointer clicks, so recordings cannot highlight them."}};
+            {"message", "This desktop doesn't report mouse clicks to put.gd, so click highlights aren't available."}};
 }
 void RecordingService::watchClicks(Session& s, std::function<void()> then) {
     // Once per recording: a watch that failed is not asked again at the next transition or resume.
@@ -685,7 +685,7 @@ void RecordingService::unwatchClicks() {
     clicks_->unwatchClicks();
 }
 void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply, bool remembered) {
-    if (session_) { reply({"recording_active", "A recording is already active; stop or cancel it first", {{"recordingId", session_->op.id}}}, {}); return; }
+    if (session_) { reply({"recording_active", "A recording is already running. Stop or cancel it first.", {{"recordingId", session_->op.id}}}, {}); return; }
     {
         Session s;
         if (auto error = recording::parseTarget(params["target"], s.target)) { reply(error, {}); return; }
@@ -702,7 +702,7 @@ void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply
             reply({"recording_unavailable", message.isEmpty() ? QStringLiteral("Screen recording is not available on this installation") : hint.isEmpty() ? message : message + ' ' + hint, details}, {});
             return;
         }
-        if (!caps["targets"].toArray().contains(s.target.kind)) { reply({"recording_unsupported", caps["targetReasons"].toObject()[s.target.kind].toString(QStringLiteral("This target kind is not supported here")), {{"kind", s.target.kind}}}, {}); return; }
+        if (!caps["targets"].toArray().contains(s.target.kind)) { reply({"recording_unsupported", caps["targetReasons"].toObject()[s.target.kind].toString(QStringLiteral("This recording source isn't supported on this desktop.")), {{"kind", s.target.kind}}}, {}); return; }
         if (!caps["formats"].toArray().contains(s.config.format)) { reply({"recording_unsupported", "This output format is not supported here", {{"format", s.config.format}}}, {}); return; }
         if (!s.config.codec.isEmpty() && !caps["codecs"].toObject()[s.config.format].toArray().contains(s.config.codec)) { reply({"recording_unsupported", "This codec is not supported here", {{"codec", s.config.codec}}}, {}); return; }
         if (s.config.audio.system && !caps["audio"].toObject()["system"].toBool()) { reply({"recording_unsupported", "System audio capture is not supported here", {{"field", "audio.system"}}}, {}); return; }
@@ -747,7 +747,7 @@ void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply
         s.op.phase = "preparing";
         s.staging = stagingRoot_ + "/" + s.op.id;
         if (!QDir().mkpath(s.staging) || !QFile::setPermissions(s.staging, QFile::ReadOwner | QFile::WriteOwner | QFile::ExeOwner)) {
-            s.op.error = {"recording_io", "Cannot create private recording staging", {}};
+            s.op.error = {"recording_io", "Couldn't create the temporary recording folder.", {}};
             s.op.advance(OperationState::Failed);
             host_.finish(s.op);
             reply(s.op.error, {});
@@ -759,7 +759,7 @@ void RecordingService::prepareSession(const QJsonObject& params, JsonReply reply
         const auto generation = s.generation;
         QPointer<RecordingService> guard(this);
         host_.persist(s.op, [guard, generation, reply](Error error) {
-            if (!guard || guard->stopping_ || !guard->session_ || guard->session_->generation != generation) { if (!error) reply({"recording_state", "The recording ended before it was accepted", {}}, {}); else reply(error, {}); return; }
+            if (!guard || guard->stopping_ || !guard->session_ || guard->session_->generation != generation) { if (!error) reply({"recording_state", "The recording ended before it started.", {}}, {}); else reply(error, {}); return; }
             auto& s = *guard->session_;
             if (error) { guard->fail(error); reply(error, {}); return; }
             guard->host_.observe(s.op);
@@ -825,7 +825,7 @@ void RecordingService::beginPrepare(quint64 generation) {
             s.selector.clear();
             QRect rect;
             if (!error && !rectFrom(result["rect"], rect)) error = {"capture_geometry", "The desktop shell returned an invalid selection", {}};
-            if (error) { fail(error.code == "cancelled" ? Error{"cancelled", "Region selection cancelled; nothing was recorded", {}} : error); return; }
+            if (error) { fail(error.code == "cancelled" ? Error{"cancelled", "Region selection cancelled.", {}} : error); return; }
             s.target.rect = rect;
             prepareBackend(s.generation);
         }));
@@ -1073,12 +1073,12 @@ void RecordingService::retryExport(JsonReply reply, JsonReply done) {
     auto params = s.lastExportRequest;
     if (s.lastExport["command"] == "upload") {
         if (quint64(params["revision"].toDouble()) != s.edit.revision) {
-            reply({"recording_stale", "The edits changed since the upload failed, so it wasn't retried. Press Upload to upload them.", {{"currentRevision", double(s.edit.revision)}}}, {});
+            reply({"recording_stale", "Your edits changed since the upload failed, so the upload didn't start. Select Upload to upload the updated clip.", {{"currentRevision", double(s.edit.revision)}}}, {});
             return;
         }
     } else params["revision"] = double(s.edit.revision);
     if (outputChoice(params["config"].toObject()) != outputChoice(s.config.toJson())) {
-        reply({"recording_config", QStringLiteral("The format or sound changed since the export failed, so it wasn't retried. Press %1 again.").arg(s.lastExport["command"] == "upload" ? QStringLiteral("Upload") : QStringLiteral("Save a copy")), {}}, {});
+        reply({"recording_config", s.lastExport["command"] == "upload" ? QStringLiteral("Format or audio changed since the upload failed, so the upload didn't start. Select Upload again.") : QStringLiteral("Format or audio changed since the export failed. Select Save a copy… again."), {}}, {});
         return;
     }
     exportTo(s.lastExport["command"].toString(), params, std::move(reply), std::move(done));
@@ -1099,7 +1099,7 @@ void RecordingService::exportTo(const QString& command, const QJsonObject& param
         qint64 revision = 0;
         if (!integer(params["revision"], 1, 1LL << 52, &revision)) { reply(invalid("upload takes the edit revision it was reviewed at"), {}); return; }
         // An upload exports exactly the revision it was started at, or nothing.
-        if (quint64(revision) != s.edit.revision) { reply({"recording_stale", "The edits changed after Upload was pressed, so nothing was uploaded. Check them, then upload again", {{"currentRevision", double(s.edit.revision)}}}, {}); return; }
+        if (quint64(revision) != s.edit.revision) { reply({"recording_stale", "Your edits changed, so the upload didn't start. Check your edits, then select Upload again.", {{"currentRevision", double(s.edit.revision)}}}, {}); return; }
     }
     s.lastExportRequest = params;
     s.lastExportRequest["config"] = s.config.toJson();  // a retry exports exactly this output
@@ -1137,7 +1137,7 @@ void RecordingService::exportTo(const QString& command, const QJsonObject& param
             if (done) done(cause, {});
         };
         if (!error && (!file.isFile() || file.size() < 1)) error = {"recording_export_failed", "The export produced no file", {}};
-        if (!error && file.size() > maximum) error = {"input_excessive", "The export exceeds the file size limit", {{"bytes", double(file.size())}, {"limit", double(maximum)}}};
+        if (!error && file.size() > maximum) error = {"input_excessive", "The exported clip exceeds the Largest file limit. Trim it, change format, or raise Largest file in Settings → Advanced → Resource limits.", {{"bytes", double(file.size())}, {"limit", double(maximum)}}};
         if (error) { failed(error); return; }
         if (command == "saveCopy") {
             if (overwrite && QFileInfo::exists(destination)) QFile::remove(destination);
