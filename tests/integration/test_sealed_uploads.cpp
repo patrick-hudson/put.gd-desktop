@@ -4,6 +4,12 @@
 #include "seal/SealPage.h"
 #include "app/SealCheck.h"
 #include "core/SealJob.h"
+#include "app/DestinationStatus.h"
+#include "app/SetupService.h"
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
 #include <QBuffer>
 #include <QDir>
 #include <future>
@@ -16,7 +22,7 @@ namespace {
 // the sealed page and its data file are read back from here as a browser would get them.
 class KeepingProvider final:public StorageProvider {
 public:
- OpaqueProvider storage;mutable QMutex mutex;QHash<QString,QByteArray> files;QString sealUnavailable;bool sealSplit=true,privateUploads=false;int failNext=0;
+ OpaqueProvider storage;mutable QMutex mutex;QHash<QString,QByteArray> files;QString sealUnavailable;bool sealSplit=true,privateUploads=false;int failNext=0;QString linkBase=QStringLiteral("https://files.example.invalid/f/");
  // Like SFTP: an upload journals its temporary file through the checkpoint first, and refuses without one.
  bool requireCheckpoint=false;std::atomic_bool checkpointAnswered{false};QStringList revisionsSeen;
  ProviderCapabilities capabilities(const Destination& d) const override {auto c=storage.capabilities(d);c.sealUnavailable=sealUnavailable;c.sealSplit=sealSplit;c.privateUploads=privateUploads;return c;}
@@ -33,7 +39,7 @@ public:
   }
   QFile file(r.artifact.path);QByteArray bytes;if(file.open(QIODevice::ReadOnly))bytes=file.readAll();
   storage.upload(r,[this,r,bytes,cb](UploadResult result){
-   if(result.status=="uploaded"){QMutexLocker lock(&mutex);files.insert(r.candidate,bytes);result.receipt.directUrl="https://files.example.invalid/f/"+r.candidate;}
+   if(result.status=="uploaded"){QMutexLocker lock(&mutex);files.insert(r.candidate,bytes);result.receipt.directUrl=linkBase+r.candidate;}
    cb(result);
   });
  }
@@ -43,6 +49,15 @@ public:
  QByteArray file(const QString& name) const {QMutexLocker lock(&mutex);return files.value(name);}
  int count() const {QMutexLocker lock(&mutex);return int(files.size());}
 };
+// A stand-in for putgd-cli --seal-job: reads the request, sets $page to its page path, then runs `body`.
+QString sealHelper(const QTemporaryDir& dir,const QString& body) {
+ const auto path=dir.filePath("helper.sh");QFile script(path);
+ if(!script.open(QIODevice::WriteOnly))return {};
+ script.write(("#!/bin/sh\nrequest=$(cat)\npage=$(printf '%s' \"$request\" | sed -n 's/.*\"page\":\"\\([^\"]*\\)\".*/\\1/p')\n"+body).toUtf8());script.close();
+ QFile::setPermissions(path,QFileDevice::ReadOwner|QFileDevice::WriteOwner|QFileDevice::ExeOwner);return path;
+}
+Artifact input(const QTemporaryDir& dir) {Artifact file;file.path=fixture(dir.path(),"in.txt","plain");file.bytes=5;file.name="in.txt";file.mime="text/plain";return file;}
+QByteArray read(const QString& path) {QFile file(path);return file.open(QIODevice::ReadOnly)?file.readAll():QByteArray();}
 QByteArray pattern(qint64 size) {QByteArray out(size,'\0');for(qint64 i=0;i<size;++i)out[i]=char((i*131+17)%253);return out;}
 // Opens a sealed page as a recipient would: the page, and for the split form its data file beside it.
 Error open(const KeepingProvider& provider,const QString& link,const QString& passphrase,QByteArray& plain,seal::Meta& meta) {
@@ -86,6 +101,35 @@ struct Fixture {
   (void)waitFor([&]{return !journal.operation(id).active()&&operations->diagnostics()["activeOperations"].toInt()==0;},120000);
   return journal.operation(id);
  }
+};
+// Serves what the provider keeps at http://127.0.0.1:<port>/f/<name> as text/html, as a link
+// address would, with `extra` bytes after it; a probe on this computer may use plain http.
+struct LinkServer {
+ const KeepingProvider& provider;QByteArray extra;int listener=-1;quint16 port=0;std::thread thread;std::atomic_bool stop{false};
+ LinkServer(const KeepingProvider& keeping,QByteArray more):provider(keeping),extra(std::move(more)) {
+  listener=::socket(AF_INET,SOCK_STREAM,0);sockaddr_in address{};address.sin_family=AF_INET;address.sin_addr.s_addr=htonl(INADDR_LOOPBACK);
+  socklen_t size=sizeof(address);
+  if(::bind(listener,reinterpret_cast<sockaddr*>(&address),size)!=0||::listen(listener,8)!=0||::getsockname(listener,reinterpret_cast<sockaddr*>(&address),&size)!=0)return;
+  port=ntohs(address.sin_port);
+  thread=std::thread([this]{while(!stop){const int client=::accept(listener,nullptr,nullptr);if(client<0)break;
+   QByteArray request;char chunk[4096];while(!request.contains("\r\n\r\n")){const auto n=::read(client,chunk,sizeof(chunk));if(n<=0)break;request.append(chunk,n);}
+   const auto target=request.split(' ').value(1);const auto body=provider.file(QString::fromLatin1(target.mid(target.lastIndexOf('/')+1)))+extra;
+   const auto reply="HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: "+QByteArray::number(body.size())+"\r\nConnection: close\r\n\r\n"+body;
+   for(qsizetype sent=0;sent<reply.size();){const auto n=::send(client,reply.constData()+sent,size_t(reply.size()-sent),MSG_NOSIGNAL);if(n<=0)break;sent+=n;}
+   ::close(client);}});
+ }
+ QString base() const {return QStringLiteral("http://127.0.0.1:%1/f/").arg(port);}
+ ~LinkServer(){stop=true;::shutdown(listener,SHUT_RDWR);::close(listener);if(thread.joinable())thread.join();}
+};
+// A Test through SetupService whose destination test is held until `complete` is called, and
+// whose sealed-link check is held until `sealDone` is.
+struct HeldTest {
+ Fixture fixture{QJsonObject{}};CredentialStore secrets;DestinationStatus status{fixture.dir.filePath("destinations.json"),*fixture.settings};
+ std::function<void(Error)> complete;std::function<void(QJsonObject)> sealDone;int checks=0;
+ SetupService setup{*fixture.settings,secrets,[this](const QString&,const QJsonObject&,auto reply){complete=std::move(reply);}};
+ QString id;
+ HeldTest() {setup.setDestinationStatus(&status);setup.setSealChecker([this](const QString&,const QJsonObject&,std::shared_ptr<std::atomic_bool>,std::function<void(QJsonObject)> done){++checks;sealDone=std::move(done);});}
+ QJsonObject job() {QJsonObject out;setup.inspect(id,[&out](Error,QJsonObject value){out=value;});return out;}
 };
 }
 // Sealed links (#2079) through the upload pipeline: what is sent, the link, Retry and History.
@@ -183,8 +227,46 @@ private slots:
   const QJsonObject profile{{"provider","opaque"},{"settings",QJsonObject{{"workspace","w"}}},{"credentials",QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}}};
   const auto destination=sealCheckDestination("test",profile,"revision-7");
   QCOMPARE(destination.profileRevision,QString("revision-7"));QCOMPARE(destination.profileId,QString("test"));QCOMPARE(destination.providerId,QString("opaque"));
-  runSealCheck(provider,destination,dir.filePath("seal-check"),QStringLiteral(PUTGD_CLI_PATH),{});
+  const auto result=runSealCheck(provider,destination,dir.filePath("seal-check"),QStringLiteral(PUTGD_CLI_PATH),{});
+  // Its link (an .invalid address) can't be opened, so the check fails after the upload.
+  QCOMPARE(result["state"].toString(),QString("failed"));QCOMPARE(result["reason"].toString(),QString("Couldn't open the test page's link."));
   QCOMPARE(provider.storage.uploads.load(),1);QCOMPARE(provider.revisionsSeen,QStringList({"revision-7"}));QVERIFY(provider.checkpointAnswered);
+ }
+ // The probe passes only for exactly the page sent: one byte more, or more than any page, fails.
+ void sealCheckNeedsExactlyThePage_data() {
+  QTest::addColumn<QByteArray>("extra");QTest::addColumn<QString>("state");
+  QTest::newRow("exact")<<QByteArray()<<"passed";QTest::newRow("one byte more")<<QByteArray("x")<<"failed";QTest::newRow("larger than any page")<<QByteArray(2*1024*1024,'x')<<"failed";
+ }
+ void sealCheckNeedsExactlyThePage() {
+  QFETCH(QByteArray,extra);QFETCH(QString,state);
+  KeepingProvider provider;QTemporaryDir dir;LinkServer server(provider,extra);QVERIFY(server.port);provider.linkBase=server.base();
+  const QJsonObject profile{{"provider","opaque"},{"settings",QJsonObject{{"workspace","w"}}},{"credentials",QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}}};
+  const auto result=runSealCheck(provider,sealCheckDestination("test",profile,"revision-7"),dir.filePath("seal-check"),QStringLiteral(PUTGD_CLI_PATH),{});
+  QCOMPARE(result["state"].toString(),state);
+  if(state=="failed")QCOMPARE(result["reason"].toString(),QString("The destination changed the test page's bytes, so a sealed page can't be checked."));
+ }
+ // A Test whose destination changed while it ran checks nothing for sealed links: untested.
+ void sealCheckSkipsAConnectionChangedDuringTheTest() {
+  HeldTest t;PUTGD_TRY_VERIFY(t.fixture.operations->ready());
+  t.setup.start("testDestination","test",t.fixture.settings->revision(),{},[&](Error e,QJsonObject r){QVERIFY2(!e,qPrintable(e.message));t.id=r["setupId"].toString();});
+  QVERIFY(t.complete);
+  auto doc=t.fixture.settings->document();auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();
+  profile["settings"]=QJsonObject{{"workspace","another-workspace"}};profiles[0]=profile;doc["profiles"]=profiles;QVERIFY(t.fixture.settings->save(doc,t.fixture.settings->revision()));
+  t.complete({});
+  PUTGD_TRY_COMPARE(t.job()["state"].toString(),QString("completed"));
+  QCOMPARE(t.checks,0);QCOMPARE(t.job()["result"].toObject()["seal"].toObject()["state"].toString(),QString("untested"));
+ }
+ // A Cancel during the sealed-link check, even one its answer doesn't show, ends the Test
+ // cancelled; the connection it checked keeps its pass.
+ void cancelDuringTheSealCheckCancelsTheTest() {
+  HeldTest t;PUTGD_TRY_VERIFY(t.fixture.operations->ready());
+  t.setup.start("testDestination","test",t.fixture.settings->revision(),{},[&](Error e,QJsonObject r){QVERIFY2(!e,qPrintable(e.message));t.id=r["setupId"].toString();});
+  QVERIFY(t.complete);t.complete({});PUTGD_TRY_VERIFY(t.sealDone);
+  bool asked=false;t.setup.cancel(t.id,[&](Error,QJsonObject r){asked=r["cancelRequested"].toBool();});QVERIFY(asked);
+  t.sealDone({{"state","passed"},{"cleanup","removed"}});
+  PUTGD_TRY_COMPARE(t.job()["state"].toString(),QString("failed"));
+  const auto job=t.job();QCOMPARE(job["error"].toObject()["code"].toString(),QString("cancelled"));QCOMPARE(job["result"].toObject()["seal"].toObject()["state"].toString(),QString("cancelled"));
+  QCOMPARE(t.status.publicJson()["test"].toObject()["state"].toString(),QString("passed"));
  }
  void sealCheckNeedsTheSettingsRevision() {
   KeepingProvider provider;QTemporaryDir dir;
@@ -258,20 +340,42 @@ private slots:
   // The same file fits one page where the limit allows it, and seals.
   const auto small=f.upload(pattern(64),"fits.bin");QVERIFY(small.items.first().sealed());QCOMPARE(f.provider->count(),1);
  }
- // A helper that refuses its output path (the exclusive create found a file there) leaves that
- // file alone: the resident removes only what a job that never answered may have made.
- void refusedOutputPathIsNeverDeleted() {
-  QTemporaryDir dir;const auto helper=dir.filePath("helper.sh");
-  {QFile script(helper);QVERIFY(script.open(QIODevice::WriteOnly));
-   script.write("#!/bin/sh\nrequest=$(cat)\npage=$(printf '%s' \"$request\" | sed -n 's/.*\"page\":\"\\([^\"]*\\)\".*/\\1/p')\n"
-    "printf 'not ours' > \"$page\"\necho '{\"ok\":false,\"error\":{\"code\":\"seal_failed\",\"message\":\"Couldn'\\''t create the sealed page.\"}}'\n");}
-  QVERIFY(QFile::setPermissions(helper,QFileDevice::ReadOwner|QFileDevice::WriteOwner|QFileDevice::ExeOwner));
-  Artifact file;file.path=fixture(dir.path(),"in.txt","plain");file.bytes=5;file.name="in.txt";file.mime="text/plain";
-  const QStringList before=QDir(dir.path()).entryList(QDir::Files);
-  const auto result=SealJob(helper).run(file,dir.path(),"inline","a.html",{},{});
-  QCOMPARE(result.error.code,QString("seal_failed"));QVERIFY(result.error.message.contains("sealed page"));
-  const auto after=QDir(dir.path()).entryList(QDir::Files);QCOMPARE(after.size(),before.size()+1);
-  for(const auto& name:after)if(!before.contains(name)){QFile kept(dir.filePath(name));QVERIFY(kept.open(QIODevice::ReadOnly));QCOMPARE(kept.readAll(),QByteArray("not ours"));}
+ // Sealing jobs remove only files they made (#2079). The resident creates both outputs itself and
+ // removes a path only while it is still that file, so a file already there, or one that took
+ // the path's place while the helper ran, survives a refusal, a crash or a Cancel.
+ void foreignFileAtAnOutputPathSurvives() {
+  QTemporaryDir dir;const auto marker=dir.filePath("started");
+  const auto helper=sealHelper(dir,"touch '"+marker+"'\necho '{\"ok\":false}'\n");
+  const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);QVERIFY(!fixture(dir.path(),id,"not ours").isEmpty());
+  SealJob job(helper);job.setOutputIdsForTesting(id,{});
+  const auto result=job.run(input(dir),dir.path(),"inline","a.html",{},{});
+  QCOMPARE(result.error.code,QString("seal_failed"));QVERIFY(!QFileInfo::exists(marker));QCOMPARE(read(dir.filePath(id)),QByteArray("not ours"));
+ }
+ void cancelLeavesAFileThatTookAnOutputPath_data() {QTest::addColumn<bool>("swapped");QTest::newRow("own file")<<false;QTest::newRow("path taken over")<<true;}
+ void cancelLeavesAFileThatTookAnOutputPath() {
+  QFETCH(bool,swapped);
+  QTemporaryDir dir;const auto marker=dir.filePath("started");
+  // The helper (or a racer while it runs) replaces the page path with another file, then hangs until killed.
+  const QString swap=swapped?"printf 'not ours' > \"$page.new\"\nmv -f \"$page.new\" \"$page\"\n":"";
+  const auto helper=sealHelper(dir,swap+"touch '"+marker+"'\nexec sleep 30\n");
+  const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);SealJob job(helper);job.setOutputIdsForTesting(id,{});
+  auto cancelled=std::make_shared<std::atomic_bool>(false);
+  std::thread canceller([&]{for(int i=0;i<2000&&!QFileInfo::exists(marker);++i)std::this_thread::sleep_for(std::chrono::milliseconds(5));cancelled->store(true);});
+  const auto result=job.run(input(dir),dir.path(),"inline","a.html",{},{},cancelled);canceller.join();
+  QCOMPARE(result.error.code,QString("cancelled"));
+  if(swapped)QCOMPARE(read(dir.filePath(id)),QByteArray("not ours"));else QVERIFY(!QFileInfo::exists(dir.filePath(id)));
+ }
+ // A Cancel as the helper finishes, while or just before its output is checked, is a cancel, and
+ // what it wrote goes.
+ void cancelWhileTheOutputIsCheckedIsACancel() {
+  QTemporaryDir dir;const auto marker=dir.filePath("written");
+  const auto helper=sealHelper(dir,"head -c 67108864 /dev/zero >> \"$page\"\ntouch '"+marker+"'\n"
+   "echo '{\"ok\":true,\"page\":{\"bytes\":67108864,\"sha256\":\"mismatch\"}}'\n");
+  const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);SealJob job(helper);job.setOutputIdsForTesting(id,{});
+  auto cancelled=std::make_shared<std::atomic_bool>(false);
+  std::thread canceller([&]{for(int i=0;i<12000&&!QFileInfo::exists(marker);++i)std::this_thread::sleep_for(std::chrono::milliseconds(1));cancelled->store(true);});
+  const auto result=job.run(input(dir),dir.path(),"inline","a.html",{},{},cancelled);canceller.join();
+  QCOMPARE(result.error.code,QString("cancelled"));QVERIFY(result.page.path.isEmpty());QVERIFY(!QFileInfo::exists(dir.filePath(id)));
  }
  // Forget key: History keeps no way to open it, and offers no link.
  void forgetKeyLeavesNoLink() {

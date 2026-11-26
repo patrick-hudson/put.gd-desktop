@@ -265,11 +265,15 @@ void SetupService::finish(const QString& id,Error error,QJsonObject result) {
    sealChecking_.insert(id);
    auto event=*found;event["event"]=QJsonObject{{"step","seal"},{"status","running"}};*found=event;emit changed(id);
    QPointer<SetupService> guarded(this);
-   sealChecker_(profileId,profiles.value(profileId),cancellations_.value(id),[guarded,id,result](QJsonObject seal) mutable {
+   const auto flag=cancellations_.value(id);
+   sealChecker_(profileId,profiles.value(profileId),flag,[guarded,id,result,flag](QJsonObject seal) mutable {
     if(!guarded)return;
+    // A Cancel the check saw, or one that came while it cleaned up, ends the Test cancelled; the
+    // connection it already checked stays passed.
+    const bool cancelled=seal.value("state")=="cancelled"||(flag&&flag->load());
+    if(cancelled)seal["state"]=QStringLiteral("cancelled");
     if(!seal.isEmpty())result["seal"]=seal;
-    // A Test cancelled during the check ends cancelled; the connection it already checked stays passed.
-    guarded->finish(id,seal.value("state")=="cancelled"?Error{"cancelled","The connection test passed, but the sealed-link check was cancelled. Test again to check sealed links.",{{"connectionPassed",true}}}:Error{},result);
+    guarded->finish(id,cancelled?Error{"cancelled","The connection test passed, but the sealed-link check was cancelled. Test again to check sealed links.",{{"connectionPassed",true}}}:Error{},result);
     guarded->sealChecking_.remove(id);
    });
    return;

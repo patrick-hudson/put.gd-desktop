@@ -516,20 +516,28 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
      else if(found.status=="own"&&found.receipt.publicationId==part.publicationId) {
       // As the page's checkpoint: once Quit began, an intent isn't acknowledged (the journal goes
       // back to before it), so the provider sends no further delete during shutdown.
-      auto partCheckpoint=[path,&doc,&items,index,committed,quitting](const QJsonObject& checkpoint,std::function<void(Error)> ack){
+      const auto partAcknowledged=std::make_shared<std::atomic_bool>(false);
+      auto partCheckpoint=[path,&doc,&items,index,committed,quitting,partAcknowledged](const QJsonObject& checkpoint,std::function<void(Error)> ack){
        auto proposed=items;auto target=proposed[index].toObject();target["sealDataProgress"]=checkpoint;proposed[index]=target;
        auto proposedDoc=doc;proposedDoc["items"]=proposed;HistoryStore durable(path);const auto saved=durable.saveDeletion(proposedDoc);
        if(!saved&&quitting->load()) {
         if(checkpoint["phase"].toString().endsWith("intent")){if(!durable.saveDeletion(doc))committed();}
-        else {items=std::move(proposed);doc=std::move(proposedDoc);committed();}
+        else {items=std::move(proposed);doc=std::move(proposedDoc);committed();partAcknowledged->store(true);}
         ack({"cancelled","put.gd is quitting",{}});return;
        }
-       if(!saved){items=std::move(proposed);doc=std::move(proposedDoc);committed();}
+       if(!saved){items=std::move(proposed);doc=std::move(proposedDoc);committed();partAcknowledged->store(true);}
        ack(saved);
       };
       DeleteRequest request{doc["id"].toString()+"-data",part,items[index].toObject()["sealDataProgress"].toObject(),cancelled,quitting};
       auto removed=awaitProvider<DeleteResult>([&](auto cb){provider->remove(request,partCheckpoint,cb);});
       partOutcome=removed.status=="missing"?QStringLiteral("already_missing"):removed.status;partError=removed.error;
+      // As for the page: a failed result read after Quit began can't show the server did nothing.
+      // With an acknowledged checkpoint the delete may have gone out, so it is unknown; without one
+      // nothing that deletes was sent this time, and the data file keeps what it recorded before.
+      if(quitting->load()&&(partOutcome=="failed"||partOutcome=="unknown")) {
+       if(partAcknowledged->load()){partOutcome=QStringLiteral("unknown");partError={"delete_unknown","put.gd quit before confirming whether the data file was deleted. Select Retry deletion to check again.",{{"reportedError",partError.toJson()}}};}
+       else partOutcome=items[index].toObject()["sealDataStatus"]=="unknown"?QStringLiteral("unknown"):QStringLiteral("failed");
+      }
      } else partError=found.error;
     }
     auto target=items[index].toObject();target["sealDataStatus"]=partOutcome;items[index]=target;doc["items"]=items;

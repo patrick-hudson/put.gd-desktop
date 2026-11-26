@@ -453,12 +453,13 @@ private slots:
   QCOMPARE(layout.children.size(),order.size());
   for (int i = 0; i < order.size(); ++i) {const auto item=qdbus_cast<WireLayout>(layout.children.at(i).variant());QCOMPARE(item.id,ids[i]);if(order[i]=="-")QCOMPARE(item.props["type"].toString(),QString("separator"));else QCOMPARE(item.props["label"].toString(),order[i]);}
   QVERIFY(!qdbus_cast<WireLayout>(layout.children.at(20).variant()).props["visible"].toBool());
-  // #2079: Capture region (sealed) shows only once its destination passed the sealed-link check.
-  QVERIFY(!qdbus_cast<WireLayout>(layout.children.at(1).variant()).props["visible"].toBool());
+  // #2079: Capture region (sealed), command 50, shows only once its destination passed the sealed-link check.
+  const auto sealedRow=[](const WireLayout& menu){for(const auto& child:menu.children){const auto item=qdbus_cast<WireLayout>(child.variant());if(item.id==50)return item;}return WireLayout{};};
+  QCOMPARE(sealedRow(layout).id,50);QVERIFY(!sealedRow(layout).props["visible"].toBool());
   // Once it passed, the row shows and starts a sealed region capture.
   {QSignalSpy sealedActions(&tray,&NativeTray::actionActivated);traymenu::State sealed;sealed.sealedRegion=true;tray.setMenu(sealed);
    const auto shown=qdbus_cast<WireLayout>(call("/Menu","com.canonical.dbusmenu","GetLayout",{0,-1,QStringList{}}).arguments().at(1));
-   const auto row=qdbus_cast<WireLayout>(shown.children.at(7).variant());QCOMPARE(row.id,50);QVERIFY(row.props["visible"].toBool());
+   const auto row=sealedRow(shown);QCOMPARE(row.id,50);QVERIFY(row.props["visible"].toBool());
    QCOMPARE(click(50).type(),QDBusMessage::ReplyMessage);PUTGD_TRY_COMPARE(sealedActions.size(),1);QCOMPARE(sealedActions.first().first().toString(),QString("region-sealed"));
    tray.setMenu({});}
   // The capture delay is a radio group one level down, None chosen until told otherwise.
