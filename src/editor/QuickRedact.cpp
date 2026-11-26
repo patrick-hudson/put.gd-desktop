@@ -2562,6 +2562,13 @@ const QList<Rule>& rules() {
     // pairs (01.23.45.67.89); 26.1112.4660 is a version.
     static const QRegularExpression dots(R"(^\d+(?:\.\d+)+$)"),grouped(R"(^(?:\d{3}\.\d{3}\.\d{4}|\d{2}(?:\.\d{2}){3,})$)");
     if(dots.match(m).hasMatch()&&!grouped.match(m).hasMatch())return false;
+    // #2076: nor a number with a version in it (67598 26.0909.7058: a ZIP code beside a build number):
+    // two dots or more, a first group of one or two digits and a later group of four or more. Nor one
+    // number before an ISO date (2461343 2026-10-27, a file's size in ls -l --time-style=long-iso).
+    {static const QRegularExpression version(R"((?:^|[^\d.])\d{1,2}(?:\.\d+){2,}(?![\d.]))"),groups(R"(\.\d{4,})"),
+      sized(R"(^\d{1,12} ((?:19|20)\d\d)-(\d\d)-(\d\d)$)");
+     for(auto it=version.globalMatch(m);it.hasNext();)if(groups.match(it.next().captured()).hasMatch())return false;
+     if(const auto d=sized.match(m);d.hasMatch()&&QDate(d.captured(1).toInt(),d.captured(2).toInt(),d.captured(3).toInt()).isValid())return false;}
     // #1975: a span of years is no number to call (1995-2026, (1952-2001)).
     // Years 1900 to 2099 only: Korea's eight-digit service numbers start 15xx to 18xx (1899-1995; Sol S9 on #1976).
     {static const QRegularExpression years(R"(^\(?((?:19|20)\d\d) ?[-–] ?((?:19|20)\d\d)\)?$)");
@@ -3353,6 +3360,17 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
      static const QSet<QString> states{"AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC","PR"};
      const int first=words.first();const int line=candidates.at(first).line;
      const auto number=joined.text.mid(start,length);
+     // #2076: a process's ID in a log line (kwin_wayland_wrapper[1445660]:) and a count after a lowercase
+     // setting name (pid=3945093, auid=4294967295, ses=…) are no numbers to call. A setting that names a
+     // phone keeps it (tel=, phone=, mobile=, msisdn=…).
+     {const auto end=start+length;
+      if(start>=2&&joined.text.at(start-1)=='['&&(joined.text.at(start-2).isLetterOrNumber()||joined.text.at(start-2)=='_')&&end<joined.text.size()&&joined.text.at(end)==']')continue;
+      if(start>=2&&joined.text.at(start-1)=='='){
+       qsizetype k=start-1;while(k>0&&(joined.text.at(k-1).isLower()||joined.text.at(k-1).isDigit()||joined.text.at(k-1)=='_'))--k;
+       const auto key=joined.text.mid(k,start-1-k);
+       static const QRegularExpression phoneKey(QStringLiteral("tel|phone|mobile|mob|cell|fax|msisdn|whatsapp|call|contact|number|num|^no$|^nr$"));
+       if(!key.isEmpty()&&key.front().isLower()&&(k==0||!joined.text.at(k-1).isLetter())&&!phoneKey.match(key).hasMatch())continue;
+      }}
      // #2076: the pattern starts no number right after a digit's dot, a slash's digits or a longer run,
      // so a date with its time may give it only the time's part: after a slashed date's last slash
      // (2026/11/24 21-54-26) or after the date itself (24.11.2026 21-54-26-123, cut at 17 digits). The

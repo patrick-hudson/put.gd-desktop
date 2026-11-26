@@ -227,6 +227,13 @@ private slots:
   QTest::newRow("a phone after a compact timestamp is a phone")<<"20261124 215426 555-0123"<<QStringList{"phone"}<<QStringList{"phone: 555-0123"};
   QTest::newRow("a timestamp before another field is no phone")<<"2026-11-24-21-54-26 1234 | Updated 2026-11-24 21-54-26 1234"<<QStringList{"phone"}<<QStringList{};
   QTest::newRow("a compact timestamp is no card")<<"Run 20261124215421 done | Run 20261124215421009 done"<<QStringList{"card","phone"}<<QStringList{};
+  // #2076: process IDs, setting counts, versions and file sizes on real screens are no phone numbers;
+  // a phone in the same places still is.
+  QTest::newRow("a process ID and setting counts are no phone")<<"kwin_wayland_wrapper[1445660]: | audit: pid=3945093 auid=4294967295 ses=4294967295"<<QStringList{"phone"}<<QStringList{};
+  QTest::newRow("a phone setting or bracket stays a phone")<<"tel=2025550143 | msisdn=2125550100 | Call [202-555-0143]"<<QStringList{"phone"}<<QStringList{"phone: tel=2025550143","phone: msisdn=2125550100","phone: [202-555-0143]"};
+  QTest::newRow("a ZIP code beside a build number is no phone")<<"67598 26.0909.7058 | 29885 26.1022.6582"<<QStringList{"phone"}<<QStringList{};
+  QTest::newRow("a phone with dots is still a phone")<<"Tel 202.555.0143 | Tel 06.12.34.56.78"<<QStringList{"phone"}<<QStringList{"phone: 202.555.0143","phone: 06.12.34.56.78"};
+  QTest::newRow("a file size before an ISO date is no phone")<<"-rw-r--r-- 1 lab lab 2461343 2026-10-27 04:02 backup.tar.gz"<<all<<QStringList{};
   QTest::newRow("a phone after a slashed date is a phone")<<"Updated 2026/11/24 0612345678"<<QStringList{"phone"}<<QStringList{"phone: 2026/11/24 0612345678"};
   QTest::newRow("a browser build date is no phone")<<"Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0"<<all<<QStringList{};
   QTest::newRow("an order number is no phone")<<"Order #10234567 shipped"<<all<<QStringList{};
