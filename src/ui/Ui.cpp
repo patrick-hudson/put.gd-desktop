@@ -852,6 +852,7 @@ int Style::styleHint(StyleHint hint, const QStyleOption* option, const QWidget* 
     case SH_ItemView_MovementWithoutUpdatingSelection: return 1;
     case SH_Menu_MouseTracking: case SH_MenuBar_MouseTracking: return 1;
     case SH_Menu_SubMenuPopupDelay: return 160;
+    case SH_Menu_SupportsSections: return 1;
     case SH_ToolTipLabel_Opacity: return 255;
     case SH_Slider_AbsoluteSetButtons: return Qt::LeftButton;
     case SH_FocusFrame_Mask: case SH_RubberBand_Mask: return 0;
@@ -964,8 +965,22 @@ QSize Style::sizeFromContents(ContentsType type, const QStyleOption* option, con
     case CT_MenuItem: {
         const auto* item = qstyleoption_cast<const QStyleOptionMenuItem*>(option);
         if (!item) break;
-        if (item->menuItemType == QStyleOptionMenuItem::Separator) return {contents.width(), 9};
         const auto* menu = qobject_cast<const QMenu*>(widget);
+        if (item->menuItemType == QStyleOptionMenuItem::Separator) {
+            if (item->text.isEmpty()) return {contents.width(), 9};
+            const QFont sectionFont = font(Type::metadata, true);
+            const QFontMetrics metrics(sectionFont);
+            bool first = true;
+            if (menu) {
+                for (const auto* action : menu->actions()) {
+                    if (!action->isVisible()) continue;
+                    first = action->isSeparator() && action->text() == item->text;
+                    break;
+                }
+            }
+            const int w = 12 + metrics.size(Qt::TextSingleLine | Qt::TextShowMnemonic, item->text).width() + 16;
+            return {w, metrics.height() + scaled(first ? 10 : 18)};
+        }
         const auto actions = menu ? menu->actions() : QList<QAction*>{};
         const bool information = std::any_of(actions.cbegin(), actions.cend(), [item](const QAction* action) { return action->text() == item->text && action->property("visualRole") == "information"; });
         const QFontMetrics metrics(information ? font(Type::technical) : item->font);
@@ -1361,8 +1376,34 @@ void Style::drawControl(ControlElement element, const QStyleOption* option, QPai
         const QRect r = option->rect;
         if (item->menuItemType == QStyleOptionMenuItem::Separator) {
             p->save();
-            p->setPen(c.border);
-            p->drawLine(r.left() + 10, r.center().y(), r.right() - 10, r.center().y());
+            if (item->text.isEmpty()) {
+                p->setPen(c.border);
+                p->drawLine(r.left() + 10, r.center().y(), r.right() - 10, r.center().y());
+            } else {
+                const auto* menu = qobject_cast<const QMenu*>(widget);
+                const auto* action = menu ? menu->actionAt(r.center()) : nullptr;
+                bool first = true;
+                if (menu && action) {
+                    for (const auto* candidate : menu->actions()) {
+                        if (!candidate->isVisible()) continue;
+                        first = candidate == action;
+                        break;
+                    }
+                }
+                int top = r.top() + scaled(6);
+                if (!first) {
+                    const int ruleY = r.top() + scaled(4);
+                    p->setPen(c.border);
+                    p->drawLine(r.left() + 10, ruleY, r.right() - 10, ruleY);
+                    top = r.top() + scaled(14);
+                }
+                const QFont sectionFont = font(Type::metadata, true);
+                p->setFont(sectionFont);
+                p->setPen(c.textMuted);
+                const QRect textRect(r.left() + 12, top, std::max(0, r.width() - 24), std::max(0, r.y() + r.height() - top - scaled(4)));
+                const auto elided = QFontMetrics(sectionFont).elidedText(item->text, Qt::ElideRight, textRect.width(), Qt::TextShowMnemonic);
+                p->drawText(textRect, Qt::AlignVCenter | Qt::AlignLeft | Qt::TextShowMnemonic | Qt::TextSingleLine, elided);
+            }
             p->restore();
             return;
         }

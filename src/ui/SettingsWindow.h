@@ -19,6 +19,11 @@ class ShortcutEditor;class CustomUploaderPanel;class DavDestinationPanel;class S
 class SettingsWindow final:public RetainedWindow {
  Q_OBJECT
 public:
+ // Single source of truth for destination-type labels, groups and menu order (#2088).
+ struct DestinationType {
+  QString id,label,defaultName,addActionName,group;
+ };
+ static const QList<DestinationType>& destinationTypes();
  SettingsWindow(UiSession&,QWidget* parent=nullptr);
  ~SettingsWindow()override;
  QJsonObject saveViewState()const;

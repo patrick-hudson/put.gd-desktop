@@ -69,7 +69,7 @@ private slots:
  void newDestinationThenRegionSavesBoth(){
   QTemporaryDir dir;CredentialStore secrets;S3Provider provider(secrets);SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return provider.validateSettings(value);});QVERIFY(service.save(Settings::developmentTemplate(),{}));
   UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
-  QAction* add=nullptr;for(auto* action:window.findChildren<QAction*>())if(action->text()=="Amazon S3 / S3-compatible")add=action;QVERIFY(add);
+  auto* add=window.findChild<QAction*>("addS3");QVERIFY(add);
   // Add destination asks for a name first.
   QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QInputDialog*>(widget))dialog->accept();});add->trigger();
   auto* bucket=window.findChild<QLineEdit*>("s3Bucket");auto* region=window.findChild<QLineEdit*>("s3Region");QVERIFY(bucket&&region);
@@ -185,7 +185,7 @@ private slots:
   auto* list=window.findChild<QListWidget*>("destinationList");auto* label=window.findChild<QLineEdit*>("destinationLabel");auto* bucket=window.findChild<QLineEdit*>("s3Bucket");
   auto* notifications=window.settings()->findChild<QCheckBox*>("notifications");auto* route=window.settings()->findChild<QComboBox*>("defaultCaptureDestination");auto* shown=window.settings()->findChild<QComboBox*>("destinationProfile");
   auto* retry=window.findChild<QPushButton*>("retryDestinationAutosave");auto* banner=window.findChild<QWidget*>("destinationConflictBanner");
-  QAction* add=nullptr;for(auto* action:window.findChildren<QAction*>())if(action->text()=="Amazon S3 / S3-compatible")add=action;
+  auto* add=window.findChild<QAction*>("addS3");
   QVERIFY(list&&label&&bucket&&notifications&&route&&shown&&retry&&banner&&add);
   struct Intent{QString id,label,bucket,prefix;bool refused=false;};QList<Intent> model;
   const auto intentOf=[](const QJsonObject& p){const auto s=p["settings"].toObject();return Intent{p["id"].toString(),p["label"].toString(),s["bucket"].toString(),s["objectPrefix"].toString()};};
@@ -291,7 +291,7 @@ private slots:
   const auto first=service.document()["profiles"].toArray()[0].toObject();
   UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
   auto* region=window.findChild<QLineEdit*>("s3Region");QVERIFY(region);region->setText("Western North America (WNAM)");QMetaObject::invokeMethod(region,"editingFinished");
-  QAction* add=nullptr;for(auto* action:window.findChildren<QAction*>())if(action->text()=="Amazon S3 / S3-compatible")add=action;QVERIFY(add);
+  auto* add=window.findChild<QAction*>("addS3");QVERIFY(add);
   QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QInputDialog*>(widget)){dialog->setTextValue("Second");dialog->accept();}});add->trigger();
   auto* bucket=window.findChild<QLineEdit*>("s3Bucket");bucket->setText("second-bucket");QMetaObject::invokeMethod(bucket,"editingFinished");
   const auto profiles=[&]{return service.document()["profiles"].toArray();};
@@ -379,7 +379,7 @@ private slots:
   const auto ids=profileIds(service.document());
   QJsonObject result;QVERIFY(!window.settings()->moveSelectedDestination(1,ids[0],result));
   PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));
-  QAction* add=nullptr;for(auto* action:window.findChildren<QAction*>())if(action->text()=="Amazon S3 / S3-compatible")add=action;QVERIFY(add);
+  auto* add=window.findChild<QAction*>("addS3");QVERIFY(add);
   QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QInputDialog*>(widget)){dialog->setTextValue("Later");dialog->accept();}});add->trigger();
   QVERIFY(!window.settings()->moveSelectedDestination(-1,"later",result));
   QVERIFY(!window.settings()->moveSelectedDestination(1,ids[1],result));
@@ -592,7 +592,7 @@ private slots:
   list->setCurrentRow(2);label->setText("Third renamed");QMetaObject::invokeMethod(label,"editingFinished");
   PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));
   list->setCurrentRow(1);QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* message=qobject_cast<QMessageBox*>(widget))message->button(QMessageBox::Yes)->click();});window.findChild<QPushButton*>("removeDestination")->click();
-  QAction* add=nullptr;for(auto* action:window.findChildren<QAction*>())if(action->text()=="Amazon S3 / S3-compatible")add=action;QVERIFY(add);
+  auto* add=window.findChild<QAction*>("addS3");QVERIFY(add);
   QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QInputDialog*>(widget)){dialog->setTextValue("Synthetic alternate");dialog->accept();}});add->trigger();
   auto* bucket=window.findChild<QLineEdit*>("s3Bucket");bucket->setText("replacement-bucket");QMetaObject::invokeMethod(bucket,"editingFinished");
   PUTGD_TRY_VERIFY((fixture.client.release(),profileIds(service.document())==QStringList({"development-s3","synthetic-third","synthetic-alternate-2"})));
@@ -625,7 +625,7 @@ private slots:
   auto* list=window.findChild<QListWidget*>("destinationList");auto* label=window.findChild<QLineEdit*>("destinationLabel");
   list->setCurrentRow(0);label->setText("First renamed");QMetaObject::invokeMethod(label,"editingFinished");
   PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));
-  QAction* add=nullptr;for(auto* action:window.findChildren<QAction*>())if(action->text()=="Amazon S3 / S3-compatible")add=action;QVERIFY(add);
+  auto* add=window.findChild<QAction*>("addS3");QVERIFY(add);
   QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QInputDialog*>(widget)){dialog->setTextValue("Later");dialog->accept();}});add->trigger();
   QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* message=qobject_cast<QMessageBox*>(widget))message->button(QMessageBox::Yes)->click();});window.findChild<QPushButton*>("removeDestination")->click();
   // Elsewhere, a destination with the ID the cancelled one had.
@@ -661,7 +661,7 @@ private slots:
   UiSessionFixture fixture(service,secrets);fixture.client.failOnce.insert("settings.save",Error{"synthetic_transport","Synthetic transport failure",{}});
   QJsonObject checkpoint;
   {MainWindow first(fixture.session);first.navigate("destinations");first.show();
-   QAction* add=nullptr;for(auto* action:first.findChildren<QAction*>())if(action->text()=="Amazon S3 / S3-compatible")add=action;QVERIFY(add);
+   auto* add=first.findChild<QAction*>("addS3");QVERIFY(add);
    QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QInputDialog*>(widget)){dialog->setTextValue("Later");dialog->accept();}});add->trigger();
    PUTGD_TRY_VERIFY(first.findChild<QPushButton*>("retryDestinationAutosave")->isVisible());
    first.findChild<QListWidget*>("destinationList")->setCurrentRow(0);auto* label=first.findChild<QLineEdit*>("destinationLabel");label->setText("Renamed here");QMetaObject::invokeMethod(label,"editingFinished");
@@ -842,7 +842,7 @@ private slots:
   QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
   UiSessionFixture fixture(service,secrets);fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="settings.save";};
   MainWindow window(fixture.session);window.navigate("destinations");window.show();
-  QAction* add=nullptr;for(auto* action:window.findChildren<QAction*>())if(action->text()=="Amazon S3 / S3-compatible")add=action;QVERIFY(add);
+  auto* add=window.findChild<QAction*>("addS3");QVERIFY(add);
   QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QInputDialog*>(widget)){dialog->setTextValue("Later");dialog->accept();}});add->trigger();
   PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));
   QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* message=qobject_cast<QMessageBox*>(widget))message->button(QMessageBox::Yes)->click();});window.findChild<QPushButton*>("removeDestination")->click();
@@ -879,7 +879,7 @@ private slots:
   QTemporaryDir dir;CredentialStore secrets;S3Provider provider(secrets);SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return provider.validateSettings(value);});QVERIFY(service.save(Settings::developmentTemplate(),{}));QVERIFY(!service.document().contains("captureDefaults"));
   UiSessionFixture fixture(service,secrets);fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="settings.save";};
   MainWindow window(fixture.session);window.navigate("destinations");window.show();
-  QAction* add=nullptr;for(auto* action:window.findChildren<QAction*>())if(action->text()=="Amazon S3 / S3-compatible")add=action;QVERIFY(add);
+  auto* add=window.findChild<QAction*>("addS3");QVERIFY(add);
   QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QInputDialog*>(widget)){dialog->setTextValue("Second");dialog->accept();}});add->trigger();
   PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));
   auto* route=window.settings()->findChild<QComboBox*>("defaultCaptureDestination");QVERIFY(route->findData("second")>=0);
@@ -951,7 +951,7 @@ private slots:
  void routeToRefusedAddSurvivesRetry(){
   QTemporaryDir dir;CredentialStore secrets;S3Provider provider(secrets);SettingsService service(dir.filePath("config.json"),[&](auto,auto value){return provider.validateSettings(value);});QVERIFY(service.save(Settings::developmentTemplate(),{}));
   UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
-  QAction* add=nullptr;for(auto* action:window.findChildren<QAction*>())if(action->text()=="Amazon S3 / S3-compatible")add=action;QVERIFY(add);
+  auto* add=window.findChild<QAction*>("addS3");QVERIFY(add);
   QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QInputDialog*>(widget)){dialog->setTextValue("Second");dialog->accept();}});add->trigger();
   auto* status=window.findChild<QLabel*>("destinationStatus");PUTGD_TRY_VERIFY(status->text().contains("bucket"));
   auto* route=window.settings()->findChild<QComboBox*>("defaultCaptureDestination");route->setCurrentIndex(route->findData("second"));
@@ -1003,7 +1003,7 @@ private slots:
   auto* label=window.findChild<QLineEdit*>("destinationLabel");auto* route=window.settings()->findChild<QComboBox*>("defaultCaptureDestination");QVERIFY(label&&route);
   label->setText("First renamed");QMetaObject::invokeMethod(label,"editingFinished");
   PUTGD_TRY_COMPARE(fixture.client.held.size(),qsizetype(1));
-  QAction* add=nullptr;for(auto* action:window.findChildren<QAction*>())if(action->text()=="Amazon S3 / S3-compatible")add=action;QVERIFY(add);
+  auto* add=window.findChild<QAction*>("addS3");QVERIFY(add);
   QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QInputDialog*>(widget)){dialog->setTextValue("Later");dialog->accept();}});add->trigger();
   QVERIFY(route->findData("later")>=0);route->setCurrentIndex(route->findData("later"));
   QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* message=qobject_cast<QMessageBox*>(widget))message->button(QMessageBox::Yes)->click();});window.findChild<QPushButton*>("removeDestination")->click();
@@ -1029,7 +1029,7 @@ private slots:
   fixture.client.hold=[&](const QString& method,const QJsonObject& params){const bool hold=method=="settings.save"||(holdReads&&method=="ui.snapshot");if(hold){methods.append(method);if(method=="settings.save"&&sent.isEmpty())sent=params;}return hold;};
   const auto releaseFirst=[&](const QString& method){const int i=methods.indexOf(method);if(i<0)return false;methods.removeAt(i);return fixture.client.release(i);};
   MainWindow window(fixture.session);window.navigate("destinations");window.show();
-  QAction* add=nullptr;for(auto* action:window.findChildren<QAction*>())if(action->text()=="Amazon S3 / S3-compatible")add=action;QVERIFY(add);
+  auto* add=window.findChild<QAction*>("addS3");QVERIFY(add);
   QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* dialog=qobject_cast<QInputDialog*>(widget)){dialog->setTextValue("Later");dialog->accept();}});add->trigger();
   PUTGD_TRY_COMPARE(methods.count("settings.save"),qsizetype(1));
   QTimer::singleShot(0,[]{for(auto* widget:QApplication::topLevelWidgets())if(auto* message=qobject_cast<QMessageBox*>(widget))message->button(QMessageBox::Yes)->click();});window.findChild<QPushButton*>("removeDestination")->click();
@@ -1337,6 +1337,95 @@ private slots:
   for(const auto* name:{"s3StorageClass","s3ConnectTimeoutMsControl","s3RequestTimeoutMsControl","s3LowSpeedBytesPerSecondControl","s3LowSpeedTimeSecondsControl","s3Addressing","credentialReference","customEndpoint","customFileNamePatternToggle"})QVERIFY2(checked.contains(name),qPrintable(QString("%1 checked; got %2").arg(name,checked.join(", "))));
   QVERIFY2(checked.size()>=20,qPrintable("only checked "+checked.join(", ")));
   QVERIFY2(misplaced.isEmpty(),qPrintable(misplaced.join("\n")));
+ }
+ // #2088: Add destination, Storage service and the backing provider selector share one grouped,
+ // alphabetically ordered list; section headers render visibly and keyboard navigation skips them.
+ void addDestinationAndServiceMenusMatchSingleOrderedCatalog(){
+  const auto& types=SettingsWindow::destinationTypes();
+  QCOMPARE(types.size(),8);
+  const QStringList expectedIds{"s3","backblaze-b2","cloudflare-r2","nextcloud","proton-drive","sftp","webdav","custom-http"};
+  const QStringList expectedLabels{"Amazon S3 / S3-compatible","Backblaze B2","Cloudflare R2","Nextcloud","Proton Drive","SFTP","WebDAV","Custom uploader (HTTP)"};
+  const QStringList expectedGroups{"Object storage","Object storage","Object storage","Cloud drives","Cloud drives","File servers","File servers",{}};
+  QStringList ids,labels,groups;
+  for(const auto& t:types){ids<<t.id;labels<<t.label;groups<<t.group;}
+  QCOMPARE(ids,expectedIds);
+  QCOMPARE(labels,expectedLabels);
+  QCOMPARE(groups,expectedGroups);
+  // Every group is sorted alphabetically by label.
+  for(int i=1;i<types.size();++i)if(types[i].group==types[i-1].group)QVERIFY2(types[i-1].label.compare(types[i].label,Qt::CaseInsensitive)<0,qPrintable(types[i-1].label+" vs "+types[i].label));
+
+  QTemporaryDir dir;CredentialStore secrets;
+  SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});
+  QVERIFY(service.save(Settings::developmentTemplate(),{}));
+  UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
+
+  auto* addButton=window.findChild<QPushButton*>("addS3Destination");QVERIFY(addButton&&addButton->menu());
+  auto* addMenu=addButton->menu();QCOMPARE(addMenu->objectName(),QString("destinationAddMenu"));
+  auto* serviceMenu=window.findChild<QMenu*>("storageServiceMenu");QVERIFY(serviceMenu);
+  auto* providerCombo=window.findChild<QComboBox*>("storageProvider");QVERIFY(providerCombo);
+
+  const auto menuEntries=[](QMenu* menu){
+   QStringList entries;
+   for(auto* action:menu->actions()){
+    if(action->text()=="Import development S3")break;
+    entries<<(action->isSeparator()?(action->text().isEmpty()?QStringLiteral("---"):QStringLiteral("[%1]").arg(action->text())):action->text());
+   }
+   while(!entries.isEmpty()&&entries.last()=="---")entries.removeLast();
+   return entries;
+  };
+  const QStringList expectedMenu{
+   "[Object storage]","Amazon S3 / S3-compatible","Backblaze B2","Cloudflare R2",
+   "[Cloud drives]","Nextcloud","Proton Drive",
+   "[File servers]","SFTP","WebDAV",
+   "---","Custom uploader (HTTP)"
+  };
+  QCOMPARE(menuEntries(addMenu),expectedMenu);
+  QCOMPARE(menuEntries(serviceMenu),expectedMenu);
+
+  QStringList comboIds,comboLabels;
+  for(int i=0;i<providerCombo->count();++i){comboIds<<providerCombo->itemData(i).toString();comboLabels<<providerCombo->itemText(i);}
+  QCOMPARE(comboIds,expectedIds);
+  QCOMPARE(comboLabels,expectedLabels);
+
+  // Section headers render visibly in both dark and light schemes, are taller than plain 9 px
+  // separators, and keyboard navigation skips them straight to the first real entry.
+  for(const auto scheme:{Theme::Scheme::Dark,Theme::Scheme::Light}){
+   Theme::setScheme(scheme);
+   addMenu->popup(window.mapToGlobal(QPoint(20,20)));
+   putgd::test::settle(40);
+   const auto actions=addMenu->actions();
+   QVERIFY(actions.size()>=12);
+   const QRect firstSection=addMenu->actionGeometry(actions[0]);
+   const QRect laterSection=addMenu->actionGeometry(actions[4]);
+   const QRect plainSep=addMenu->actionGeometry(actions[10]);
+   QVERIFY2(firstSection.height()>plainSep.height(),qPrintable(QString("first %1 <= plain %2").arg(firstSection.height()).arg(plainSep.height())));
+   QVERIFY2(laterSection.height()>firstSection.height(),qPrintable(QString("later %1 <= first %2").arg(laterSection.height()).arg(firstSection.height())));
+   const QImage rendered=addMenu->grab().toImage().convertToFormat(QImage::Format_ARGB32);
+   const auto bg=Theme::current().surfaceRaised.rgb();
+   auto inkCount=[&](const QRect& rect){
+    int ink=0;
+    for(int y=qMax(0,rect.top());y<=qMin(rendered.height()-1,rect.bottom());++y)
+     for(int x=qMax(0,rect.left());x<=qMin(rendered.width()-1,rect.right());++x)
+      if(rendered.pixel(x,y)!=bg)++ink;
+    return ink;
+   };
+   QVERIFY2(inkCount(firstSection)>30,qPrintable(QString("scheme %1: Object storage header drew only %2 ink px").arg(int(scheme)).arg(inkCount(firstSection))));
+   QVERIFY2(inkCount(laterSection)>30,qPrintable(QString("scheme %1: Cloud drives header drew only %2 ink px").arg(int(scheme)).arg(inkCount(laterSection))));
+   QTest::keyClick(addMenu,Qt::Key_Down);
+   QVERIFY(addMenu->activeAction());
+   QCOMPARE(addMenu->activeAction()->text(),QString("Amazon S3 / S3-compatible"));
+   addMenu->close();
+  }
+  Theme::setScheme(Theme::Scheme::Dark);
+
+  // Triggering a non-S3 entry creates that provider directly with its expected default name.
+  auto* addB2=addMenu->findChild<QAction*>("addBackblazeB2");QVERIFY(addB2);
+  QString offeredDefault;
+  QTimer::singleShot(0,[&]{for(auto* w:QApplication::topLevelWidgets())if(auto* d=qobject_cast<QInputDialog*>(w)){offeredDefault=d->textValue();d->setTextValue("My B2");d->accept();}});
+  addB2->trigger();
+  QCOMPARE(offeredDefault,QString("Backblaze B2"));
+  QCOMPARE(providerCombo->currentData().toString(),QString("backblaze-b2"));
+  QCOMPARE(window.findChild<QLineEdit*>("destinationLabel")->text(),QString("My B2"));
  }
 };
 QTEST_MAIN(SettingsGui)
