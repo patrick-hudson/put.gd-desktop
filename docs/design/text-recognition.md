@@ -1377,8 +1377,9 @@ other tool active it does not. The user's side is in the
     after twelve, split off (`25285945833551 94`, `411111111111 1111`); a phone's `273` before a
     16-digit number and an EAN-13 before a date are no card. A number read as one word keeps the
     earlier rule. A card number is never all zeros, nor a date with its time as the phone kind reads
-    one (`2026-11-24-21-54-26-123`), nor 14 digits that are a whole date and time
-    (`20261124215421`: no card issuer's numbers start 19 or 20) (#2076).
+    one (`2026-11-24-21-54-26-123`), nor 14 digits that are a whole date and time, or 17 with its
+    milliseconds (`20261124215421`, `20261124215421009`: no card issuer's numbers start 19 or 20)
+    (#2076). A card label before it still lets the earlier card check take it (below).
   - A counted row is no card or phone number:
     - three groups or more of up to nine digits, stepping up or down by the same one or multiple
       of five, all of them, or four in a row (calendar days after a week number, `2023 2024 2025
@@ -1419,23 +1420,29 @@ other tool active it does not. The user's side is in the
     - a date with its time (#2076), in the ways file names and logs print one: put.gd's own capture
       names (`Text-2026-11-24-21-54-26.txt`), a GNOME screenshot name (`2026-11-22 14-03-57`), ISO
       and log dates with a dashed, dotted or spaced time (`2026-11-24 21.54.26`), day or month first
-      (`24/11/2026 21-54-26`, `11-24-2026 21-54`), compact (`20261124-215426`), with three or six
-      digits of a second after it (`…-26-123`). The date must exist (a year 1900 to 2099) and the
-      time too (hours to 23, minutes and seconds to 59). A group after the timestamp that is set
-      apart the way its time's groups are continues the number (`2026-11-24 06 12 34 56 78`); one
-      set apart some other way is another field (`2026-11-24-21-54-26 1234`). Only an ISO date may
-      carry its hour alone (`2026-11-22 14`); a day- or month-first date needs its minutes. A date spaced like a phone's
-      groups counts only with its hours and minutes spaced the same way (`2026 11 24 21 54`), and a
-      compact date only with its time, so `Tel 20261124`, `Tel 1960 11 24 21` and
-      `Tel 2026 11 24 2154` stay phone numbers, as does a number that starts with `+`. The number must
-      end with the timestamp: when more digit groups follow, a leading ISO date is set aside and
-      matching starts again after it (`Updated 2026-11-24 06 12 34 56 78` finds `06 12 34 56 78`).
-      The phone pattern starts no number at a slashed date's left, so after a slash or a space the
-      date before it is read back and judged with the number. A whole timestamp that starts a longer
-      run of more than 15 digits (`20261124 215426 555-0123`) is set aside, and matching starts
-      again after it. Known limits: a two-digit year (`24-11-26 21-54-26`) is not taken as a date,
-      and a phone whose groups change separator right after an ISO date
-      (`2026-11-24 06-12-34 56 78`) reads as a dashed time followed by another field, so it is missed;
+      (`24/11/2026 21-54-26`, `11-24-2026 21-54`) and compact (`20261124-215426`). The date uses one
+      separator throughout (`-`, `.`, `/` or a space) and must exist (a year 1900 to 2099); the time
+      must exist too (hours to 23, minutes and seconds to 59). After the seconds, three or six digits
+      of a second may follow a `-` or `.` (`…-26-123`). Only an ISO date may carry its hour alone
+      (`2026-11-22 14`); a day- or month-first date needs its minutes. A date spaced like a phone's
+      groups counts only with its hours and minutes spaced the same way and no fraction
+      (`2026 11 24 21 54`), and a compact date only with its time, so `Tel 20261124`,
+      `Tel 1960 11 24 21` and `Tel 2026 11 24 2154` stay phone numbers, as does a number that starts
+      with `+`.
+
+      The number must end with the timestamp. A group after it set apart the way its time's last
+      group is continues the number (`2026-11-24 06 12 34`, then ` 56 78`); a group set apart some
+      other way is another field (`2026-11-24-21-54-26 1234`). When the number goes on and starts
+      with a year-first date whose parts are set apart by `-`, `.` or `/` and that is followed by a
+      space, the date is set aside and matching starts again after it
+      (`Updated 2026-11-24 06 12 34 56 78` finds `06 12 34 56 78`). A run of more than 15 digits
+      that starts with a timestamp ending at a space is set aside up to the longest such timestamp,
+      and matching starts again after it (`20261124 215426 555-0123` finds `555-0123`). The phone
+      pattern starts no number at a slashed date's left, so after a slash or a space the date
+      before it is read back and judged with the number. Known limits: a two-digit year
+      (`24-11-26 21-54-26`) is not taken as a date, and a phone whose groups change separator right
+      after an ISO date (`2026-11-24 06-12-34 56 78`) reads as a dashed time followed by another
+      field, so it is missed;
     - an EAN-13 as printed under its bar code (1-6-6);
     - three groups of at most three digits up to 255, with no leading `+` and no `(` (colour
       channels);
