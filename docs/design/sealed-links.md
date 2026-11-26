@@ -137,7 +137,7 @@ inline style and nothing loaded from anywhere else. Its exact bytes are compiled
 (`cmake/Seal.cmake`) and pinned by SHA-256 in `viewerSha256` (`src/seal/SealPage.cpp`):
 
 ```
-a0c72f264d10a0ddcb04b19ad5f6ae7a5fd43145f3bef5dbc37e36188fb601a7
+6b40c0703f12529cbb7e43a2c67469b451ac54abaccb87a672aaa781d521aa2b
 ```
 
 `tools/seal/pin_viewer.py` rewrites the two CSP hashes and `viewerSha256` after an edit and
@@ -181,6 +181,16 @@ sets `referrer` to `no-referrer` and `robots` to `noindex, nofollow`.
 - **Everything else**, HTML included, offers only **Download**. A file that isn't shown is
   handed to the browser as `application/octet-stream`, so HTML never renders as a page.
   **Download** is offered for every type.
+- **Too large for the browser.** Before showing anything, the viewer reads back the first and
+  last byte of the file it put together. Chrome can't read back a file that large that a page
+  builds from about 256 MB up, and its player then stays blank. When the read fails, the viewer
+  says "This file is too large for this browser to show. Select Save to file to save it." and
+  offers **Save to file**, which writes the decrypted file straight into the file the person
+  picks in the browser's save dialog (`showSaveFilePicker`). A browser without that dialog says
+  "This file is too large for this browser. Open the link in Firefox, or use putgd-cli open."
+  The viewer never writes the decrypted file into the page's own storage (the origin private
+  file system or IndexedDB): many links share one origin, such as path-style S3 and B2's
+  `/file/` links, so any other page there could read it.
 
 The viewer works offline once loaded, and in phone browsers through the QR code: WebCrypto
 works in current iOS and Android browsers. Browsers offer WebCrypto only on secure pages
@@ -456,7 +466,8 @@ has a passphrase and the page size, and the Test check's HTTP status, content ty
   ([History](#history)). The user deletes the data file at the destination if it matters.
 - **The two-file form holds the whole file in the browser.** The viewer keeps every decrypted
   chunk in memory until the last one opens, so a 2 GB file needs that much memory in the
-  recipient's browser.
+  recipient's browser. Chrome shows a large file only through **Save to file**
+  ([after decrypting](#after-decrypting)); Firefox plays it in the page.
 - **Memory wiping is best effort.** put.gd wipes the key, the passphrase bytes, the derived keys
   and the decrypted buffers that OpenSSL works on. Qt strings that held the passphrase or the
   link make their own copies, so put.gd can't promise that memory is wiped.
