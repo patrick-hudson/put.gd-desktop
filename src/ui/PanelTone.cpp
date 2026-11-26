@@ -48,6 +48,7 @@ QString firstSetting(const QString& name,const QString& group,const QString& key
 }
 QStringList desktops(){return qEnvironmentVariable("XDG_CURRENT_DESKTOP").toLower().split(':',Qt::SkipEmptyParts);}
 }
+QString PanelTone::kdeSetting(const QString& file,const QString& group,const QString& key){return iniValue(firstSetting(file,group,key),group,key);}
 std::pair<bool,QString> PanelTone::decide(const Inputs& in){
  const auto names=in.desktop.toLower().split(':',Qt::SkipEmptyParts);
  if(names.contains("kde")){

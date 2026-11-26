@@ -3,6 +3,12 @@
 #include <QDBusConnection>
 #include <QDBusConnectionInterface>
 #include "ui/TrayController.h"
+#include "ui/TrayMenuSettle.h"
+#include <QElapsedTimer>
+#include <QScopeGuard>
+#include <QDir>
+#include <QFile>
+#include <QTemporaryDir>
 #include "ui/Ui.h"
 #include <QAction>
 #include <QJsonArray>
@@ -142,6 +148,120 @@ private slots:
   QJsonObject original;original["status"]="failed";sensitive["original"]=original;operation["sensitive"]=sensitive;operation["state"]="failed";
   item["uploadStatus"]="failed";operation["items"]=QJsonArray{item};
   QVERIFY(TrayController::completionMessage(operation,false).contains("Couldn't save the unredacted original locally."));
+ }
+ // #2081: how long each desktop keeps a closed menu on the screen, from its own settings.
+ void aClosedMenuFadesForTheDesktopsTime_data() {
+  QTest::addColumn<QString>("desktop");QTest::addColumn<QString>("fadingPopups");QTest::addColumn<QString>("factor");
+  QTest::addColumn<int>("animations");QTest::addColumn<int>("ms");QTest::addColumn<QString>("source");
+  // KWin: 600 ms OutQuart, invisible after 70 % of it, plus a frame.
+  QTest::newRow("plasma")<<"KDE"<<""<<""<<-1<<456<<"kwin-fadingpopups";
+  QTest::newRow("plasma half speed")<<"KDE"<<"true"<<"2"<<-1<<877<<"kwin-fadingpopups";
+  QTest::newRow("plasma instant")<<"KDE"<<""<<"0"<<-1<<34<<"kwin-animations-instant";
+  QTest::newRow("plasma no popup fade")<<"KDE"<<"false"<<"1"<<-1<<34<<"kwin-fadingpopups-off";
+  QTest::newRow("plasma bad factor")<<"KDE"<<""<<"fast"<<-1<<456<<"kwin-fadingpopups";
+  QTest::newRow("gnome")<<"GNOME"<<""<<""<<-1<<184<<"gnome-popup-animation";
+  QTest::newRow("ubuntu gnome off")<<"ubuntu:GNOME"<<""<<""<<0<<34<<"gnome-animations-off";
+  QTest::newRow("cinnamon")<<"X-Cinnamon"<<""<<""<<1<<184<<"cinnamon-menu-effects";
+  QTest::newRow("cinnamon off")<<"X-Cinnamon"<<""<<""<<0<<34<<"cinnamon-menu-effects-off";
+  QTest::newRow("unmeasured")<<"Hyprland"<<""<<""<<-1<<traysettle::unknownFadeMs<<"unmeasured-desktop";
+ }
+ void aClosedMenuFadesForTheDesktopsTime() {
+  QFETCH(QString,desktop);QFETCH(QString,fadingPopups);QFETCH(QString,factor);QFETCH(int,animations);QFETCH(int,ms);QFETCH(QString,source);
+  traysettle::FadeInputs in;in.desktop=desktop;in.kwinFadingPopups=fadingPopups;in.kdeAnimationFactor=factor;
+  if(animations>=0){in.gnomeAnimations=animations==1;in.cinnamonMenuEffects=animations==1;}
+  const auto fade=traysettle::fade(in);
+  QCOMPARE(fade.ms,ms);QCOMPARE(fade.source,source);
+  QCOMPARE(traysettle::remainingMs(fade,ms+500),0);QCOMPARE(traysettle::remainingMs(fade,-5),ms);QCOMPARE(traysettle::remainingMs(fade,10),qMax(0,ms-10));
+ }
+ // Through the controller: a capture chosen in the tray menu waits for the fade, a hotkey starts at once.
+ void aMenuCaptureWaitsAndAHotkeyDoesNot() {
+  QTemporaryDir directory;
+  // KDE at a quarter of the animation speed: a 1.7 s fade, far from a hotkey's start.
+  QDir(directory.path()).mkpath("xdg");
+  {QFile file(directory.filePath("xdg/kdeglobals"));QVERIFY(file.open(QIODevice::WriteOnly));file.write("[KDE]\nAnimationDurationFactor=4\n");}
+  const auto oldConfig=qgetenv("XDG_CONFIG_HOME"),oldDesktop=qgetenv("XDG_CURRENT_DESKTOP");
+  const auto restore=qScopeGuard([&]{qputenv("XDG_CONFIG_HOME",oldConfig);qputenv("XDG_CURRENT_DESKTOP",oldDesktop);});
+  qputenv("XDG_CONFIG_HOME",directory.filePath("xdg").toUtf8());qputenv("XDG_CURRENT_DESKTOP","KDE");
+  ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();providers.add("opaque",provider);
+  SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});QVERIFY(settings.save(configuration(directory.path()),{}));
+  Source source;source.payload=textPayload();
+  OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
+  TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();QVERIFY(tray);
+  QElapsedTimer clock;qint64 started=-1;
+  connect(&operations,&OperationService::changed,&controller,[&]{if(started<0)started=clock.elapsed();});
+  auto* row=tray->contextMenu()->findChild<QAction*>("region");QVERIFY(row);
+  clock.start();row->trigger();
+  PUTGD_COMPARE_STEADY(started,qint64(-1),1000);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(started>=0,5000);QVERIFY2(started>=1600,qPrintable(QString::number(started)));
+  QCOMPARE(controller.trayMenuState()["settle"].toObject()["command"].toString(),QString("region"));
+  QCOMPARE(controller.trayMenuState()["settle"].toObject()["fadeSource"].toString(),QString("kwin-fadingpopups"));
+  PUTGD_TRY_VERIFY(operations.activeObservations().isEmpty());
+  started=-1;clock.start();controller.invokeShortcut("region");
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(started>=0,1500);QVERIFY2(started<800,qPrintable(QString::number(started)));
+ }
+ // Only rows that read the screen wait; the others answer the click at once.
+ void onlyScreenReadingRowsWait() {
+  for(const auto* row:{"region","repeat","window","monitor","desktop","scroll","edit","record","text"})QVERIFY2(traysettle::readsScreen(row),row);
+  for(const auto* row:{"clipboard","edit-clipboard","edit-file","settings","history","delay-3","show-recording","quit"})QVERIFY2(!traysettle::readsScreen(row),row);
+ }
+ // The capture starts only after the host's close and the fade after it, in each order hosts send them.
+ void aCaptureWaitsUntilTheMenuIsGone() {
+  constexpr int fadeMs=120;
+  const auto started=[](TrayMenuSettle& settle,const QString& command,QElapsedTimer& clock,qint64& at){clock.start();at=-1;settle.afterMenu(command,[&clock,&at]{at=clock.elapsed();});};
+  QElapsedTimer clock;qint64 at=-1;
+  {
+   // Plasma: "closed" arrives just before "clicked"; the fade runs from the close.
+   TrayMenuSettle settle;settle.setFade({fadeMs,"test"});
+   settle.menuShown();settle.menuClosed();started(settle,"repeat",clock,at);
+   PUTGD_TRY_VERIFY_WITH_TIMEOUT(at>=0,3000);QVERIFY2(at>=fadeMs-5,qPrintable(QString::number(at)));
+   QCOMPARE(settle.state()["awaitedClose"].toBool(),false);QCOMPARE(settle.state()["fadeMs"].toInt(),fadeMs);QCOMPARE(settle.state()["command"].toString(),QString("repeat"));
+  }
+  {
+   // GNOME: "clicked" first, "closed" after it. A host that has reported a close before is waited for,
+   // even past the fade, and the fade counts from its close.
+   TrayMenuSettle settle;settle.setFade({fadeMs,"test"});
+   settle.menuShown();settle.menuClosed();settle.menuShown();started(settle,"desktop",clock,at);
+   PUTGD_COMPARE_STEADY(at,qint64(-1),fadeMs+60);
+   const auto closedAt=clock.elapsed();settle.menuClosed();
+   PUTGD_TRY_VERIFY_WITH_TIMEOUT(at>=0,3000);QVERIFY2(at>=closedAt+fadeMs-5,qPrintable(QString("%1 %2").arg(at).arg(closedAt)));
+   QCOMPARE(settle.state()["awaitedClose"].toBool(),true);
+  }
+  {
+   // GNOME's first menu: no close reported before, so the fade starts at the click; the
+   // close that follows late starts it again, so the capture still waits a whole fade after it.
+   TrayMenuSettle settle;settle.setFade({fadeMs,"test"});
+   settle.menuShown();started(settle,"repeat",clock,at);
+   PUTGD_COMPARE_STEADY(at,qint64(-1),60);
+   const auto closedAt=clock.elapsed();settle.menuClosed();
+   PUTGD_TRY_VERIFY_WITH_TIMEOUT(at>=0,3000);QVERIFY2(at>=closedAt+fadeMs-5,qPrintable(QString("%1 %2").arg(at).arg(closedAt)));
+   QCOMPARE(settle.state()["rebasedOnClose"].toBool(),true);
+  }
+  {
+   // A host that sends "opened" reports its close: on its first menu, with animations off,
+   // a close 80 ms after the click is still waited for (bounded by closeWaitMs).
+   TrayMenuSettle settle;settle.setFade({traysettle::frameMarginMs,"test"});
+   settle.menuShown(true);started(settle,"desktop",clock,at);
+   PUTGD_COMPARE_STEADY(at,qint64(-1),80);
+   const auto closedAt=clock.elapsed();settle.menuClosed();
+   PUTGD_TRY_VERIFY_WITH_TIMEOUT(at>=0,3000);QVERIFY2(at>=closedAt+traysettle::frameMarginMs-5,qPrintable(QString("%1 %2").arg(at).arg(closedAt)));
+   QCOMPARE(settle.state()["awaitedClose"].toBool(),true);
+  }
+  {
+   // Cinnamon and Budgie report the menu showing but never its close: the fade runs from the click.
+   TrayMenuSettle settle;settle.setFade({fadeMs,"test"});
+   settle.menuShown();started(settle,"monitor",clock,at);
+   PUTGD_TRY_VERIFY_WITH_TIMEOUT(at>=0,3000);QVERIFY2(at>=fadeMs-5&&at<traysettle::closeWaitMs+fadeMs,qPrintable(QString::number(at)));
+   QCOMPARE(settle.state()["awaitedClose"].toBool(),false);
+  }
+  {
+   // A close that never comes holds the capture for closeWaitMs at most; the fade then counts from the click.
+   for(const int fade:{fadeMs,traysettle::closeWaitMs+150}){
+    TrayMenuSettle settle;settle.setFade({fade,"test"});
+    settle.menuShown();settle.menuClosed();settle.menuShown();started(settle,"region",clock,at);
+    PUTGD_TRY_VERIFY_WITH_TIMEOUT(at>=0,3000);
+    QVERIFY2(at>=qMax(fade,traysettle::closeWaitMs)-5,qPrintable(QString("%1 %2").arg(at).arg(fade)));
+   }
+  }
  }
 };
 
