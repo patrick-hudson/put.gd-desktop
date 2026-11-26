@@ -61,7 +61,7 @@ struct Fixture {
   registry.add("opaque",provider);provider->privateUploads=sharing=="private";
   settings=std::make_unique<SettingsService>(dir.filePath("config.json"),[this](auto id,auto value){return registry.validate(id,value);});
   auto doc=configuration(dir.path());auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();if(!seal.isEmpty())profile["seal"]=seal;profiles[0]=profile;doc["profiles"]=profiles;
-  if(!sharing.isEmpty()){auto defaults=doc["captureDefaults"].toObject();defaults["publicationMode"]=sharing;doc["captureDefaults"]=defaults;}
+  if(!sharing.isEmpty())doc["captureDefaults"]=QJsonObject{{"destination","upload"},{"profileId","test"},{"publicationMode",sharing}};
   if(!settings->save(doc,{}))qFatal("settings");
   operations=std::make_unique<OperationService>(dir.filePath("data"),*settings,registry,source);
   operations->setSealHelperForTesting(QStringLiteral(PUTGD_CLI_PATH));
