@@ -23,15 +23,18 @@ A destination's [sealed links](sealed-links.md) passphrase (#2079) is a secret o
 beside the destination's keys. Its reference is the profile's `seal.passphraseCredentials`
 ([configuration](configuration.md#sealed-links-setting)), and the store caches it under
 `seal:<profileId>` (`sealPassphraseId`) with one value, `passphrase`. Settings saves it with
-`setup.storeSealPassphrase` (`input` `{"passphrase": …}`, one line of 1 to 1,024 bytes) to the
-keychain or for this session only; `putgd-cli` refuses that method with
+`setup.storeSealPassphrase` (`input` `{"passphrase": …}`, one line of at most 1 KB after NFC
+normalization) to the keychain or for this session only; `putgd-cli` refuses that method with
 `credentials_require_settings`, so the passphrase never becomes a process argument.
 `setup.unlockSealPassphrase` reads a saved one, and the startup read above also starts one
 `unlockSealPassphrase` job for each destination in `passphrase` mode whose passphrase is saved
 to the keychain and not loaded. Either answers `seal_passphrase_unset` when the destination
-has no `passphraseCredentials`. `setup.credentialHint` reports `sealPassphraseLoaded`, never the
-value. An upload never unlocks it: a sealed upload whose passphrase isn't loaded fails with
-`seal_passphrase_locked`. The passphrase reaches only the sealing helper's standard input.
+has no `passphraseCredentials`. Storing and unlocking one destination's passphrase run one at
+a time, and a keychain passphrase entry takes the same one-at-a-time lock as any other
+keychain entry. Settings refuses a passphrase reference that another keychain entry also uses
+([configuration](configuration.md#sealed-links-setting)). `setup.credentialHint` reports
+`sealPassphraseLoaded`, never the value. An upload never unlocks it: a sealed upload whose
+passphrase isn't loaded fails with `seal_passphrase_locked`. The passphrase reaches only the sealing helper's standard input.
 History, the journal and diagnostics record only that a link has one. A passphrase given to one
 upload with `putgd-cli upload --passphrase-file` is held in memory for that request only.
 

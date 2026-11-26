@@ -27,10 +27,24 @@ The user guide gives the same table in plain words:
 | --- | --- |
 | Someone who can read the bucket: a public bucket, a leaked read key, the cloud provider, a backup | **Yes.** They see ciphertext and a random object name. |
 | CDN and server access logs, proxies, link scanners that fetch the URL without the `#` part | **Yes** |
-| Chat apps unfurling a preview | **Yes.** There's no preview. Documented as intended. |
+| Preview bots that only fetch the link | **Yes.** They don't send the `#` part to the destination, and usually show no preview. |
+| The chat or email service the link is sent through | **No.** It receives the full link, key included. When that service is outside your trust boundary, set a passphrase and send it another way. |
 | Anyone the full link is forwarded to | **No**, unless a passphrase is set (see below) |
+| The recipient's browser history, synced history, and extensions that can read tabs or history | **No.** The key stays in the address bar like any bearer link. |
+| Someone on the network path of a plain `http` link | **Yes.** The Test check refuses links that aren't https, and the viewer decrypts only on secure pages. |
 | Someone who can *change* files in the bucket and swaps the page for one that steals the key | **No** for the page on its own. Stated as a known limit. `putgd-cli open` verifies the page before decrypting. |
 | Recipient's device or browser compromised | No |
+
+A chat service is not protected in general. A link-preview bot that only fetches the URL never
+sends the fragment, so the destination's logs and the bot never see the key, and the chat
+usually shows no preview. But the messaging service stores and delivers the message itself,
+so it holds the full bearer link. When the chat provider is outside the user's trust boundary,
+the link alone is not enough protection: use **On with a passphrase** and send the passphrase
+another way.
+
+The fragment also stays in the recipient's address bar, so it is in the browser's history and
+any history sync, and an extension with access to tabs or history can read it. That is the
+same exposure as any bearer link, such as a presigned URL.
 
 There is no "burn after reading" and no view count, because a static bucket can't enforce
 either. Expiry is what the destination already offers: its lifecycle rules, an expiring
@@ -73,9 +87,10 @@ primitive on put.gd's side and WebCrypto in the browser. Nothing is hand-written
 | 59–63 | Zero |
 | 64–95 | Key check, 32 bytes |
 
-The viewer refuses a header with any other magic, version, flag, chunk size or nonzero
-padding, and an iteration count outside 1,000 to 10,000,000 when a passphrase is set (0
-otherwise). Tests seal with fewer iterations; uploads always use 600,000.
+The viewer and `putgd-cli open` refuse a header with any other magic, version, flag, chunk
+size or nonzero padding, and any iteration count but 600,000 when a passphrase is set (0
+otherwise). Version 1 fixes the cost, so put.gd always seals with 600,000 and both sides open
+nothing else.
 
 ### Keys
 
@@ -91,8 +106,9 @@ a damaged or wrong link says so at once. It says nothing about the passphrase. A
 passphrase shows only when the first chunk fails to open, and the viewer then says "That
 passphrase doesn't open this link." PBKDF2-SHA-256 at 600,000 iterations is native WebCrypto
 and needs no WASM (decision 2 on the issue). It slows guessing, and the random 256-bit link
-key stays the main protection. A passphrase is 1 to 1,024 bytes of UTF-8 on one line and is
-normalized to NFC on both sides.
+key stays the main protection. A passphrase is one line of at most 1 KB (1,024 bytes) of
+UTF-8 after NFC normalization, on both sides. Sealing, opening, Settings, the session methods
+and `putgd-cli` all refuse a passphrase with a line break or a longer one.
 
 ### Chunks
 
@@ -121,7 +137,7 @@ inline style and nothing loaded from anywhere else. Its exact bytes are compiled
 (`cmake/Seal.cmake`) and pinned by SHA-256 in `viewerSha256` (`src/seal/SealPage.cpp`):
 
 ```
-d5d4a75407088bdc26cb764bdd48c283ba0673aaced941ef8d0bd0eb5bb908ae
+a0c72f264d10a0ddcb04b19ad5f6ae7a5fd43145f3bef5dbc37e36188fb601a7
 ```
 
 `tools/seal/pin_viewer.py` rewrites the two CSP hashes and `viewerSha256` after an edit and
@@ -167,8 +183,15 @@ sets `referrer` to `no-referrer` and `robots` to `noindex, nofollow`.
   **Download** is offered for every type.
 
 The viewer works offline once loaded, and in phone browsers through the QR code: WebCrypto
-works in current iOS and Android browsers. It sends no request with the key and keeps the
-key only in the address bar.
+works in current iOS and Android browsers. Browsers offer WebCrypto only on secure pages
+(https, or this computer), so on a plain `http` page the viewer decrypts nothing and says
+"This browser decrypts only on secure pages. Ask for an https link." It sends no request with
+the key and keeps the key only in the address bar, which also puts it in the browser's
+history.
+
+The viewer also refuses a key that isn't the canonical base64url form, a container larger
+than a 64 MB file needs in the one-page form or a 2 GB file needs as a data file, and metadata
+whose `size` isn't a whole number from 0 to 2 GB.
 
 ## Forms and limits
 
@@ -179,8 +202,8 @@ key only in the address bar.
 | Over 2 GB, or over 64 MB where the destination can't serve two files | The file uploads unsealed. The notification and History say why in one sentence. |
 
 The one-page form holds base64, so its page is about a third larger than the file. The page
-and the data file get separate random names of 12 letters and digits (`SealJob::randomName`),
-never the capture's own name.
+gets a random name of 12 letters and digits (`SealJob::randomName`), never the capture's own
+name, and its data file shares that stem: `k3Xq9vTa2mPw.html` and `k3Xq9vTa2mPw.bin`.
 
 ## Process boundaries
 
@@ -211,9 +234,15 @@ Sealing sits in the shared pipeline between the immutable artifact and naming, i
 
 1. **Whether to seal.** An upload is sealed when it asked to be (`seal` on the request, kept as
    the operation's `seal.requested`), else when its destination's `seal.mode` is `on` or
-   `passphrase` in the settings the upload was accepted with. The editor's and recording
-   review's **Seal** toggle (`operation.seal`) sets the operation's own choice until its
-   upload starts sealing. Diagnostics package uploads are never sealed.
+   `passphrase` in the settings the upload was accepted with. The **Seal** toggle beside
+   Upload in the editor (also the editor the sensitive text prompt opens) and in recording
+   review sets the operation's own choice. `operation.seal` works that window's own toggle
+   (`editor.seal` and the review's `seal` action are the same toggle). While a recording runs
+   it keeps the choice and the review window starts from it, during an export it is refused
+   with `recording_state`, and once the upload started (`enqueue` closed the choice) it is
+   `seal_too_late`. The choice is written into the operation's `seal.requested` before its
+   first artifact is stored, so a restart keeps it. Diagnostics package uploads are never
+   sealed.
 2. **Refusals.** When sealing was asked for and can't happen, the file is never uploaded
    unsealed. The item fails before anything is sent, with one of:
    - `seal_unavailable`: the destination type can't serve a sealed page (its provider's
@@ -223,6 +252,9 @@ Sealing sits in the shared pipeline between the immutable artifact and naming, i
      reason).
    - `seal_passphrase_locked`: the destination asks for a passphrase and it isn't loaded and
      the request didn't carry one. Uploads never unlock the keychain.
+   - `seal_passphrase_missing`: a Retry of an upload whose passphrase came only with its
+     request (`upload.files`'s `seal.passphrase`). That passphrase is held in memory for the
+     request and never kept, so the file must be uploaded again with it.
    - `seal_failed` (or `seal_viewer_changed`): the sealing helper is missing, failed, timed out
      or wrote files that didn't match its answer.
 3. **Size exceptions.** A file over 2 GB, or over 64 MB on a destination without the two-file
@@ -236,10 +268,14 @@ Sealing sits in the shared pipeline between the immutable artifact and naming, i
    its own random name with a name check and a conditional create, journaled in
    `seal.data`. Its name is written inside the page, so it is never renamed: a taken name fails
    the item with `seal_name_taken`. An unknown data-file outcome is reconciled before it is
-   ever sent again, as an item's own upload is.
+   ever sent again, as an item's own upload is. A data file still `uploading` when put.gd
+   stopped becomes `unknown` at the next start, and its multipart upload is cleaned up with
+   the item's own.
 6. **Retry** sends the same page and data file again, so a link already shared keeps working.
    An item a Retry sends that was never sealed (it failed or was cancelled first) is sealed
-   then.
+   then. While Forget key writes the operation's record, `operation.retry`,
+   `operation.retryLocalSave` and `operation.copy` answer `operation_busy`, so none of them
+   can write the key back.
 7. **The link** is the destination's link for the page, then `#` and the key
    (`OperationItem::link`). The clipboard, the link-ready notification, History's **Copy
    link**, **Open in browser** and **Show QR code** all use it.
@@ -265,19 +301,22 @@ An item's `seal` record:
 - History records carry `link` (the link to copy, with the key after `#` while it is
   available) and `sealed`. Private paths and the data file's upload journal are left out of
   `history.detail` and `operation.inspect`.
-- Sealed items show a lock glyph. **Copy link**, **Copy links**, **Open in browser** and
-  **Show QR code** include the key.
+- Sealed items show a lock glyph in both the list and the gallery. **Copy link**, **Copy
+  links**, **Open in browser** and **Show QR code** include the key.
 - **Forget key** (`history.forgetKey`) removes the key from the History record and from its
-  operation's journal in one transaction (`HistoryStore::forgetSealKey`). The file stays at the
-  destination and nobody, put.gd included, can open it again. Copy link, Open in browser and
-  Show QR code stop being offered. `history_not_sealed` answers for an item that isn't a sealed
-  link, and `history_busy` while its upload is still running. The key already copied or sent
-  elsewhere is out of put.gd's reach.
+  operation's journal in one transaction (`HistoryStore::forgetSealKey`), so put.gd can't open
+  the file or show its link again. Copy link, Open in browser and Show QR code stop being
+  offered. The file stays at the destination, and anyone who already has the full link can
+  still open it until the file is deleted there. `history_not_sealed` answers for an item that
+  isn't a sealed link, and `history_busy` while its upload runs, a Retry included, or another
+  Forget key writes it (`OperationService::holdOperation`).
 - **Delete from destination** deletes the page, then the data file beside it. The data file
   is checked and deleted like the page, with its own durable checkpoint
   (`sealDataProgress`), and its outcome is the target's `sealDataStatus`. When the page went
-  and the data file didn't, the deletion reports `seal_data_left`: what stays holds only
-  ciphertext that no page points to.
+  and the data file didn't, the target stays `failed` or `unknown` with `seal_data_left`, and
+  **Retry deletion** finds the page gone and tries the data file again. A quit between the two
+  leaves it `unknown`. A data file that changed at the destination isn't put.gd's to delete:
+  the deletion reports `seal_data_left` with `dataStatus` `changed` and leaves it.
 - Keys are kept in History's database and the operation journal, the same places and the same
   protection as other bearer links such as presigned URLs. They are never in `config.json`,
   the keychain or the logs; log redaction already drops link fragments.
@@ -293,22 +332,31 @@ failed check never fails the Test; it only decides whether sealed uploads may go
    check and a conditional create. The page is the `probe` vector of
    `tests/fixtures/seal/vectors.json`, whose key is public, so it proves only how the
    destination serves a page.
-3. `putgd-cli --seal-probe -` fetches the link as a visitor would: the link on standard input
+3. The destination's link for the uploaded page must be https, except a loopback address
+   (`localhost`, `127.0.0.1`, `::1`). On plain http anyone on the network path could replace
+   the page and read the key, and browsers don't offer WebCrypto there. Any other link fails
+   the check, and the test page is cleaned up as in step 6 without being fetched.
+4. `putgd-cli --seal-probe -` fetches the link as a visitor would: the link on standard input
    (a presigned signature never reaches a command line), no cookies, no cache, at most three
    redirects that stay as safe, a 60-second transfer limit and 1 MB at most.
-4. The check passes only for HTTP 200, a `Content-Type` of `text/html` (parameters ignored),
-   no `Content-Disposition: attachment`, and bytes identical to the page that was uploaded. A
-   server that rewrites the page would break the byte-for-byte check `putgd-cli open` relies on.
-5. The test page is deleted whatever the fetch found, when the destination can delete it
+5. The check passes only for HTTP 200, a `Content-Type` of `text/html` (parameters ignored),
+   no `Content-Disposition: attachment`, a final address after redirects that is still https
+   (or loopback), and bytes identical to the page that was uploaded. A server that rewrites the
+   page would break the byte-for-byte check `putgd-cli open` relies on.
+6. The test page is deleted whatever the fetch found, when the destination can delete it
    safely; otherwise it is left and the result says so.
 
 The result is `seal` in the Test's result: `{state, reason?, cleanup}` with `state` `passed`,
-`failed` or `unsupported` and `cleanup` `removed`, `left`, `failed` or `unknown`. While it runs,
+`failed`, `unsupported` or `cancelled` and `cleanup` `removed`, `left`, `failed` or `unknown`. While it runs,
 `setup.inspect` shows the event `{step: "seal", status: "running"}`. The resident keeps it in
 `destination-status.json` under `sealChecks`, keyed by destination, with `passed`, a `reason`
 of at most 300 characters and the connection fingerprint
 ([destination checks](configuration.md#destination-checks)). It counts only while the
-fingerprint matches the destination as saved, and it is forgotten with the destination. Each
+fingerprint matches the destination as saved, and it is forgotten with the destination. New
+credentials stored for the destination, or for one that shares its keychain entry, clear it
+(`DestinationStatus::credentialsChanged`). A check that ran while the keys changed, or that
+was cancelled, records nothing. A cancel stops the page fetch at once and still deletes the
+test page. Each
 entry of `destinationStatus` carries it as `seal` (`{state: passed|failed|untested, reason?}`).
 
 ## Where it works
@@ -329,8 +377,9 @@ Each provider declares `sealUnavailable` (why it can't, empty when it can) and `
 | Nextcloud | No: "Nextcloud share links download HTML files instead of opening them, so a sealed page can't open there." |
 | Proton Drive | Off: "Proton Drive already encrypts files end to end." |
 
-Every destination that can seal still needs a passed Test check before its first sealed
-upload.
+Every destination that can seal still needs a passed Test check, with an https link, before
+its first sealed upload. Settings refuses **On** and **On with a passphrase** on Nextcloud and
+Proton Drive ([configuration](configuration.md#sealed-links-setting)).
 
 ## Settings and the passphrase
 
@@ -338,12 +387,18 @@ A destination's default is its profile's `seal` key, `{mode, passphraseCredentia
 `mode` `off` (also when absent), `on` or `passphrase`
 ([configuration](configuration.md#sealed-links-setting)). Settings → Destinations shows it as
 **Seal links**: **Off**, **On** or **On with a passphrase**. Changing it affects new uploads
-only.
+only. **On** stays offered only after a passed check; **Off** always is. Agents drive it with
+`ui.sealLinks` (MCP `drive_seal_links`): `inspect`, `mode` and `unlock`. Its `available` says
+whether sealing can be turned on there, and `modeEnabled` whether the choice can change. A
+passphrase is typed in the window only.
 
 The passphrase is kept like any other secret, in its own keychain entry or for this session
 only, never in `config.json` ([credentials](credentials.md)). `setup.storeSealPassphrase`
 saves it from Settings, `setup.unlockSealPassphrase` reads it, and the startup credential read
-loads a saved one. `putgd-cli upload --passphrase-file` can give one upload its own passphrase,
+loads a saved one. The two run one at a time per destination and take the passphrase
+entry's keychain lock. A passphrase reference shared with any other keychain entry, a
+destination's keys or another passphrase, is refused, because saving one would replace the
+other. `putgd-cli upload --passphrase-file` can give one upload its own passphrase,
 which stays in memory and reaches only the sealing helper.
 
 ## Diagnostics and logs
@@ -352,6 +407,17 @@ A diagnostics package carries each item's seal `status`, `form`, `passphrase`,
 `keyForgotten`, the unsealed `reason` and the data file's upload status. It never carries the
 key, the link or the passphrase. The log records that a file was sealed, its form, whether it
 has a passphrase and the page size, and the Test check's HTTP status, content type and cleanup.
+
+## Known limits
+
+- **The Test check isn't journaled.** If put.gd stops in the middle of a check, its test page,
+  about 10 KB under a random `.html` name, may stay at the destination.
+- **The two-file form holds the whole file in the browser.** The viewer keeps every decrypted
+  chunk in memory until the last one opens, so a 2 GB file needs that much memory in the
+  recipient's browser.
+- **Memory wiping is best effort.** put.gd wipes the key, the passphrase bytes, the derived keys
+  and the decrypted buffers that OpenSSL works on. Qt strings that held the passphrase or the
+  link make their own copies, so put.gd can't promise that memory is wiped.
 
 ## Testing
 

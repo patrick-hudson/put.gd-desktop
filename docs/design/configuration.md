@@ -494,16 +494,20 @@ has the design.
 - `passphraseCredentials` is required with `passphrase` and optional otherwise. It is
   `{"mode": "keychain", "reference": …}` with a reference of 1 to 256 characters, or
   `{"mode": "session", "reference": null}`. It names the passphrase's own entry, so a
-  keychain reference equal to the destination's `credentials.reference` is refused.
+  keychain reference that any destination's `credentials.reference` or another destination's
+  passphrase also uses is refused. Saving one would replace the other.
+- `mode` `on` or `passphrase` is refused on Proton Drive, which already encrypts end to end,
+  and on Nextcloud, whose share links download HTML files.
 - An invalid `seal` fails at `/profiles/seal` with "Choose Off, On or On with a passphrase
-  for Seal links." or "The Seal links passphrase needs its own keychain reference, not the
-  destination's."
+  for Seal links.", "This destination type can't seal links. Set Seal links to Off.", "The
+  Seal links passphrase needs its own keychain reference, not the destination's." or "The
+  Seal links passphrase needs its own keychain reference, not another destination's."
 
 The passphrase itself is never in this file ([credentials](credentials.md)). The setting
 affects uploads accepted after it changes; one upload can turn sealing on or off for itself.
-Validation doesn't look at the provider, so `seal` is accepted on a destination that can't
-seal, and its sealed uploads then fail with `seal_unavailable`. `seal` is not part of the
-connection fingerprint below, so changing it keeps the destination's check records.
+Other destinations that can't seal, such as SFTP without a Link address, keep the setting,
+and their sealed uploads fail with `seal_unavailable`. `seal` is not part of the connection
+fingerprint below, so changing it keeps the destination's check records.
 
 ## Destination checks
 
@@ -595,8 +599,10 @@ What updates the record:
 The sealed-link Test check (#2079) is kept in the same file under `sealChecks`, keyed by
 profile ID: `passed`, the failure `reason` (at most 300 characters) and the connection
 fingerprint it checked. Only a Test writes it ([the Test check](sealed-links.md#the-test-check)).
-It counts while the fingerprint matches the destination as saved, is not tied to the
-credential revision, and is removed with the destination. Each `destinationStatus` entry
+It counts while the fingerprint matches the destination as saved, and is removed with the
+destination. New credentials stored for the destination, or for another destination that
+shares its keychain entry, remove it too, and a check that ran while the keys changed, or was
+cancelled, records nothing. Each `destinationStatus` entry
 carries it as `seal`, `{state: passed|failed|untested, reason?}`, also when the destination's
 own check is untested. An upload decides with the fingerprint of the settings it was
 accepted with.
