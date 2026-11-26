@@ -250,7 +250,15 @@ accessibility tools.
 which not every host sends), `clicked` (the last eight rows a host reported clicked, each
 `{id, name, label}`) and `rows` (the top-level rows served now, in order, separators left out,
 each `{id, name, label, visible, enabled, submenu}`); `{"native": false}` for the Qt fallback
-tray. It is read-only: the counters only grow over the resident's life, `rows` includes
+tray. Both carry `settle`, the last wait of a screen-reading row chosen in the menu (#2081):
+`{command, awaitedClose, closeWaitMs, fadeMs, fadeSource, waitMs}`, plus `rebasedOnClose` when a
+late close restarted the fade. Such a row waits for the host's close when the host reports
+events (a close seen before, or an `opened` event for this menu), at most 250 ms, then for the
+rest of the compositor's fade of the closed menu: KWin's fadingpopups time scaled by
+kdeglobals `AnimationDurationFactor` (`kwin-fadingpopups`, about 456 ms by default; none when
+the effect is off or animations are instant), GNOME's 150 ms popup animation unless
+`enable-animations` is off, Cinnamon's 150 ms menu effect unless `desktop-effects-on-menus` is
+off, and 250 ms on desktops not measured. Hotkeys, the main window and session methods never wait. It is read-only: the counters only grow over the resident's life, `rows` includes
 hidden rows (`visible: false`), and the same object goes into diagnostics packages. It records
 the dbusmenu calls and events hosts send, whatever caused them; it never opens the menu. The lab uses it to check the menu
 on trays that export nothing to AT-SPI.
