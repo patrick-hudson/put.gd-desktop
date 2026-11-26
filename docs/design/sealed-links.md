@@ -137,7 +137,7 @@ inline style and nothing loaded from anywhere else. Its exact bytes are compiled
 (`cmake/Seal.cmake`) and pinned by SHA-256 in `viewerSha256` (`src/seal/SealPage.cpp`):
 
 ```
-6b40c0703f12529cbb7e43a2c67469b451ac54abaccb87a672aaa781d521aa2b
+1074b3e648dd82fda2f186e8ac61e1d4bfcc2b993b1766e88eba1503e4680f82
 ```
 
 `tools/seal/pin_viewer.py` rewrites the two CSP hashes and `viewerSha256` after an edit and
@@ -181,8 +181,8 @@ sets `referrer` to `no-referrer` and `robots` to `noindex, nofollow`.
 - **Everything else**, HTML included, offers only **Download**. A file that isn't shown is
   handed to the browser as `application/octet-stream`, so HTML never renders as a page.
   **Download** is offered for every type.
-- **Too large for the browser.** Before showing anything, the viewer reads back the first and
-  last byte of the file it put together. Chrome can't read back a file that large that a page
+- **Too large for the browser.** Before showing anything, the viewer reads back the first, middle
+  and last byte of the file it put together. Chrome can't read back a file that large that a page
   builds from about 256 MB up, and its player then stays blank. When the read fails, the viewer
   says "This file is too large for this browser to show. Select Save to file to save it." and
   offers **Save to file**, which writes the decrypted file straight into the file the person
