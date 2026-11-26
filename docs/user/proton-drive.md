@@ -397,7 +397,11 @@ python3 tools/lab/proton_lab.py lend "$run" --session ID --owner NAME --purpose 
 Under the builder's Proton lock, `lend`:
 1. Copies the guest brokers into the VM and gives the VM the same blank lab keyring.
 2. Exports the builder's session through the [private credential bridge](../../tools/lab/secret_bridge/README.md)
-   and imports it under a new `putgd-lab-UUID` name.
+   and imports it under a new `putgd-lab-UUID` name. If the import fails, `lend` removes
+   the guest entry, and once the removal is confirmed it imports again, once, under a fresh
+   name with new broker processes. KDE's keyring refuses about one new process in a hundred
+   ([#1418](https://github.com/patrick-hudson/put.gd-desktop/issues/1418)), so the bridge also
+   repeats a refused keychain call once in the same process.
 3. Runs COMMAND with `PUTGD_LAB_RUN`, `PUTGD_LAB_PROTON_REFERENCE` and
    `PUTGD_LAB_PROTON_RECEIPTS` set.
 4. Quits the guest's put.gd, collects the guest copy and carries it back to the
@@ -406,7 +410,11 @@ Under the builder's Proton lock, `lend`:
 5. Deletes only the guest entry.
 
 Receipts go in `~/putgd-lab/proton/receipts/<time>-<run>/` and hold names and states,
-never session material. `lend` also records its outcome in the registry as
+never session material. `lend.json` also records the guest keyring's provider, default
+collection and whether it was just restarted, each import try (`provisionTries`), and for a
+lend that stopped before COMMAND the step that failed (`failedStep`: `place_brokers`,
+`prepare_keyring`, `export` or `import`). A failed import's receipt is kept as
+`provision-1.json`. `lend` also records its outcome in the registry as
 `lastLend`. The smoke test creates a new folder, runs **Check account and folder**
 against it and requires the `account-folder` scope. It then uploads a synthetic
 image privately into that folder, and creates, inspects and revokes its link. With
