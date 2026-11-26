@@ -23,7 +23,10 @@ reply lost after the file was stored), "location" (a Location header for a statu
 A "file" rule can also hold its reply: "stall": seconds before it answers, as a stalled
 server does, or "barrier": a name it waits on until POST /__release {barrier} (at most 60 s),
 or answer 404 only to a request sending a cookie: "notFoundFor": "name=value". A "delete"
-rule can set one: "setCookie": "name=value".
+rule can set one: "setCookie": "name=value". A "delete" rule {"form": true} answers with a
+confirmation page whose form posts to /confirm/<file id>/<token>, as XBackBone 3.8.2 does; that
+POST deletes the file and answers as a "confirm" rule says ("status", "location", "cut";
+"store": false deletes nothing), or 200 without one.
 A "file" rule {"phased": {"before": R, "after": R}} is never used up. The link then answers a
 whole 302 to /look/<phase>/<file id>, the phase being "after" once a deletion of the file has
 been asked for, and that address answers as R (a "file" rule's status, body and cut; {} serves
@@ -249,6 +252,10 @@ class Handler(BaseHTTPRequestHandler):
         if parts[0] == 'delete' and len(parts) == 3:
             self.record('delete')
             rule = self.rule('delete')
+            if rule.get('form'):
+                return self.reply(200, '<html><body><form method="post" action="/confirm/%s/%s">'
+                                  '<input type="hidden" name="confirm" value="1"><button>Delete</button></form></body></html>'
+                                  % (parts[1], parts[2]), 'text/html')
             with lock:
                 entry = state['files'].get(parts[1])
                 valid = bool(entry) and entry['deleteToken'] == parts[2] and not entry.get('deleted')
@@ -288,6 +295,18 @@ class Handler(BaseHTTPRequestHandler):
             if early:
                 return early()
             return self.upload(self.body())
+        if self.path.startswith('/confirm/'):
+            self.body()
+            parts = self.path.strip('/').split('/')
+            self.record('confirm')
+            rule = self.rule('confirm')
+            with lock:
+                entry = state['files'].get(parts[1]) if len(parts) == 3 else None
+                if entry and entry['deleteToken'] == parts[2] and not entry.get('deleted') and rule.get('store', True):
+                    entry['deleted'] = True
+            headers = {'Location': rule['location']} if rule.get('location') else {}
+            self.cut = rule.get('cut')
+            return self.reply(rule.get('status', 200), rule.get('body', ''), headers=headers)
         # Read the body first: left on a kept-alive connection, it would be parsed as the
         # start of the next request (which then fails as an unsupported method, 501).
         self.body()

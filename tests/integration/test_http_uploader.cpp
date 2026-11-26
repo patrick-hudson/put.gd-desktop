@@ -579,6 +579,60 @@ private slots:
         if (expected == "failed") QCOMPARE(result.error.code, QString("http_delete_unconfirmed"));
         QCOMPARE(f.stored(), expected == "removed" ? 0 : 1);
     }
+    // #2100: XBackBone 3.8.2's deletion URL answers with a confirmation form, and the form's
+    // POST answers 302 whether or not it deleted the file. The redirect is not followed. It
+    // shows a deletion only when the link served the file just before and is gone after.
+    void aRedirectedConfirmationNeedsTheLinkGone_data() {
+        QTest::addColumn<QString>("shape");
+        QTest::addColumn<QString>("expected");
+        QTest::addColumn<int>("stored");
+        QTest::newRow("deleted") << QString("deleted") << QString("removed") << 0;
+        QTest::newRow("refused") << QString("refused") << QString("failed") << 1;
+        QTest::newRow("link-missing-before") << QString("missing-before") << QString("unknown") << 0;
+        QTest::newRow("gone-410") << QString("gone-410") << QString("removed") << 0;
+        // A redirect with no address, a cut check, or a link whose final address moved show nothing.
+        QTest::newRow("no-location") << QString("no-location") << QString("unknown") << 0;
+        QTest::newRow("cut-after") << QString("cut-after") << QString("unknown") << 0;
+        QTest::newRow("link-moved") << QString("link-moved") << QString("unknown") << 0;
+        // Only a whole 301, 302, 303, 307 or 308 counts: not a 304, and not a cut redirect.
+        QTest::newRow("not-a-redirect") << QString("not-modified") << QString("unknown") << 0;
+        QTest::newRow("cut-redirect") << QString("cut-redirect") << QString("unknown") << 0;
+    }
+    void aRedirectedConfirmationNeedsTheLinkGone() {
+        QFETCH(QString, shape);
+        QFETCH(QString, expected);
+        QFETCH(int, stored);
+        HttpFixture f;
+        f.reset();
+        const auto uploaded = f.upload(f.image());
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        const QJsonObject form{{"call", "delete"}, {"form", true}};
+        if (shape == "deleted") f.rules({form, {{"call", "confirm"}, {"status", 302}, {"location", f.base + "/"}}});
+        else if (shape == "refused") f.rules({form, {{"call", "confirm"}, {"status", 302}, {"location", uploaded.receipt.directUrl}, {"store", false}}});
+        else if (shape == "missing-before") f.rules({{{"call", "file"}, {"status", 404}, {"body", "not found"}}, form, {{"call", "confirm"}, {"status", 302}, {"location", f.base + "/"}}});
+        else if (shape == "gone-410") f.rules({{{"call", "file"}}, form, {{"call", "confirm"}, {"status", 302}, {"location", f.base + "/"}}, {{"call", "file"}, {"status", 410}, {"body", "gone"}}});
+        else if (shape == "no-location") f.rules({form, {{"call", "confirm"}, {"status", 302}}});
+        // Phased, so a resend of the cut check gets the same cut answer.
+        else if (shape == "cut-after") f.rules({{{"call", "file"}, {"phased", QJsonObject{{"before", QJsonObject{}}, {"after", QJsonObject{{"status", 404}, {"body", "not found"}, {"cut", "length"}}}}}}, form,
+                                                {{"call", "confirm"}, {"status", 302}, {"location", f.base + "/"}}});
+        else if (shape == "not-modified") f.rules({form, {{"call", "confirm"}, {"status", 304}, {"location", f.base + "/"}}});
+        else if (shape == "cut-redirect") f.rules({form, {{"call", "confirm"}, {"status", 302}, {"location", f.base + "/"}, {"body", "moved"}, {"cut", "length"}, {"remaining", 5}}});
+        else f.rules({{{"call", "file"}, {"phased", QJsonObject{{"before", QJsonObject{}}, {"after", QJsonObject{{"status", 404}, {"body", "not found"}}}}}}, form,
+                      {{"call", "confirm"}, {"status", 302}, {"location", f.base + "/"}}});
+        const auto result = f.remove(uploaded.receipt);
+        QVERIFY2(result.status == expected, qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        // The form is submitted once; only a cut confirmation may be resent by the transport.
+        if (shape == "cut-redirect") QVERIFY(f.events("confirm").size() >= 1);
+        else QCOMPARE(f.events("confirm").size(), 1);
+        if (expected == "failed") QCOMPARE(result.error.code, QString("http_delete_unconfirmed"));
+        if (expected == "unknown") {
+            QCOMPARE(result.error.code, QString("http_outcome_unknown"));
+            QCOMPARE(result.error.details["httpStatus"].toInt(), shape == "not-modified" ? 304 : 302);
+            if (shape == "missing-before") QCOMPARE(result.error.details["checkBeforeStatus"].toInt(), 404);
+            QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
+        }
+        QCOMPARE(f.stored(), stored);
+    }
     // Review of #1603. A deletion URL that names no stored value, and redirects to
     // another host: the redirect is not followed (the other host never sees the
     // deletion), so the outcome is unknown with the intent kept.
