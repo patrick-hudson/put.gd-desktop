@@ -73,6 +73,10 @@ LOCK_MINUTES = 30
 HEARTBEAT_SECONDS = 300
 SETUP_DEADLINE = 300
 OUTSTANDING = 'lent copy outstanding, run proton_lab.py recover'
+# A guest's keychain import can be refused once by a new broker process (#1418, #2105). After its
+# entry is confirmed removed, the import is tried once more with a fresh name and new processes.
+PROVISION_TRIES = 2
+PROVISION_RETRY_PAUSE = 2  # seconds, for a secret service that has just been started again
 
 
 class LabFailure(RuntimeError):
@@ -634,7 +638,16 @@ class Guest:
             raise LabFailure(f'Could not prepare the guest keyring: {error}') from None
         if state.get('default') != created.get('collection'):
             raise LabFailure('The guest default keyring is not the lab keyring')
-        return state
+        # Whether ksecretd was just started again to pick up the lab wallet (lab_keyring.py).
+        return dict(state, restarted=created.get('restarted'))
+
+    def keyring_status(self):
+        """The guest's default collection now: provider, path, label and lock state, never a secret."""
+        try:
+            return json.loads(lab.guest_session(self.run, f'python3 {self.directory}/lab_keyring.py --status')
+                              .strip().splitlines()[-1])
+        except (lab.LabError, ValueError, IndexError, subprocess.TimeoutExpired) as error:
+            return {'unknown': type(error).__name__}
 
     def stop_app(self, timeout=60):
         """Quit the guest's put.gd so nothing refreshes the borrowed copy after collection."""
@@ -703,6 +716,49 @@ def carry_back(chain, folder, attempt=1):
         return carry_back(chain, folder, attempt + 1)
 
 
+def guest_keyring(guest):
+    status = getattr(guest, 'keyring_status', None)
+    return status() if status else None
+
+
+def provision_guest(chain, guest, guest_broker, folder, progress, guest_reference=None):
+    """Import the lent copy into the guest's keychain. An import that fails is abandoned; once its
+    entry is confirmed removed, it is tried once more with a fresh name (or the same given name, now
+    removed) and new broker processes, while the chain keeps its baseline in memory (#2105). Each
+    try, the guest keyring's state and the cleanup go to lend.json; categories only, never values."""
+    tries = []
+    for attempt in range(1, PROVISION_TRIES + 1):
+        progress['outstanding'] = True
+        try:
+            borrowed = chain.provision(str(guest.run), guest_broker, folder / 'provision.json',
+                                       **({'reference': guest_reference} if guest_reference else {}))
+        except bridge.ProvisionError:
+            tried = {'attempt': attempt, 'at': now_text(), 'failedStep': 'import',
+                     'keyringAfter': guest_keyring(guest)}
+            if chain.active is not None:
+                note(folder, reference=chain.active)  # an ambiguous import keeps its exact cleanup name
+                chain.abandon(str(guest.run), guest_broker, chain.active)  # raises unless cleanup is confirmed
+                tried['cleanup'] = 'confirmed'
+            else:
+                tried['cleanup'] = 'nothing_imported'
+            progress['outstanding'] = False
+            tries.append(tried)
+            note(folder, reference=None, provisionTries=tries)
+            if attempt == PROVISION_TRIES or tried['cleanup'] != 'confirmed':
+                failure = (f'Provisioning the guest failed at its keychain import ({attempt} '
+                           f'{"try" if attempt == 1 else "tries"}); its pending entry was removed')
+                note(folder, step='provision_failed_abandoned', failedStep='import', failure=failure)
+                raise LabFailure(failure) from None
+            # The confirmed-clean receipt is kept by its try's name; the next try needs a fresh one.
+            os.rename(folder / 'provision.json', folder / f'provision-{attempt}.json')
+            restart_dead_keyring(guest, folder)
+            time.sleep(PROVISION_RETRY_PAUSE)
+            continue
+        if tries:
+            note(folder, provisionTries=tries + [{'attempt': attempt, 'at': now_text(), 'imported': True}])
+        return borrowed
+
+
 def lend(layout, run, session, owner, purpose, command, chain_factory=None, guest_factory=Guest,
          runner=subprocess.call, clock=desktop_lock.now_utc, heartbeat=True, guest_reference=None):
     """Lend the builder's session to one VM run for COMMAND, then carry its refreshed state back."""
@@ -719,22 +775,27 @@ def lend(layout, run, session, owner, purpose, command, chain_factory=None, gues
     result = {'receipts': str(folder)}
     with holding(proton_lock(layout, registry['host'], clock), session, owner, purpose,
                  heartbeat=heartbeat) as progress:
-        host_broker = brokers(layout.host_bridge)
-        guest_broker = guest.place_brokers(layout.guest_bridge)
-        result['guestKeyring'] = guest.prepare_keyring()
-        chain = chain_factory(host_broker, reference)
-        note(folder, step='exported', guestBroker=guest_broker)
-        progress['outstanding'] = True
+        stage = 'place_brokers'
         try:
-            borrowed = chain.provision(str(guest.run), guest_broker, folder / 'provision.json',
-                                       **({'reference': guest_reference} if guest_reference else {}))
-        except bridge.ProvisionError:
-            if chain.active is not None:
-                note(folder, reference=chain.active)  # an ambiguous import keeps its exact cleanup name
-                chain.abandon(str(guest.run), guest_broker, chain.active)
-            progress['outstanding'] = False
-            note(folder, step='provision_failed_abandoned')
-            raise LabFailure('Provisioning the guest failed; its pending entry was removed') from None
+            # Nothing reaches the guest's keychain before the import, so a failure here leaves nothing
+            # to collect: lend.json names the step, and the lock is released.
+            host_broker = brokers(layout.host_bridge)
+            guest_broker = guest.place_brokers(layout.guest_bridge)
+            stage = 'prepare_keyring'
+            result['guestKeyring'] = guest.prepare_keyring()
+            note(folder, guestKeyring=result['guestKeyring'])
+            stage = 'export'
+            try:
+                chain = chain_factory(host_broker, reference)
+            except bridge.ProvisionError:
+                raise LabFailure("Exporting the builder's session failed; nothing was lent") from None
+        except (LabFailure, lab.LabError) as error:
+            # A lab error's text can carry guest output; only its kind is kept.
+            failure = str(error)[:300] if isinstance(error, LabFailure) else type(error).__name__
+            note(folder, step='lend_failed', failedStep=stage, failure=failure)
+            raise
+        note(folder, step='exported', guestBroker=guest_broker)
+        borrowed = provision_guest(chain, guest, guest_broker, folder, progress, guest_reference)
         note(folder, step='provisioned', reference=borrowed)
         environment = dict(os.environ, PUTGD_LAB_RUN=str(guest.run), PUTGD_LAB_PROTON_REFERENCE=borrowed,
                            PUTGD_LAB_PROTON_RECEIPTS=str(folder))

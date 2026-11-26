@@ -9,6 +9,16 @@ const LAB_REFERENCE = /^putgd-lab-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-
 type ObjectValue = Record<string, unknown>;
 
 function fail(): never { throw new Error('credential_provisioning_failed'); }
+// A new process's first exchange with KDE's ksecretd is refused about once in a hundred
+// (#1418); the same exchange made again in that process succeeded every time. So a
+// refused read, write or delete is made once more, as tools/proton/account.ts does (#1419).
+// Every operation here is safe to repeat: import and replace write the same value again.
+const KEYCHAIN_PAUSE_MS = 90;
+async function keychain<T>(exchange: () => Promise<T>): Promise<T> {
+    try { return await exchange(); }
+    catch { await new Promise(resolve => setTimeout(resolve, KEYCHAIN_PAUSE_MS)); }
+    return await exchange();
+}
 function object(value: unknown): ObjectValue {
     if (value === null || typeof value !== 'object' || Array.isArray(value)) fail();
     return value as ObjectValue;
@@ -55,18 +65,18 @@ async function run(): Promise<ObjectValue> {
     if ((op === 'import' || op === 'delete') && !LAB_REFERENCE.test(reference)) fail();
     const value = op === 'import' || op === 'replace' ? snapshot(request.snapshot) : undefined;
     const expected = op === 'replace' ? snapshot(request.expectedSnapshot) : undefined;
-    const existing = await Bun.secrets.get({ service: SERVICE, name: reference });
+    const existing = await keychain(() => Bun.secrets.get({ service: SERVICE, name: reference }));
     if (op === 'export') {
         return { ok: true, snapshot: snapshot(existing) }; // Raw reply goes only to the private Qt pipe.
     }
     if (op === 'import') {
         if (existing !== null) fail(); // Never replace an unrelated or previous entry.
-        await Bun.secrets.set({ service: SERVICE, name: reference, value: value! });
+        await keychain(() => Bun.secrets.set({ service: SERVICE, name: reference, value: value! }));
     } else if (op === 'replace') {
         if (existing !== expected) fail(); // Exact in-memory baseline under the shared production lock.
-        await Bun.secrets.set({ service: SERVICE, name: reference, value: value! });
+        await keychain(() => Bun.secrets.set({ service: SERVICE, name: reference, value: value! }));
     } else if (existing !== null) {
-        await Bun.secrets.delete({ service: SERVICE, name: reference }); // Local only; no remote logout.
+        await keychain(() => Bun.secrets.delete({ service: SERVICE, name: reference })); // Local only; no remote logout.
     }
     return { ok: true };
 }
