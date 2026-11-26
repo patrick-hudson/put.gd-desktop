@@ -3,7 +3,9 @@
 #include "seal/SealCrypto.h"
 #include "seal/SealPage.h"
 #include "app/SealCheck.h"
+#include "core/SealJob.h"
 #include <QBuffer>
+#include <QDir>
 #include <future>
 #include <QRegularExpression>
 #include <QTemporaryDir>
@@ -14,10 +16,10 @@ namespace {
 // the sealed page and its data file are read back from here as a browser would get them.
 class KeepingProvider final:public StorageProvider {
 public:
- OpaqueProvider storage;mutable QMutex mutex;QHash<QString,QByteArray> files;QString sealUnavailable;bool sealSplit=true;int failNext=0;
+ OpaqueProvider storage;mutable QMutex mutex;QHash<QString,QByteArray> files;QString sealUnavailable;bool sealSplit=true,privateUploads=false;int failNext=0;
  // Like SFTP: an upload journals its temporary file through the checkpoint first, and refuses without one.
  bool requireCheckpoint=false;std::atomic_bool checkpointAnswered{false};QStringList revisionsSeen;
- ProviderCapabilities capabilities(const Destination& d) const override {auto c=storage.capabilities(d);c.sealUnavailable=sealUnavailable;c.sealSplit=sealSplit;return c;}
+ ProviderCapabilities capabilities(const Destination& d) const override {auto c=storage.capabilities(d);c.sealUnavailable=sealUnavailable;c.sealSplit=sealSplit;c.privateUploads=privateUploads;return c;}
  QString serializationKey(const Destination& d,const QJsonObject& o,const QString& n) const override {return storage.serializationKey(d,o,n);}
  Error validateSettings(const QJsonObject& s) const override {return storage.validateSettings(s);}
  void checkName(const Destination& d,const QString& n,std::function<void(NameCheck)> cb,std::shared_ptr<std::atomic_bool> c={}) override {storage.checkName(d,n,cb,c);}
@@ -55,10 +57,11 @@ struct Fixture {
  QTemporaryDir dir;ProviderRegistry registry;std::shared_ptr<KeepingProvider> provider=std::make_shared<KeepingProvider>();
  std::unique_ptr<SettingsService> settings;Source source;std::unique_ptr<OperationService> operations;
  QString checkState="passed",passphrase;
- explicit Fixture(const QJsonObject& seal) {
-  registry.add("opaque",provider);
+ explicit Fixture(const QJsonObject& seal,const QString& sharing={}) {
+  registry.add("opaque",provider);provider->privateUploads=sharing=="private";
   settings=std::make_unique<SettingsService>(dir.filePath("config.json"),[this](auto id,auto value){return registry.validate(id,value);});
   auto doc=configuration(dir.path());auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();if(!seal.isEmpty())profile["seal"]=seal;profiles[0]=profile;doc["profiles"]=profiles;
+  if(!sharing.isEmpty()){auto defaults=doc["captureDefaults"].toObject();defaults["publicationMode"]=sharing;doc["captureDefaults"]=defaults;}
   if(!settings->save(doc,{}))qFatal("settings");
   operations=std::make_unique<OperationService>(dir.filePath("data"),*settings,registry,source);
   operations->setSealHelperForTesting(QStringLiteral(PUTGD_CLI_PATH));
@@ -137,6 +140,16 @@ private slots:
   bool accepted=false;f.operations->retry(op.id,[&](Error e,QJsonObject){QVERIFY2(!e,qPrintable(e.message));accepted=true;});PUTGD_TRY_VERIFY(accepted);
   HistoryStore journal(f.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(op.id).items.first().uploadStatus,QString("uploaded"));
   const auto item=journal.operation(op.id).items.first();QVERIFY(item.sealed());QCOMPARE(f.provider->count(),1);QVERIFY(f.provider->file(item.candidate).startsWith("<!doctype html>"));
+ }
+ // A private upload gets no link, and a sealed file opens only from its link: it is refused
+ // before sealing, never sent, and the editor's toggle says why.
+ void privateUploadIsNeverSealed() {
+  Fixture f({{"mode","on"}},"private");PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto op=f.upload("no link to open it","p.txt");const auto item=op.items.first();
+  QCOMPARE(item.uploadStatus,QString("failed"));QCOMPARE(item.error.code,QString("seal_needs_link"));QVERIFY(item.error.message.contains("Private upload"));
+  QVERIFY(item.seal.isEmpty());QCOMPARE(f.provider->count(),0);QCOMPARE(f.provider->storage.uploads.load(),0);
+  // Seal off, the same upload goes out privately.
+  const auto plain=f.upload("no link to open it","q.txt",{{"enabled",false}});QCOMPARE(plain.items.first().uploadStatus,QString("uploaded"));QCOMPARE(f.provider->count(),1);
  }
  // With a passphrase, the link alone opens nothing.
  void passphraseIsNeededBesideTheLink() {
@@ -244,6 +257,21 @@ private slots:
   QCOMPARE(f.provider->storage.uploads.load(),0);QCOMPARE(f.provider->storage.checks.load(),0);QVERIFY(op.stateName()!="completed");
   // The same file fits one page where the limit allows it, and seals.
   const auto small=f.upload(pattern(64),"fits.bin");QVERIFY(small.items.first().sealed());QCOMPARE(f.provider->count(),1);
+ }
+ // A helper that refuses its output path (the exclusive create found a file there) leaves that
+ // file alone: the resident removes only what a job that never answered may have made.
+ void refusedOutputPathIsNeverDeleted() {
+  QTemporaryDir dir;const auto helper=dir.filePath("helper.sh");
+  {QFile script(helper);QVERIFY(script.open(QIODevice::WriteOnly));
+   script.write("#!/bin/sh\nrequest=$(cat)\npage=$(printf '%s' \"$request\" | sed -n 's/.*\"page\":\"\\([^\"]*\\)\".*/\\1/p')\n"
+    "printf 'not ours' > \"$page\"\necho '{\"ok\":false,\"error\":{\"code\":\"seal_failed\",\"message\":\"Couldn'\\''t create the sealed page.\"}}'\n");}
+  QVERIFY(QFile::setPermissions(helper,QFileDevice::ReadOwner|QFileDevice::WriteOwner|QFileDevice::ExeOwner));
+  Artifact file;file.path=fixture(dir.path(),"in.txt","plain");file.bytes=5;file.name="in.txt";file.mime="text/plain";
+  const QStringList before=QDir(dir.path()).entryList(QDir::Files);
+  const auto result=SealJob(helper).run(file,dir.path(),"inline","a.html",{},{});
+  QCOMPARE(result.error.code,QString("seal_failed"));QVERIFY(result.error.message.contains("sealed page"));
+  const auto after=QDir(dir.path()).entryList(QDir::Files);QCOMPARE(after.size(),before.size()+1);
+  for(const auto& name:after)if(!before.contains(name)){QFile kept(dir.filePath(name));QVERIFY(kept.open(QIODevice::ReadOnly));QCOMPARE(kept.readAll(),QByteArray("not ours"));}
  }
  // Forget key: History keeps no way to open it, and offers no link.
  void forgetKeyLeavesNoLink() {

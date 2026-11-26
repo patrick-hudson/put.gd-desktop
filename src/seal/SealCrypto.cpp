@@ -148,13 +148,13 @@ Error seal(QIODevice& input,const Meta& meta,const QByteArray& key,const QString
  const qint64 total=encodedMeta.size()+meta.size;
  QByteArray plain;plain.reserve(int(chunkBytes));QByteArray out;
  const auto wipe=qScopeGuard([&plain]{plain.resize(plain.capacity());OPENSSL_cleanse(plain.data(),size_t(plain.size()));});
- qint64 consumed=0,fileRead=0;quint32 index=0;
+ qint64 consumed=0;quint32 index=0;
  while(consumed<total) {
   plain.clear();
   const qint64 want=qMin<qint64>(chunkBytes,total-consumed);
   if(consumed<encodedMeta.size()){const auto take=qMin<qint64>(want,encodedMeta.size()-consumed);plain.append(encodedMeta.constData()+consumed,take);}
   const qint64 fromFile=want-plain.size();
-  if(fromFile>0){const auto at=plain.size();plain.resize(at+fromFile);if(!readExactly(input,plain.data()+at,fromFile))return failed("couldn't read the file");fileRead+=fromFile;}
+  if(fromFile>0){const auto at=plain.size();plain.resize(at+fromFile);if(!readExactly(input,plain.data()+at,fromFile))return failed("couldn't read the file");}
   consumed+=want;const bool last=consumed==total;
   if(!cipher.run(true,index,last,plain.constData(),plain.size(),out))return failed("encryption failed");
   if(!sink(out.constData(),out.size()))return failed("couldn't write the sealed file");

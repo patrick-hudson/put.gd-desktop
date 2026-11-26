@@ -47,7 +47,10 @@ int runSealJob() {
  auto request=QJsonDocument::fromJson(input).object();OPENSSL_cleanse(input.data(),size_t(input.size()));
  // A passphrase that is there but not text is refused, never read as none.
  if(request.contains("passphrase")&&!request["passphrase"].isString())return refuse({"seal_failed","The sealing request is invalid.",{}});
- const auto passphrase=request["passphrase"].toString();request.remove("passphrase");
+ QString passphrase=request["passphrase"].toString();request.remove("passphrase");
+ // The passphrase's own copy is wiped on every way out too. The parsed request's storage is
+ // freed above; this child exits right after, with core dumps off (SealJob sets RLIMIT_CORE 0).
+ const auto wipePassphrase=qScopeGuard([&passphrase]{if(!passphrase.isEmpty())OPENSSL_cleanse(passphrase.data(),size_t(passphrase.size())*sizeof(QChar));});
  const bool split=request["form"].toString()=="split";
  if(!viewerIntact())return refuse({"seal_viewer_changed","This build's sealed-link viewer doesn't match its pinned hash.",{}});
  const qint64 bytes=qint64(request["bytes"].toDouble(-1));

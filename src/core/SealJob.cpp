@@ -30,11 +30,15 @@ SealJob::Result SealJob::run(const Artifact& file,const QString& directory,const
  const bool split=form=="split";
  const auto pageId=QUuid::createUuid().toString(QUuid::WithoutBraces),dataId=QUuid::createUuid().toString(QUuid::WithoutBraces);
  const auto pagePath=directory+"/"+pageId,dataPath=directory+"/"+dataId;
+ // Only files this job made go again. A path already there (the helper's exclusive create
+ // refuses it) is never touched, and a helper that answers removes what it made itself.
+ const auto present=[](const QString& path){const QFileInfo info(path);return info.exists()||info.isSymLink();};
+ if(present(pagePath)||(split&&present(dataPath))){result.error=failure("Couldn't seal the file because its working file name is already taken.");return result;}
  QJsonObject request{{"input",file.path},{"bytes",double(file.bytes)},{"name",file.name},{"type",file.mime},{"form",split?"split":"inline"},{"page",pagePath}};
  if(split){request["data"]=dataPath;request["bin"]=binName;}
  if(!passphrase.isEmpty())request["passphrase"]=passphrase;
  auto input=QJsonDocument(request).toJson(QJsonDocument::Compact);
- const auto discard=[&]{QFile::remove(pagePath);QFile::remove(dataPath);};
+ const auto discard=[&]{QFile::remove(pagePath);if(split)QFile::remove(dataPath);};
  QProcess process;process.setStandardErrorFile(QProcess::nullDevice());
 #ifdef Q_OS_UNIX
  process.setChildProcessModifier([]{const rlimit none{0,0};::setrlimit(RLIMIT_CORE,&none);::setpriority(PRIO_PROCESS,0,5);});
@@ -53,7 +57,8 @@ SealJob::Result SealJob::run(const Artifact& file,const QString& directory,const
  output+=process.readAllStandardOutput();
  const auto answer=QJsonDocument::fromJson(output.trimmed()).object();
  if(process.exitStatus()!=QProcess::NormalExit||!answer["ok"].toBool()) {
-  discard();const auto e=answer["error"].toObject();
+  if(process.exitStatus()!=QProcess::NormalExit||!answer["error"].isObject())discard();
+  const auto e=answer["error"].toObject();
   result.error=e["code"].isString()?Error{e["code"].toString(),e["message"].toString(),{}}:failure("Couldn't seal the file because putgd-cli stopped unexpectedly.");
   return result;
  }
@@ -66,7 +71,9 @@ SealJob::Result SealJob::run(const Artifact& file,const QString& directory,const
   return true;
  };
  if(!artifact(pageId,pagePath,pageName,"text/html",answer["page"].toObject(),result.page)||(split&&!artifact(dataId,dataPath,binName,"application/octet-stream",answer["data"].toObject(),result.data))) {
-  discard();result.error=failure("The sealed file didn't match what putgd-cli reported, so the upload didn't start.");return result;
+  discard();result.page={};result.data={};
+  // A check cut short by Cancel is a cancelled upload, not a mismatch.
+  result.error=cancelled&&cancelled->load()?Error{"cancelled","Sealing was cancelled, so the upload didn't start.",{}}:failure("The sealed file didn't match what putgd-cli reported, so the upload didn't start.");return result;
  }
  result.key=answer["key"].toString();
  if(result.key.size()!=46||!result.key.startsWith("v1.")){discard();result.error=failure("putgd-cli returned no usable key.");result.page={};result.data={};}

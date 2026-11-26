@@ -485,7 +485,7 @@ private:
  // The one rule every send obeys, without exceptions: an upload that is to be sealed sends an
  // item only once it is sealed.
  static bool sendable(const OperationItem& item,bool sealWanted) {return !sealWanted||item.sealed();}
- bool sealItems(Operation& op,const ProviderCapabilities&,const QString& requestPassphrase,const std::shared_ptr<std::atomic_bool>& cancelled,const std::function<bool(const OperationItem&)>& saveItem);
+ bool sealItems(Operation& op,const ProviderCapabilities&,const QString& publicationMode,const QString& requestPassphrase,const std::shared_ptr<std::atomic_bool>& cancelled,const std::function<bool(const OperationItem&)>& saveItem);
  Error startupError_;
  // Recovers the journal on a worker; a failure (a full disk, an I/O error, a database another tool holds, or a lock that cannot be taken: QLockFile
  // reports a stale lock it failed to remove the same way as a live owner) is retried with a growing pause until it succeeds, so a fault that

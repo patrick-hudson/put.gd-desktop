@@ -67,6 +67,8 @@ QString uuid() {return QUuid::createUuid().toString(QUuid::WithoutBraces);}
 Error unsupported() {return {"source_unsupported","Screen capture and clipboard access aren't available on this desktop.",{}};}
 bool terminalUpload(const QString& s) {return s=="uploaded"||s=="skipped"||s=="conflict"||s=="local_only";}
 const QLoggingCategory& providerLog(const QString& provider) {return provider=="s3"||provider=="cloudflare-r2"?logS3():provider=="proton-drive"?logProton():logOperation();}
+// #2079: a sealed file opens only from its link, which a private upload doesn't get.
+QString sealNeedsLink() {return QStringLiteral("Sealed files open only from their link, and Sharing is set to Private upload. Change Sharing in Settings → Capture, or turn off Seal to upload it privately.");}
 qint64 artifactBytes(const Operation& op) {qint64 total=0;for(const auto& item:op.items)total+=item.artifact.bytes;return total;}
 QJsonObject itemFields(const Operation& op,const OperationItem& item) {return {{"operationId",op.id},{"itemId",item.artifact.id},{"provider",op.destination.providerId}};}
 // A diagnostics upload (#123) has no action route: it goes to the destination
@@ -1378,7 +1380,9 @@ QJsonObject OperationService::sealOptions(const Operation& op) const {
   const auto provider=providers_.find(op.destination.providerId);
   const auto unavailable=provider?provider->capabilities(op.destination).sealUnavailable:QStringLiteral("This destination is unavailable.");
   const auto check=sealCheck_?sealCheck_(op.destination.profileId,op.settings.profiles.value(op.destination.profileId)):QJsonObject{{"state","untested"}};
+  auto mode=route.publicationMode;if(mode=="default"&&provider)mode=provider->defaultPublicationMode(op.destination);
   if(!unavailable.isEmpty())out["reason"]=unavailable;
+  else if(mode=="private")out["reason"]=sealNeedsLink();
   else if(check.value("state")=="failed")out["reason"]="This destination didn't pass the sealed-link check: "+check.value("reason").toString();
   else if(check.value("state")!="passed")out["reason"]=QStringLiteral("Select Test upload and link for this destination first.");
   else out["available"]=true;}
@@ -1416,7 +1420,7 @@ void OperationService::recordSeal(const QString& id,bool enabled) {
 // Sealed links (#2079). An upload is sealed when it asked to be (op.seal.requested), else when its
 // destination's Seal links setting is on. A sealed item uploads a sealed page under a random name
 // in place of its file; the file itself stays the item's artifact for previews and local copies.
-bool OperationService::sealItems(Operation& op,const ProviderCapabilities& capabilities,const QString& requestPassphrase,const std::shared_ptr<std::atomic_bool>& cancelled,const std::function<bool(const OperationItem&)>& saveItem) {
+bool OperationService::sealItems(Operation& op,const ProviderCapabilities& capabilities,const QString& publicationMode,const QString& requestPassphrase,const std::shared_ptr<std::atomic_bool>& cancelled,const std::function<bool(const OperationItem&)>& saveItem) {
  const auto profile=op.settings.profiles.value(op.destination.profileId);
  const auto setting=profile.value("seal").toObject().value("mode").toString(QStringLiteral("off"));
  if(!sealWanted(op))return true;
@@ -1429,6 +1433,8 @@ bool OperationService::sealItems(Operation& op,const ProviderCapabilities& capab
   // Sealing asked for and impossible here: the file doesn't go out unsealed.
   Error refusal;
   if(!capabilities.sealUnavailable.isEmpty())refusal={"seal_unavailable",capabilities.sealUnavailable+" Turn off Seal to upload it.",{}};
+  // A sealed file opens only from its link, and a private upload gets none.
+  else if(publicationMode=="private")refusal={"seal_needs_link",sealNeedsLink(),{}};
   else if(check.value("state")!="passed")refusal={"seal_check_required",check.value("state")=="failed"?"This destination didn't pass the sealed-link check: "+check.value("reason").toString()+" Turn off Seal to upload it.":QStringLiteral("Select Test upload and link for this destination before uploading sealed links."),{}};
   else if(op.seal.value("passphraseFrom")=="request"&&requestPassphrase.isEmpty())refusal={"seal_passphrase_missing","This upload's passphrase came with the request and isn't kept, so it can't be sealed now. Upload the file again with its passphrase.",{}};
   else if(setting=="passphrase"&&passphrase.isEmpty())refusal={"seal_passphrase_locked","The Seal links passphrase isn't loaded. Unlock it in Destinations, then select Retry upload.",{}};
@@ -1546,7 +1552,7 @@ Operation OperationService::run(Job job) {
  // A server that names its own objects has no name to collide with: the policy does not apply (#1361).
  if(!capabilities.serverNamesObjects&&(!capabilities.conditionalCreate||(op.settings.collisionPolicy=="overwrite"&&!capabilities.conditionalReplace))) {op.error={"unsupported_capability","This destination doesn't support the selected When a name exists setting. Change it in Settings → Capture.",{}};op.advance(OperationState::Failed);save();return op;}
  // #2079: sealed items get their page and random name before naming; a retry keeps both.
- if(!job.sharingOnly&&!sealItems(op,capabilities,job.sealPassphrase,job.cancelled,saveItem))return op;
+ if(!job.sharingOnly&&!sealItems(op,capabilities,publicationMode,job.sealPassphrase,job.cancelled,saveItem))return op;
  const bool sealing=sealWanted(op);
  bool needsNames=job.acquire;for(const auto& item:std::as_const(op.items))if(!terminalUpload(item.uploadStatus)&&item.candidate.isEmpty())needsNames=true;
  if(needsNames) {QList<Artifact> list;for(const auto& item:std::as_const(op.items))list.append(item.artifact);auto names=UploadNaming::batch(list,op.settings.namingMode,capabilities.serverNamesObjects?QStringLiteral("keep"):op.settings.collisionPolicy,capabilities.maximumNameBytes,op.settings.randomName);QJsonArray chosen;
