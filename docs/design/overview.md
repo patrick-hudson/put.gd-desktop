@@ -27,7 +27,7 @@ packages use dynamically linked distribution Qt. See
 | --- | --- | --- | --- |
 | `putgd` | Resident: tray, hotkeys, source adapters, settings, operations, history, setup, recording coordination and updates | Native desktop APIs; private JSON socket for clients; private helper pipes | User's graphical login session; Qt Core on Cinnamon/X11, GNOME Wayland, KDE Wayland and Budgie Wayland |
 | `putgd-ui` | Main window and About; separate `--edit-image` editor and `--image-job` codec modes | Window helper uses the session socket plus supervised control pipes; editor/image jobs use private pipes and staging files | On demand; image jobs use Qt offscreen |
-| `putgd-cli` | JSON client; update-check and AppImage-install modes | Session socket for app methods; HTTPS for update modes | Same user/session, or a resident-launched temporary update child |
+| `putgd-cli` | JSON client; update-check and AppImage-install modes; the [sealed-link](sealed-links.md) sealing helper (`--seal-job`), `open` and `upload` | Session socket for app methods; HTTPS for update modes and sealed links; private pipes for the sealing helper | Same user/session, or a resident-launched temporary update child |
 | `putgd-capture` | Frozen-target X11 selection and acquisition | Resident control pipes and private PNG output; X11/Cinnamon capture APIs | Temporary graphical helper on the Cinnamon Core route |
 | `putgd-region` | Wayland region selector (layer-shell), shared by Plasma and Budgie | Private control pipes; geometry out, optional frozen background in | Temporary native helper on the Plasma and Budgie Wayland routes |
 | `putgd-clipboard-keeper` | Holds the last clipboard result after the resident quits, on Budgie and Hyprland | The content on an anonymous memory file on standard input; Wayland data control | Detached and short-lived: exits once anything else owns the clipboard |
@@ -72,6 +72,8 @@ with folder ZIP or individual-file handling described in [file-manager upload](f
 artifact limits come from the accepted configuration.
 
 [Text recognition](text-recognition.md) is outside this pipeline. The Copy text action, the editor's Copy text tool and History's Copy text read an image in `putgd-ocr`, write one plain-text clipboard copy and store, upload and journal nothing they read.
+
+[Sealed links](sealed-links.md) are inside this pipeline. Between the immutable artifact and naming, a file to be sealed is encrypted by a short-lived `putgd-cli --seal-job` child into a self-decrypting page (and, over 64 MB, a data file beside it). The page uploads under a random name, and the copied link carries the key after `#`.
 
 The [image editor](image-editor.md) keeps its source private and submits only a sanitized PNG. [Recording](recording.md) keeps its working clip private through
 Stop, trim, masks, preview and Save a copy; only Upload admits an export to the
@@ -251,6 +253,7 @@ and earlier results establish their stated scope; hardware gates use the require
 | [Remote goldens](../lab/remote-golden-images.md) | Locate, verify, transfer and restore immutable images. |
 | [Remote displays](../lab/remote-vm-displays.md) | Loopback VNC tunnels and display-wall exposure. |
 | [S3](../user/s3.md) | SDK transport, compatible services and safe object operations. |
+| [Sealed links](sealed-links.md) | End-to-end encrypted uploads in a self-decrypting page, the threat table, the format and the per-destination rules. |
 | [Scrolling capture](scroll-capture.md) | A region scrolled with injected wheel events and stitched into one tall image: frames, injectors, control loop, proof rules and limits. |
 | [Text recognition](text-recognition.md) | Copy text, the editor's text tools, QR codes, the `putgd-ocr` helper, untrusted content and the agent contract. |
 | [Storage providers](storage-providers.md) | Provider-neutral capabilities, receipts and checkpoints. |

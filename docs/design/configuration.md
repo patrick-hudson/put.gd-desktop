@@ -130,6 +130,7 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | Each profile's `id`, `label`, `provider` | Unique stable ID, display label, registered adapter ID |
 | Each profile's `settings` | Non-secret settings validated by its provider adapter |
 | Each profile's `credentials` | `keychain` plus a nonempty `reference`, or `session` plus `null` reference |
+| Each profile's `seal` | Optional [sealed links](#sealed-links-setting) default for new uploads: `mode` `off` (also when absent), `on` or `passphrase`, and `passphraseCredentials` for the passphrase |
 | `archive.keepUploads` | `false`; enables local saving for every new action, independently of its upload destination |
 | `archive.root` | User Documents folder plus `put.gd`; must be absolute |
 | `archive.folders` | `images`, `videos`, `text`, `other`; each absolute or `null` |
@@ -479,6 +480,31 @@ Encoding workspace, native frozen monitor frames and the current clipboard resul
 are separate transient/ownership costs. Retry artifacts and previews live on disk;
 previewCacheBytes bounds disk bytes rather than a preloaded image heap.
 
+## Sealed links setting
+
+A profile's optional `seal` key (#2079) is the destination's default for new uploads to it.
+It is the **Seal links** setting in Settings → Destinations; [sealed links](sealed-links.md)
+has the design.
+
+```json
+"seal": {"mode": "passphrase", "passphraseCredentials": {"mode": "keychain", "reference": "putgd/seal/s3-1"}}
+```
+
+- `mode` is `off`, `on` or `passphrase`. A profile without `seal` is `off`.
+- `passphraseCredentials` is required with `passphrase` and optional otherwise. It is
+  `{"mode": "keychain", "reference": …}` with a reference of 1 to 256 characters, or
+  `{"mode": "session", "reference": null}`. It names the passphrase's own entry, so a
+  keychain reference equal to the destination's `credentials.reference` is refused.
+- An invalid `seal` fails at `/profiles/seal` with "Choose Off, On or On with a passphrase
+  for Seal links." or "The Seal links passphrase needs its own keychain reference, not the
+  destination's."
+
+The passphrase itself is never in this file ([credentials](credentials.md)). The setting
+affects uploads accepted after it changes; one upload can turn sealing on or off for itself.
+Validation doesn't look at the provider, so `seal` is accepted on a destination that can't
+seal, and its sealed uploads then fail with `seal_unavailable`. `seal` is not part of the
+connection fingerprint below, so changing it keeps the destination's check records.
+
 ## Destination checks
 
 The resident keeps each destination's last check in `destination-status.json` in the
@@ -565,6 +591,15 @@ What updates the record:
   record.
 - A Test or upload records nothing when, at the moment it finishes, the destination's
   fingerprint or credential revision differs from the ones it started with.
+
+The sealed-link Test check (#2079) is kept in the same file under `sealChecks`, keyed by
+profile ID: `passed`, the failure `reason` (at most 300 characters) and the connection
+fingerprint it checked. Only a Test writes it ([the Test check](sealed-links.md#the-test-check)).
+It counts while the fingerprint matches the destination as saved, is not tied to the
+credential revision, and is removed with the destination. Each `destinationStatus` entry
+carries it as `seal`, `{state: passed|failed|untested, reason?}`, also when the destination's
+own check is untested. An upload decides with the fingerprint of the settings it was
+accepted with.
 
 A file that cannot be read whole starts empty. On reading, a revision must be an exact
 integer from 0 to 2^53, and a record's `errorCode` must be one of the refusals above;

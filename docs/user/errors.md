@@ -238,3 +238,40 @@ by either rejection.
 | `nextcloud_signin_unavailable` | The server has no browser sign-in (Login Flow v2); select **Use an app password instead** |
 | `nextcloud_signin_timeout`, `nextcloud_signin_cancelled` | Sign-in wasn't finished in the browser within 20 minutes, or was cancelled. Select **Sign in…** to try again. When you were reconnecting an account, the button reads **Sign in again…** |
 | `nextcloud_server_mismatch` | Nextcloud named another address for sign-in or finished it for another server (its `overwrite.cli.url` or trusted proxies may be wrong); enter the address it names, or ask the administrator |
+
+## Sealed links
+
+These come from [sealed links](../design/sealed-links.md). When an upload was to be sealed and
+can't be, the file isn't uploaded unsealed: the item fails before anything is sent, and
+**Retry upload** tries again once the cause is fixed. The one exception is size. A file over
+2 GB, or over 64 MB on a destination that can't serve a page and a data file side by side,
+uploads unsealed, and the notification and History say why. That isn't a failure code.
+
+| Code | `details` | Message and user action |
+|---|---|---|
+| `seal_check_required` | none | "Select Test upload and link for this destination before uploading sealed links." The destination hasn't passed the sealed-link check for the settings this upload used. Or it failed: "This destination didn't pass the sealed-link check: …", with the check's reason, such as "The destination serves .html files as text/plain, so browsers won't open a sealed page.", "The destination makes browsers download .html files instead of opening them.", "The test page's link answered HTTP 403." or "The destination changed the test page's bytes, so a sealed page can't be checked." Fix the web server or bucket settings and select **Test upload and link**, or turn off **Seal** to upload it unsealed |
+| `seal_unavailable` | none | This destination type can't serve a sealed page, and the message says why: Nextcloud share links download HTML files, Proton Drive already encrypts files end to end, an SFTP destination has no **Link address**. Turn off **Seal** to upload it, or choose another destination |
+| `seal_passphrase_locked` | none | "The Seal links passphrase isn't loaded. Unlock it in Destinations, then select Retry upload." The destination is set to **On with a passphrase** and its saved passphrase wasn't read, for example because the keyring was locked at startup. Uploads never unlock the keychain |
+| `seal_failed` | none | Sealing didn't finish, so the upload didn't start: `putgd-cli` is missing from this installation or didn't start (reinstall put.gd), sealing took over 30 minutes, or the sealed file didn't match what `putgd-cli` reported. Select **Retry upload**, and send a [diagnostics package](../design/diagnostics.md) if it repeats |
+| `seal_viewer_changed` | none | "This build's sealed-link viewer doesn't match its pinned hash." This build of put.gd is damaged or was changed. Reinstall it |
+| `seal_name_taken` | none | "The sealed link's random data file name is already taken at the destination, so the upload didn't finish." The page names its data file, so put.gd never renames it. Upload the file again, which picks new names |
+| `seal_data_left` | `dataStatus`, `dataError` | "The sealed page was deleted, but its data file beside it wasn't. It holds only encrypted data." Delete from destination removed the page; the `.bin` file beside it is still there (`dataStatus` is `changed`, `failed` or `unknown`). Nobody can open it without the page and the key. Delete it at the destination if you want it gone |
+| `seal_passphrase_unset` | none | "Choose On with a passphrase for Seal links on this destination first." `setup.storeSealPassphrase` or `setup.unlockSealPassphrase` for a destination that has no passphrase entry |
+| `history_not_sealed` | none | "This item isn't a sealed link." Forget key works only on sealed links |
+| `history_busy` | none | "This upload is still running. Wait for it to finish, then select Forget key." |
+| `operation_not_found` (`operation.seal`) | none | "That operation isn't waiting to upload." The edit or recording review has already started its upload or ended, so its Seal choice can't change any more |
+
+`putgd-cli open` answers these on its own, without the resident:
+
+| Code | `details` | Message and user action |
+|---|---|---|
+| `seal_key_missing` | none | "This link is missing its key. Use the full link, including everything after #." |
+| `seal_passphrase_file` | none | The file given to `--passphrase-file` can't be read, or doesn't hold exactly one line of 1 to 1,024 bytes. `putgd-cli upload` answers it too |
+| `seal_download_failed` | `httpStatus`, `network`, and `url` without its query or fragment | "Couldn't download the sealed link." or "Couldn't download the sealed file beside the page." Check the link and your connection. A page whose data file is gone answers this too |
+| `seal_page_changed` | none | "This page isn't put.gd's sealed-link viewer, or it was changed." The page differs from put.gd's pinned viewer in any byte outside its data, or is larger than any sealed page. Nothing was decrypted. Don't open the link in a browser either: someone may have replaced the page |
+| `seal_damaged` | none | "This link is incomplete or damaged." The key doesn't match, or the encrypted data was changed, cut short or reordered. Nothing is written |
+| `seal_passphrase_required` | none | "This link needs its passphrase." Run it again with `--passphrase-file` |
+| `seal_passphrase` | none | "That passphrase doesn't open this link." Check the passphrase with whoever sent the link |
+| `seal_version` | none | "This sealed link needs a newer put.gd." The link was sealed with a newer format. Update put.gd |
+| `seal_write_failed` | `path` where there is one | A temporary file or the opened file couldn't be written. Check the folder and free space |
+| `seal_output_exists` | `path` | "A file with that name is already there. Choose another with -o." put.gd never overwrites a file |

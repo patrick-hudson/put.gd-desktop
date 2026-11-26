@@ -118,6 +118,22 @@ what the upload returned (a deletion URL), so there is nothing to stat first.
 settings: an upload that came back without a deletion URL reports no removal, with the
 reason in `removeUnavailable`. `safeRemoval()` is true for a provider that can delete
 by such a reference or under the conditional and versioned safeguards above.
+`sealUnavailable` and `sealSplit` (#2079) say what a destination can do with
+[sealed links](sealed-links.md#where-it-works). `sealUnavailable` is one sentence saying why a
+sealed page can't be uploaded there, shown to the user and used as the `seal_unavailable`
+message; it is empty when it can, and the destination's Test check still decides. Its default
+is "This destination type doesn't support sealed links.", so a provider seals only once it
+clears it. `sealSplit` means the two-file form works too: a page and its data file side by
+side under one public Link address. Per-object presigned or authorized links can't give that,
+because the page fetches `./NAME.bin` without the first link's query. A provider with
+`serverNamesObjects` never gets the two-file form, because the page must name its data file.
+S3 and R2 clear `sealUnavailable` and set `sealSplit` unless `linkMode` is `presigned`;
+Backblaze B2 sets `sealSplit` only for public links; WebDAV clears it and sets `sealSplit`, and
+Nextcloud keeps a reason; SFTP clears it only with a Link address; the custom uploader clears
+it without `sealSplit`; Proton Drive keeps a reason. A sealed upload is an ordinary upload to
+the provider: an HTML artifact under a random name and, in the two-file form, a second ordinary
+upload before it.
+
 `diagnosticSettings` is what a diagnostics package may show of a profile's settings;
 the custom uploader reduces rows to names and addresses to scheme and host.
 
