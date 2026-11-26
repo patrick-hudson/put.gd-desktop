@@ -773,12 +773,13 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
  // #2084: a hex run takes no piece that is a clock time of its own beside a date's words: ps's start
  // time ("625799" "625287" "Sat" "Oct" "24" "01:26:36" "2026") is hex only through "Sat" and "Oct"
  // misread (5af, 0cf). The clock counts only when the part also holds a weekday or month name as a
- // piece of its own, which no hex piece is, so a hex secret recognition split around a clock-shaped
+ // piece of its own, which no hex piece is (Feb and Dec are hex letters, so not those; ps always shows
+ // the weekday), so a hex secret recognition split around a clock-shaped
  // piece (and a year-shaped one) stays a run (Sol on #2090). A run beside the time is still tried
  // without it.
  QList<int> clocks;
  {static const QRegularExpression clock(QStringLiteral("^\\d{1,2}:\\d\\d(?::\\d\\d)?[,.]?$")),
-   date(QStringLiteral("^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[,.]?$"));
+   date(QStringLiteral("^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun|Jan|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov)[,.]?$"));
   bool dated=false;QList<int> pieces;
   for(int p=first;p<=last;++p){
    const auto piece=segment.text.mid(segment.starts.at(p),endOf(p)-segment.starts.at(p));
@@ -1535,10 +1536,10 @@ QSet<int> publicWords(const QMap<int,QList<int>>& lines,const QList<QString>& pl
     clean=clean&&!namesSecret(t);
     if(!markWord.match(t).hasMatch())name+=t;
    }
-   // ...and one word of it shaped like a file's stem: letters and digits joined by "-" or "_" in one
-   // word ("reen-Capture-2026-10-26-00-49-08", "invoice-INV-2026-71617"), so a date and a word after
-   // it ("rotated 2026-01-01 - log") are no name (Sol on #2090).
-   static const QRegularExpression stem(QStringLiteral("^(?=[^\\s]*[A-Za-z])(?=[^\\s]*\\d)[^\\s]*[A-Za-z0-9][-_][A-Za-z0-9]"));
+   // ...and one word of it shaped like a file's stem: two letters or more first, then "-" or "_" and a
+   // digit later in the word ("reen-Capture-2026-10-26-00-49-08", "invoice-INV-2026-71617"), so a
+   // date and a word after it ("rotated 2026-01-01 - log", "2026-01-01-utc") are no name (Sol on #2090).
+   static const QRegularExpression stem(QStringLiteral("^[^A-Za-z0-9]{0,2}[A-Za-z]{2,}[A-Za-z0-9]*[-_][-_A-Za-z0-9]*\\d"));
    bool stemmed=false;for(int i=it->lead+it->digest;i<it->end;++i)stemmed=stemmed||stem.match(plain.at(row.at(i))).hasMatch();
    if(clean&&stemmed&&broken.match(name).hasMatch())found.append(k);
   }
