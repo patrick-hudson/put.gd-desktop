@@ -412,7 +412,9 @@ Under the builder's Proton lock, `lend`:
    with `reconcile_carry_back` after an ambiguous reply). A failed collect is made once
    more by new broker processes. A new process's read can come back empty for an entry
    that is there, and only a new process gets past that ([#2111](https://github.com/patrick-hudson/put.gd-desktop/issues/2111)).
-   Nothing changes before a collect succeeds. If the second collect fails too, the copy
+   A failed collect changes neither keychain entry nor the session `lend` holds in memory.
+   Before the second try, `lend` checks the guest keyring as it does for an import and
+   pauses for two seconds. If the second collect fails too, the copy
    stays outstanding and the lock stays blocked for `recover`.
 5. Deletes only the guest entry.
 
@@ -424,8 +426,9 @@ never session material. `lend.json` also records:
   try has `failedStep: import` and its cleanup: `pending` until the removal is confirmed, then
   `confirmed`, or `nothing_imported`. Once its cleanup is settled it also has `keyringAfter`,
   the guest keyring's state after the failure.
-- `collectTries`: written when a collect failed. Each failed try has `failedStep: collect` and
-  `keyringAfter`; the try that worked has `collected: true`.
+- `collectTries`: written when a collect failed. Every try has its `attempt` number and its time
+  (`at`). A failed try also has `failedStep: collect` and `keyringAfter`, the guest keyring's
+  state after the failure. The try that worked has `collected: true`.
 - `failedStep` and `failure`: when the lend stopped before COMMAND with nothing left in the
   guest (step `lend_failed` or `provision_failed_abandoned`). The step is `host_brokers`,
   `place_brokers`, `prepare_keyring`, `export` or `import`.
