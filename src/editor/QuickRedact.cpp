@@ -501,7 +501,11 @@ bool prefixHead(const QString& word) {
 // characters that are not hex once recognition's confusions are mapped, so a window can be ruled out
 // for the run tests in constant time before they read it.
 struct Counts {QList<int> upper,lower,digit,alnum,nonHex,hexDigit;};
-struct Segment {QList<int> words;QString text;QList<int> starts;mutable QList<QList<int>> heads;mutable bool headsFound=false;mutable Counts counts;};
+// pieces (#2112): running totals by piece of each piece's wordShape and of the clock and date pieces, so
+// a part of a segment is judged in constant time. segmentMatches recurses on the rest of a part after
+// each run it finds, and judging each part piece by piece cost a line's square.
+struct PieceCounts {QList<int> odd,ordinary,spoken,secret,clock,date;};
+struct Segment {QList<int> words;QString text;QList<int> starts;mutable QList<QList<int>> heads;mutable bool headsFound=false;mutable Counts counts;mutable PieceCounts pieces;};
 void findHeads(const Segment& segment);
 // A mark in a segment, by piece; a prefixed token also keeps where its prefix
 // starts in the segment's text and its nominal length (0 for a hex or base64 run).
@@ -753,6 +757,22 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
  // #1897: each piece looks only as far as 256 characters reach (the window's end moves on with it), so
  // a line of thousands of pieces costs about its length, not its square.
  int bestFirst=-1,bestLast=-1,bestLength=0;
+ const auto endOf=[&](int j){return j+1<segment.starts.size()?segment.starts.at(j+1):int(segment.text.size());};
+ if(segment.pieces.odd.isEmpty()){
+  // Each piece's shape (interfaceText), and whether it is a clock time or a weekday or month name (#2084).
+  static const QRegularExpression clock(QStringLiteral("^\\d{1,2}:\\d\\d(?::\\d\\d)?[,.]?$")),
+   date(QStringLiteral("^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun|Jan|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov)[,.]?$"));
+  auto& c=segment.pieces;const auto n=segment.starts.size();
+  for(auto* list:{&c.odd,&c.ordinary,&c.spoken,&c.secret,&c.clock,&c.date})list->fill(0,n+1);
+  for(qsizetype p=0;p<n;++p){
+   const auto piece=segment.text.mid(segment.starts.at(p),endOf(int(p))-segment.starts.at(p));
+   const auto shape=wordShape(piece);const bool isClock=clock.match(piece).hasMatch();
+   c.odd[p+1]=c.odd[p]+shape.odd;c.ordinary[p+1]=c.ordinary[p]+shape.ordinary;
+   c.spoken[p+1]=c.spoken[p]+(shape.spoken?1:0);c.secret[p+1]=c.secret[p]+(shape.secret?1:0);
+   c.clock[p+1]=c.clock[p]+(isClock?1:0);c.date[p+1]=c.date[p]+(!isClock&&date.match(piece).hasMatch()?1:0);
+  }
+ }
+ const auto inPart=[&](const QList<int>& totals,int from,int to){return totals.at(to+1)-totals.at(from);};
  // #1971/#1972: a part of a segment joined from several words is interface text run together, and
  // no base64 run, when fewer than 20 of its characters lie outside ordinary words and numbers, at
  // least as many lie in them, one of them is a word of five letters or more, and none names a
@@ -760,16 +780,9 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
  // "SKHynix" "HFS512GD9TNI-L2B0B"), a video title. A token that recognition split keeps most of its
  // 32 characters or more in odd parts. Judged once on the whole part, so a window inside it can't
  // leave out the words that show what it is.
- const bool interfaceText=[&]{
-  if(first==last)return false;
-  WordShape all;
-  for(int p=first;p<=last;++p){
-   const auto shape=wordShape(segment.text.mid(segment.starts.at(p),(p+1<segment.starts.size()?segment.starts.at(p+1):int(segment.text.size()))-segment.starts.at(p)));
-   all.odd+=shape.odd;all.ordinary+=shape.ordinary;all.spoken=all.spoken||shape.spoken;all.secret=all.secret||shape.secret;
-  }
-  return all.odd<20&&all.ordinary>=all.odd&&all.spoken&&!all.secret;
- }();
- const auto endOf=[&](int j){return j+1<segment.starts.size()?segment.starts.at(j+1):int(segment.text.size());};
+ const auto& c=segment.pieces;
+ const bool interfaceText=first!=last&&inPart(c.odd,first,last)<20&&inPart(c.ordinary,first,last)>=inPart(c.odd,first,last)
+  &&inPart(c.spoken,first,last)>0&&inPart(c.secret,first,last)==0;
  // #2084: a hex run takes no piece that is a clock time of its own beside a date's words: ps's start
  // time ("625799" "625287" "Sat" "Oct" "24" "01:26:36" "2026") is hex only through "Sat" and "Oct"
  // misread (5af, 0cf). The clock counts only when the part also holds a weekday or month name as a
@@ -777,17 +790,8 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
  // the weekday), so a hex secret recognition split around a clock-shaped
  // piece (and a year-shaped one) stays a run (Sol on #2090). A run beside the time is still tried
  // without it.
- QList<int> clocks;
- {static const QRegularExpression clock(QStringLiteral("^\\d{1,2}:\\d\\d(?::\\d\\d)?[,.]?$")),
-   date(QStringLiteral("^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun|Jan|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov)[,.]?$"));
-  bool dated=false;QList<int> pieces;
-  for(int p=first;p<=last;++p){
-   const auto piece=segment.text.mid(segment.starts.at(p),endOf(p)-segment.starts.at(p));
-   if(clock.match(piece).hasMatch())pieces.append(p);else dated=dated||date.match(piece).hasMatch();
-  }
-  // How many clock pieces lie before each piece, so a window asks in constant time.
-  if(dated&&!pieces.isEmpty()){clocks.fill(0,last-first+2);for(const int p:pieces)++clocks[p-first+1];for(int i=1;i<clocks.size();++i)clocks[i]+=clocks[i-1];}}
- const auto clockIn=[&](int from,int to){return !clocks.isEmpty()&&clocks.at(to-first+1)>clocks.at(from-first);};
+ const bool dated=inPart(c.date,first,last)>0;
+ const auto clockIn=[&](int from,int to){return dated&&inPart(c.clock,from,to)>0;};
  int reach=first;
  for(int i=first;i<=last;++i){
   reach=qMax(reach,i);
@@ -2372,6 +2376,16 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
   for(int s=0;s<lineSegments.size();++s){
    const auto& segment=lineSegments.at(s);
    QList<Found> found;segmentMatches(segment,0,int(segment.words.size())-1,found);
+   // Where each "data:" starts in the segment and the one place a data: URI from it can end: past its
+   // media type, which runs to the first character outside [a-z/+.-] as the publishable pattern reads it
+   // caselessly (ASCII letters, and the long s and Kelvin sign that fold to s and k), then ";base64,".
+   // Found once for the publishable check below (#2112).
+   QList<QPair<int,int>> dataAt;
+   for(auto i=segment.text.indexOf(QLatin1String("data:"),0,Qt::CaseInsensitive);i>=0;i=segment.text.indexOf(QLatin1String("data:"),i+1,Qt::CaseInsensitive)){
+    auto e=i+5;
+    while(e<segment.text.size()){const auto c=segment.text.at(e);if(!((c>='a'&&c<='z')||(c>='A'&&c<='Z')||c=='/'||c=='+'||c=='.'||c=='-'||c==QChar(0x17f)||c==QChar(0x212a)))break;++e;}
+    dataAt.append({int(i),int(e)+8});
+   }
    // #1895: a hex run with a hash word on its line (a "Git SHA" or "SHA-256" label cell, "commit",
    // "sha256:") is a digest, not a key, unless a secret word is on the line too. With no word either
    // way it stays covered: a hash and a hex secret look the same.
@@ -2399,7 +2413,16 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
       const auto rest=segment.text.mid(segment.starts.at(p+1),qMax(0,runEnd-segment.starts.at(p+1)));
       shown=publicRun(rest);
      }
-     return publishable.match(segment.text.left(at)).hasMatch()||publishableIn.match(segment.text.mid(at,qMax(0,firstEnd-at))).hasMatch()||(sshPublic&&f.length==0&&blob.match(run).hasMatch())||shown||(f.dotted&&unsignedJwt(segment.text.mid(f.prefix,runEnd-f.prefix)));
+     // A publishable prefix ends where the run starts: a few characters, or a data: URI from its "data:"
+     // on when the run starts where that URI can end. Only that much of the text before the run is
+     // searched (#2112: the whole line before each run cost a long line's square), never from inside a
+     // surrogate pair. A cut that starts later than the line can't pass for its start: no prefix is 32
+     // characters, and a data: URI doesn't start with pk. Only the last "data:" before the run can end
+     // there: an earlier one's media type stops at the later one's colon.
+     qsizetype from=qMax(0,at-32);
+     {const auto d=std::lower_bound(dataAt.cbegin(),dataAt.cend(),QPair<int,int>{at,0});if(d!=dataAt.cbegin()&&at==std::prev(d)->second)from=qMin<qsizetype>(from,std::prev(d)->first);}
+     if(from>0&&segment.text.at(from).isLowSurrogate())--from;
+     return publishable.match(segment.text.mid(from,at-from)).hasMatch()||publishableIn.match(segment.text.mid(at,qMax(0,firstEnd-at))).hasMatch()||(sshPublic&&f.length==0&&blob.match(run).hasMatch())||shown||(f.dotted&&unsignedJwt(segment.text.mid(f.prefix,runEnd-f.prefix)));
     }),found.end());}
    // #1940: a hash word names a digest in the run's own segment or in the label beside it: up to three
    // words and 32 characters either side ("SHA-256", "Git SHA", "checksum":, ENV['hash'] ||=), none
