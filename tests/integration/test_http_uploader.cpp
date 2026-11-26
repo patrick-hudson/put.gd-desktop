@@ -621,7 +621,9 @@ private slots:
                       {{"call", "confirm"}, {"status", 302}, {"location", f.base + "/"}}});
         const auto result = f.remove(uploaded.receipt);
         QVERIFY2(result.status == expected, qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
-        QVERIFY(f.events("confirm").size() >= 1);
+        // The form is submitted once; only a cut confirmation may be resent by the transport.
+        if (shape == "cut-redirect") QVERIFY(f.events("confirm").size() >= 1);
+        else QCOMPARE(f.events("confirm").size(), 1);
         if (expected == "failed") QCOMPARE(result.error.code, QString("http_delete_unconfirmed"));
         if (expected == "unknown") {
             QCOMPARE(result.error.code, QString("http_outcome_unknown"));
