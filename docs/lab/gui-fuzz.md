@@ -122,7 +122,7 @@ Published nightly 26.1125.7045 in disposable two-head guests, 2026-11-25/26 ([#2
 | --- | ---: | ---: | ---: | --- |
 | Plasma 6.8, Aurora Fedora 45 | 4.35 | 34 | 10,658 | no put.gd defect. Eight random-walk `plasmashell` crashes matched the known `QWaylandXdgSurface::applyConfigure` output/scale-churn trap; fresh no-app, idle-resident, selector-open and History/Edit-window controls each had zero shell crashes |
 | Plasma, Kubuntu 26.04 | 2.93 | 30 | 8,876 | no put.gd defect. The KWin fence loaded. Three `plasmashell` crashes matched the same known trap |
-| GNOME, Fedora 44 | 1.12 | 6 | 1,525 | no confirmed put.gd defect. Two random-walk `gnome-shell` crashes had incomplete evidence in already-retired guests, so their cause is unknown; fresh no-app, idle-resident and selector-open controls each had zero shell crashes |
+| GNOME, Fedora 44 (the Tier 1 Fedora GNOME golden on f44, RPM install, not the Ubuntu GNOME guest above) | 1.12 | 6 | 1,525 | no confirmed put.gd defect. Two random-walk `gnome-shell` crashes had incomplete evidence in already-retired guests, so their cause is unknown; fresh no-app, idle-resident and selector-open controls each had zero shell crashes |
 | Cinnamon, Mint 22.3 | 2.50 | 30 | 7,490 | no put.gd defect. One Cinnamon and two `nemo-desktop` crashes were desktop-process events |
 
 Invalid setup probes and handoff interruptions are excluded from these totals.
