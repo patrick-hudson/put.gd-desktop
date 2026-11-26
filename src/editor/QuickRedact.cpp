@@ -325,12 +325,7 @@ bool hexRun(const QString& run) {
  // only through their o, while hex keeps its digits 2 to 9 however 0 and 1 are read. #1975: an upper-case
  // O is no digit either: a page's ornament read as "EOEOEOOOOOEOEO" (kakaku.com) is no hex; an l or I
  // read for a one still is (Sol S3 on #1976).
- if(!(other*12<=run.size()&&digits*5>=run.size()&&letters*10>=run.size()&&read*8>=run.size()))return false;
- // #2084: and no clock time in it: ps's start time ("625799 625287 Sat Oct 24 01:26:36 2026") is hex
- // only through "Sat" and "Oct" misread (5af, 0cf). A hex run never holds one, and a run beside a time
- // is still tried without it.
- static const QRegularExpression clock(QStringLiteral("\\d:\\d\\d:\\d\\d|\\d\\d:\\d\\d(?![0-9a-fA-F])"));
- return !clock.match(run).hasMatch();
+ return other*12<=run.size()&&digits*5>=run.size()&&letters*10>=run.size()&&read*8>=run.size();
 }
 // Base64 or base64url of random bytes: upper and lower case and digits, and a
 // change of character class at least every third character on average.
@@ -775,6 +770,13 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
   return all.odd<20&&all.ordinary>=all.odd&&all.spoken&&!all.secret;
  }();
  const auto endOf=[&](int j){return j+1<segment.starts.size()?segment.starts.at(j+1):int(segment.text.size());};
+ // #2084: a hex run takes no piece that is a clock time of its own: ps's start time ("625799" "625287"
+ // "Sat" "Oct" "24" "01:26:36") is hex only through "Sat" and "Oct" misread (5af, 0cf). A run beside
+ // the time is still tried without it.
+ QList<int> clocks;
+ {static const QRegularExpression clock(QStringLiteral("^\\d{1,2}:\\d\\d(?::\\d\\d)?[,.]?$"));
+  for(int p=first;p<=last;++p)if(clock.match(segment.text.mid(segment.starts.at(p),endOf(p)-segment.starts.at(p))).hasMatch())clocks.append(p);}
+ const auto clockIn=[&](int from,int to){return std::any_of(clocks.cbegin(),clocks.cend(),[&](int p){return p>=from&&p<=to;});};
  int reach=first;
  for(int i=first;i<=last;++i){
   reach=qMax(reach,i);
@@ -786,7 +788,7 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
   if(to-from<=bestLength||to-from<24)break;
   if(!possible(from,to))continue;
   const auto run=segment.text.mid(from,to-from);
-  if(hexRun(run)||(base64Run(run)&&!interfaceText)||repeatedRun(run)){bestFirst=i;bestLast=j;bestLength=to-from;break;}
+  if((hexRun(run)&&!clockIn(i,j))||(base64Run(run)&&!interfaceText)||repeatedRun(run)){bestFirst=i;bestLast=j;bestLength=to-from;break;}
   }
  }
  if(bestFirst<0)return;
@@ -833,10 +835,6 @@ bool digestLine(const QList<int>& line,const QList<QString>& plain) {
  // The value after it must look like a digest: hex of 7 or more, or sha…, not an inline comment (#1914).
  static const QRegularExpression digestValue(QStringLiteral("^[\"']?(?:[0-9a-fA-F]{7,}|sha[0-9]*[-:])"));
  for(int i=0;i+1<line.size();++i){const auto& t=plain.at(line.at(i));if((t.endsWith(':')||t.endsWith('='))&&digestValue.match(plain.at(line.at(i+1))).hasMatch())for(const auto& part:t.split(camel,Qt::SkipEmptyParts))hash=hash||hashes.contains(part.toLower());}
- // #2084: "sha256:" stuck to its value as recognition reads a lockfile's hash: its 256 or 512 misread
- // (sha25e, sha2S6, shaS12) and its colon read as l, I, J, f, |, [ or ( or lost, then hex as read.
- static const QRegularExpression glued(QStringLiteral("^[\"'(\\[]?sha(?:1|224|256|384|512|2[5S][6e]|[5S][1lI]2)[:;lIiJjft|!\\[\\](]{0,3}[0-9a-fA-FoOlI]{6}"));
- for(const int w:line)hash=hash||glued.match(plain.at(w)).hasMatch();
  for(const int w:line)for(auto part:plain.at(w).split(words,Qt::SkipEmptyParts)){
   part=part.toLower();
   if(secrets.contains(part))return false;
@@ -1169,7 +1167,8 @@ QSet<int> publicWords(const QMap<int,QList<int>>& lines,const QList<QString>& pl
  // Words that are the evidence for a public one (its label, the file name or ref after a digest): they
  // are no unknown neighbour (below).
  QSet<int> known;
- // #2084: the file names among them, whose row a token's head can't end (the fail-closed guard below).
+ // #2084: the file names among them that end a digest's row whole (name.ext), whose row a token's head
+ // can't end (the fail-closed guard below).
  QSet<int> names;
  const auto glyph=[&](int w){return double(candidates.at(w).rect.width())/qMax<qsizetype>(1,plain.at(w).size());};
  const auto gap=[&](int a,int b){return double(candidates.at(b).rect.left()-candidates.at(a).rect.right())/qMax(1.0,qMax(glyph(a),glyph(b)));};
@@ -1190,7 +1189,10 @@ QSet<int> publicWords(const QMap<int,QList<int>>& lines,const QList<QString>& pl
   QString joined;int best=0,furthest=i;
   for(int j=i;j<line.size()&&j<i+6;++j){
    const auto& t=plain.at(line.at(j));
-   if(!hexish(t)||(j>i&&gap(line.at(furthest),line.at(j))>1.5))break;
+   // ...and past a whole digest only with less than a space before the next piece: two digests or a
+   // digest and a hex secret printed side by side are not one.
+   const bool whole=best==j-i&&best>0;
+   if(!hexish(t)||(j>i&&gap(line.at(furthest),line.at(j))>(whole?0.95:1.5)))break;
    if(candidates.at(line.at(j)).rect.right()>candidates.at(line.at(furthest)).rect.right())furthest=j;
    joined+=t;
    if(joined.size()>130)break;
@@ -1243,6 +1245,8 @@ QSet<int> publicWords(const QMap<int,QList<int>>& lines,const QList<QString>& pl
  // starts, its words, the column's end, and whether the row shows a file name or ref after it.
  struct Listed {int lead=0;int digest=0;int end=0;bool named=false;};
  QHash<int,Listed> listed;
+ // #2084: the rows of git log's abbreviated and full hashes: where they start and how many words.
+ QHash<int,QPair<int,int>> logged;
  for(int k=0;k<keys.size();++k){
   const auto& line=lines[keys.at(k)];const int n=int(line.size());const int lead=leadOf(line);
   // A W3C traceparent, a word of its own.
@@ -1298,15 +1302,34 @@ QSet<int> publicWords(const QMap<int,QList<int>>& lines,const QList<QString>& pl
    const bool named=fileEnd(line,lead+d,end,file,gap(line.at(lead+d-1),line.at(lead+d))>=1.5||markWord.match(next).hasMatch())==end;
    if((rest&&(next.startsWith(QLatin1String("refs/"))||next.startsWith(QLatin1String("HEAD"))||file.match(next).hasMatch()))||named){
     for(int i=lead;i<lead+d;++i)mark(line.at(i));
-    for(int i=lead+d;i<end;++i){known.insert(line.at(i));names.insert(line.at(i));}
+    for(int i=lead+d;i<end;++i)known.insert(line.at(i));
+    if(file.match(plain.at(line.at(end-1))).hasMatch())names.insert(line.at(end-1));
     listed.insert(k,{lead,d,end,true});
    }else listed.insert(k,{lead,d,end,false});
+  }
+  // #2084: "sha256:" stuck to its value as recognition reads a lockfile's hash: its 256 or 512 misread
+  // (sha25e, sha2S6, shaS12) and its colon read as l, I, J, f, |, [ or ( or lost, then hex as read.
+  // The value is the rest of that word and the hex words joined after it (up to six, each within one
+  // and a half characters, less than a space once it is whole), to a digest's length within two; only
+  // those words are skipped.
+  for(int i=0;i<n;++i){
+   static const QRegularExpression glued(QStringLiteral("^[\"'(\\[]?sha(?:1|224|256|384|512|2[5S][6e]|[5S][1lI]2)[:;lIiJjft|!\\[\\](]{0,3}(?=[0-9a-fA-FoOlI]{6})"));
+   const auto m=glued.match(plain.at(line.at(i)));if(!m.hasMatch())continue;
+   QString value=plain.at(line.at(i)).mid(m.capturedLength());int last=-1;
+   for(int j=i;j<n&&j<i+6;++j){
+    // Past a whole digest only with less than a space before the next piece, as in digestAt.
+    if(j>i){if(!hexish(plain.at(line.at(j)))||gap(line.at(j-1),line.at(j))>(last==j-1?0.95:1.5))break;value+=plain.at(line.at(j));}
+    else if(!hexish(value))break;
+    for(const int length:{32,40,64,96,128})if(std::abs(int(value.size())-length)<=2)last=j;
+   }
+   if(last>=0){for(int j=i;j<=last;++j)mark(line.at(j));i=last;}
   }
   // #2084: git log's abbreviated hash before its full one (--format='%h %H …'): a word of 7 to 12
   // characters with a digit, hex as read but for one character, then (within four characters) a SHA-1
   // or SHA-256 whose start reads the same but for two characters as recognition misreads them
   // ("©3724d5" "¢c3724d57b…"), or of 6 but for one (its first character lost), on a row that names
-  // no secret. A secret does not repeat its own start before it.
+  // no secret. Such a row counts only beside another of the same form, its abbreviation within four
+  // characters of this one's, right above or below (a log's rows; below).
   if(lead+1<n&&gap(line.at(lead),line.at(lead+1))<=4.0){
    const auto fold=[&](const QString& word){auto m=mapped(word).toLower();m.replace(QChar(0xa2),QChar('c'));return m;};
    const auto abbreviated=fold(plain.at(line.at(lead)));
@@ -1324,7 +1347,7 @@ QSet<int> publicWords(const QMap<int,QList<int>>& lines,const QList<QString>& pl
       for(int j=1;j<=start.size();++j)current[j]=std::min({previous[j]+1,current[j-1]+1,previous[j-1]+(abbreviated.at(i-1)==start.at(j-1)?0:1)});
       std::swap(previous,current);
      }
-     if(*std::min_element(previous.cbegin(),previous.cend())<=(m>=7?2:1))for(int i=lead;i<lead+1+d;++i)mark(line.at(i));
+     if(*std::min_element(previous.cbegin(),previous.cend())<=(m>=7?2:1))logged.insert(k,{lead,d+1});
     }
    }
   }
@@ -1364,7 +1387,8 @@ QSet<int> publicWords(const QMap<int,QList<int>>& lines,const QList<QString>& pl
      if(std::any_of(row.cbegin(),row.cend(),[&](int w){return plain.at(w).contains('=')&&!(at+d<end&&w==row.at(at+d)&&(markWord.match(plain.at(w)).hasMatch()||markLead.match(plain.at(w)).hasMatch())&&!plain.at(w).mid(2).contains('='));}))break;
      form=shape;above=box.top();height=box.height();
      for(int i=at;i<at+d;++i)mark(row.at(i));
-     for(int i=at+d;i<end;++i){known.insert(row.at(i));names.insert(row.at(i));}
+     for(int i=at+d;i<end;++i)known.insert(row.at(i));
+     if(at+d<end&&file.match(plain.at(row.at(end-1))).hasMatch())names.insert(row.at(end-1));
     }
    }}
   // Labelled public values: kind 0 hex (with dashes: UUIDs), kind 1 base64; a length of 0 runs on.
@@ -1460,36 +1484,48 @@ QSet<int> publicWords(const QMap<int,QList<int>>& lines,const QList<QString>& pl
    i=qMax(i,j-1);
   }
  }
+ for(auto it=logged.cbegin();it!=logged.cend();++it){
+  const auto& row=lines[keys.at(it.key())];const auto& box=candidates.at(row.at(it->first)).rect;
+  const auto beside=[&](int m){
+   const auto other=logged.constFind(m);if(other==logged.cend())return false;
+   const auto& near=candidates.at(lines[keys.at(m)].at(other->first)).rect;
+   return std::abs(near.left()-box.left())<=4*glyph(row.at(it->first))&&std::abs(near.top()-box.top())<=2.5*qMax(near.height(),box.height());
+  };
+  if(beside(it.key()-1)||beside(it.key()+1))for(int i=it->first;i<it->first+it->second;++i)mark(row.at(i));
+ }
  // #2084: a checksum listing whose command scrolled away: a row with a digest at its start and more
  // words after it in its column, right below or above a row that shows a digest before a file name
  // (its digest starting within four characters of that one's, within two and a half of its heights),
- // is a row of the listing too, however recognition read its name: "Sc" "reen-Capture-…" "-png". Its
- // name holds a digit or a dot, no "=" but sha256sum's mark, and names no secret. Each row found this
- // way vouches for the next.
- for(bool grown=true;grown;){
-  grown=false;
-  for(int k=0;k<keys.size();++k){
-   auto it=listed.find(k);if(it==listed.end()||it->named)continue;
-   const auto& row=lines[keys.at(k)];const auto& box=candidates.at(row.at(it->lead)).rect;
+ // is a row of the listing too when recognition broke its name ("Sc" "reen-Capture-…" "-png",
+ // "invoice-INV-2026-71617" "-" "pdf"): the name's words run together end in a dot, or in one of
+ // ".", "-", "«", "," and a short extension, with a digit before it; no word holds an "=" but
+ // sha256sum's mark, and none names a secret. Only a row shown by its own name vouches for another.
+ {static const QRegularExpression broken(QStringLiteral("\\d[^\\s=]*(?:\\.|[.\\-«,]\\s?[A-Za-z][A-Za-z0-9]{1,4})$"));
+  QList<int> found;
+  for(auto it=listed.cbegin();it!=listed.cend();++it){
+   if(it->named)continue;
+   const int k=it.key();const auto& row=lines[keys.at(k)];const auto& box=candidates.at(row.at(it->lead)).rect;
    const auto beside=[&](int m){
     const auto other=listed.constFind(m);if(other==listed.cend()||!other->named)return false;
     const auto& near=candidates.at(lines[keys.at(m)].at(other->lead)).rect;
     return std::abs(near.left()-box.left())<=4*glyph(row.at(it->lead))&&std::abs(near.top()-box.top())<=2.5*qMax(near.height(),box.height());
    };
    if(!beside(k-1)&&!beside(k+1))continue;
-   bool clean=true,shaped=false;
+   QString name;bool clean=true;
    for(int i=it->lead+it->digest;i<it->end&&clean;++i){
-    const auto& t=plain.at(row.at(i));
-    shaped=shaped||hasDigit(t)||t.contains('.');
-    if(t.contains('=')&&!(i==it->lead+it->digest&&(markWord.match(t).hasMatch()||markLead.match(t).hasMatch())&&!t.mid(2).contains('=')))clean=false;
+    auto t=plain.at(row.at(i));
+    if(i==it->lead+it->digest)t.remove(markLead);
+    if(t.contains('=')&&!markWord.match(t).hasMatch())clean=false;
     clean=clean&&!namesSecret(t);
+    if(!markWord.match(t).hasMatch())name+=t;
    }
-   if(!clean||!shaped)continue;
-   for(int i=it->lead;i<it->lead+it->digest;++i)mark(row.at(i));
-   for(int i=it->lead+it->digest;i<it->end;++i){known.insert(row.at(i));names.insert(row.at(i));}
-   it->named=true;grown=true;
+   if(clean&&broken.match(name).hasMatch())found.append(k);
   }
- }
+  for(const int k:found){
+   const auto& it=listed[k];const auto& row=lines[keys.at(k)];
+   for(int i=it.lead;i<it.lead+it.digest;++i)mark(row.at(i));
+   for(int i=it.lead+it.digest;i<it.end;++i)known.insert(row.at(i));
+  }}
  // Fails closed: where a public word would have joined a token segment with a word that is neither
  // public nor its evidence and looks like a secret of its own (eight letters and digits or more, with
  // both, after any label in it: a recovery code, a UUID after "API Key:"), that segment's words all stay
@@ -3651,9 +3687,13 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
      const bool apart=second>=0&&candidates.at(second).text==QLatin1String(":");
      if(!words.contains(first)&&(header.match(field).hasMatch()||(apart&&header.match(field+QLatin1Char(':')).hasMatch())))continue;
     }
-    // #2084: digits read inside one hex word of a digest's length (a SHA-1 or SHA-256 the key rule
-    // shows) are no card: "4e03047240129765f285…" before its ref.
-    if(rule.category=="card"&&words.size()==1&&hexRun(candidates.at(words.first()).text))continue;
+    // #2084: digits read inside one hex word of a digest's length (32, 40 or 64 characters, one more or
+    // less: an MD5, SHA-1 or SHA-256) are no card: "4e03047240129765f285…" before its ref.
+    if(rule.category=="card"&&words.size()==1){
+     const auto& word=candidates.at(words.first()).text;
+     const bool digestLength=std::abs(int(word.size())-32)<=1||std::abs(int(word.size())-40)<=1||std::abs(int(word.size())-64)<=1;
+     if(digestLength&&hexRun(word))continue;
+    }
     // Merge both views before reserving any word, so a wrapped continuation
     // cannot be discarded merely because its prefix matched the plain view.
     for(qsizetype i=0;i<pending.size();){
