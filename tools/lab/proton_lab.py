@@ -760,6 +760,29 @@ def provision_guest(chain, guest, guest_broker, folder, progress, guest_referenc
         return borrowed
 
 
+def collect_guest(chain, guest, guest_broker, reference, folder):
+    """Export the guest's copy. A new broker process can read an empty answer for an entry that is
+    there, and that answer sticks for the life of the process (#1418), so one failed export is made
+    once more by new processes (#2111). Nothing changes before an export succeeds: the copy stays in
+    the guest and the chain keeps its state. Each try goes to lend.json as `collectTries`."""
+    tries = []
+    for attempt in range(1, PROVISION_TRIES + 1):
+        try:
+            chain.collect(str(guest.run), guest_broker, reference)
+        except bridge.ProvisionError:
+            tries.append({'attempt': attempt, 'at': now_text(), 'failedStep': 'collect',
+                          'keyringAfter': guest_keyring(guest)})
+            note(folder, collectTries=tries)
+            if attempt == PROVISION_TRIES:
+                raise  # the copy is still outstanding: the lock stays blocked for recover
+            restart_dead_keyring(guest, folder)
+            time.sleep(PROVISION_RETRY_PAUSE)
+            continue
+        if tries:
+            note(folder, collectTries=tries + [{'attempt': attempt, 'at': now_text(), 'collected': True}])
+        return
+
+
 def lend(layout, run, session, owner, purpose, command, chain_factory=None, guest_factory=Guest,
          runner=subprocess.call, clock=desktop_lock.now_utc, heartbeat=True, guest_reference=None):
     """Lend the builder's session to one VM run for COMMAND, then carry its refreshed state back."""
@@ -807,7 +830,7 @@ def lend(layout, run, session, owner, purpose, command, chain_factory=None, gues
             result['testExit'] = 127  # collect and carry back all the same
         note(folder, step='tested', testExit=result['testExit'])
         guest.stop_app()
-        chain.collect(str(guest.run), guest_broker, borrowed)
+        collect_guest(chain, guest, guest_broker, borrowed, folder)
         result['rotated'] = chain.current != chain.baseline  # a comparison only; nothing is kept
         note(folder, step='collected', rotated=result['rotated'])
         result['carriedBack'] = str(carry_back(chain, folder))
