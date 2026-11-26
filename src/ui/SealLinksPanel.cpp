@@ -44,7 +44,9 @@ void SealLinksPanel::build(QFormLayout* form,const Setting& setting) {
 }
 void SealLinksPanel::load(const QJsonObject& profile,const QJsonObject& status,bool passphraseLoaded,bool edited) {
  provider_=profile.value("provider").toString();if(profileId_!=profile.value("id").toString())hintFor_.clear();profileId_=profile.value("id").toString();
- credentialMode_=profile.value("credentials").toObject().value("mode").toString("keychain");
+ // Where the passphrase itself is kept: its own reference when saved, else the destination's kind of storage.
+ const auto passReference=profile.value("seal").toObject().value("passphraseCredentials").toObject();
+ credentialMode_=(passReference.isEmpty()?profile.value("credentials").toObject():passReference).value("mode").toString("keychain");
  const auto check=status.value("seal").toObject();checkState_=check.value("state").toString("untested");checkReason_=check.value("reason").toString();
  // A status refresh (edited) keeps what the credential hint said; a newly shown destination waits for it.
  const auto id=profile.value("id").toString();if(!edited||id!=hintFor_){loaded_=passphraseLoaded;}

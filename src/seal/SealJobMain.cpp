@@ -51,7 +51,7 @@ int runSealJob() {
  if(split&&(!request["data"].isString()||!validBinName(request["bin"].toString())))return refuse({"seal_failed","The sealing request is invalid.",{}});
  QFile source(request["input"].toString());
  if(!source.open(QIODevice::ReadOnly)||source.size()!=bytes)return refuse({"seal_failed","Couldn't read the file to seal.",{}});
- const auto key=randomKey();if(key.isEmpty())return refuse({"seal_failed","Couldn't make a key.",{}});
+ auto key=randomKey();if(key.isEmpty())return refuse({"seal_failed","Couldn't make a key.",{}});
  const Meta meta{request["name"].toString(),request["type"].toString(),bytes};
  Output page;if(!create(page.file,request["page"].toString()))return refuse({"seal_failed","Couldn't create the sealed page.",{}});
  const auto prefix=pagePrefix(split),suffix=pageSuffix(),open=dataOpen(split,request["bin"].toString());
@@ -70,6 +70,7 @@ int runSealJob() {
  const auto close=dataClose();page.write(close.constData(),close.size());page.write(suffix.constData(),suffix.size());
  if(!page.ok||!page.file.flush()||::fsync(page.file.handle())!=0)return refuse({"seal_failed","Couldn't write the sealed page.",{}});
  result["page"]=page.result();result["key"]=fragment(key);
+ OPENSSL_cleanse(key.data(),size_t(key.size()));
  return reply(result);
 }
 }

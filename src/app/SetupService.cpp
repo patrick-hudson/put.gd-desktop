@@ -77,7 +77,11 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
  // Destinations can share one keychain entry: a store (or Clear) reads, merges and writes it
  // whole, so only one at a time per entry, from the read through the write (#1890).
  // An unlock holds it too, so a read begun before a store can't put older values back after it.
- const auto entry=(kind=="storeCredentials"||kind=="unlockCredentials")&&reference["mode"]=="keychain"&&!reference["reference"].toString().isEmpty()?"keychain:"+reference["reference"].toString():QString();
+ const auto sealReference=profile["seal"].toObject()["passphraseCredentials"].toObject();
+ const bool sealKind=kind=="storeSealPassphrase"||kind=="unlockSealPassphrase";
+ // #2079: a Seal links passphrase's keychain entry takes the same one-at-a-time slot as any entry.
+ const auto entry=sealKind?(sealReference["mode"]=="keychain"&&!sealReference["reference"].toString().isEmpty()?"keychain:"+sealReference["reference"].toString():QString())
+  :(kind=="storeCredentials"||kind=="unlockCredentials")&&reference["mode"]=="keychain"&&!reference["reference"].toString().isEmpty()?"keychain:"+reference["reference"].toString():QString();
  if(active_.contains(key)||(!entry.isEmpty()&&active_.contains(entry))||active_.size()-entrySlots_.size()>=32) {reply({"setup_busy","Another setup step is already running. Wait for it to finish.",{}},{});return;}
  // Whether put.gd ever saved to this keychain entry: only such a save marks it (#1890).
  const bool storedBefore=kind=="storeCredentials"&&!entry.isEmpty()&&status_&&status_->keychainSaved(reference["reference"].toString());

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-JK/iSgkDPEXBXWG3spqXVhXcHHZst11iT/A4LdlzPWE='; style-src 'sha256-MYtx15lOvZWkh7YAlUVEHZ+x3tveNgkDhh6EC+CTOdM='; img-src blob:; media-src blob:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-9QGypk7ij/4wkG40yLU7hbKt1BE1LopQcBq+q2MQLo4='; style-src 'sha256-MYtx15lOvZWkh7YAlUVEHZ+x3tveNgkDhh6EC+CTOdM='; img-src blob:; media-src blob:; connect-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -68,7 +68,8 @@ function header(h){
  if(h[8]!==1)throw err("This sealed link needs a newer viewer.");
  if(h[9]>1||h[10]||h[11]||be32(h,12)!==1048576)throw 0;
  const it=be32(h,16),pass=h[9]===1;
- if(pass?(it<1000||it>10000000):it!==0)throw 0;
+ // Version 1 fixes the passphrase cost at 600,000 iterations.
+ if(pass?it!==600000:it!==0)throw 0;
  for(let i=59;i<64;i++)if(h[i])throw 0;
  return {bytes:h.slice(0,HB),pass,it,salt:h.slice(20,52),prefix:h.slice(52,59),chunk:1048576};
 }

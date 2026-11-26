@@ -53,6 +53,9 @@ public:
     QJsonObject capabilities() const;
     bool active() const { return session_.has_value(); }
     QString activeId() const { return session_ ? session_->op.id : QString{}; }
+    // #2079: where the session is, for the Seal toggle: its window is open, or an export runs.
+    bool reviewing() const { return session_ && session_->state == RecordingState::Reviewing; }
+    bool exporting() const { return session_ && session_->state == RecordingState::Exporting; }
     // capabilities | windows | prepare | start | pause | resume | stop | cancel |
     // inspect | select | raise | overlay | edit | preview | saveCopy | upload
     void command(const QString& command, const QJsonObject& params, JsonReply);

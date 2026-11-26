@@ -467,7 +467,7 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
  // copy took its place, between the capture and the link. Say so, and where
  // the link still is.
  bool sealed=!items.isEmpty(),passphrase=false;QStringList unsealed;
- for(const auto& value:items){const auto seal=value.toObject()["seal"].toObject();sealed&=seal["status"]=="sealed";passphrase|=seal["passphrase"].toBool();if(seal["status"]=="off"&&!unsealed.contains(seal["reason"].toString()))unsealed.append(seal["reason"].toString());}
+ for(const auto& value:items){const auto seal=value.toObject()["seal"].toObject();sealed&=seal["status"]=="sealed";passphrase|=seal["passphrase"].toBool();if(seal["status"]=="off"&&value.toObject()["uploadStatus"]=="uploaded"&&!unsealed.contains(seal["reason"].toString()))unsealed.append(seal["reason"].toString());}
  const QString copied=copy=="copied"?(localOnly?"Result copied to clipboard.":sealed?QString(items.size()>1?"Sealed links copied to clipboard.":"Sealed link copied to clipboard.")+(passphrase?QStringLiteral(" Send the passphrase separately."):QString()):"Link copied to clipboard."):copy=="failed"?(localOnly?"Couldn't copy the result.":"Couldn't copy the link."):
   copy=="suppressed"?(localOnly?"Result not copied because your clipboard changed. Copy it from History.":"Link not copied because your clipboard changed. Copy it from History."):QString{};
  // #1820: a covered upload whose original, before covering, couldn't be kept locally says so, whatever the upload's outcome.

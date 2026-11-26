@@ -39,13 +39,22 @@ QJsonObject runSealCheck(StorageProvider& provider,const Destination& destinatio
   return removed.status=="removed"||removed.status=="missing"?QStringLiteral("removed"):QStringLiteral("failed");
  };
  if(url.isEmpty()){const auto left=cleanup();return failed(QStringLiteral("This destination gives no link for an upload."),left);}
+ // On plain http anyone on the network path can swap the page and read the key, so the link
+ // recipients open must be https from its first request (or on this computer).
+ {const QUrl link(url);if(link.scheme()!="https"&&!QStringList{"localhost","127.0.0.1","::1"}.contains(link.host())){const auto left=cleanup();return failed(QStringLiteral("The link address isn't https. On plain http anyone on the network path could replace the page and read the key."),left);}}
  // Cancelled after the upload: the test page still goes, and nothing more is fetched.
  if(cancelled->load()){const auto left=cleanup();return QJsonObject{{"state","cancelled"},{"cleanup",left}};}
  // The link goes over standard input: a presigned link's signature never reaches a command line.
  QProcess probe;probe.setStandardErrorFile(QProcess::nullDevice());probe.start(cli,{"--seal-probe","-"});
  QJsonObject answer;
- if(probe.waitForStarted(10000)&&(probe.write(url.toUtf8()+'\n'),probe.closeWriteChannel(),probe.waitForFinished(90000)))answer=QJsonDocument::fromJson(probe.readAllStandardOutput().trimmed()).object();
- else probe.kill();
+ if(probe.waitForStarted(10000)) {
+  probe.write(url.toUtf8()+'\n');probe.closeWriteChannel();
+  // Up to 90 s, but a cancel stops it at once.
+  for(int waited=0;waited<90000&&!probe.waitForFinished(200);waited+=200)if(cancelled->load())break;
+  if(probe.state()==QProcess::NotRunning)answer=QJsonDocument::fromJson(probe.readAllStandardOutput().trimmed()).object();
+ }
+ if(probe.state()!=QProcess::NotRunning){probe.kill();probe.waitForFinished(2000);}
+ if(cancelled->load()){const auto left=cleanup();return QJsonObject{{"state","cancelled"},{"cleanup",left}};}
  const auto got=answer["result"].toObject();
  QString reason;
  if(!answer["ok"].toBool())reason=QStringLiteral("Couldn't open the test page's link.");

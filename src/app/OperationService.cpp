@@ -1387,15 +1387,13 @@ void OperationService::setSeal(const QString& id,bool enabled,JsonReply reply) {
  if(found==active_.cend()){reply({"operation_not_found","That operation isn't waiting to upload.",{}},{});return;}
  {std::lock_guard lock(sealHooksMutex_);if(!sealOpen_.contains(id)){reply({"seal_too_late","This upload has already started, so Seal can't change now.",{{"operationId",id}}},{});return;}}
  // The open editor's own toggle, as a click sets it: its change comes back through recordSeal.
- if(editor_&&editingId_==id){editorCommand(id,"seal",{{"on",enabled}},[reply,id,enabled](Error e,QJsonObject state){if(e){reply(e,{});return;}reply({},{{"operationId",id},{"seal",enabled},{"editor",state}});});return;}
+ if((editor_&&editingId_==id)||(checkSessions_.contains(id)&&checkSessions_.value(id)->phase()=="editing")){editorCommand(id,"seal",{{"on",enabled}},[reply,id,enabled](Error e,QJsonObject state){if(e){reply(e,{});return;}reply({},{{"operationId",id},{"seal",enabled},{"editor",state}});});return;}
  // The recording review's own toggle, likewise; its change comes back as the review's seal event.
- if(recording_&&recording_->active()&&recording_->activeId()==id){QPointer<OperationService> owner(this);
-  recordingCommand("review",{{"id",id},{"action","seal"},{"on",enabled}},[owner,reply,id,enabled](Error e,QJsonObject state){
-   if(e.code=="seal_unavailable"){reply(e,{});return;}
-   // Still recording, so no review window yet: the choice is kept, and the window starts from it.
-   if(e&&owner)owner->recordSeal(id,enabled);
-   reply({},{{"operationId",id},{"seal",enabled},{"review",e?QJsonValue():QJsonValue(state)}});
-  });return;}
+ // While an export runs nothing changes; before review the choice is kept and the window starts from it.
+ if(recording_&&recording_->active()&&recording_->activeId()==id) {
+  if(recording_->exporting()){reply({"recording_state","Seal can't change while an export runs.",{{"operationId",id}}},{});return;}
+  if(recording_->reviewing()){recordingCommand("review",{{"id",id},{"action","seal"},{"on",enabled}},[reply,id,enabled](Error e,QJsonObject state){if(e){reply(e,{});return;}reply({},{{"operationId",id},{"seal",enabled},{"review",state}});});return;}
+ }
  recordSeal(id,enabled);
  reply({},{{"operationId",id},{"seal",enabled}});
 }
@@ -2110,6 +2108,7 @@ void OperationService::retry(const QString& id,JsonReply reply,bool sharingOnly)
 void OperationService::retryLocalSave(const QString& id,JsonReply reply) {
  if(unsavedHistory_.contains(id)){reply(unsavedHistoryError(),{});return;}
  if(active_.contains(id)){reply(settling(id)?settlingError():Error{"operation_busy","This file is already being saved or uploaded.",{}},{});return;}
+ if(held_.contains(id)){reply({"operation_busy","History is changing this upload. Try again in a moment.",{}},{});return;}
  if(cleanupInProgress_&&automaticCleanup_){cleanupStop_->store(true);afterCleanup_.append([this,id,reply]{retryLocalSave(id,reply);});return;}
  if(cleanupInProgress_){reply({"cleanup_busy","Temporary files are being cleared. Wait a moment and try again.",{}},{});return;}
  if(!ready_){reply(notReadyError(),{});return;}
@@ -2141,6 +2140,8 @@ void OperationService::retryLocalSave(const QString& id,JsonReply reply) {
  });
 }
 void OperationService::copyResult(const QString& id,JsonReply reply) {
+ // #2079: it rewrites the operation's record, which Forget key may be writing.
+ if(held_.contains(id)){reply({"operation_busy","History is changing this upload. Try again in a moment.",{}},{});return;}
  JsonReply pendingReply;
  if(active_.contains(id)&&!detachCompletedUploadCopies(id,pendingReply)) {reply({"operation_busy","Wait for this action to finish before copying its result.",{}},{});return;}
  auto completed=[reply,pendingReply](Error error,QJsonObject result){if(pendingReply)pendingReply(error,result);reply(error,result);};

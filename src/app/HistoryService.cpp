@@ -492,7 +492,9 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
    // #2079: the sealed page is gone, so its data file beside it goes too. It is checked and
    // deleted like the page, with its own durable checkpoint; one left behind holds only
    // ciphertext nobody has a page for, and the deletion says so.
-   if((outcome=="removed"||outcome=="already_missing")&&items[index].toObject().contains("sealData")&&!quitting->load()) {
+   // Quit before the data file's turn: the item stays unfinished, so Retry deletion still takes it.
+   if((outcome=="removed"||outcome=="already_missing")&&items[index].toObject().contains("sealData")&&items[index].toObject()["sealDataStatus"]!="removed"&&quitting->load()){outcome="unknown";e={"seal_data_left","The sealed page was deleted, but put.gd quit before deleting its data file. Select Retry deletion.",{}};}
+   else if((outcome=="removed"||outcome=="already_missing")&&items[index].toObject().contains("sealData")&&!quitting->load()) {
     auto part=StorageReceipt::fromJson(items[index].toObject()["sealData"].toObject());
     part.destination.profileId=receipt.destination.profileId;part.destination.credentialReference=receipt.destination.credentialReference;
     QString partOutcome="unknown";Error partError;

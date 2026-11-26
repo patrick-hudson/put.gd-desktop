@@ -64,7 +64,8 @@ QString readPassphrase(const QString& path,Error& error) {
  if(path.isEmpty())return {};
  QFile file(path);if(!file.open(QIODevice::ReadOnly)){error={"seal_passphrase_file","Couldn't read the passphrase file.",{}};return {};}
  // The whole file is the passphrase and one optional line ending: nothing beyond it is ignored.
- const auto raw=file.read(seal::maximumPassphraseBytes+3);const bool more=!file.atEnd();
+ // Decomposed text can be up to 4 bytes per normalized byte; the limit is on the normalized form.
+ const auto raw=file.read(4*seal::maximumPassphraseBytes+3);const bool more=!file.atEnd();
  auto text=QString::fromUtf8(raw);
  if(text.endsWith('\n'))text.chop(1);if(text.endsWith('\r'))text.chop(1);
  if(more||text.isEmpty()||text.contains('\n')||text.contains('\r')||text.normalized(QString::NormalizationForm_C).toUtf8().size()>seal::maximumPassphraseBytes){error={"seal_passphrase_file","The passphrase file must hold one line of at most 1 KB.",{}};return {};}
