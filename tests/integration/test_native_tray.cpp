@@ -448,19 +448,19 @@ private slots:
   layout.children.erase(layout.children.begin(),layout.children.begin()+6);
   QCOMPARE(layout.props["children-display"].toString(), QString("submenu"));
   // The agreed order (2026-11-14), each group closed by a separator; "-" is a separator.
-  const QStringList order{"Capture region","Capture region (sealed)","Repeat last region","Capture window","Capture monitor","Capture desktop","Capture scrolling region","-","Capture region & edit","Edit image","Record screen","-","Copy text from region","Upload clipboard","-","Capture delay: none","Capture output","-","Open put.gd","Settings","Update available","-","Quit put.gd"};
+  const QStringList order{"Capture region","Capture region (encrypted)","Repeat last region","Capture window","Capture monitor","Capture desktop","Capture scrolling region","-","Capture region & edit","Edit image","Record screen","-","Copy text from region","Upload clipboard","-","Capture delay: none","Capture output","-","Open put.gd","Settings","Update available","-","Quit put.gd"};
   const QList<int> ids{1,50,32,2,31,3,39,6,5,13,16,10,41,4,47,33,23,48,8,7,17,49,12};
   QCOMPARE(layout.children.size(),order.size());
   for (int i = 0; i < order.size(); ++i) {const auto item=qdbus_cast<WireLayout>(layout.children.at(i).variant());QCOMPARE(item.id,ids[i]);if(order[i]=="-")QCOMPARE(item.props["type"].toString(),QString("separator"));else QCOMPARE(item.props["label"].toString(),order[i]);}
   QVERIFY(!qdbus_cast<WireLayout>(layout.children.at(20).variant()).props["visible"].toBool());
-  // #2079: Capture region (sealed), command 50, shows only once its destination passed the sealed-link check.
-  const auto sealedRow=[](const WireLayout& menu){for(const auto& child:menu.children){const auto item=qdbus_cast<WireLayout>(child.variant());if(item.id==50)return item;}return WireLayout{};};
-  QCOMPARE(sealedRow(layout).id,50);QVERIFY(!sealedRow(layout).props["visible"].toBool());
-  // Once it passed, the row shows and starts a sealed region capture.
-  {QSignalSpy sealedActions(&tray,&NativeTray::actionActivated);traymenu::State sealed;sealed.sealedRegion=true;tray.setMenu(sealed);
+  // #2079: Capture region (encrypted), command 50, shows only once its destination passed the encrypted-link check.
+  const auto encryptedRow=[](const WireLayout& menu){for(const auto& child:menu.children){const auto item=qdbus_cast<WireLayout>(child.variant());if(item.id==50)return item;}return WireLayout{};};
+  QCOMPARE(encryptedRow(layout).id,50);QVERIFY(!encryptedRow(layout).props["visible"].toBool());
+  // Once it passed, the row shows and starts an encrypted region capture.
+  {QSignalSpy encryptedActions(&tray,&NativeTray::actionActivated);traymenu::State encrypted;encrypted.encryptedRegion=true;tray.setMenu(encrypted);
    const auto shown=qdbus_cast<WireLayout>(call("/Menu","com.canonical.dbusmenu","GetLayout",{0,-1,QStringList{}}).arguments().at(1));
-   const auto row=sealedRow(shown);QCOMPARE(row.id,50);QVERIFY(row.props["visible"].toBool());
-   QCOMPARE(click(50).type(),QDBusMessage::ReplyMessage);PUTGD_TRY_COMPARE(sealedActions.size(),1);QCOMPARE(sealedActions.first().first().toString(),QString("region-sealed"));
+   const auto row=encryptedRow(shown);QCOMPARE(row.id,50);QVERIFY(row.props["visible"].toBool());
+   QCOMPARE(click(50).type(),QDBusMessage::ReplyMessage);PUTGD_TRY_COMPARE(encryptedActions.size(),1);QCOMPARE(encryptedActions.first().first().toString(),QString("region-encrypted"));
    tray.setMenu({});}
   // The capture delay is a radio group one level down, None chosen until told otherwise.
   const auto delay = qdbus_cast<WireLayout>(layout.children.at(15).variant());

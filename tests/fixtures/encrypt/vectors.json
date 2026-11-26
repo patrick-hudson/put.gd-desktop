@@ -1,5 +1,5 @@
 {
-    "about": "Sealed link format v1 test vectors (#2079). tests/unit/test_seal.cpp checks C++ seals each to containerSha256 and opens it; tests/seal/browser_vectors.py checks Firefox and Chromium do the same. Pattern bytes: (i*31+7) % 251. Large containers are kept by hash only.",
+    "about": "Encrypted link format v1 test vectors (#2079). tests/unit/test_encrypt.cpp checks C++ encrypts each to containerSha256 and opens it; tests/encrypt/browser_vectors.py checks Firefox and Chromium do the same. Pattern bytes: (i*31+7) % 251. Large containers are kept by hash only. The plaintexts and the PGDSEAL1 containers are v1 format data and keep the feature's original name.",
     "schemaVersion": 1,
     "vectors": [
         {

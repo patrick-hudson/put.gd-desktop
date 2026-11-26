@@ -106,9 +106,9 @@ bool HistoryModel::scanDestinations()const{
 }
 QString HistoryModel::friendlyAction(const QString& action){if(action=="region")return "Region";if(action=="window")return "Window";if(action=="desktop")return "Full desktop";if(action=="monitor")return "Monitor";if(action=="clipboard")return "Clipboard";if(action=="files")return "File manager";if(action=="edit")return "Region & edit";if(action=="scroll")return "Scrolling region";if(action=="record")return "Recording";if(action=="images"||action=="image")return "Image";if(action=="text")return "Text";if(action=="videos"||action=="video")return "Video";return "File";}
 bool HistoryModel::storedNothing(const QJsonObject& r){return r["records"].toArray().isEmpty()&&r["operation"].toObject()["items"].toArray().isEmpty();}
-QString HistoryModel::sealedLabel(const QJsonObject& r){
- if(!r["sealed"].toBool())return {};
- return r["seal"].toObject()["keyForgotten"].toBool()?QStringLiteral("Sealed link, key forgotten"):QStringLiteral("Sealed link");
+QString HistoryModel::encryptedLabel(const QJsonObject& r){
+ if(!r["encrypted"].toBool())return {};
+ return r["encrypt"].toObject()["keyForgotten"].toBool()?QStringLiteral("Encrypted, key forgotten"):QStringLiteral("Encrypted");
 }
 QString HistoryModel::failureLabel(const QJsonObject& r){
  if(localSaveFailed(r)&&r["uploadStatus"]!="failed")return "Local save failed";
@@ -232,10 +232,10 @@ QVariant HistoryModel::data(const QModelIndex& i,int role)const{
  const auto r=record(i.row());const auto op=r["operation"].toObject();
  if(role==RecordRole)return r;
  if(role==Qt::DisplayRole){const auto name=r["name"].toString();return r["mime"].toString().startsWith("image/")?QFileInfo(name).completeBaseName():name;}
- // #2079: a sealed link says so, as its lock glyph shows.
- const QString sealed=r["sealed"].toBool()?sealedLabel(r)+". ":QString();
- if(role==Qt::AccessibleTextRole)return r["name"].toString()+". "+sealed+statusText(r);
- if(role==Qt::ToolTipRole)return Ui::tooltipText(r["name"].toString()+"\n"+sealed+statusText(r));
+ // #2079: an encrypted link says so, as its lock glyph shows.
+ const QString encrypted=r["encrypted"].toBool()?encryptedLabel(r)+". ":QString();
+ if(role==Qt::AccessibleTextRole)return r["name"].toString()+". "+encrypted+statusText(r);
+ if(role==Qt::ToolTipRole)return Ui::tooltipText(r["name"].toString()+"\n"+encrypted+statusText(r));
  if(role==DayRole){if(!daySections())return QString{};const auto current=section(i.row());return i.row()==0||current!=section(i.row()-1)?current:QString{};}
  if(role==SectionRole)return daySections()?section(i.row()):QString{};
  if(role==DayCountRole){if(!daySections()||facts_.at(i.row()).active)return QString{};const auto date=createdAt_.at(i.row()).date();return dayCounts_.contains(date)?itemCount(dayCounts_.value(date)):QString{};}

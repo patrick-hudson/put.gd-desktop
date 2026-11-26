@@ -1,8 +1,8 @@
-#include "SealCheck.h"
+#include "EncryptCheck.h"
 #include "OperationService.h"
 #include "core/Log.h"
-#include "core/SealJob.h"
-#include "seal/SealPage.h"
+#include "core/EncryptJob.h"
+#include "encrypt/EncryptPage.h"
 #include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
@@ -14,18 +14,18 @@ namespace {
 QJsonObject failed(const QString& reason,const QString& cleanup={}) {QJsonObject out{{"state","failed"},{"reason",reason}};if(!cleanup.isEmpty())out["cleanup"]=cleanup;return out;}
 QString uuid() {return QUuid::createUuid().toString(QUuid::WithoutBraces);}
 }
-Destination sealCheckDestination(const QString& profileId,const QJsonObject& profile,const QString& revision) {
+Destination encryptCheckDestination(const QString& profileId,const QJsonObject& profile,const QString& revision) {
  return {profile.value("provider").toString(),profileId,revision,profile.value("settings").toObject(),profile.value("credentials").toObject()};
 }
-QJsonObject runSealCheck(StorageProvider& provider,const Destination& destination,const QString& staging,const QString& cli,std::shared_ptr<std::atomic_bool> cancelled) {
+QJsonObject runEncryptCheck(StorageProvider& provider,const Destination& destination,const QString& staging,const QString& cli,std::shared_ptr<std::atomic_bool> cancelled) {
  if(!cancelled)cancelled=std::make_shared<std::atomic_bool>(false);
  if(destination.profileRevision.isEmpty())return failed(QStringLiteral("The destination's settings revision is missing."));
  const auto caps=provider.capabilities(destination);
- if(!caps.sealUnavailable.isEmpty())return failed(caps.sealUnavailable);
+ if(!caps.encryptUnavailable.isEmpty())return failed(caps.encryptUnavailable);
  // The page, as a private file the provider uploads like any artifact.
- const auto page=seal::probePage();
+ const auto page=encrypt::probePage();
  if(!QDir().mkpath(staging))return failed(QStringLiteral("Couldn't write the test page."));
- Artifact artifact;artifact.id=uuid();artifact.path=staging+"/"+artifact.id;artifact.name=SealJob::randomName("html");artifact.mime="text/html";artifact.category="other";
+ Artifact artifact;artifact.id=uuid();artifact.path=staging+"/"+artifact.id;artifact.name=EncryptJob::randomName("html");artifact.mime="text/html";artifact.category="other";
  artifact.bytes=page.size();artifact.sha256=QString::fromLatin1(QCryptographicHash::hash(page,QCryptographicHash::Sha256).toHex());artifact.namingPrepared=true;
  // The test page goes again on every way out once this check made it, a failed write included.
  QFile file(artifact.path);if(!file.open(QIODevice::WriteOnly|QIODevice::NewOnly))return failed(QStringLiteral("Couldn't write the test page."));
@@ -56,7 +56,7 @@ QJsonObject runSealCheck(StorageProvider& provider,const Destination& destinatio
  // Cancelled after the upload: the test page still goes, and nothing more is fetched.
  if(cancelled->load()){const auto left=cleanup();return QJsonObject{{"state","cancelled"},{"cleanup",left}};}
  // The link goes over standard input: a presigned link's signature never reaches a command line.
- QProcess probe;probe.setStandardErrorFile(QProcess::nullDevice());probe.start(cli,{"--seal-probe","-"});
+ QProcess probe;probe.setStandardErrorFile(QProcess::nullDevice());probe.start(cli,{"--encrypt-probe","-"});
  QJsonObject answer;
  if(probe.waitForStarted(10000)) {
   probe.write(url.toUtf8()+'\n');probe.closeWriteChannel();
@@ -70,12 +70,12 @@ QJsonObject runSealCheck(StorageProvider& provider,const Destination& destinatio
  QString reason;
  if(!answer["ok"].toBool())reason=QStringLiteral("Couldn't open the test page's link.");
  else if(!got["network"].toString().isEmpty()||got["httpStatus"].toInt()!=200)reason=got["httpStatus"].toInt()?QStringLiteral("The test page's link answered HTTP %1.").arg(got["httpStatus"].toInt()):QStringLiteral("Couldn't open the test page's link.");
- else if(got["contentType"].toString()!="text/html")reason=QStringLiteral("The destination serves .html files as %1, so browsers won't open a sealed page.").arg(got["contentType"].toString().isEmpty()?QStringLiteral("no type"):got["contentType"].toString());
+ else if(got["contentType"].toString()!="text/html")reason=QStringLiteral("The destination serves .html files as %1, so browsers won't open an encrypted page.").arg(got["contentType"].toString().isEmpty()?QStringLiteral("no type"):got["contentType"].toString());
  else if(got["attachment"].toBool())reason=QStringLiteral("The destination makes browsers download .html files instead of opening them.");
- else if(got["finalScheme"]!="https"&&!QStringList{"localhost","127.0.0.1","::1"}.contains(got["finalHost"].toString()))reason=QStringLiteral("The link address isn't https, and browsers decrypt sealed pages only on https pages.");
- else if(got["tooLarge"].toBool()||qint64(got["bytes"].toDouble(-1))!=artifact.bytes||got["sha256"].toString()!=artifact.sha256)reason=QStringLiteral("The destination changed the test page's bytes, so a sealed page can't be checked.");
+ else if(got["finalScheme"]!="https"&&!QStringList{"localhost","127.0.0.1","::1"}.contains(got["finalHost"].toString()))reason=QStringLiteral("The link address isn't https, and browsers decrypt encrypted pages only on https pages.");
+ else if(got["tooLarge"].toBool()||qint64(got["bytes"].toDouble(-1))!=artifact.bytes||got["sha256"].toString()!=artifact.sha256)reason=QStringLiteral("The destination changed the test page's bytes, so an encrypted page can't be checked.");
  const auto left=cleanup();
- logging::info(logSettings(),"Sealed-link check",{{"provider",destination.providerId},{"profileId",destination.profileId},{"passed",reason.isEmpty()},{"httpStatus",got["httpStatus"]},{"contentType",got["contentType"]},{"cleanup",left}});
+ logging::info(logSettings(),"Encrypted-link check",{{"provider",destination.providerId},{"profileId",destination.profileId},{"passed",reason.isEmpty()},{"httpStatus",got["httpStatus"]},{"contentType",got["contentType"]},{"cleanup",left}});
  if(!reason.isEmpty())return failed(reason,left);
  return {{"state","passed"},{"cleanup",left}};
 }

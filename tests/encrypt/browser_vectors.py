@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Sealed-link vectors in real browsers (#2079).
+"""Encrypted-link vectors in real browsers (#2079).
 
-Serves the pinned viewer (src/seal/viewer.html) on 127.0.0.1 and opens
-tests/seal/harness.html in headless Firefox and Chromium. The harness seals every
+Serves the pinned viewer (src/encrypt/viewer.html) on 127.0.0.1 and opens
+tests/encrypt/harness.html in headless Firefox and Chromium. The harness encrypts every
 vector with WebCrypto and checks the bytes equal the C++ containers in
-tests/fixtures/seal/vectors.json, then opens each sealed page as a recipient would:
+tests/fixtures/encrypt/vectors.json, then opens each encrypted page as a recipient would:
 inline and split forms, passphrase, wrong key, missing key, changed data, a missing
 data file, and a file too large for the browser to read back (saved through the save picker,
 or a plain message without one). The server records every request; a page that asks for anything but itself
 and, in the split form, its one ./NAME.bin fails the run (the CSP check). Needs only
 the Python standard library and the browsers.
 
-    python3 tests/seal/browser_vectors.py [--browser firefox|chromium ...] [--timeout S]
+    python3 tests/encrypt/browser_vectors.py [--browser firefox|chromium ...] [--timeout S]
 """
 import argparse
 import base64
@@ -29,13 +29,13 @@ import threading
 import time
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-HERE = ROOT / "tests/seal"
-VIEWER = (ROOT / "src/seal/viewer.html").read_bytes()
+HERE = ROOT / "tests/encrypt"
+VIEWER = (ROOT / "src/encrypt/viewer.html").read_bytes()
 MARKER = b"<!--putgd-sealed-->"
-VECTORS = json.loads((ROOT / "tests/fixtures/seal/vectors.json").read_text(encoding="utf-8"))
+VECTORS = json.loads((ROOT / "tests/fixtures/encrypt/vectors.json").read_text(encoding="utf-8"))
 SPLIT_VECTORS = ("multi", "passphrase")
 STATIC = {"/harness.html": ("text/html", HERE / "harness.html"), "/harness.js": ("text/javascript", HERE / "harness.js"),
-          "/reference_seal.js": ("text/javascript", HERE / "reference_seal.js")}
+          "/reference_encrypt.js": ("text/javascript", HERE / "reference_encrypt.js")}
 
 
 # Test only, placed before the page's CSP: the browser can't read back the file the page puts
@@ -141,7 +141,7 @@ def browser_command(name: str, url: str, profile: str) -> list[str] | None:
     return None
 
 
-ALLOWED = re.compile(r"^/(harness\.html|harness\.js|reference_seal\.js|vectors\.json|result|container/\w+|"
+ALLOWED = re.compile(r"^/(harness\.html|harness\.js|reference_encrypt\.js|vectors\.json|result|container/\w+|"
                      r"(page|split|tampered|split-missing|large|large-nosave)/\w+\.html|(split|split-missing|large|large-nosave)/\w+\.bin)$")
 
 
@@ -151,7 +151,7 @@ def run_browser(name: str, timeout: float) -> list[str]:
     threading.Thread(target=server.serve_forever, daemon=True).start()
     url = f"http://127.0.0.1:{server.server_address[1]}/harness.html"
     problems = []
-    with tempfile.TemporaryDirectory(prefix="putgd-seal-") as profile:
+    with tempfile.TemporaryDirectory(prefix="putgd-encrypt-") as profile:
         command = browser_command(name, url, profile)
         if not command:
             server.shutdown()

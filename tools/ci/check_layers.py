@@ -47,16 +47,16 @@ ALLOWED = {
     'storage/sftp': {'core', 'secrets', 'storage/worker'},
     # #1941: the resident withholds a decoded code holding a secret from text.inspect with Quick redact's matcher
     # alone (the putgd_quick_redact library: Qt Core and Gui, no widgets); editor includes only core.
-    'app': {'client', 'core', 'editor', 'ipc', 'secrets', 'seal'},
+    'app': {'client', 'core', 'editor', 'ipc', 'secrets', 'encrypt'},
     # The edit document reads capture style data and geometry (#1893); core never includes the editor.
     'editor': {'core'},
     'ui': {'client', 'core', 'ipc', 'platform'},
     'capture': {'core', 'ipc', 'platform', 'platform/x11', 'ui'},
     'record': {'core', 'ipc', 'platform', 'platform/wayland', 'platform/x11', 'ui'},
     'ocr': {'core', 'ipc'},
-    # Sealed links (#2079): the format and viewer (Qt Core and OpenSSL); only the CLI links the crypto.
-    'seal': {'core'},
-    'cli': {'core', 'seal'},
+    # Encrypted links (#2079): the format and viewer (Qt Core and OpenSSL); only the CLI links the crypto.
+    'encrypt': {'core'},
+    'cli': {'core', 'encrypt'},
     'main': {'app', 'core', 'platform', 'platform/budgie', 'platform/gnome', 'platform/hyprland', 'platform/kde', 'platform/wayland', 'platform/x11',
              'storage/b2', 'storage/dav', 'storage/http', 'storage/proton', 'storage/s3', 'storage/sftp', 'ui'},
 }

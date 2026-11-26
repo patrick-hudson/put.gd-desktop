@@ -1,9 +1,9 @@
 #include <cstring>
 #include "UpdateCheck.h"
 #include "UpdateInstall.h"
-#include "SealCommands.h"
+#include "EncryptCommands.h"
 #include "SessionRequest.h"
-#include "seal/SealJobMain.h"
+#include "encrypt/EncryptJobMain.h"
 #include "core/BuildInfo.h"
 #include <QCoreApplication>
 #include <QCommandLineParser>
@@ -17,9 +17,9 @@ int main(int argc,char** argv) {
  }
  if(putgd::isInstallMode(argc,argv))return putgd::runInstallMode(argc,argv);
  if(putgd::isUpdateMode(argc,argv))return putgd::runUpdateMode(argc,argv);
- // Sealed links (#2079): the resident's sealing helper, and open, upload and the Test probe.
- if(putgd::seal::isSealJob(argc,argv))return putgd::seal::runSealJob();
- if(putgd::cli::isSealCommand(argc,argv))return putgd::cli::runSealCommand(argc,argv);
+ // Encrypted links (#2079): the resident's encrypting helper, and open, upload and the Test probe.
+ if(putgd::encrypt::isEncryptJob(argc,argv))return putgd::encrypt::runEncryptJob();
+ if(putgd::cli::isEncryptCommand(argc,argv))return putgd::cli::runEncryptCommand(argc,argv);
  QCoreApplication app(argc,argv);QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd-cli");QCoreApplication::setApplicationVersion(putgd::buildVersion());
  QCommandLineParser parser;parser.addOption({"params-stdin","Read the JSON parameter object from standard input"});parser.setApplicationDescription("JSON client for the resident put.gd session");parser.addHelpOption();parser.addVersionOption();parser.addOption({"socket","Session socket path","path"});parser.addOption({"request-id","Correlation ID","id"});
  // diagnostics.bundle options (#74); the same fields as its JSON parameters.
@@ -30,7 +30,7 @@ int main(int argc,char** argv) {
  const auto args=parser.positionalArguments();const auto id=parser.isSet("request-id")?parser.value("request-id"):QUuid::createUuid().toString(QUuid::WithoutBraces);
  auto error=[&](QString code,QString message) {return putgd::cli::fail(id,code,message);};
  if(args.size()<1||args.size()>2)return error("invalid_request","Supply a method and optional JSON parameter object");
- if(args[0]=="setup.storeCredentials"||args[0]=="setup.storeSharePassword"||args[0]=="setup.storeSealPassphrase")return error("credentials_require_settings","Enter credentials in Destinations.");
+ if(args[0]=="setup.storeCredentials"||args[0]=="setup.storeSharePassword"||args[0]=="setup.storeEncryptPassphrase")return error("credentials_require_settings","Enter credentials in Destinations.");
  if(args[0]=="setup.revealCredentialSecret")return error("credentials_require_settings","View credentials in Destinations.");
  // The error log's entries come from put.gd itself; its own windows add theirs (#1753).
  if(args[0]=="errors.record")return error("invalid_request","errors.record is for put.gd's own windows; read the log with errors.list.");

@@ -451,9 +451,9 @@ QString TrayController::diagnosticsActionText(const QJsonObject& operation) {
 QString TrayController::completionTitle(const QJsonObject& operation) {
  const auto items=operation["items"].toArray();bool localOnly=!items.isEmpty(),problem=operation["state"]!="completed"||meaningfulError(operation["error"].toObject()),localFailed=false;
  for(const auto& value:items){const auto item=value.toObject();const auto local=item["local"].toObject();localOnly&=item["uploadStatus"]=="local_only";localFailed|=local["status"]=="failed"||meaningfulError(local["error"].toObject());problem|=item["uploadStatus"]=="failed"||meaningfulError(item["error"].toObject())||localFailed;}
- // #2079: a sealed link copied says so in the title, as the design words it.
- bool sealed=!items.isEmpty();for(const auto& value:items)sealed&=value.toObject()["seal"].toObject()["status"]=="sealed";
- if(!problem)return localOnly?QString("Saved locally"):sealed&&operation["copyStatus"]=="copied"?QString(items.size()>1?"Sealed links copied":"Sealed link copied"):QString("Upload complete");
+ // #2079: an encrypted link copied says so in the title, as the design words it.
+ bool encrypted=!items.isEmpty();for(const auto& value:items)encrypted&=value.toObject()["encrypt"].toObject()["status"]=="encrypted";
+ if(!problem)return localOnly?QString("Saved locally"):encrypted&&operation["copyStatus"]=="copied"?QString(items.size()>1?"Encrypted links copied":"Encrypted link copied"):QString("Upload complete");
  if((localFailed&&localOnly)||operation["error"].toObject()["code"]=="archive_failed")return "Local save failed";
  return "Finished with errors";
 }
@@ -466,9 +466,9 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
  // A suppressed copy (#473) is deliberate: the clipboard moved on, or a newer
  // copy took its place, between the capture and the link. Say so, and where
  // the link still is.
- bool sealed=!items.isEmpty(),passphrase=false;
- for(const auto& value:items){const auto seal=value.toObject()["seal"].toObject();sealed&=seal["status"]=="sealed";passphrase|=seal["passphrase"].toBool();}
- const QString copied=copy=="copied"?(localOnly?"Result copied to clipboard.":sealed?QString(items.size()>1?"Sealed links copied to clipboard.":"Sealed link copied to clipboard.")+(passphrase?QStringLiteral(" Send the passphrase separately."):QString()):"Link copied to clipboard."):copy=="failed"?(localOnly?"Couldn't copy the result.":"Couldn't copy the link."):
+ bool encrypted=!items.isEmpty(),passphrase=false;
+ for(const auto& value:items){const auto encrypt=value.toObject()["encrypt"].toObject();encrypted&=encrypt["status"]=="encrypted";passphrase|=encrypt["passphrase"].toBool();}
+ const QString copied=copy=="copied"?(localOnly?"Result copied to clipboard.":encrypted?QString(items.size()>1?"Encrypted links copied to clipboard.":"Encrypted link copied to clipboard.")+(passphrase?QStringLiteral(" Send the passphrase separately."):QString()):"Link copied to clipboard."):copy=="failed"?(localOnly?"Couldn't copy the result.":"Couldn't copy the link."):
   copy=="suppressed"?(localOnly?"Result not copied because your clipboard changed. Copy it from History.":"Link not copied because your clipboard changed. Copy it from History."):QString{};
  // #1820: a covered upload whose original, before covering, couldn't be kept locally says so, whatever the upload's outcome.
  const QString originalNote=operation["sensitive"].toObject()["original"].toObject()["status"]=="failed"?QStringLiteral("Couldn't save the unredacted original locally."):QString();
@@ -589,7 +589,7 @@ void TrayController::refreshMenu() {
  // The words the window's status band and output popup use (commandtext::outputSummary).
  const auto output=commandtext::outputSummary(settings.document);state.output=output.tray;state.outputRows=output.rows;
  state.delay=settings.captureDelaySeconds;state.hotkeysDelay=settings.captureDelayShortcuts;state.update=updateLabel_;
- state.sealedRegion=operations_.sealAvailableFor("region");
+ state.encryptedRegion=operations_.encryptAvailableFor("region");
 #ifdef Q_OS_LINUX
  if(native_){native_->setMenu(state);return;}
 #endif
@@ -756,8 +756,8 @@ void TrayController::runCommand(const QString& action) {
  else if (action == "cancel-upload") cancelUploads();
  else if (action == "failed-uploads") acknowledgeFailures();
  else if (action == "edit-clipboard") invokeAction("edit", false, {{"source", "clipboard"}});
- // #2079: Capture region, sealed whatever the destination's default; no dialog.
- else if (action == "region-sealed") invokeAction("region", false, {{"seal", true}});
+ // #2079: Capture region, encrypted whatever the destination's default; no dialog.
+ else if (action == "region-encrypted") invokeAction("region", false, {{"encrypt", true}});
  else if (action == "edit-file") showView("editFile");
  else if (action == "capture-settings") showView("captureSettings");
  else if (action == "settings") showSettings();

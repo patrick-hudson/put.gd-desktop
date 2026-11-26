@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-kO/GQb5F/oY3MZo9szOk3XjqUyL7PouvZQX5RHxsNPg='; style-src 'sha256-MYtx15lOvZWkh7YAlUVEHZ+x3tveNgkDhh6EC+CTOdM='; img-src blob:; media-src blob:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-qNk/HjHNMW1hLAX/ue2mRebpPOGKUHAeWljNJxfnaz8='; style-src 'sha256-MYtx15lOvZWkh7YAlUVEHZ+x3tveNgkDhh6EC+CTOdM='; img-src blob:; media-src blob:; connect-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:,">
-<title>Sealed link</title>
+<title>Encrypted link</title>
 <style>
 :root{color-scheme:dark light;--bg:#1d1e20;--fg:#e8e6e1;--dim:#a19f99;--line:#3a3b3e;--accent:#e0b44a;--bad:#ff8a7a}
 @media (prefers-color-scheme:light){:root{--bg:#f6f5f2;--fg:#222326;--dim:#5f5e5a;--line:#d6d4cf;--accent:#8a6410;--bad:#b3261e}}
@@ -34,11 +34,11 @@ footer{color:var(--dim);font-size:12px;margin-top:24px}
 </head>
 <body>
 <main>
-<header><h1 id="name">Sealed link</h1><span id="size"></span><a id="save" class="button" hidden>Download</a><button id="savefile" type="button" hidden>Save to file</button></header>
+<header><h1 id="name">Encrypted link</h1><span id="size"></span><a id="save" class="button" hidden>Download</a><button id="savefile" type="button" hidden>Save to file</button></header>
 <p id="status">Opening…</p>
 <form id="ask" hidden><input id="pass" type="password" autocomplete="off" aria-label="Passphrase" placeholder="Passphrase"><button>Open</button></form>
 <div id="view"></div>
-<footer>Sealed with put.gd. The file was decrypted in this browser.</footer>
+<footer>Encrypted with put.gd. The file was decrypted in this browser.</footer>
 </main>
 <!--putgd-sealed-->
 <script>
@@ -64,8 +64,8 @@ function linkKey(){
  return Uint8Array.from(b,c=>c.charCodeAt(0));
 }
 function header(h){
- const m="PGDSEAL1";for(let i=0;i<8;i++)if(h[i]!==m.charCodeAt(i))throw err("This isn't a sealed link.");
- if(h[8]!==1)throw err("This sealed link needs a newer viewer.");
+ const m="PGDSEAL1";for(let i=0;i<8;i++)if(h[i]!==m.charCodeAt(i))throw err("This isn't an encrypted link.");
+ if(h[8]!==1)throw err("This encrypted link needs a newer viewer.");
  if(h[9]>1||h[10]||h[11]||be32(h,12)!==1048576)throw 0;
  const it=be32(h,16),pass=h[9]===1;
  // Version 1 fixes the passphrase cost at 600,000 iterations.
@@ -106,7 +106,7 @@ function decryptor(hd,key){
   }};
 }
 function show(meta){
- $("name").textContent=meta.name||"Sealed file";$("size").textContent=units(meta.size);document.title=meta.name||"Sealed link";
+ $("name").textContent=meta.name||"Encrypted file";$("size").textContent=units(meta.size);document.title=meta.name||"Encrypted link";
 }
 const IMG=["image/png","image/jpeg","image/gif","image/webp","image/avif","image/bmp","image/svg+xml"];
 const VID=["video/mp4","video/webm","video/ogg","video/quicktime"],AUD=["audio/mpeg","audio/ogg","audio/wav","audio/webm","audio/mp4","audio/flac"];
@@ -128,7 +128,7 @@ function large(d,name){
 async function render(d){
  const meta=d.meta,type=String(meta.type).toLowerCase().split(";")[0].trim();
  const shown=IMG.includes(type)||VID.includes(type)||AUD.includes(type);
- const name=(meta.name||"sealed-file").replace(/[\/\\\u0000-\u001f\u007f]/g,"_").slice(0,200)||"sealed-file";
+ const name=(meta.name||"encrypted-file").replace(/[\/\\\u0000-\u001f\u007f]/g,"_").slice(0,200)||"encrypted-file";
  // Anything that isn't shown downloads as plain bytes: HTML and the like never render as a page.
  const blob=new Blob(d.parts,{type:shown?type:"application/octet-stream"});
  if(!await readable(blob))return large(d,name);
@@ -149,7 +149,7 @@ async function inline(el){
  return out;
 }
 async function run(){
- const el=$("putgd-sealed");if(!el)throw err("This isn't a sealed link.");
+ const el=$("putgd-sealed");if(!el)throw err("This isn't an encrypted link.");
  // Browsers decrypt only on secure pages (https, or this computer).
  if(!S)throw err("This browser decrypts only on secure pages. Ask for an https link.");
  const k=linkKey(),split=el.dataset.form==="split";
@@ -157,8 +157,8 @@ async function run(){
  if(split){
   const bin=el.dataset.bin||"";if(!/^[A-Za-z0-9_-]{1,128}\.bin$/.test(bin))throw 0;
   say("Downloading…");
-  let r;try{r=await fetch("./"+bin,{credentials:"omit",redirect:"error",cache:"no-store"})}catch(e){throw err("Couldn't download the sealed file. Check your connection and reload.")}
-  if(!r.ok||!r.body)throw err("The sealed file isn't at this address any more.");
+  let r;try{r=await fetch("./"+bin,{credentials:"omit",redirect:"error",cache:"no-store"})}catch(e){throw err("Couldn't download the encrypted file. Check your connection and reload.")}
+  if(!r.ok||!r.body)throw err("The encrypted file isn't at this address any more.");
   total=Number(r.headers.get("Content-Length"))||0;stream=r.body.getReader();
  }else{data=await inline(el);el.remove()}
  let pending=new Uint8Array(0),done=false,read=0;

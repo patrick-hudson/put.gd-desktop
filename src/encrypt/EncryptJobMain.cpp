@@ -1,6 +1,6 @@
-#include "SealJobMain.h"
-#include "SealCrypto.h"
-#include "SealPage.h"
+#include "EncryptJobMain.h"
+#include "EncryptCrypto.h"
+#include "EncryptPage.h"
 #include <QCryptographicHash>
 #include <QFile>
 #include <QScopeGuard>
@@ -12,7 +12,7 @@
 #include <sys/stat.h>
 #include <openssl/crypto.h>
 #include <unistd.h>
-namespace putgd::seal {
+namespace putgd::encrypt {
 namespace {
 int reply(const QJsonObject& object) {
  const auto bytes=QJsonDocument(object).toJson(QJsonDocument::Compact)+'\n';
@@ -43,46 +43,46 @@ struct Base64Sink {
  bool finish(){const auto text=pending.toBase64();pending.clear();return out.write(text.constData(),text.size());}
 };
 }
-bool isSealJob(int argc,char** argv) {return argc==2&&std::strcmp(argv[1],"--seal-job")==0;}
-int runSealJob() {
+bool isEncryptJob(int argc,char** argv) {return argc==2&&std::strcmp(argv[1],"--encrypt-job")==0;}
+int runEncryptJob() {
  QByteArray input;char chunk[4096];
  // The request carries the passphrase: both buffers are wiped on every way out.
  const auto wipeInput=qScopeGuard([&]{OPENSSL_cleanse(chunk,sizeof(chunk));if(input.capacity()>0){input.resize(input.capacity());OPENSSL_cleanse(input.data(),size_t(input.size()));}});
- while(const auto count=std::fread(chunk,1,sizeof(chunk),stdin)){input.append(chunk,qsizetype(count));if(input.size()>65536)return refuse({"seal_failed","The sealing request is too large.",{}});}
+ while(const auto count=std::fread(chunk,1,sizeof(chunk),stdin)){input.append(chunk,qsizetype(count));if(input.size()>65536)return refuse({"encrypt_failed","The encryption request is too large.",{}});}
  auto request=QJsonDocument::fromJson(input).object();OPENSSL_cleanse(input.data(),size_t(input.size()));
  // A passphrase that is there but not text is refused, never read as none.
- if(request.contains("passphrase")&&!request["passphrase"].isString())return refuse({"seal_failed","The sealing request is invalid.",{}});
+ if(request.contains("passphrase")&&!request["passphrase"].isString())return refuse({"encrypt_failed","The encryption request is invalid.",{}});
  QString passphrase=request["passphrase"].toString();request.remove("passphrase");
  // The passphrase's own copy is wiped on every way out too. The parsed request's storage is
- // freed above; this child exits right after, with core dumps off (SealJob sets RLIMIT_CORE 0).
+ // freed above; this child exits right after, with core dumps off (EncryptJob sets RLIMIT_CORE 0).
  const auto wipePassphrase=qScopeGuard([&passphrase]{if(!passphrase.isEmpty())OPENSSL_cleanse(passphrase.data(),size_t(passphrase.size())*sizeof(QChar));});
  const bool split=request["form"].toString()=="split";
- if(!viewerIntact())return refuse({"seal_viewer_changed","This build's sealed-link viewer doesn't match its pinned hash.",{}});
+ if(!viewerIntact())return refuse({"encrypt_viewer_changed","This build's encrypted-link viewer doesn't match its pinned hash.",{}});
  const qint64 bytes=qint64(request["bytes"].toDouble(-1));
- if(!request["input"].isString()||!request["page"].isString()||bytes<0||bytes>sealLimit||(!split&&bytes>inlineLimit)||(request["form"]!="inline"&&!split))
-  return refuse({"seal_failed","The sealing request is invalid.",{}});
- if(split&&(!request["data"].isString()||!validBinName(request["bin"].toString())))return refuse({"seal_failed","The sealing request is invalid.",{}});
+ if(!request["input"].isString()||!request["page"].isString()||bytes<0||bytes>encryptLimit||(!split&&bytes>inlineLimit)||(request["form"]!="inline"&&!split))
+  return refuse({"encrypt_failed","The encryption request is invalid.",{}});
+ if(split&&(!request["data"].isString()||!validBinName(request["bin"].toString())))return refuse({"encrypt_failed","The encryption request is invalid.",{}});
  QFile source(request["input"].toString());
- if(!source.open(QIODevice::ReadOnly)||source.size()!=bytes)return refuse({"seal_failed","Couldn't read the file to seal.",{}});
- auto key=randomKey();if(key.isEmpty())return refuse({"seal_failed","Couldn't make a key.",{}});
+ if(!source.open(QIODevice::ReadOnly)||source.size()!=bytes)return refuse({"encrypt_failed","Couldn't read the file to encrypt.",{}});
+ auto key=randomKey();if(key.isEmpty())return refuse({"encrypt_failed","Couldn't make a key.",{}});
  const auto wipeKey=qScopeGuard([&key]{OPENSSL_cleanse(key.data(),size_t(key.size()));});
  const Meta meta{request["name"].toString(),request["type"].toString(),bytes};
- Output page;if(!create(page.file,request["page"].toString()))return refuse({"seal_failed","Couldn't open the file for the sealed page.",{}});
+ Output page;if(!create(page.file,request["page"].toString()))return refuse({"encrypt_failed","Couldn't open the file for the encrypted page.",{}});
  const auto prefix=pagePrefix(split),suffix=pageSuffix(),open=dataOpen(split,request["bin"].toString());
  page.write(prefix.constData(),prefix.size());page.write(open.constData(),open.size());
  QJsonObject result{{"ok",true}};
  if(split) {
-  Output data;if(!create(data.file,request["data"].toString()))return refuse({"seal_failed","Couldn't open the file for the sealed data file.",{}});
-  if(auto e=seal(source,meta,key,passphrase,[&data](const char* d,qint64 n){return data.write(d,n);}))return refuse(e);
-  if(!data.ok||!data.file.flush()||::fsync(data.file.handle())!=0)return refuse({"seal_failed","Couldn't write the sealed data file.",{}});
+  Output data;if(!create(data.file,request["data"].toString()))return refuse({"encrypt_failed","Couldn't open the file for the encrypted data file.",{}});
+  if(auto e=encrypt(source,meta,key,passphrase,[&data](const char* d,qint64 n){return data.write(d,n);}))return refuse(e);
+  if(!data.ok||!data.file.flush()||::fsync(data.file.handle())!=0)return refuse({"encrypt_failed","Couldn't write the encrypted data file.",{}});
   result["data"]=data.result();
  }else {
   Base64Sink text{page,{}};
-  if(auto e=seal(source,meta,key,passphrase,[&text](const char* d,qint64 n){return text.write(d,n);}))return refuse(e);
+  if(auto e=encrypt(source,meta,key,passphrase,[&text](const char* d,qint64 n){return text.write(d,n);}))return refuse(e);
   text.finish();
  }
  const auto close=dataClose();page.write(close.constData(),close.size());page.write(suffix.constData(),suffix.size());
- if(!page.ok||!page.file.flush()||::fsync(page.file.handle())!=0)return refuse({"seal_failed","Couldn't write the sealed page.",{}});
+ if(!page.ok||!page.file.flush()||::fsync(page.file.handle())!=0)return refuse({"encrypt_failed","Couldn't write the encrypted page.",{}});
  result["page"]=page.result();result["key"]=fragment(key);
  return reply(result);
 }

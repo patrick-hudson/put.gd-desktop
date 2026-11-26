@@ -25,14 +25,14 @@
     set_tests_properties(${contract}_integration PROPERTIES TIMEOUT 60)
   endforeach()
   target_compile_definitions(test_cli PRIVATE PUTGD_CLI_PATH="$<TARGET_FILE:putgd-cli>" PUTGD_APP_PATH="$<TARGET_FILE:putgd>")
-  # Sealed links (#2079) through the upload pipeline, sealing with the real putgd-cli helper.
-  add_executable(test_sealed_uploads tests/integration/test_sealed_uploads.cpp)
-  target_link_libraries(test_sealed_uploads PRIVATE putgd_app putgd_seal Qt6::Test)
-  target_include_directories(test_sealed_uploads PRIVATE tests)
-  target_compile_definitions(test_sealed_uploads PRIVATE PUTGD_CLI_PATH="$<TARGET_FILE:putgd-cli>")
-  add_dependencies(test_sealed_uploads putgd-cli)
-  add_test(NAME sealed_uploads_integration COMMAND test_sealed_uploads)
-  set_tests_properties(sealed_uploads_integration PROPERTIES TIMEOUT 180)
+  # Encrypted links (#2079) through the upload pipeline, encrypting with the real putgd-cli helper.
+  add_executable(test_encrypted_uploads tests/integration/test_encrypted_uploads.cpp)
+  target_link_libraries(test_encrypted_uploads PRIVATE putgd_app putgd_encrypt Qt6::Test)
+  target_include_directories(test_encrypted_uploads PRIVATE tests)
+  target_compile_definitions(test_encrypted_uploads PRIVATE PUTGD_CLI_PATH="$<TARGET_FILE:putgd-cli>")
+  add_dependencies(test_encrypted_uploads putgd-cli)
+  add_test(NAME encrypted_uploads_integration COMMAND test_encrypted_uploads)
+  set_tests_properties(encrypted_uploads_integration PROPERTIES TIMEOUT 180)
   add_dependencies(test_cli putgd-cli putgd)
   # Moves an earlier putgd/putgd profile, interrupted at every rename, and
   # starts the real resident on upgraded and retained layouts (#56).

@@ -239,8 +239,8 @@ class ReviewWindow final : public QWidget {
 public:
     // availableSize optionally supplies the embedding host's workspace; otherwise use QScreen.
     struct Options { QString workingClip; QString destination, sharingMode, uploadSummary; bool links = false;
-        // #2079: the Seal toggle beside Upload, {available, on, reason?}; empty shows none.
-        QJsonObject seal; qint64 durationUs = 0; QSize canvas; QStringList formats; QJsonObject codecs; bool audioRecorded = false; QSize availableSize;
+        // #2079: the Encrypt toggle beside Upload, {available, on, reason?}; empty shows none.
+        QJsonObject encrypt; qint64 durationUs = 0; QSize canvas; QStringList formats; QJsonObject codecs; bool audioRecorded = false; QSize availableSize;
         // #1364: what the recorded track holds; with neither set, a recorded track is system audio.
         bool systemRecorded = false, microphoneRecorded = false; };
     ReviewWindow(const Options&, const RecordingConfig&, QWidget* parent = nullptr);
@@ -296,8 +296,8 @@ signals:
     void configChanged(const RecordingConfig&, quint64 seq);
     // The revision and the output the window shows; the resident refuses any other.
     void uploadRequested(quint64 revision, const RecordingConfig& config);
-    // #2079: the Seal toggle changed; the resident applies it when the upload starts.
-    void sealToggled(bool on);
+    // #2079: the Encrypt toggle changed; the resident applies it when the upload starts.
+    void encryptToggled(bool on);
     void retryExportRequested();
     void saveCopyRequested(const QString& path, quint64 revision);
     void cancelRequested();
@@ -550,7 +550,7 @@ private:
     QActionGroup *speeds_ = nullptr, *formats_ = nullptr;
     QAction* includeAudio_ = nullptr;
     QLabel* destinationFull_ = nullptr;
-    QPushButton* seal_ = nullptr; bool sealAvailable_ = false; QString sealReason_;
+    QPushButton* encrypt_ = nullptr; bool encryptAvailable_ = false; QString encryptReason_;
     QPushButton *errorDetails_ = nullptr, *upload_ = nullptr, *save_ = nullptr, *cancel_ = nullptr;
     FileDialog* chooser_ = nullptr;
     QTimer frameTimer_;  // only with PUTGD_RECORD_REVIEW_DELAY_MS (tests, the catalog): frames asked that long after a seek

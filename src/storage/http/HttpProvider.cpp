@@ -32,7 +32,7 @@ ProviderCapabilities HttpUploaderProvider::capabilities(const Destination& desti
     caps.maximumNameBytes = 255;
     // The server names and places what it stores: one self-contained page only, and only
     // when Test upload and link shows the server serving it as a page.
-    caps.sealUnavailable.clear();
+    caps.encryptUnavailable.clear();
     caps.deletionEffect = "Asks the server to delete this upload through the deletion URL it returned with the link. "
                           "What the server removes, and how soon the link stops working, is up to the server.";
     return caps;

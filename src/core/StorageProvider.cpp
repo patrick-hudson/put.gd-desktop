@@ -35,8 +35,8 @@ bool shareResultMatchesReceipt(const ShareResult& result,const StorageReceipt& o
 QJsonObject ProviderCapabilities::toJson() const {
  QJsonObject value{{"conditionalCreate",conditionalCreate},{"conditionalReplace",conditionalReplace},{"conditionalDelete",conditionalDelete},{"versionAddressing",versionAddressing},{"stat",stat},{"delete",remove},{"urls",urls},{"maximumNameBytes",maximumNameBytes},{"maximumObjectBytes",maximumObjectBytes>0?QJsonValue(double(maximumObjectBytes)):QJsonValue(QJsonValue::Null)},{"deletionEffect",deletionEffect},{"sharing",sharing},{"privateUploads",privateUploads},{"serverNamesObjects",serverNamesObjects},{"referenceDelete",referenceDelete}};
  if(!removeUnavailable.isEmpty())value["removeUnavailable"]=removeUnavailable;
- // #2079: whether this destination type can take a sealed page (its Test check still decides), and the two-file form.
- value["sealLinks"]=sealUnavailable.isEmpty();value["sealSplit"]=sealSplit;if(!sealUnavailable.isEmpty())value["sealUnavailable"]=sealUnavailable;
+ // #2079: whether this destination type can take an encrypted page (its Test check still decides), and the two-file form.
+ value["encryptedLinks"]=encryptUnavailable.isEmpty();value["encryptsplit"]=encryptsplit;if(!encryptUnavailable.isEmpty())value["encryptUnavailable"]=encryptUnavailable;
  return value;
 }
 void ProviderRegistry::add(const QString& id,std::shared_ptr<StorageProvider> p) {providers_.insert(id,std::move(p));}

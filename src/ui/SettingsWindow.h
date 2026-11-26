@@ -64,8 +64,8 @@ public:
  void r2Command(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
  // ui.davDestination (#1872): the Nextcloud and WebDAV forms, edited and signed in as a user does.
  void davCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
- // ui.sealLinks (#2079): the selected destination's Sealed links card, as a user drives it.
- void sealLinksCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
+ // ui.encryptedLinks (#2079): the selected destination's Encrypted links card, as a user drives it.
+ void encryptedLinksCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
  // ui.sftpDestination (#1871): the SFTP form, edited, pasted into, tested and trusted as a user does.
  void sftpCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
  // How those choosers ended, as their buttons handle it: a chosen folder is
@@ -221,7 +221,7 @@ private:
  // A finished setup job of a Nextcloud or WebDAV destination; true when it was handled whole.
  bool davSetupFinished(const QJsonObject& job,const QJsonObject& data,const Error& error,bool currentTest);
  // #1871: the SFTP form; inspectProfile_ is the destination whose ssh -G line is being read.
- SftpPanel* sftpPanel_=nullptr;class SealLinksPanel* sealPanel_=nullptr;void loadSealPanel(bool edited);QString sftpInspected_;void inspectSftp();QString sftpInspectKey()const;
+ SftpPanel* sftpPanel_=nullptr;class EncryptedLinksPanel* encryptPanel_=nullptr;void loadEncryptPanel(bool edited);QString sftpInspected_;void inspectSftp();QString sftpInspectKey()const;
  // #1871: a Clear about to start; its setup job record carries the mark from then on.
  bool sftpClearPending_=false;
  QVector<QHash<QString,CredentialInputs>> credentialDrafts_;

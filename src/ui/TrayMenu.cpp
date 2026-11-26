@@ -67,8 +67,8 @@ constexpr Row rows[] {
  /*47*/ {Kind::Separator, "", "", 0, "traySeparatorClipboard"},
  /*48*/ {Kind::Separator, "", "", 0, "traySeparatorSettings"},
  /*49*/ {Kind::Separator, "", "", 0, "traySeparatorQuit"},
- // #2079: Capture region with Seal on for this upload, shown under Capture region when its destination can seal.
- /*50*/ {Kind::Command, "region-sealed", "Capture region (sealed)", 0, "trayRegionSealed"},
+ // #2079: Capture region with Encrypt on for this upload, shown under Capture region when its destination can encrypt.
+ /*50*/ {Kind::Command, "region-encrypted", "Capture region (encrypted)", 0, "trayRegionEncrypted"},
 };
 constexpr int total = sizeof(rows) / sizeof(rows[0]);
 // Output detail rows in order: the first six, then 38, 40 and 45.
@@ -125,7 +125,7 @@ Shown shown(int id, const State& state) {
  case 23: s.label = state.output; break;
  case 33: s.label = commandtext::delayTitle(state.delay); break;
  case 44: s.label = commandtext::hotkeysImmediate(); s.conditional = true; s.visible = state.delay > 0 && !state.hotkeysDelay; break;
- case 50: s.conditional = true; s.visible = state.sealedRegion; break;
+ case 50: s.conditional = true; s.visible = state.encryptedRegion; break;
  default: break;
  }
  if (r.kind == Kind::Choice) { const int seconds = command.mid(6).toInt(); s.label = commandtext::delayChoice(seconds); s.toggle = seconds == state.delay ? 1 : 0; }

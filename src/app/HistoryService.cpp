@@ -124,16 +124,16 @@ void HistoryService::copyLink(const QString& id,JsonReply reply) {
   },ticket);
  });
 }
-void HistoryService::forgetSealKey(const QString& id,JsonReply reply) {
+void HistoryService::forgetEncryptKey(const QString& id,JsonReply reply) {
  if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}
  const auto path=operations_.databasePath();
  operations_.background([path,id](Error& e){HistoryStore store(path);const auto data=store.detail(id,&e);return QJsonObject{{"operationId",data["operationId"]}};},[this,path,id,reply](Error e,QJsonObject found){
   if(e){reply(e,{});return;}
   const auto operationId=found["operationId"].toString();
   if(!operations_.holdOperation(operationId)){reply({"history_busy","This upload is running, or History is already changing it. Wait a moment, then select Forget key again.",{}},{});return;}
-  operations_.background([path,id](Error& e){HistoryStore store(path);e=store.forgetSealKey(id);return QJsonObject{{"historyId",id},{"keyForgotten",!e}};},[this,id,operationId,reply](Error e,QJsonObject result){
+  operations_.background([path,id](Error& e){HistoryStore store(path);e=store.forgetEncryptKey(id);return QJsonObject{{"historyId",id},{"keyForgotten",!e}};},[this,id,operationId,reply](Error e,QJsonObject result){
    operations_.releaseOperation(operationId);
-   if(!e){notifyChanged();logging::info(logHistory(),"Sealed link key forgotten",{{"historyId",id}});}
+   if(!e){notifyChanged();logging::info(logHistory(),"Encrypted link key forgotten",{{"historyId",id}});}
    reply(e,result);
   });
  });
@@ -251,15 +251,15 @@ QJsonObject HistoryService::prepare(const QStringList& ids,const QJsonArray& pro
   if(current["id"].toString()!=receipt.destination.profileId)target["currentProfileId"]=current["id"];
   auto caps=provider->receiptCapabilities(receipt);if(!caps.safeRemoval()) {e={"unsupported_capability",caps.removeUnavailable.isEmpty()?QStringLiteral("This destination can't safely delete this file."):caps.removeUnavailable,{{"historyId",id}}};return {};}
   target["receipt"]=receipt.toJson();target["effect"]=caps.deletionEffect;
-  // #2079: a split sealed link's data file goes too, once its page is gone.
-  if(const auto part=data["seal"].toObject()["data"].toObject();part["uploadStatus"]=="uploaded"&&!part["receipt"].toObject().isEmpty()) {
-   target["sealData"]=part["receipt"];
+  // #2079: a split encrypted link's data file goes too, once its page is gone.
+  if(const auto part=data["encrypt"].toObject()["data"].toObject();part["uploadStatus"]=="uploaded"&&!part["receipt"].toObject().isEmpty()) {
+   target["encryptData"]=part["receipt"];
    // A data file this destination can't delete safely (a WebDAV file over 256 MB whose identity
    // couldn't be confirmed, for one) stays; the page goes, and the confirmation says so.
    const auto partCaps=provider->receiptCapabilities(StorageReceipt::fromJson(part["receipt"].toObject()));
    if(!partCaps.safeRemoval()) {
-    target["sealDataKept"]=true;
-    target["effect"]=caps.deletionEffect+" The sealed link's data file beside it stays at the destination, because put.gd can't delete it safely there."+(partCaps.removeUnavailable.isEmpty()?QString():" "+partCaps.removeUnavailable)+" It holds only encrypted data. Someone who saved the page and has the full link (and its passphrase, if it has one) can still open it until you delete the file there yourself.";
+    target["encryptDataKept"]=true;
+    target["effect"]=caps.deletionEffect+" The encrypted link's data file beside it stays at the destination, because put.gd can't delete it safely there."+(partCaps.removeUnavailable.isEmpty()?QString():" "+partCaps.removeUnavailable)+" It holds only encrypted data. Someone who saved the page and has the full link (and its passphrase, if it has one) can still open it until you delete the file there yourself.";
    }
   }
   targets.append(target);
@@ -498,19 +498,19 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
     }
     }
    }
-   // #2079: the sealed page is gone, so its data file beside it goes too. It is checked and
+   // #2079: the encrypted page is gone, so its data file beside it goes too. It is checked and
    // deleted like the page, with its own durable checkpoint; one left behind holds only
    // ciphertext nobody has a page for, and the deletion says so.
    // Quit before the data file's turn: the item stays unfinished, so Retry deletion still takes it.
    // A data file the confirmation said stays is left as said.
-   if((outcome=="removed"||outcome=="already_missing")&&items[index].toObject().contains("sealData")&&items[index].toObject()["sealDataKept"].toBool()){auto target=items[index].toObject();target["sealDataStatus"]="kept";items[index]=target;doc["items"]=items;}
+   if((outcome=="removed"||outcome=="already_missing")&&items[index].toObject().contains("encryptData")&&items[index].toObject()["encryptDataKept"].toBool()){auto target=items[index].toObject();target["encryptDataStatus"]="kept";items[index]=target;doc["items"]=items;}
    // An earlier attempt may already have deleted it without hearing back (status unknown): then put.gd doesn't know.
-   else if((outcome=="removed"||outcome=="already_missing")&&items[index].toObject().contains("sealData")&&items[index].toObject()["sealDataStatus"]!="removed"&&quitting->load()){outcome="unknown";
-    e={"seal_data_left",items[index].toObject()["sealDataStatus"]=="unknown"
-     ?QStringLiteral("The sealed page was deleted, but put.gd quit before confirming whether its data file was deleted. Select Retry deletion to check again.")
-     :QStringLiteral("The sealed page was deleted, but put.gd quit before it could delete its data file. Select Retry deletion."),{{"dataStatus",items[index].toObject()["sealDataStatus"].toString()}}};}
-   else if((outcome=="removed"||outcome=="already_missing")&&items[index].toObject().contains("sealData")&&!quitting->load()) {
-    auto part=StorageReceipt::fromJson(items[index].toObject()["sealData"].toObject());
+   else if((outcome=="removed"||outcome=="already_missing")&&items[index].toObject().contains("encryptData")&&items[index].toObject()["encryptDataStatus"]!="removed"&&quitting->load()){outcome="unknown";
+    e={"encrypt_data_left",items[index].toObject()["encryptDataStatus"]=="unknown"
+     ?QStringLiteral("The encrypted page was deleted, but put.gd quit before confirming whether its data file was deleted. Select Retry deletion to check again.")
+     :QStringLiteral("The encrypted page was deleted, but put.gd quit before it could delete its data file. Select Retry deletion."),{{"dataStatus",items[index].toObject()["encryptDataStatus"].toString()}}};}
+   else if((outcome=="removed"||outcome=="already_missing")&&items[index].toObject().contains("encryptData")&&!quitting->load()) {
+    auto part=StorageReceipt::fromJson(items[index].toObject()["encryptData"].toObject());
     part.destination.profileId=receipt.destination.profileId;part.destination.credentialReference=receipt.destination.credentialReference;
     QString partOutcome="unknown";Error partError;
     if(!part.validate()) {
@@ -522,7 +522,7 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
       // back to before it), so the provider sends no further delete during shutdown.
       const auto partAcknowledged=std::make_shared<std::atomic_bool>(false);
       auto partCheckpoint=[path,&doc,&items,index,committed,quitting,partAcknowledged](const QJsonObject& checkpoint,std::function<void(Error)> ack){
-       auto proposed=items;auto target=proposed[index].toObject();target["sealDataProgress"]=checkpoint;proposed[index]=target;
+       auto proposed=items;auto target=proposed[index].toObject();target["encryptDataProgress"]=checkpoint;proposed[index]=target;
        auto proposedDoc=doc;proposedDoc["items"]=proposed;HistoryStore durable(path);const auto saved=durable.saveDeletion(proposedDoc);
        if(!saved&&quitting->load()) {
         if(checkpoint["phase"].toString().endsWith("intent")){if(!durable.saveDeletion(doc))committed();}
@@ -532,7 +532,7 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
        if(!saved){items=std::move(proposed);doc=std::move(proposedDoc);committed();partAcknowledged->store(true);}
        ack(saved);
       };
-      DeleteRequest request{doc["id"].toString()+"-data",part,items[index].toObject()["sealDataProgress"].toObject(),cancelled,quitting};
+      DeleteRequest request{doc["id"].toString()+"-data",part,items[index].toObject()["encryptDataProgress"].toObject(),cancelled,quitting};
       auto removed=awaitProvider<DeleteResult>([&](auto cb){provider->remove(request,partCheckpoint,cb);});
       partOutcome=removed.status=="missing"?QStringLiteral("already_missing"):removed.status;partError=removed.error;
       // As for the page: a failed result read after Quit began can't show the server did nothing.
@@ -540,22 +540,22 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
       // nothing that deletes was sent this time, and the data file keeps what it recorded before.
       if(quitting->load()&&(partOutcome=="failed"||partOutcome=="unknown")) {
        if(partAcknowledged->load()){partOutcome=QStringLiteral("unknown");partError={"delete_unknown","put.gd quit before confirming whether the data file was deleted. Select Retry deletion to check again.",{{"reportedError",partError.toJson()}}};}
-       else partOutcome=items[index].toObject()["sealDataStatus"]=="unknown"?QStringLiteral("unknown"):QStringLiteral("failed");
+       else partOutcome=items[index].toObject()["encryptDataStatus"]=="unknown"?QStringLiteral("unknown"):QStringLiteral("failed");
       }
      } else partError=found.error;
     }
-    auto target=items[index].toObject();target["sealDataStatus"]=partOutcome;items[index]=target;doc["items"]=items;
+    auto target=items[index].toObject();target["encryptDataStatus"]=partOutcome;items[index]=target;doc["items"]=items;
     // Not finished until the data file goes too: Retry deletion finds the page gone and tries it again.
     // A data file changed at the destination isn't put.gd's to delete; it is said, not retried.
-    if(partOutcome=="changed")e={"seal_data_left","The sealed page was deleted. The file beside it changed at the destination, so put.gd left it.",{{"dataStatus",partOutcome}}};
+    if(partOutcome=="changed")e={"encrypt_data_left","The encrypted page was deleted. The file beside it changed at the destination, so put.gd left it.",{{"dataStatus",partOutcome}}};
     else if(partOutcome!="removed"&&partOutcome!="already_missing"){
      outcome=partOutcome=="unknown"?QStringLiteral("unknown"):QStringLiteral("failed");
      // Unknown isn't "not deleted": put.gd only doesn't know yet.
      const auto message=partOutcome=="unknown"
-      ?(quitting->load()?QStringLiteral("The sealed page was deleted, but put.gd quit before confirming whether its data file was deleted. Select Retry deletion to check again.")
-        :QStringLiteral("The sealed page was deleted, but put.gd couldn't confirm whether its data file was deleted. Select Retry deletion to check again."))
-      :QStringLiteral("The sealed page was deleted, but its data file beside it wasn't. It holds only encrypted data. Select Retry deletion.");
-     e={"seal_data_left",message,{{"dataStatus",partOutcome},{"dataError",partError.toJson()}}};
+      ?(quitting->load()?QStringLiteral("The encrypted page was deleted, but put.gd quit before confirming whether its data file was deleted. Select Retry deletion to check again.")
+        :QStringLiteral("The encrypted page was deleted, but put.gd couldn't confirm whether its data file was deleted. Select Retry deletion to check again."))
+      :QStringLiteral("The encrypted page was deleted, but its data file beside it wasn't. It holds only encrypted data. Select Retry deletion.");
+     e={"encrypt_data_left",message,{{"dataStatus",partOutcome},{"dataError",partError.toJson()}}};
     }
    }
    item=items[index].toObject();item["status"]=outcome;item["progress"]=progress;item["error"]=e.toJson();items[index]=item;doc["items"]=items;if((error=store.saveDeletion(doc)))return doc;committed();

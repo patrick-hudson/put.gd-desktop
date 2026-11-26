@@ -104,7 +104,7 @@ QColor metadataColor(const QJsonObject& record,const QString& part,const QColor&
  return status&&(part=="Deletion failed"||part=="Sharing failed"||part.startsWith("Couldn't copy"))?t.danger:status&&remote.isEmpty()&&copy=="copied"?t.success:neutral;
 }
 QString failureDetail(const QJsonObject& record){auto text=HistoryModel::statusText(record);const auto label=HistoryModel::failureLabel(record);if(text==label)return {};if(text.startsWith(label+" · "))text.remove(0,label.size()+3);return text;}
-QString failureDescription(const QModelIndex& index){const auto record=index.data(HistoryModel::RecordRole).toJsonObject();QStringList parts{record["name"].toString(index.data().toString()),HistoryModel::sealedLabel(record),HistoryModel::failureLabel(record),index.data(HistoryModel::CreatedRole).toString(),failureDetail(record)};parts.removeAll({});return parts.join(". ");}
+QString failureDescription(const QModelIndex& index){const auto record=index.data(HistoryModel::RecordRole).toJsonObject();QStringList parts{record["name"].toString(index.data().toString()),HistoryModel::encryptedLabel(record),HistoryModel::failureLabel(record),index.data(HistoryModel::CreatedRole).toString(),failureDetail(record)};parts.removeAll({});return parts.join(". ");}
 // Beside the actions the detail keeps one line; on a line of its own its facts wrap
 // whole, and only a fact wider than the row elides.
 void compactFailureDetail(QTextDocument& document,const QModelIndex& index,int width,int skip=0,bool wrap=false){
@@ -809,9 +809,9 @@ public:
   else if(grid()||below)itemWidth=body.width();
   const auto titleFont=historyTitleFont(!grid()&&chosen),metaFont=Ui::font(Ui::Type::technical);
   const int lineTop=grid()?body.top():rowTop+(compact?compactTextInset():rowTextInset());
-  // #2079: a sealed link shows a lock before its name.
+  // #2079: an encrypted link shows a lock before its name.
   if(!grid()){const int titleHeight=QFontMetrics(titleFont).height();int lock=0;
-   if(i.data(HistoryModel::RecordRole).toJsonObject()["sealed"].toBool()){lock=titleHeight-2;Ui::icon("lock").paint(p,QRect(columns.item.left(),lineTop+1,lock,lock));lock+=space(Space::xs);}
+   if(i.data(HistoryModel::RecordRole).toJsonObject()["encrypted"].toBool()){lock=titleHeight-2;Ui::icon("lock").paint(p,QRect(columns.item.left(),lineTop+1,lock,lock));lock+=space(Space::xs);}
    Ui::paintText(*p,QRectF(columns.item.left()+lock,lineTop,itemWidth-lock,titleHeight),i.data().toString(),t.text,titleFont,Qt::AlignLeft|Qt::AlignVCenter,compact?Qt::ElideRight:titleElision(i.data().toString()));}
   const int metadataWidth=compact?qMax(20,body.width()-(below||failed?0:compactActionWidth(i))):!grid()&&failed?inlineTextWidth(outer,i):itemWidth;
   const int metadataTop=compact?compactMetadataTop(outer,i):lineTop+QFontMetrics(titleFont).height()+(grid()?space(Space::xs):6);
@@ -824,8 +824,8 @@ public:
   else{
    // The name, then the detail line at the caption's foot with the time at its right.
    const auto caption=galleryCaption(i,body.width());const QFontMetrics titleMetrics(titleFont);int y=body.top();
-   // #2079: the sealed lock leads the first line of the name, as in the list.
-   int lock=0;if(i.data(HistoryModel::RecordRole).toJsonObject()["sealed"].toBool()){lock=titleMetrics.height()-2;Ui::icon("lock").paint(p,QRect(body.left(),y+1,lock,lock));lock+=space(Space::xs);}
+   // #2079: the encrypted lock leads the first line of the name, as in the list.
+   int lock=0;if(i.data(HistoryModel::RecordRole).toJsonObject()["encrypted"].toBool()){lock=titleMetrics.height()-2;Ui::icon("lock").paint(p,QRect(body.left(),y+1,lock,lock));lock+=space(Space::xs);}
    for(const auto& line:caption.title){Ui::paintText(*p,QRectF(body.left()+lock,y,body.width()-lock,titleMetrics.height()),line,t.text,titleFont,Qt::AlignLeft|Qt::AlignVCenter,lock?Qt::ElideRight:Qt::ElideNone);y+=titleMetrics.height();lock=0;}
    const int metaHeight=QFontMetrics(metaFont).height();
    if(caption.detail){const int top=body.top()+body.height()-metaHeight;p->save();p->translate(body.left(),top);p->setClipRect(QRectF(0,0,body.width(),metaHeight));caption.detail->drawContents(p);p->restore();Ui::paintText(*p,QRectF(body.left(),top,body.width(),metaHeight),i.data(HistoryModel::CreatedRole).toString(),t.textSecondary,metaFont,Qt::AlignRight|Qt::AlignVCenter);}
@@ -1643,8 +1643,8 @@ void HistoryWindow::showRowMenu(const QModelIndex& i,const QPoint& point,bool ov
  if(remaining("Copy result")&&HistoryModel::copyLocalResult(row))menu.addAction("Copy result",this,[this]{operationAction("operation.copy");});
  // #2079: Forget key leaves the file at the destination and no way to open it.
  // In a batch it is the file chosen in the inspector (the first until another is chosen), named.
- if(const auto keyFile=files.size()==1?files.first().toObject():selectedRecord();remaining("Forget key")&&keyFile["sealed"].toBool()&&!keyFile["seal"].toObject()["keyForgotten"].toBool()&&!i.data(HistoryModel::ActiveRole).toBool())
-  menu.addAction(Ui::icon("lock"),files.size()>1?"Forget key for "+keyFile["name"].toString().replace(QLatin1Char('&'),QStringLiteral("&&"))+"…":QStringLiteral("Forget key…"),this,[this,id=keyFile["id"].toString()]{forgetSealKey(id);});
+ if(const auto keyFile=files.size()==1?files.first().toObject():selectedRecord();remaining("Forget key")&&keyFile["encrypted"].toBool()&&!keyFile["encrypt"].toObject()["keyForgotten"].toBool()&&!i.data(HistoryModel::ActiveRole).toBool())
+  menu.addAction(Ui::icon("lock"),files.size()>1?"Forget key for "+keyFile["name"].toString().replace(QLatin1Char('&'),QStringLiteral("&&"))+"…":QStringLiteral("Forget key…"),this,[this,id=keyFile["id"].toString()]{forgetEncryptKey(id);});
  if(remaining("Open in browser")&&files.size()==1&&row["linkAvailable"].toBool())menu.addAction("Open in browser",this,[this,url=files.first().toObject()["link"].toString()]{openBrowser(url);});
  if(remaining("Edit image…")&&editable(row)){auto* edit=menu.addAction("Edit image…",this,[this,row]{editAgain(row);});edit->setToolTip("Edit the saved copy. Earlier marks are already flattened.");}
  // #1428: one file only; disabled with the reason when it cannot apply.
@@ -2133,8 +2133,8 @@ void HistoryWindow::showItem(const QString& historyId){
    g->restoreSelection_={historyId};g->restoringSelection_=true;g->selectedItemId_=historyId;g->applyFilters();}
  });
 }
-void HistoryWindow::forgetSealKey(const QString& id){
- QMessageBox box(QMessageBox::Warning,"Forget key — put.gd","Forget this sealed link's key?",QMessageBox::Cancel,this);
+void HistoryWindow::forgetEncryptKey(const QString& id){
+ QMessageBox box(QMessageBox::Warning,"Forget key — put.gd","Forget this encrypted link's key?",QMessageBox::Cancel,this);
  box.setInformativeText("put.gd can't open the file or show its link again. Anyone who already has the full link can still open it until you delete the file at the destination.");
  auto* forget=box.addButton("Forget key",QMessageBox::DestructiveRole);forget->setObjectName("historyForgetKeyConfirm");box.setDefaultButton(QMessageBox::Cancel);
  box.exec();if(box.clickedButton()!=forget)return;

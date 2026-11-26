@@ -41,13 +41,13 @@ private slots:
   {auto settings=state["settings"].toObject();settings["setupJobs"]=QJsonArray{QJsonObject{{"setupId","job"},{"kind","testDestination"},{"profileId","p"},{"revision","1"},{"fingerprint",QString(64,'a')}}};auto withJob=state;withJob["settings"]=settings;QVERIFY(!validateUiState(withJob));
    settings["setupJobs"]=QJsonArray{QJsonObject{{"setupId","job"},{"kind","testDestination"},{"profileId","p"},{"fingerprint","https://example.invalid/bucket"}}};withJob["settings"]=settings;QVERIFY(validateUiState(withJob));
    settings["setupJobs"]=QJsonArray{QJsonObject{{"setupId","job"},{"kind","testDestination"},{"profileId","p"},{"fingerprint",QString(64,'a')+"\n"}}};withJob["settings"]=settings;QVERIFY(validateUiState(withJob));}
-  // #2079: a destination's Seal links choice is part of its profile in the checkpoint; any other shape isn't.
+  // #2079: a destination's Encrypted links choice is part of its profile in the checkpoint; any other shape isn't.
   {auto settings=state["settings"].toObject();auto draft=settings["draft"].toObject();
-   const auto profileWith=[](const QJsonValue& seal){return QJsonObject{{"id","p"},{"label","P"},{"provider","s3"},{"settings",QJsonObject{}},{"credentials",QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}},{"seal",seal}};};
-   auto withSeal=state;draft["profiles"]=QJsonArray{profileWith(QJsonObject{{"mode","passphrase"},{"passphraseCredentials",QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}}})};settings["draft"]=draft;withSeal["settings"]=settings;
-   QVERIFY2(!validateUiState(withSeal),qPrintable(validateUiState(withSeal).message));
-   draft["profiles"]=QJsonArray{profileWith(QJsonObject{{"mode","on"},{"passphrase","not here"}})};settings["draft"]=draft;withSeal["settings"]=settings;QVERIFY(validateUiState(withSeal));
-   draft["profiles"]=QJsonArray{profileWith(QJsonObject{{"mode","always"}})};settings["draft"]=draft;withSeal["settings"]=settings;QVERIFY(validateUiState(withSeal));}
+   const auto profileWith=[](const QJsonValue& encrypt){return QJsonObject{{"id","p"},{"label","P"},{"provider","s3"},{"settings",QJsonObject{}},{"credentials",QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}},{"encrypt",encrypt}};};
+   auto withEncrypt=state;draft["profiles"]=QJsonArray{profileWith(QJsonObject{{"mode","passphrase"},{"passphraseCredentials",QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}}})};settings["draft"]=draft;withEncrypt["settings"]=settings;
+   QVERIFY2(!validateUiState(withEncrypt),qPrintable(validateUiState(withEncrypt).message));
+   draft["profiles"]=QJsonArray{profileWith(QJsonObject{{"mode","on"},{"passphrase","not here"}})};settings["draft"]=draft;withEncrypt["settings"]=settings;QVERIFY(validateUiState(withEncrypt));
+   draft["profiles"]=QJsonArray{profileWith(QJsonObject{{"mode","always"}})};settings["draft"]=draft;withEncrypt["settings"]=settings;QVERIFY(validateUiState(withEncrypt));}
   auto main=state["main"].toObject();main["secretKey"]="synthetic-secret";state["main"]=main;auto error=validateUiState(state);QVERIFY(error);QVERIFY(!QJsonDocument(error.toJson()).toJson().contains("synthetic-secret"));
  }
 };

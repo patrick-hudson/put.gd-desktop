@@ -17,11 +17,11 @@ public:
  ~SetupService() override;
  using ProviderSetup=std::function<void(const QString&,const Destination&,const QJsonObject&,JsonReply,std::function<void(QJsonObject)>)>;
  void setProviderSetup(ProviderSetup handler){providerSetup_=std::move(handler);}
- // Sealed links (#2079): after a passed Test, the sealed-page check of the same destination.
+ // Encrypted links (#2079): after a passed Test, the encrypted-page check of the same destination.
  // It answers {state, reason?, cleanup} or an empty object when the destination type can't
- // seal at all; the test's result gains it as `seal`, and a failed check never fails the test.
- using SealChecker=std::function<void(const QString& profileId,const QJsonObject& profile,std::shared_ptr<std::atomic_bool> cancelled,std::function<void(QJsonObject)>)>;
- void setSealChecker(SealChecker checker){sealChecker_=std::move(checker);}
+ // encrypt at all; the test's result gains it as `encrypt`, and a failed check never fails the test.
+ using EncryptChecker=std::function<void(const QString& profileId,const QJsonObject& profile,std::shared_ptr<std::atomic_bool> cancelled,std::function<void(QJsonObject)>)>;
+ void setEncryptChecker(EncryptChecker checker){encryptChecker_=std::move(checker);}
  // A provider whose credentials are named values instead of a key pair (a custom
  // HTTP uploader, #1361). Given a saved profile and typed values, it fills `names`
  // with the credential-store keys the profile's settings need and checks the values;
@@ -71,8 +71,8 @@ private:
  CredentialStore& credentials_;
  DestinationTester tester_;
  ProviderSetup providerSetup_;
- SealChecker sealChecker_;
- QSet<QString> sealChecking_;
+ EncryptChecker encryptChecker_;
+ QSet<QString> encryptChecking_;
  NamedCredentials namedCredentials_;
  CredentialBinding credentialBinding_;
  DestinationStatus* status_=nullptr;

@@ -4,26 +4,26 @@
 #include <functional>
 class QComboBox;class QFormLayout;class QLabel;class QLineEdit;class QPushButton;class QWidget;
 namespace putgd {
-// Destinations → (destination) → Sealed links (#2079): this destination's default for new
+// Destinations → (destination) → Encrypted links (#2079): this destination's default for new
 // uploads (Off, On, On with a passphrase), the passphrase kept like any other secret, and
-// whether Test upload and link showed the destination serving a sealed page. Seal is offered
+// whether Test upload and link showed the destination serving an encrypted page. Encrypt is offered
 // only once that check passed; Off stays selectable whatever it says.
-class SealLinksPanel final:public QObject {
+class EncryptedLinksPanel final:public QObject {
  Q_OBJECT
 public:
  using Setting=std::function<QWidget*(QFormLayout*,const QString& label,QWidget* control,const QString& hint)>;
- explicit SealLinksPanel(QWidget* parent);
+ explicit EncryptedLinksPanel(QWidget* parent);
  void build(QFormLayout* form,const Setting& setting);
- // The saved or edited profile, its destination status record ({seal: {state, reason?}}) and
- // whether the passphrase is loaded (setup.credentialHint's sealPassphraseLoaded).
+ // The saved or edited profile, its destination status record ({encrypt: {state, reason?}}) and
+ // whether the passphrase is loaded (setup.credentialHint's encryptPassphraseLoaded).
  void load(const QJsonObject& profile,const QJsonObject& status,bool passphraseLoaded,bool edited);
  void setPassphraseLoaded(bool loaded);
  // Clears the typed passphrase once a store of it is accepted; a refused one keeps it.
  void clearPassphrase();
- // The profile with this panel's choice written into `seal`.
+ // The profile with this panel's choice written into `encrypt`.
  QJsonObject apply(QJsonObject profile) const;
  QJsonObject viewState() const;
- // ui.sealLinks: mode {mode off|on|passphrase} or unlock. A passphrase is typed in the window only.
+ // ui.encryptedLinks: mode {mode off|on|passphrase} or unlock. A passphrase is typed in the window only.
  bool drive(const QJsonObject& command,QString* refusal);
  QString mode() const;
  QWidget* control() const;

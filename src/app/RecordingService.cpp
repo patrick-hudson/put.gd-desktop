@@ -444,7 +444,7 @@ void RecordingService::handleEvent(const QJsonObject& event) {
     }
     else if (kind == "cancelled" && !recording::terminal(s.state)) cancelActive({});
     // A format or sound choice made while an export runs is applied when review resumes.
-    else if (kind == "seal" && event["on"].isBool() && s.state == RecordingState::Reviewing) { if (host_.seal) host_.seal(s.op.id, event["on"].toBool()); }
+    else if (kind == "encrypt" && event["on"].isBool() && s.state == RecordingState::Reviewing) { if (host_.encrypt) host_.encrypt(s.op.id, event["on"].toBool()); }
     else if (kind == "configChanged" && s.state == RecordingState::Exporting) s.heldConfig = event;
     else if (kind == "configChanged" && (s.state == RecordingState::Ready || s.state == RecordingState::Reviewing)) {
         auto json = event["config"].toObject();

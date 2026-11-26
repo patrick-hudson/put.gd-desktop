@@ -1,4 +1,4 @@
-#include "SealCrypto.h"
+#include "EncryptCrypto.h"
 #include <QIODevice>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -11,13 +11,14 @@
 #include <openssl/kdf.h>
 #include <openssl/rand.h>
 #include <openssl/crypto.h>
-namespace putgd::seal {
+namespace putgd::encrypt {
 namespace {
+// v1 format identifiers; they keep the feature's original name so existing vectors and links stay valid.
 constexpr char magic[]="PGDSEAL1";
 const QByteArray checkInfo="put.gd sealed v1 check";
 const QByteArray payloadInfo="put.gd sealed v1 payload";
-Error damaged() {return {"seal_damaged","This link is incomplete or damaged.",{}};}
-Error failed(const QString& what) {return {"seal_failed","Couldn't seal the file: "+what+".",{}};}
+Error damaged() {return {"encrypt_damaged","This link is incomplete or damaged.",{}};}
+Error failed(const QString& what) {return {"encrypt_failed","Couldn't encrypt the file: "+what+".",{}};}
 const unsigned char* bytes(const QByteArray& value) {return reinterpret_cast<const unsigned char*>(value.constData());}
 // HKDF-SHA-256 through EVP_PKEY, available from OpenSSL 1.1.1 on.
 QByteArray hkdf(const QByteArray& ikm,const QByteArray& salt,const QByteArray& info) {
@@ -65,13 +66,13 @@ struct Cipher {
  std::unique_ptr<EVP_CIPHER_CTX,decltype(&EVP_CIPHER_CTX_free)> context{EVP_CIPHER_CTX_new(),EVP_CIPHER_CTX_free};
  QByteArray key,header,prefix;
  // Encrypts or decrypts one chunk; for decryption the tag is the input's last 16 bytes.
- bool run(bool encrypt,quint32 index,bool last,const char* in,qint64 size,QByteArray& out) {
+ bool run(bool encrypting,quint32 index,bool last,const char* in,qint64 size,QByteArray& out) {
   if(!context)return false;
   const auto tail=position(index,last);const auto nonce=prefix+tail;const auto aad=header+tail;
-  const qint64 body=encrypt?size:size-tagBytes;if(body<0)return false;
-  out.resize(encrypt?body+tagBytes:body);int length=0;
+  const qint64 body=encrypting?size:size-tagBytes;if(body<0)return false;
+  out.resize(encrypting?body+tagBytes:body);int length=0;
   auto* cipherOut=reinterpret_cast<unsigned char*>(out.data());const auto* data=reinterpret_cast<const unsigned char*>(in);
-  if(encrypt) {
+  if(encrypting) {
    if(EVP_EncryptInit_ex(context.get(),EVP_aes_256_gcm(),nullptr,nullptr,nullptr)!=1||EVP_CIPHER_CTX_ctrl(context.get(),EVP_CTRL_GCM_SET_IVLEN,12,nullptr)!=1
       ||EVP_EncryptInit_ex(context.get(),nullptr,nullptr,bytes(key),bytes(nonce))!=1
       ||EVP_EncryptUpdate(context.get(),nullptr,&length,bytes(aad),int(aad.size()))!=1
@@ -92,13 +93,13 @@ struct Cipher {
  }
 };
 // The meta record exactly as the viewer accepts it: an object with string name and type and a
-// whole size from 0 to the sealing limit.
+// whole size from 0 to the encrypting limit.
 bool parseMeta(const QByteArray& json,Meta& meta) {
  QJsonParseError error;const auto document=QJsonDocument::fromJson(json,&error);
  if(error.error!=QJsonParseError::NoError||!document.isObject())return false;
  const auto object=document.object();const auto size=object.value("size");
  if(!object.value("name").isString()||!object.value("type").isString()||!size.isDouble())return false;
- const double value=size.toDouble();if(value<0||value>double(sealLimit)||value!=std::floor(value))return false;
+ const double value=size.toDouble();if(value<0||value>double(encryptLimit)||value!=std::floor(value))return false;
  meta={object.value("name").toString(),object.value("type").toString(),qint64(value)};return true;
 }
 bool readExactly(QIODevice& input,char* into,qint64 size) {
@@ -127,9 +128,9 @@ QByteArray encodeMeta(const Meta& meta) {
  const auto json=QJsonDocument(QJsonObject{{"name",meta.name},{"type",meta.type},{"size",double(meta.size)}}).toJson(QJsonDocument::Compact);
  QByteArray out(4,'\0');qToBigEndian(quint32(json.size()),out.data());return out+json;
 }
-Error seal(QIODevice& input,const Meta& meta,const QByteArray& key,const QString& passphrase,const Sink& sink,int iterations,const Fixed& fixed) {
+Error encrypt(QIODevice& input,const Meta& meta,const QByteArray& key,const QString& passphrase,const Sink& sink,int iterations,const Fixed& fixed) {
  if(key.size()!=keyBytes)return failed("the key is invalid");
- if(meta.size<0||meta.size>sealLimit)return failed("the file is too large");
+ if(meta.size<0||meta.size>encryptLimit)return failed("the file is too large");
  if(!passphrase.isEmpty()&&!usablePassphrase(passphrase))return failed("the passphrase must be one line of at most 1024 bytes");
  const auto encodedMeta=encodeMeta(meta);if(encodedMeta.size()>maximumMetaBytes+4)return failed("the file name is too long");
  Header header;header.passphrase=!passphrase.isEmpty();header.chunkSize=quint32(chunkBytes);header.iterations=header.passphrase?quint32(passphraseIterations):0;Q_UNUSED(iterations);
@@ -144,7 +145,7 @@ Error seal(QIODevice& input,const Meta& meta,const QByteArray& key,const QString
  Cipher cipher;cipher.key=fileKey(key,header,passphrase);cipher.header=header.bytes;cipher.prefix=header.noncePrefix;
  if(cipher.key.isEmpty())return failed("key derivation failed");
  const auto clean=qScopeGuard([&cipher]{OPENSSL_cleanse(cipher.key.data(),size_t(cipher.key.size()));});
- if(!sink(header.bytes.constData(),header.bytes.size()))return failed("couldn't write the sealed file");
+ if(!sink(header.bytes.constData(),header.bytes.size()))return failed("couldn't write the encrypted file");
  const qint64 total=encodedMeta.size()+meta.size;
  QByteArray plain;plain.reserve(int(chunkBytes));QByteArray out;
  const auto wipe=qScopeGuard([&plain]{plain.resize(plain.capacity());OPENSSL_cleanse(plain.data(),size_t(plain.size()));});
@@ -157,7 +158,7 @@ Error seal(QIODevice& input,const Meta& meta,const QByteArray& key,const QString
   if(fromFile>0){const auto at=plain.size();plain.resize(at+fromFile);if(!readExactly(input,plain.data()+at,fromFile))return failed("couldn't read the file");}
   consumed+=want;const bool last=consumed==total;
   if(!cipher.run(true,index,last,plain.constData(),plain.size(),out))return failed("encryption failed");
-  if(!sink(out.constData(),out.size()))return failed("couldn't write the sealed file");
+  if(!sink(out.constData(),out.size()))return failed("couldn't write the encrypted file");
   if(index==0xffffffffu&&!last)return failed("the file is too large");
   ++index;
  }
@@ -165,7 +166,7 @@ Error seal(QIODevice& input,const Meta& meta,const QByteArray& key,const QString
 }
 Error parseHeader(const QByteArray& value,Header& header) {
  if(value.size()!=headerBytes||!value.startsWith(QByteArray(magic,8)))return damaged();
- if(value[8]!=1)return {"seal_version","This sealed link needs a newer put.gd.",{}};
+ if(value[8]!=1)return {"encrypt_version","This encrypted link needs a newer put.gd.",{}};
  const auto flags=quint8(value[9]);if(flags>1||value[10]!=0||value[11]!=0)return damaged();
  header.passphrase=flags&1;header.chunkSize=qFromBigEndian<quint32>(value.constData()+12);header.iterations=qFromBigEndian<quint32>(value.constData()+16);
  // Version 1 fixes the chunk size and the passphrase cost: anything else is not ours.
@@ -186,8 +187,8 @@ Error open(QIODevice& input,qint64 total,const QByteArray& key,const QString& pa
  QByteArray head(headerBytes,'\0');if(!readExactly(input,head.data(),headerBytes))return damaged();
  Header header;if(auto e=parseHeader(head,header))return e;
  if(!keyMatches(header,key))return damaged();
- if(header.passphrase&&passphrase.isEmpty())return {"seal_passphrase_required","This link needs its passphrase.",{}};
- if(!usablePassphrase(passphrase))return {"seal_passphrase","That passphrase doesn't open this link.",{}};
+ if(header.passphrase&&passphrase.isEmpty())return {"encrypt_passphrase_required","This link needs its passphrase.",{}};
+ if(!usablePassphrase(passphrase))return {"encrypt_passphrase","That passphrase doesn't open this link.",{}};
  Cipher cipher;cipher.key=fileKey(key,header,header.passphrase?passphrase:QString());cipher.header=header.bytes;cipher.prefix=header.noncePrefix;
  if(cipher.key.isEmpty())return damaged();
  const auto clean=qScopeGuard([&cipher]{OPENSSL_cleanse(cipher.key.data(),size_t(cipher.key.size()));});
@@ -202,7 +203,7 @@ Error open(QIODevice& input,qint64 total,const QByteArray& key,const QString& pa
   const bool last=index==chunks-1;const auto size=last?lastSize:full;
   in.resize(size);if(!readExactly(input,in.data(),size))return damaged();
   if(!cipher.run(false,quint32(index),last,in.constData(),size,out))
-   return index==0&&header.passphrase?Error{"seal_passphrase","That passphrase doesn't open this link.",{}}:damaged();
+   return index==0&&header.passphrase?Error{"encrypt_passphrase","That passphrase doesn't open this link.",{}}:damaged();
   qint64 offset=0;
   if(metaLength<0||metaBuffer.size()<4+metaLength) {
    // The meta record comes first and may, in principle, cross a chunk boundary.
@@ -215,7 +216,7 @@ Error open(QIODevice& input,qint64 total,const QByteArray& key,const QString& pa
     if(meta)*meta=parsed;
    }
   }
-  if(offset<out.size()){fileBytes+=out.size()-offset;if(!sink(out.constData()+offset,out.size()-offset))return {"seal_write_failed","Couldn't write the opened file.",{}};}
+  if(offset<out.size()){fileBytes+=out.size()-offset;if(!sink(out.constData()+offset,out.size()-offset))return {"encrypt_write_failed","Couldn't write the opened file.",{}};}
  }
  if(metaLength<0||metaBuffer.size()!=4+metaLength)return damaged();
  Meta parsed;if(!parseMeta(metaBuffer.mid(4),parsed)||parsed.size!=fileBytes)return damaged();

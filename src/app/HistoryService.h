@@ -22,8 +22,8 @@ public:
  // Unlocks the saved credentials of the destination the item was uploaded to.
  void unlockItemCredentials(const QString&,JsonReply);
  void copyLink(const QString&,JsonReply);
- // Forget key (#2079): the sealed link's key leaves History; the file stays where it was uploaded.
- void forgetSealKey(const QString&,JsonReply);
+ // Forget key (#2079): the encrypted link's key leaves History; the file stays where it was uploaded.
+ void forgetEncryptKey(const QString&,JsonReply);
  // Several stored links at once, one per line in selection order: all of
  // them, or none when any is no longer available.
  void copyLinks(const QStringList& ids,JsonReply);

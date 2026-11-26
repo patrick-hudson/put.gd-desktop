@@ -1326,26 +1326,26 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     actionRow->addSpacing(12 - actionRow->spacing());
     actionRow->addWidget(save_);
     actionRow->addWidget(destinationMenu_);
-    // #2079: Seal, beside Upload: this upload only, starting from the destination's Seal links setting.
-    seal_ = new QPushButton("Seal", actions);
-    seal_->setObjectName("reviewSeal");
-    seal_->setCheckable(true);
-    seal_->setIcon(Ui::icon("lock"));
-    Ui::role(seal_, "quiet");
-    seal_->setProperty("driveAction", QJsonObject{{"action", "seal"}});
+    // #2079: Encrypt, beside Upload: this upload only, starting from the destination's Encrypted links setting.
+    encrypt_ = new QPushButton("Encrypt", actions);
+    encrypt_->setObjectName("reviewEncrypt");
+    encrypt_->setCheckable(true);
+    encrypt_->setIcon(Ui::icon("lock"));
+    Ui::role(encrypt_, "quiet");
+    encrypt_->setProperty("driveAction", QJsonObject{{"action", "encrypt"}});
     {
-        const auto seal = options.seal;
-        sealAvailable_ = seal.value("available").toBool();
-        sealReason_ = seal.value("reason").toString();
-        seal_->setChecked(seal.value("on").toBool());
-        seal_->setEnabled(sealAvailable_ || seal_->isChecked());
-        seal_->setToolTip(sealAvailable_ ? QStringLiteral("Seal this upload. Only someone with the full link can open it") : sealReason_);
-        seal_->setVisible(!seal.isEmpty());
+        const auto encrypt = options.encrypt;
+        encryptAvailable_ = encrypt.value("available").toBool();
+        encryptReason_ = encrypt.value("reason").toString();
+        encrypt_->setChecked(encrypt.value("on").toBool());
+        encrypt_->setEnabled(encryptAvailable_ || encrypt_->isChecked());
+        encrypt_->setToolTip(encryptAvailable_ ? QStringLiteral("Encrypt this upload. Only someone with the full link can open it") : encryptReason_);
+        encrypt_->setVisible(!encrypt.isEmpty());
     }
-    connect(seal_, &QPushButton::toggled, this, [this](bool on) { if (!sealAvailable_) seal_->setEnabled(on); emit sealToggled(on); });
-    actionRow->addWidget(seal_);
+    connect(encrypt_, &QPushButton::toggled, this, [this](bool on) { if (!encryptAvailable_) encrypt_->setEnabled(on); emit encryptToggled(on); });
+    actionRow->addWidget(encrypt_);
     actionRow->addWidget(upload_);
-    for (auto* button : std::initializer_list<QWidget*>{format_, cancel_, save_, destinationMenu_, seal_, upload_}) {
+    for (auto* button : std::initializer_list<QWidget*>{format_, cancel_, save_, destinationMenu_, encrypt_, upload_}) {
         // A click never takes the keys; Tab still reaches them (Q16).
         button->setFocusPolicy(Qt::TabFocus);
         button->setProperty("uiDensity", "compact");
@@ -2412,8 +2412,8 @@ bool ReviewWindow::setConfig(const RecordingConfig& config, quint64 seq) {
 }
 void ReviewWindow::setExporting(bool exporting, const QString& label) {
     stopPlayback();
-    // #2079: the resident ignores the Seal toggle while an export runs, so it can't change then.
-    if (seal_) seal_->setEnabled(!exporting && (sealAvailable_ || seal_->isChecked()));
+    // #2079: the resident ignores the Encrypt toggle while an export runs, so it can't change then.
+    if (encrypt_) encrypt_->setEnabled(!exporting && (encryptAvailable_ || encrypt_->isChecked()));
     if (exporting) { cancelPlacement(); chooser_->cancel(); if (adviceDialog_) { adviceDialog_->close(); adviceDialog_.clear(); } if (overlay_->isOpen()) overlay_->dismiss(); }
     if (exporting && discard_) answerDiscard(false);
     exporting_ = exporting;
@@ -3003,7 +3003,7 @@ QJsonObject ReviewWindow::inspect() const {
         {"discardConfirmation", QJsonObject{{"open", bool(discard_)}, {"text", discard_ ? QJsonValue(discard_->text()) : QJsonValue(QJsonValue::Null)}}},
         {"fileDialog", chooser_->state()},
         {"format", QJsonObject{{"format", config_.format}, {"codec", config_.codec}}},
-        {"seal", QJsonObject{{"shown", seal_ && seal_->isVisibleTo(this)}, {"on", seal_ && seal_->isChecked()}, {"available", sealAvailable_}, {"reason", sealReason_}}},
+        {"encrypt", QJsonObject{{"shown", encrypt_ && encrypt_->isVisibleTo(this)}, {"on", encrypt_ && encrypt_->isChecked()}, {"available", encryptAvailable_}, {"reason", encryptReason_}}},
         {"video", QJsonObject{{"rect", rect(video)}, {"share", double(video.width()) * video.height() / area}}},
         {"header", QJsonObject{{"visible", header_->isVisibleTo(this)}, {"rect", rect(header_->geometry())}, {"customFrame", Ui::WindowHeader::customFrame()}}}};
 }
@@ -3030,14 +3030,14 @@ ReviewWindow::DriveResult ReviewWindow::driveAction(const QJsonObject& params) {
     const auto invalid = [](const QString& message) { return DriveResult{"invalid_request", message, {}}; };
     auto done = [this](const QString& error = {}) { return error.isEmpty() ? DriveResult{{}, {}, inspect()} : DriveResult{"invalid_request", error, {}}; };
     if (action == "inspect") return done();
-    // #2079: the Seal toggle beside Upload, as a click sets it.
-    if (action == "seal") {
-        if (!params["on"].isBool()) return invalid("seal takes on: true or false");
-        if (!seal_ || seal_->isHidden()) return invalid("This recording has no upload destination");
+    // #2079: the Encrypt toggle beside Upload, as a click sets it.
+    if (action == "encrypt") {
+        if (!params["on"].isBool()) return invalid("encrypt takes on: true or false");
+        if (!encrypt_ || encrypt_->isHidden()) return invalid("This recording has no upload destination");
         // Unavailable is said first, as the editor does: a disabled toggle here may only mean that.
-        if (params["on"].toBool() && !sealAvailable_) return DriveResult{"seal_unavailable", sealReason_, {}};
-        if (!seal_->isEnabled() && params["on"].toBool() != seal_->isChecked()) return DriveResult{"recording_state", "Seal can't change while an export runs", {}};
-        seal_->setChecked(params["on"].toBool());
+        if (params["on"].toBool() && !encryptAvailable_) return DriveResult{"encrypt_unavailable", encryptReason_, {}};
+        if (!encrypt_->isEnabled() && params["on"].toBool() != encrypt_->isChecked()) return DriveResult{"recording_state", "Encrypt can't change while an export runs", {}};
+        encrypt_->setChecked(params["on"].toBool());
         return done();
     }
     // The discard confirmation, as the Discard… button, the close button and its two answers.

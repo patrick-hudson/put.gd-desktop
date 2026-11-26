@@ -1,15 +1,16 @@
-#include "SealPage.h"
+#include "EncryptPage.h"
 #include <QCryptographicHash>
-namespace putgd::seal {
-// Written by tools/seal/pin_viewer.py; a change to viewer.html changes it deliberately.
-const char viewerSha256[]="1074b3e648dd82fda2f186e8ac61e1d4bfcc2b993b1766e88eba1503e4680f82";
-extern const unsigned char sealViewerBytes[];
-extern const unsigned long long sealViewerSize;
+namespace putgd::encrypt {
+// Written by tools/encrypt/pin_viewer.py; a change to viewer.html changes it deliberately.
+const char viewerSha256[]="3f271e733ddbb3ab7921d52a7dc8256a8eb6fdbb7a61409371a4961ef6f3d042";
+extern const unsigned char encryptViewerBytes[];
+extern const unsigned long long encryptViewerSize;
 namespace {
+// v1 format identifiers; they keep the feature's original name so existing vectors and links stay valid. The data element's id, putgd-sealed, is one of them.
 const QByteArray marker=QByteArrayLiteral("<!--putgd-sealed-->");
 const QByteArray inlineCsp=QByteArrayLiteral("connect-src 'none'");
 const QByteArray splitCsp=QByteArrayLiteral("connect-src 'self'");
-Error changed() {return {"seal_page_changed","This page isn't put.gd's sealed-link viewer, or it was changed.",{}};}
+Error changed() {return {"encrypt_page_changed","This page isn't put.gd's encrypted-link viewer, or it was changed.",{}};}
 bool base64Text(const QByteArray& text) {
  if(text.size()%4)return false;
  for(qsizetype i=0;i<text.size();++i){const char c=text[i];
@@ -19,7 +20,7 @@ bool base64Text(const QByteArray& text) {
  return true;
 }
 }
-QByteArray viewer() {return QByteArray(reinterpret_cast<const char*>(sealViewerBytes),qsizetype(sealViewerSize));}
+QByteArray viewer() {return QByteArray(reinterpret_cast<const char*>(encryptViewerBytes),qsizetype(encryptViewerSize));}
 bool viewerIntact() {
  const auto page=viewer();
  return QCryptographicHash::hash(page,QCryptographicHash::Sha256).toHex()==QByteArray(viewerSha256)&&page.count(marker)==1&&page.count(inlineCsp)==1&&!page.contains(splitCsp);

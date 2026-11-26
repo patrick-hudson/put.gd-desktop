@@ -103,11 +103,11 @@ private slots:
   QCOMPARE(doc["forgotten"].toArray(),QJsonArray{"sent-nothing"});QCOMPARE(doc["items"].toArray().size(),2);
   QCOMPARE(store.forgetBlocker("unsupported",{}),QString("deletion"));
   QVERIFY(!store.forget({"unsupported"},{"delete"},&removed));QCOMPARE(removed,0);
-  // #2079: a sealed page gone, its data file's delete checkpointed and unsettled: the record stays for Retry deletion.
-  {OperationItem item;item.artifact.id="sealed";item.artifact.name="sealed.png";item.uploadStatus="uploaded";op.items.append(item);QVERIFY(!store.saveOperation(op));
-   auto pending=target("sealed","unknown",{{"schemaVersion",1}});pending["sealDataProgress"]=QJsonObject{{"schemaVersion",1},{"phase","delete_intent"}};
-   QVERIFY(!store.saveDeletion({{"id","sealed-delete"},{"state","completed"},{"items",QJsonArray{pending}}}));
-   QCOMPARE(store.forgetBlocker("sealed",{}),QString("deletion"));QVERIFY(!store.forget({"sealed"},{},&removed));QCOMPARE(removed,0);}
+  // #2079: an encrypted page gone, its data file's delete checkpointed and unsettled: the record stays for Retry deletion.
+  {OperationItem item;item.artifact.id="encrypted";item.artifact.name="encrypted.png";item.uploadStatus="uploaded";op.items.append(item);QVERIFY(!store.saveOperation(op));
+   auto pending=target("encrypted","unknown",{{"schemaVersion",1}});pending["encryptDataProgress"]=QJsonObject{{"schemaVersion",1},{"phase","delete_intent"}};
+   QVERIFY(!store.saveDeletion({{"id","encrypted-delete"},{"state","completed"},{"items",QJsonArray{pending}}}));
+   QCOMPARE(store.forgetBlocker("encrypted",{}),QString("deletion"));QVERIFY(!store.forget({"encrypted"},{},&removed));QCOMPARE(removed,0);}
  }
  // #1763: a deletion that ends unsupported_safe_removal or version_retained keeps the "phase" checkpoint an
  // interrupted attempt saved: expiry and Clear History keep the record, and a retry keeps the checkpoint.

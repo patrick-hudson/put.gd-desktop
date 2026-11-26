@@ -15,8 +15,8 @@ bool knownType(const QString& type){
   "copyText",
   // Image editor check mode (#1804): what the sensitive text check found, kinds and counts only.
   "checked",
-  // Image editor Seal toggle (#2079): the window's choice, which the resident applies at upload.
-  "seal",
+  // Image editor Encrypt toggle (#2079): the window's choice, which the resident applies at upload.
+  "encrypt",
   // Recording helper: unsolicited progress/stop/failure notifications, and
   // the interface scheme its overlays follow while it runs (#198).
   "event","appearance",

@@ -399,9 +399,9 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  copyImage_=new QPushButton("Copy image",footer);copyImage_->setObjectName("editorCopyImage");copyImage_->setIcon(Ui::icon("copy"));copyImage_->setProperty("uiIconBase",QSize(20,20));copyImage_->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));Ui::role(copyImage_,"quiet");copyImage_->setToolTip("Copy edited image to clipboard (Ctrl+Shift+C)");copyImage_->setAccessibleDescription(copyImage_->toolTip());
  save_=new QPushButton("Save a copy…",footer);save_->setObjectName("editorSaveCopy");save_->setIcon(Ui::icon("save"));save_->setProperty("uiIconBase",QSize(20,20));save_->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));save_->setToolTip("Save edited image to a file (Ctrl+S)");footerGrid_->addWidget(copyImage_,2,1);footerGrid_->addWidget(save_,2,2);
  cancel_=new QPushButton("Cancel",footer);cancel_->setObjectName("editorCancel");Ui::role(cancel_,"quiet");footerGrid_->addWidget(cancel_,2,3);
- // #2079: Seal, beside Upload: this upload only, starting from the destination's Seal links setting.
- seal_=new QPushButton("Seal",uploadGroup);seal_->setObjectName("editorSeal");seal_->setCheckable(true);seal_->setIcon(Ui::icon("lock"));seal_->setProperty("uiIconBase",QSize(20,20));seal_->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));Ui::role(seal_,"quiet");seal_->setAutoDefault(false);seal_->hide();uploadRow->addWidget(seal_);
- connect(seal_,&QPushButton::toggled,this,[this](bool on){seal_->setAccessibleDescription(on?QStringLiteral("On"):QStringLiteral("Off"));if(!sealAvailable_&&!on)seal_->setEnabled(false);emit sealToggled(on);});
+ // #2079: Encrypt, beside Upload: this upload only, starting from the destination's Encrypted links setting.
+ encrypt_=new QPushButton("Encrypt",uploadGroup);encrypt_->setObjectName("editorEncrypt");encrypt_->setCheckable(true);encrypt_->setIcon(Ui::icon("lock"));encrypt_->setProperty("uiIconBase",QSize(20,20));encrypt_->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));Ui::role(encrypt_,"quiet");encrypt_->setAutoDefault(false);encrypt_->hide();uploadRow->addWidget(encrypt_);
+ connect(encrypt_,&QPushButton::toggled,this,[this](bool on){encrypt_->setAccessibleDescription(on?QStringLiteral("On"):QStringLiteral("Off"));if(!encryptAvailable_&&!on)encrypt_->setEnabled(false);emit encryptToggled(on);});
  upload_=new QPushButton("Upload",uploadGroup);upload_->setObjectName("editorUpload");upload_->setIcon(Ui::icon("upload"));upload_->setProperty("uiIconBase",QSize(20,20));upload_->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));Ui::role(upload_,"primary");upload_->setToolTip("Upload edited image (Ctrl+Enter)");upload_->setAutoDefault(false);uploadRow->addWidget(upload_);footerGrid_->addWidget(uploadGroup,2,4);
  root->addWidget(footer);
 
@@ -876,7 +876,7 @@ bool EditorWindow::exportForCopy(ExportDone done,std::function<QString(const QBy
  // The same snapshot and render as Save a copy, off the GUI thread.
  auto snapshot=doc_.snapshotForExport();
  copying_=true;lastCopy_={{"status","copying"}};
- for(auto* button:{save_,saveInstead_,chooseAnother_,upload_,cancel_,copyImage_,seal_})button->setEnabled(false);
+ for(auto* button:{save_,saveInstead_,chooseAnother_,upload_,cancel_,copyImage_,encrypt_})button->setEnabled(false);
  copyImage_->setMinimumWidth(copyImage_->sizeHint().width());copyImage_->setText("Copying…");
  struct Result {QByteArray png;QSize size;QString staged;};
  auto result=std::make_shared<Result>();
@@ -890,7 +890,7 @@ bool EditorWindow::exportForCopy(ExportDone done,std::function<QString(const QBy
 }
 void EditorWindow::showCopied(){
  copying_=false;lastCopy_={{"status","copied"}};
- for(auto* button:{save_,saveInstead_,chooseAnother_,upload_,cancel_,copyImage_})button->setEnabled(!busy_);seal_->setEnabled(!busy_&&(sealAvailable_||seal_->isChecked()));
+ for(auto* button:{save_,saveInstead_,chooseAnother_,upload_,cancel_,copyImage_})button->setEnabled(!busy_);encrypt_->setEnabled(!busy_&&(encryptAvailable_||encrypt_->isChecked()));
  // Brief confirmation on the button itself; its width holds still.
  copyImage_->setText("Image copied");copyImage_->setAccessibleName("Image copied");
  QAccessibleEvent event(copyImage_,QAccessible::NameChanged);QAccessible::updateAccessibility(&event);
@@ -899,7 +899,7 @@ void EditorWindow::showCopied(){
 }
 void EditorWindow::showCopyFailed(const QString& reason){
  copying_=false;lastCopy_={{"status","failed"},{"reason",reason}};++copyFeedback_;
- for(auto* button:{save_,saveInstead_,chooseAnother_,upload_,cancel_,copyImage_})button->setEnabled(!busy_);seal_->setEnabled(!busy_&&(sealAvailable_||seal_->isChecked()));
+ for(auto* button:{save_,saveInstead_,chooseAnother_,upload_,cancel_,copyImage_})button->setEnabled(!busy_);encrypt_->setEnabled(!busy_&&(encryptAvailable_||encrypt_->isChecked()));
  copyImage_->setText("Copy image");copyImage_->setAccessibleName("Copy image");
  setFailure("Couldn't copy the image: "+reason);
 }
@@ -991,8 +991,8 @@ void EditorWindow::setFailure(const QString& message){saveFeedbackTimer_->stop()
 void EditorWindow::showPreparationFailed(const QString& reason){
  // Nothing was handed off: the draft and its controls come back as they were.
  busy_=false;for(auto* widget:actionable())widget->setEnabled(true);unsetCursor();
- // Seal keeps its own rule: On only where the destination can seal, Off always.
- seal_->setEnabled(sealAvailable_||seal_->isChecked());
+ // Encrypt keeps its own rule: On only where the destination can encrypt, Off always.
+ encrypt_->setEnabled(encryptAvailable_||encrypt_->isChecked());
  message_->hide();destination_->setVisible(!destination_->text().isEmpty());
  setNotice(reason);refresh();keepEditing_->setFocus();
 }
@@ -1001,27 +1001,27 @@ void EditorWindow::setNotice(const QString& reason){
  notice_->setVisible(!reason.isEmpty());save_->setVisible(reason.isEmpty());placeDestination();
 }
 
-void EditorWindow::setSeal(const QJsonObject& seal) {
- if(seal.isEmpty()){seal_->hide();return;}
- sealAvailable_=seal.value("available").toBool();sealReason_=seal.value("reason").toString();
- {const QSignalBlocker block(seal_);seal_->setChecked(seal.value("on").toBool());}
- // Off is always possible; On only where the destination passed its sealed-link check.
- seal_->setEnabled(sealAvailable_||seal_->isChecked());
- seal_->setToolTip(sealAvailable_?QStringLiteral("Seal this upload. Only someone with the full link can open it"):sealReason_);
- seal_->setAccessibleDescription(seal_->isChecked()?QStringLiteral("On"):QStringLiteral("Off"));
- seal_->show();
+void EditorWindow::setEncrypt(const QJsonObject& encrypt) {
+ if(encrypt.isEmpty()){encrypt_->hide();return;}
+ encryptAvailable_=encrypt.value("available").toBool();encryptReason_=encrypt.value("reason").toString();
+ {const QSignalBlocker block(encrypt_);encrypt_->setChecked(encrypt.value("on").toBool());}
+ // Off is always possible; On only where the destination passed its encrypted-link check.
+ encrypt_->setEnabled(encryptAvailable_||encrypt_->isChecked());
+ encrypt_->setToolTip(encryptAvailable_?QStringLiteral("Encrypt this upload. Only someone with the full link can open it"):encryptReason_);
+ encrypt_->setAccessibleDescription(encrypt_->isChecked()?QStringLiteral("On"):QStringLiteral("Off"));
+ encrypt_->show();
 }
-bool EditorWindow::setSealOn(bool on,QString* refusal) {
- if(seal_->isHidden()){*refusal=QStringLiteral("This edit has no upload destination.");return false;}
- if(on&&!sealAvailable_){*refusal=sealReason_;return false;}
+bool EditorWindow::setEncryptOn(bool on,QString* refusal) {
+ if(encrypt_->isHidden()){*refusal=QStringLiteral("This edit has no upload destination.");return false;}
+ if(on&&!encryptAvailable_){*refusal=encryptReason_;return false;}
  // Asking for the state it already has changes nothing and succeeds.
- if(on==seal_->isChecked())return true;
- if(!seal_->isEnabled()){*refusal=QStringLiteral("Seal can't be changed right now.");return false;}
- seal_->setChecked(on);if(!sealAvailable_)seal_->setEnabled(false);return true;
+ if(on==encrypt_->isChecked())return true;
+ if(!encrypt_->isEnabled()){*refusal=QStringLiteral("Encrypt can't be changed right now.");return false;}
+ encrypt_->setChecked(on);if(!encryptAvailable_)encrypt_->setEnabled(false);return true;
 }
-QJsonObject EditorWindow::sealState() const {
- QJsonObject out{{"shown",!seal_->isHidden()},{"on",seal_->isChecked()},{"available",sealAvailable_},{"enabled",seal_->isEnabled()}};
- if(!sealReason_.isEmpty())out["reason"]=sealReason_;return out;
+QJsonObject EditorWindow::encryptstate() const {
+ QJsonObject out{{"shown",!encrypt_->isHidden()},{"on",encrypt_->isChecked()},{"available",encryptAvailable_},{"enabled",encrypt_->isEnabled()}};
+ if(!encryptReason_.isEmpty())out["reason"]=encryptReason_;return out;
 }
 QJsonObject EditorWindow::viewState() const {
  const auto& style=canvas_->style();const auto selected=canvas_->selected();
@@ -1037,7 +1037,7 @@ QJsonObject EditorWindow::viewState() const {
   {"message",message.isEmpty()?QJsonValue():QJsonValue(message)},{"lastSave",save.isEmpty()?QJsonValue():QJsonValue(save)},
   {"saveFeedbackVisible",saveFeedbackVisible_&&!busy_&&!savingCopy_},{"saveDetailsOpen",saveError_->fullTextPopup()&&saveError_->fullTextPopup()->isVisible()},
   {"lastShowInFolder",lastShowInFolder_.isEmpty()?QJsonValue():QJsonValue(lastShowInFolder_)},{"lastCopiedPath",lastCopiedPath_.isEmpty()?QJsonValue():QJsonValue(lastCopiedPath_)},
-  {"seal",sealState()},{"cancelLabel",cancel_->text()},{"destination",QJsonObject{{"text",destination_->text()+(sharingMode_->text().isEmpty()?QString():" · "+sharingMode_->text())},{"sharingMode",sharingMode_->text()},{"above",destinationAbove_}}},
+  {"encrypt",encryptstate()},{"cancelLabel",cancel_->text()},{"destination",QJsonObject{{"text",destination_->text()+(sharingMode_->text().isEmpty()?QString():" · "+sharingMode_->text())},{"sharingMode",sharingMode_->text()},{"above",destinationAbove_}}},
   {"preparationFailure",notice_->isHidden()?QJsonValue():QJsonValue(QJsonObject{{"text",noticeText_->text()}})},
   {"keyboardHelp",QJsonObject{{"open",findChild<QToolButton*>("editorKeyboardHelp")->isChecked()},{"text",findChild<QWidget*>("editorKeyboardHelpText")->property("text").toString()}}},
   {"discardConfirmation",QJsonObject{{"open",bool(discard_)},{"text",discard_?QJsonValue(discard_->property("confirmationText").toString()):QJsonValue()}}}};

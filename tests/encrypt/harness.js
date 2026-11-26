@@ -1,4 +1,4 @@
-// Test only (#2079): opens every vector's sealed page in an iframe, as a recipient would,
+// Test only (#2079): opens every vector's encrypted page in an iframe, as a recipient would,
 // and checks what the pinned viewer shows and lets them download. Results go to /result.
 "use strict";
 (async()=>{
@@ -31,8 +31,8 @@
   const doc=await (await fetch("/vectors.json")).json();
   for(const v of doc.vectors){
    const file=content(v.content),want=await sha(file),key=unhex(v.link);
-   const c=await SealRef.seal(file,{name:v.name,type:v.type},key,unhex(v.salt),unhex(v.noncePrefix),v.passphrase,v.iterations);
-   note(v.id,"reference seal equals C++",await sha(c)===v.containerSha256,await sha(c));
+   const c=await EncryptRef.encrypt(file,{name:v.name,type:v.type},key,unhex(v.salt),unhex(v.noncePrefix),v.passphrase,v.iterations);
+   note(v.id,"reference encrypt equals C++",await sha(c)===v.containerSha256,await sha(c));
    if(!v.container)await fetch("/container/"+v.id,{method:"POST",body:b64(c)});
    const forms=v.id==="multi"||v.id==="passphrase"?["page","split"]:["page"];
    for(const form of forms){
@@ -72,7 +72,7 @@
   d=await load("/large-nosave/multi.html#"+mf);st=await waitState(d);
   note("multi","too large without a save picker",st==="open"&&d.getElementById("savefile").hidden&&d.getElementById("save").hidden
    &&status(d)==="This file is too large for this browser. Open the link in Firefox, or use putgd-cli open.",st+" "+status(d));
-  d=await load("/split-missing/multi.html#"+frag(unhex(doc.vectors.find(v=>v.id==="multi").link)));await waitState(d);note("multi","split without its data",status(d)==="The sealed file isn't at this address any more.",status(d));
+  d=await load("/split-missing/multi.html#"+frag(unhex(doc.vectors.find(v=>v.id==="multi").link)));await waitState(d);note("multi","split without its data",status(d)==="The encrypted file isn't at this address any more.",status(d));
  }catch(e){note("harness","ran",false,e&&e.stack||e)}
  await fetch("/result",{method:"POST",body:JSON.stringify({userAgent:navigator.userAgent,results})});
 })();

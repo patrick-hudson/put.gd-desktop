@@ -22,10 +22,10 @@ if(OpenSSL_FOUND)
   target_compile_definitions(putgd_minisign PRIVATE PUTGD_MINISIGN_OPENSSL=1)
   target_link_libraries(putgd_minisign PRIVATE OpenSSL::Crypto)
 endif()
-add_executable(putgd-cli src/cli/main.cpp src/cli/SessionRequest.cpp src/cli/SealCommands.cpp src/cli/UpdateCheck.cpp src/cli/UpdateInstall.cpp src/cli/Zsync.cpp)
-# Sealed links (#2079): putgd-cli seals for the resident, and opens sealed links.
-include(cmake/Seal.cmake)
-target_link_libraries(putgd-cli PRIVATE putgd_app putgd_minisign putgd_seal Qt6::Network)
+add_executable(putgd-cli src/cli/main.cpp src/cli/SessionRequest.cpp src/cli/EncryptCommands.cpp src/cli/UpdateCheck.cpp src/cli/UpdateInstall.cpp src/cli/Zsync.cpp)
+# Encrypted links (#2079): putgd-cli encrypts for the resident, and opens encrypted links.
+include(cmake/Encrypt.cmake)
+target_link_libraries(putgd-cli PRIVATE putgd_app putgd_minisign putgd_encrypt Qt6::Network)
 install(TARGETS putgd-cli RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 # The file manager's `putgd --upload` client (#1105). DEB/RPM builds resolve
 # network URIs through the host's GIO in-process (GVfs FUSE paths).

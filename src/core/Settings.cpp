@@ -232,7 +232,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
     for (const auto& entry : doc["profiles"].toArray()) {
         if (!entry.isObject()) return invalid("/profiles", "Each profile must be an object.");
         const auto profile = entry.toObject();
-        if (!keys(profile, profile.contains("seal") ? QStringList{"id", "label", "provider", "settings", "credentials", "seal"} : QStringList{"id", "label", "provider", "settings", "credentials"}) ||
+        if (!keys(profile, profile.contains("encrypt") ? QStringList{"id", "label", "provider", "settings", "credentials", "encrypt"} : QStringList{"id", "label", "provider", "settings", "credentials"}) ||
             !identifier(profile["id"]) || !text(profile["label"], 1, 128) ||
             !identifier(profile["provider"]) || !profile["settings"].isObject() || !profile["credentials"].isObject())
             return invalid("/profiles", "Profile fields or identifiers are invalid.");
@@ -244,20 +244,20 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
             (credentials["mode"] == "keychain" && !text(credentials["reference"], 1, 256)) ||
             (credentials["mode"] == "session" && !credentials["reference"].isNull()))
             return invalid("/profiles/credentials", "Choose Save to keychain or Use for this session.");
-        // Sealed links (#2079): the destination's default, off unless set.
-        if (profile.contains("seal")) {
-            const auto seal = profile["seal"].toObject();
-            const auto pass = seal["passphraseCredentials"].toObject();
+        // Encrypted links (#2079): the destination's default, off unless set.
+        if (profile.contains("encrypt")) {
+            const auto encrypt = profile["encrypt"].toObject();
+            const auto pass = encrypt["passphraseCredentials"].toObject();
             const bool passOk = keys(pass, {"mode", "reference"}) && choice(pass["mode"], {"keychain", "session"}) &&
                 ((pass["mode"] == "keychain" && text(pass["reference"], 1, 256)) || (pass["mode"] == "session" && pass["reference"].isNull()));
-            if (!profile["seal"].isObject() || !keys(seal, seal.contains("passphraseCredentials") ? QStringList{"mode", "passphraseCredentials"} : QStringList{"mode"}) || !choice(seal["mode"], {"off", "on", "passphrase"}) ||
-                (seal["mode"] == "passphrase" && !passOk) || (seal.contains("passphraseCredentials") && !passOk))
-                return invalid("/profiles/seal", "Choose Off, On or On with a passphrase for Seal links.");
+            if (!profile["encrypt"].isObject() || !keys(encrypt, encrypt.contains("passphraseCredentials") ? QStringList{"mode", "passphraseCredentials"} : QStringList{"mode"}) || !choice(encrypt["mode"], {"off", "on", "passphrase"}) ||
+                (encrypt["mode"] == "passphrase" && !passOk) || (encrypt.contains("passphraseCredentials") && !passOk))
+                return invalid("/profiles/encrypt", "Choose Off, On or On with a passphrase for Encrypted links.");
             // Proton Drive is end-to-end encrypted already, and Nextcloud shares download HTML.
-            if (seal["mode"] != "off" && (profile["provider"] == "proton-drive" || profile["provider"] == "nextcloud"))
-                return invalid("/profiles/seal", "This destination type can't seal links. Set Seal links to Off.");
+            if (encrypt["mode"] != "off" && (profile["provider"] == "proton-drive" || profile["provider"] == "nextcloud"))
+                return invalid("/profiles/encrypt", "This destination type can't encrypt links. Set Encrypted links to Off.");
             if (pass["mode"] == "keychain" && pass["reference"] == profile["credentials"].toObject()["reference"])
-                return invalid("/profiles/seal", "The Seal links passphrase needs its own keychain reference, not the destination's.");
+                return invalid("/profiles/encrypt", "The Encrypted links passphrase needs its own keychain reference, not the destination's.");
         }
         if (!validateProfile) return invalid("/profiles/provider", "Provider validation is unavailable.");
         // The refused destination, as the submitted document names it (#1675).
@@ -269,7 +269,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         if (validateCredentials)
             if (auto error = validateCredentials(profile["provider"].toString(), credentials)) return error;
     }
-    // #2079: a Seal links passphrase has a keychain entry of its own: no destination's keys and no
+    // #2079: a Encrypted links passphrase has a keychain entry of its own: no destination's keys and no
     // other passphrase share it, or saving one would replace the other.
     {
         QStringList used;
@@ -278,9 +278,9 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
             if (credentials["mode"] == "keychain") used.append(credentials["reference"].toString());
         }
         for (const auto& entry : doc["profiles"].toArray()) {
-            const auto pass = entry.toObject()["seal"].toObject()["passphraseCredentials"].toObject();
+            const auto pass = entry.toObject()["encrypt"].toObject()["passphraseCredentials"].toObject();
             if (pass["mode"] != "keychain") continue;
-            if (used.contains(pass["reference"].toString())) return invalid("/profiles/seal", "The Seal links passphrase needs its own keychain reference, not another destination's.");
+            if (used.contains(pass["reference"].toString())) return invalid("/profiles/encrypt", "The Encrypted links passphrase needs its own keychain reference, not another destination's.");
             used.append(pass["reference"].toString());
         }
     }

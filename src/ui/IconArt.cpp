@@ -339,7 +339,7 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
   p.drawPath(folder());p.drawLine(12,10,12,17);
   if(name=="save"){p.drawLine(8,13,12,17);p.drawLine(12,17,16,13);}else p.drawLine(8,13,16,13);
  } else if(name=="lock") {
-  // Sealed links (#2079): a padlock, the body filled at secondary weight.
+  // Encrypted links (#2079): a padlock, the body filled at secondary weight.
   QPainterPath shackle;shackle.moveTo(8,11);shackle.lineTo(8,8);shackle.cubicTo(8,3.5,16,3.5,16,8);shackle.lineTo(16,11);p.drawPath(shackle);
   QPainterPath body;body.addRoundedRect(QRectF(5,11,14,10),2,2);wash(body);p.drawPath(body);p.drawLine(QPointF(12,15),QPointF(12,17.5));
  } else if(name=="eye") {
