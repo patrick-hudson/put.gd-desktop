@@ -4,14 +4,11 @@
 #include "SealCommands.h"
 #include "SessionRequest.h"
 #include "seal/SealJobMain.h"
-#include "app/LocalServer.h"
 #include "core/BuildInfo.h"
 #include <QCoreApplication>
 #include <QCommandLineParser>
-#include <QDeadlineTimer>
 #include <QDir>
 #include <QJsonDocument>
-#include <QLocalSocket>
 #include <QUuid>
 #include <cstdio>
 int main(int argc,char** argv) {

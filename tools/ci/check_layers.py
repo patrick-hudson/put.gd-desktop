@@ -54,7 +54,9 @@ ALLOWED = {
     'capture': {'core', 'ipc', 'platform', 'platform/x11', 'ui'},
     'record': {'core', 'ipc', 'platform', 'platform/wayland', 'platform/x11', 'ui'},
     'ocr': {'core', 'ipc'},
-    'cli': {'core'},
+    # Sealed links (#2079): the format and viewer (Qt Core and OpenSSL); only the CLI links the crypto.
+    'seal': {'core'},
+    'cli': {'core', 'seal'},
     'main': {'app', 'core', 'platform', 'platform/budgie', 'platform/gnome', 'platform/hyprland', 'platform/kde', 'platform/wayland', 'platform/x11',
              'storage/b2', 'storage/dav', 'storage/http', 'storage/proton', 'storage/s3', 'storage/sftp', 'ui'},
 }
@@ -63,7 +65,7 @@ ALLOWED = {
 TOLERATED = {
     ('src/cli/UpdateInstall.cpp', 'app'): 'the CLI installs AppImage updates with the resident\'s AppImageInstall',
     ('src/cli/UpdateInstall.h', 'app'): 'the CLI installs AppImage updates with the resident\'s AppImageInstall',
-    ('src/cli/main.cpp', 'app'): 'the CLI shares the resident\'s reply format, socket path and deadlines',
+    ('src/cli/SessionRequest.cpp', 'app'): 'the CLI shares the resident\'s reply format, socket path and deadlines',
     ('src/editor/EditorCanvas.cpp', 'ui'): 'the canvas draws with the app style (Theme, Ui)',
     ('src/ipc/CaptureControl.h', 'core'): 'only the putgd::Error value type, from a header with no core link',
     ('src/ipc/UiControl.h', 'core'): 'only the putgd::Error value type, from a header with no core link',
