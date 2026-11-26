@@ -1,9 +1,6 @@
 #include "TrayMenuSettle.h"
 #include "PanelTone.h"
-#include "ChildProcess.h"
-#include "core/HostEnvironment.h"
 #include <QPointer>
-#include <QProcess>
 #include <QStringList>
 #include <QTimer>
 #include <cmath>
@@ -51,9 +48,9 @@ Fade fade(const FadeInputs& in) {
   return {150 + frameMarginMs, "gnome-popup-animation"};
  }
  if (names.contains("x-cinnamon") || names.contains("cinnamon")) {
-  // Cinnamon's applet menus fade out over 150 ms when "effects on menus" is on.
-  if (in.cinnamonMenuEffects == false) return {frameMarginMs, "cinnamon-menu-effects-off"};
-  return {150 + frameMarginMs, "cinnamon-menu-effects"};
+  // Cinnamon takes the tray menu off the screen 15-26 ms after the click, with no
+  // visible fade even with "effects on menus" on (Mint 22.3, #2081): one frame.
+  return {frameMarginMs, "cinnamon-menu"};
  }
  return {unknownFadeMs, "unmeasured-desktop"};
 }
@@ -75,7 +72,7 @@ void TrayMenuSettle::refreshFade() {
  if (fixedFade_) return;
  const auto known = inputs_;
  inputs_ = readInputs();
- inputs_.gnomeAnimations = known.gnomeAnimations; inputs_.cinnamonMenuEffects = known.cinnamonMenuEffects;
+ inputs_.gnomeAnimations = known.gnomeAnimations;
  fade_ = fade(inputs_);
  const auto names = desktops(inputs_.desktop);
 #ifdef Q_OS_LINUX
@@ -92,19 +89,6 @@ void TrayMenuSettle::refreshFade() {
    if (value.typeId() != QMetaType::Bool) return;
    inputs_.gnomeAnimations = value.toBool(); if (!fixedFade_) fade_ = fade(inputs_);
   });
- }
- if (names.contains("x-cinnamon") || names.contains("cinnamon")) {
-  // Cinnamon's portal does not serve org.cinnamon; the host's gsettings does (as PanelTone reads its theme).
-  auto* process = new QProcess(this); process->setStandardErrorFile(QProcess::nullDevice());
-  process->setProcessEnvironment(host::environment());
-  connect(process, &QProcess::finished, this, [this, process] {
-   const auto text = QString::fromUtf8(process->readAllStandardOutput().left(64)).trimmed(); process->deleteLater();
-   if (text == "true" || text == "false") { inputs_.cinnamonMenuEffects = text == "true"; if (!fixedFade_) fade_ = fade(inputs_); }
-  });
-  connect(process, &QProcess::errorOccurred, this, [process](QProcess::ProcessError error) { if (error == QProcess::FailedToStart) process->deleteLater(); });
-  QTimer::singleShot(3000, process, [process] { if (process->state() != QProcess::NotRunning) process->kill(); });
-  terminateWithParent(*process);
-  process->start("gsettings", {"get", "org.cinnamon", "desktop-effects-on-menus"});
  }
 #endif
 }
