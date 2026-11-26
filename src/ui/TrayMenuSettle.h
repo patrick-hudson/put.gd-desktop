@@ -4,6 +4,7 @@
 #include <QList>
 #include <QObject>
 #include <QString>
+#include <QTimer>
 #include <functional>
 #include <optional>
 
@@ -41,7 +42,8 @@ int remainingMs(const Fade&, qint64 sinceCloseMs);
 namespace putgd {
 // Holds a tray menu command until the menu it came from is off the screen: the
 // host's close, when the host reports closes and has not reported this one yet
-// (bounded by closeWaitMs), then the rest of the compositor's fade.
+// (bounded by closeWaitMs), then the rest of the compositor's fade. A close that
+// arrives while a fade still counts from the click starts the fade again from it.
 class TrayMenuSettle final : public QObject {
  Q_OBJECT
 public:
@@ -72,6 +74,9 @@ private:
  quint64 waits_ = 0;
  QElapsedTimer sinceClose_;
  QList<Waiting> awaitingClose_;
+ // Fades counting down; fromClose is false while one counts from the click.
+ struct Fading { QTimer* timer = nullptr; QElapsedTimer clock; bool fromClose = false; };
+ QList<Fading> fading_;
  QJsonObject last_;
 };
 }

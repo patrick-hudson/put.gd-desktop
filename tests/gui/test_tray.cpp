@@ -5,6 +5,10 @@
 #include "ui/TrayController.h"
 #include "ui/TrayMenuSettle.h"
 #include <QElapsedTimer>
+#include <QScopeGuard>
+#include <QDir>
+#include <QFile>
+#include <QTemporaryDir>
 #include "ui/Ui.h"
 #include <QAction>
 #include <QJsonArray>
@@ -169,6 +173,32 @@ private slots:
   QCOMPARE(fade.ms,ms);QCOMPARE(fade.source,source);
   QCOMPARE(traysettle::remainingMs(fade,ms+500),0);QCOMPARE(traysettle::remainingMs(fade,-5),ms);QCOMPARE(traysettle::remainingMs(fade,10),qMax(0,ms-10));
  }
+ // Through the controller: a capture chosen in the tray menu waits for the fade, a hotkey starts at once.
+ void aMenuCaptureWaitsAndAHotkeyDoesNot() {
+  QTemporaryDir directory;
+  // KDE at a quarter of the animation speed: a 1.7 s fade, far from a hotkey's start.
+  QDir(directory.path()).mkpath("xdg");
+  {QFile file(directory.filePath("xdg/kdeglobals"));QVERIFY(file.open(QIODevice::WriteOnly));file.write("[KDE]\nAnimationDurationFactor=4\n");}
+  const auto oldConfig=qgetenv("XDG_CONFIG_HOME"),oldDesktop=qgetenv("XDG_CURRENT_DESKTOP");
+  const auto restore=qScopeGuard([&]{qputenv("XDG_CONFIG_HOME",oldConfig);qputenv("XDG_CURRENT_DESKTOP",oldDesktop);});
+  qputenv("XDG_CONFIG_HOME",directory.filePath("xdg").toUtf8());qputenv("XDG_CURRENT_DESKTOP","KDE");
+  ProviderRegistry providers;auto provider=std::make_shared<OpaqueProvider>();providers.add("opaque",provider);
+  SettingsService settings(directory.filePath("config.json"),[&](auto id,auto value){return providers.validate(id,value);});QVERIFY(settings.save(configuration(directory.path()),{}));
+  Source source;source.payload=textPayload();
+  OperationService operations(directory.filePath("data"),settings,providers,source);PUTGD_TRY_VERIFY(operations.ready());
+  TrayController controller(operations,[](const QString&){},[]{});auto* tray=controller.findChild<QSystemTrayIcon*>();QVERIFY(tray);
+  QElapsedTimer clock;qint64 started=-1;
+  connect(&operations,&OperationService::changed,&controller,[&]{if(started<0)started=clock.elapsed();});
+  auto* row=tray->contextMenu()->findChild<QAction*>("region");QVERIFY(row);
+  clock.start();row->trigger();
+  PUTGD_COMPARE_STEADY(started,qint64(-1),1000);
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(started>=0,5000);QVERIFY2(started>=1600,qPrintable(QString::number(started)));
+  QCOMPARE(controller.trayMenuState()["settle"].toObject()["command"].toString(),QString("region"));
+  QCOMPARE(controller.trayMenuState()["settle"].toObject()["fadeSource"].toString(),QString("kwin-fadingpopups"));
+  PUTGD_TRY_VERIFY(operations.activeObservations().isEmpty());
+  started=-1;clock.start();controller.invokeShortcut("region");
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(started>=0,1500);QVERIFY2(started<800,qPrintable(QString::number(started)));
+ }
  // Only rows that read the screen wait; the others answer the click at once.
  void onlyScreenReadingRowsWait() {
   for(const auto* row:{"region","repeat","window","monitor","desktop","scroll","edit","record","text"})QVERIFY2(traysettle::readsScreen(row),row);
@@ -195,6 +225,16 @@ private slots:
    const auto closedAt=clock.elapsed();settle.menuClosed();
    PUTGD_TRY_VERIFY_WITH_TIMEOUT(at>=0,3000);QVERIFY2(at>=closedAt+fadeMs-5,qPrintable(QString("%1 %2").arg(at).arg(closedAt)));
    QCOMPARE(settle.state()["awaitedClose"].toBool(),true);
+  }
+  {
+   // GNOME's first menu: no close reported before, so the fade starts at the click; the
+   // close that follows late starts it again, so the capture still waits a whole fade after it.
+   TrayMenuSettle settle;settle.setFade({fadeMs,"test"});
+   settle.menuShown();started(settle,"repeat",clock,at);
+   PUTGD_COMPARE_STEADY(at,qint64(-1),60);
+   const auto closedAt=clock.elapsed();settle.menuClosed();
+   PUTGD_TRY_VERIFY_WITH_TIMEOUT(at>=0,3000);QVERIFY2(at>=closedAt+fadeMs-5,qPrintable(QString("%1 %2").arg(at).arg(closedAt)));
+   QCOMPARE(settle.state()["rebasedOnClose"].toBool(),true);
   }
   {
    // Cinnamon and Budgie report the menu showing but never its close: the fade runs from the click.

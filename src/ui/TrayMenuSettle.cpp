@@ -111,6 +111,13 @@ void TrayMenuSettle::refreshFade() {
 void TrayMenuSettle::menuShown() { open_ = true; refreshFade(); }
 void TrayMenuSettle::menuClosed() {
  open_ = false; ++closes_; sinceClose_.start();
+ // A fade timed from the click (no close reported yet, e.g. a host's first menu)
+ // runs again from this close, so a late close still gets the whole fade.
+ for (auto& fading : fading_)
+  if (!fading.fromClose) {
+   fading.fromClose = true;
+   if (fading.timer->remainingTime() < fade_.ms) { fading.timer->start(fade_.ms); last_["rebasedOnClose"] = true; last_["waitMs"] = fading.clock.elapsed() + fade_.ms; }
+  }
  for (auto& waiting : std::exchange(awaitingClose_, {})) startFade(std::move(waiting));
 }
 void TrayMenuSettle::afterMenu(const QString& command, std::function<void()> run) {
@@ -135,7 +142,13 @@ void TrayMenuSettle::startFade(Waiting waiting) {
  const int rest = remainingMs(fade_, since);
  last_ = {{"command", waiting.command}, {"awaitedClose", waiting.awaitedClose}, {"closeWaitMs", waiting.awaitedClose ? waited : 0},
           {"fadeMs", fade_.ms}, {"fadeSource", fade_.source}, {"waitMs", waited + rest}};
- QTimer::singleShot(rest, this, [run = std::move(waiting.run)] { run(); });
+ // Precise: a coarse timer may fire 5 % early, and slow KWin animations run past 2 s.
+ auto* timer = new QTimer(this); timer->setSingleShot(true); timer->setTimerType(Qt::PreciseTimer);
+ fading_.append({timer, waiting.clock, !open_ && sinceClose_.isValid()});
+ connect(timer, &QTimer::timeout, this, [this, timer, run = std::move(waiting.run)] {
+  fading_.removeIf([timer](const Fading& f) { return f.timer == timer; }); timer->deleteLater(); run();
+ });
+ timer->start(rest);
 }
 QJsonObject TrayMenuSettle::state() const { return last_; }
 }
