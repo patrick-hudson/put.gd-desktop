@@ -286,6 +286,57 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+  images:
+    # The CI image the sanitizer run below uses (ci-images.yml); it builds one only
+    # when nothing can stand in for it.
+    needs: plan
+    if: needs.plan.outputs.skip == 'false'
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/ci-images.yml
+    with:
+      ref: ${{ needs.plan.outputs.tag }}
+      ci: true
+
+  sanitizers:
+    # Every test under clang ASan/UBSan, once a day (#2065); the per-pull-request
+    # job runs only the core contracts. A failure fails this run and comments on, or
+    # opens, its tracking issue (tools/ci/flake_ledger.py failures). It never gates
+    # publication: `publish` does not wait for it.
+    name: sanitizers (every test, clang ASan/UBSan)
+    needs: [plan, images]
+    if: needs.plan.outputs.skip == 'false'
+    runs-on: ubuntu-24.04
+    # Normally 9-11 minutes (about 6 of them testing), about 8 more when the
+    # instrumented QtCore is rebuilt.
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: read  # the CI image
+      issues: write  # the flaky-test tracker and the sanitizer tracking issue
+    container:
+      image: ${{ fromJSON(needs.images.outputs.images).sanitizers }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ github.token }}
+    env:
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.plan.outputs.tag }}
+      - name: Build and test everything under ASan/UBSan
+        uses: ./.github/actions/sanitizers
+        with:
+          scope: all
+          track-failures: 'true'
+          job: sanitizers (every test, clang ASan/UBSan)
+          head-sha: ${{ github.sha }}  # the commit `plan` tagged
+          token: ${{ github.token }}
+
   stable-scan:
     # A stable AppImage freezes its bundled components, so every day the latest
     # stable release's own SBOMs meet the day's vulnerability data (#420,

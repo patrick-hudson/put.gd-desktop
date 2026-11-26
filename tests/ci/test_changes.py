@@ -53,7 +53,7 @@ class Selection(unittest.TestCase):
                      'cmake/Proton.cmake', 'CMakeLists.txt', 'CMakePresets.json', 'LICENSE',
                      'THIRD_PARTY_NOTICES.md', 'integrations/gnome/extension.js', '.github/workflows/ci.yml',
                      'tools/ci/sdk_cache.py', 'tools/verify_dependencies.py', 'docs/release/build.md',
-                     'docs/user/proton-drive.md', '.gitignore'):
+                     'docs/user/proton-drive.md', '.gitignore', '.github/actions/sanitizers/action.yml'):
             with self.subTest(path=path):
                 self.assertSelects([path], True, True)
 
@@ -61,7 +61,7 @@ class Selection(unittest.TestCase):
         for path in ('src/core/Settings.cpp', 'src/app/OperationService.cpp', 'src/ipc/UiControl.cpp', 'tests/unit/test_settings.cpp',
                      'tests/integration/test_storage_locations.cpp', 'tests/fixtures/U2Fixtures.h', 'tests/fuzz/corpus/s3wire/upload',
                      'CMakeLists.txt', 'CMakePresets.json', 'cmake/Proton.cmake', '.github/workflows/ci.yml',
-                     'tools/ci/sdk_cache.py'):
+                     'tools/ci/sdk_cache.py', '.github/actions/sanitizers/action.yml', 'tests/sanitizer/lsan.supp'):
             with self.subTest(path=path):
                 self.assertTrue(changes.select([path])['sanitizers'])
         for path in ('src/ui/SettingsWindow.cpp', 'src/storage/s3/S3Driver.cpp', 'tests/gui/test_settings_appearance.cpp',
@@ -128,6 +128,18 @@ class CatalogSelection(unittest.TestCase):
         self.assertIsNone(result['paths'])
         for group in ('catalog', 'build', 'packages', 'sanitizers', 'pipewire'):
             self.assertTrue(result[group], group)
+
+    def test_a_manual_run_of_every_sanitizer_test_selects_nothing_else(self):
+        # ci.yml's full_sanitizers input (#2065): contracts and sanitizers only.
+        with tempfile.TemporaryDirectory(prefix='pgchanges-') as directory:
+            output = Path(directory) / 'output'
+            environment = {key: value for key, value in os.environ.items() if key != 'GITHUB_STEP_SUMMARY'}
+            subprocess.run([sys.executable, str(ROOT / 'tools/ci/changes.py'), '--event', 'workflow_dispatch',
+                            '--sanitizers-only'], check=True, capture_output=True,
+                           env=dict(environment, GITHUB_OUTPUT=str(output)))
+            self.assertEqual(output.read_text(), 'catalog=false\nbuild=false\npackages=false\nsanitizers=true\n'
+                                                 'pipewire=false\n')
+
 
 class GitDiff(unittest.TestCase):
     def test_deleted_and_renamed_paths_are_both_reported(self):

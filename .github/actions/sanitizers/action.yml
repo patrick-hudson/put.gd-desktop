@@ -1,0 +1,185 @@
+name: Sanitizer build and tests
+description: >-
+  The clang ASan/UBSan build and its tests, shared by ci.yml's sanitizers job (the
+  core contracts) and nightly.yml's daily run of every test (#2065). Runs in the
+  `sanitizers` CI image after actions/checkout; docs/release/ci.md, "sanitizers".
+inputs:
+  scope:
+    description: "`contracts`: the clang-asan test preset's core contracts. `all`: every test (clang-asan-all)."
+    required: true
+  job:
+    description: The job name the flake ledger and the tracker comments show
+    required: true
+  head-sha:
+    description: The commit under test, for the flake ledger
+    required: true
+  token:
+    description: Token for the flaky-test tracker and the sanitizer tracking issue
+    required: true
+  track-failures:
+    description: "'true': a failed run comments on, or opens, the one sanitizer tracking issue"
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: Check the scope
+      shell: bash
+      env:
+        SCOPE: ${{ inputs.scope }}
+      run: |
+        case "$SCOPE" in
+          contracts) echo "PUTGD_SANITIZER_PRESET=clang-asan" >> "$GITHUB_ENV" ;;
+          # Every test, the `nightly` label included, with the linux job's CPU pool, except
+          # two whose binaries aren't instrumented and so can't load the instrumented QtCore:
+          # the OCR helper's confinement test (confinement forbids what the sanitizers need)
+          # and the icon renderer, a build tool.
+          all) echo "PUTGD_SANITIZER_PRESET=clang-asan-all" >> "$GITHUB_ENV" ;;
+          *) echo "::error::Unknown sanitizer scope '$SCOPE'"; exit 1 ;;
+        esac
+    - name: Trust container checkout for build identity
+      shell: bash
+      run: |
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
+        echo "CCACHE_DIR=$GITHUB_WORKSPACE/build/ccache" >> "$GITHUB_ENV"
+        echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+        echo "CCACHE_MAXSIZE=400M" >> "$GITHUB_ENV"
+    - name: Identify exact dependency cache environment
+      id: sdk-key
+      shell: bash
+      run: python3 tools/ci/sdk_cache.py key --contract tools/ci/provision-linux-sdk.sh
+    - name: Restore verified dependency prefix
+      id: sdk-cache
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          build/sdk
+          build/sdk-cache.json
+        key: ${{ steps.sdk-key.outputs.key }}
+    - name: Verify restored dependency prefix
+      if: steps.sdk-cache.outputs.cache-hit == 'true'
+      shell: bash
+      run: python3 tools/ci/sdk_cache.py verify --key '${{ steps.sdk-key.outputs.key }}'
+    - name: Provision pinned AWS SDK
+      if: steps.sdk-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        PUTGD_SDK_JOBS="$(nproc)" bash tools/ci/provision-linux-sdk.sh
+        python3 tools/ci/sdk_cache.py seal --key '${{ steps.sdk-key.outputs.key }}'
+    - name: Save verified dependency prefix
+      if: steps.sdk-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          build/sdk
+          build/sdk-cache.json
+        key: ${{ steps.sdk-key.outputs.key }}
+    - name: Identify instrumented QtCore
+      id: qt-key
+      shell: bash
+      run: |
+        # The distro Qt version is part of the key: a new distro Qt misses the
+        # cache, and the recipe then fails unless its pinned version matches.
+        qt="$(dpkg-query -W -f '${Version}' libqt6core6t64)"
+        clang="$(clang++ -dumpversion)"
+        recipe="$(sha256sum tools/ci/provision-qt-asan.sh | cut -c1-16)"
+        echo "key=qt-asan-core-26.04-qt$qt-clang$clang-$recipe" >> "$GITHUB_OUTPUT"
+    - name: Restore instrumented QtCore
+      id: qt-cache
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: build/qt-asan
+        key: ${{ steps.qt-key.outputs.key }}
+    - name: Build instrumented QtCore
+      if: steps.qt-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: bash tools/ci/provision-qt-asan.sh build/qt-asan
+    - name: Save instrumented QtCore
+      if: steps.qt-cache.outputs.cache-hit != 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: build/qt-asan
+        key: ${{ steps.qt-key.outputs.key }}
+    - name: Restore compiler cache
+      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: build/ccache
+        key: ccache-clang-asan-26.04-${{ github.run_id }}-${{ github.run_attempt }}
+        restore-keys: ccache-clang-asan-26.04-
+    - name: Build
+      shell: bash
+      run: |
+        echo "CCACHE_BUILD_START=$(date +%s)" >> "$GITHUB_ENV"
+        ccache --zero-stats
+        cmake --preset clang-asan -DPUTGD_TEST_TIMEOUT_SCALE=5 \
+          -DPUTGD_AWS_SOURCE_DIR="$PWD/build/sdk/share/putgd-ci/aws-sdk-source-licenses" \
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        cmake --build --preset clang-asan --parallel "$(nproc)"
+        ccache --show-stats
+    - name: Keep only this build's compiler cache entries
+      # Entries this build neither hit nor stored would only grow the saved cache.
+      shell: bash
+      run: |
+        ccache --evict-older-than "$(( $(date +%s) - CCACHE_BUILD_START + 60 ))s"
+        ccache --show-stats
+    - name: Save compiler cache
+      # Only nightly pushes save; pull requests and other runs, the daily run of
+      # every test included, restore the newest nightly cache. The prune-caches
+      # job deletes the entry this one supersedes.
+      if: github.event_name == 'push' && github.ref == 'refs/heads/nightly'
+      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: build/ccache
+        key: ccache-clang-asan-26.04-${{ github.run_id }}-${{ github.run_attempt }}
+    - name: Test under ASan/UBSan
+      # The test preset makes every ASan or UBSan report fatal. Instrumented code
+      # runs about three times slower, so wait budgets scale further than in linux.
+      shell: bash
+      env:
+        PUTGD_TEST_TIME_SCALE: '5'
+        PUTGD_CI_JOB: ${{ inputs.job }}
+        PUTGD_CI_HEAD_SHA: ${{ inputs.head-sha }}
+        SCOPE: ${{ inputs.scope }}
+      run: |
+        test_tmp="$(mktemp -d /tmp/pgci.XXXXXX)"
+        python3 tools/ci/ctest_preflight.py --build build/clang-asan --tmp "$test_tmp" --user putgd-ci
+        chown -R putgd-ci:putgd-ci build/clang-asan "$test_tmp"
+        resources=
+        if [ "$SCOPE" = all ]; then resources="$PWD/tools/ci/ctest-resources.json"; fi
+        runuser -u putgd-ci -- sh -ec 'exec env TMPDIR="$1" LD_LIBRARY_PATH="$PWD/build/qt-asan/lib" ASAN_SYMBOLIZER_PATH="$(command -v llvm-symbolizer)" python3 tools/ci/ctest_retry.py --ledger build/clang-asan/flake-ledger.json --junit "$2" -- --preset "$3" --parallel 4 ${4:+--resource-spec-file "$4"}' _ "$test_tmp" "$PWD/build/clang-asan/ctest-results.xml" "$PUTGD_SANITIZER_PRESET" "$resources"
+    - name: Report flaky tests
+      if: always() && hashFiles('build/clang-asan/flake-ledger.json') != ''
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        JOB: ${{ inputs.job }}
+      run: |
+        python3 tools/ci/flake_ledger.py summary build/clang-asan/flake-ledger.json --title "$JOB: flaky and failed tests" --output "$GITHUB_STEP_SUMMARY"
+        python3 tools/ci/flake_ledger.py issues build/clang-asan/flake-ledger.json
+    - name: Open or update the sanitizer tracking issue
+      # A failed run, or a sanitizer report that its retry hid, is one comment on
+      # the open issue with this title, or a new issue (tools/ci/flake_ledger.py).
+      # A run that stopped before its tests counts too; a cancelled one does not.
+      if: ${{ !cancelled() && inputs.track-failures == 'true' }}
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        JOB: ${{ inputs.job }}
+      run: |
+        python3 tools/ci/flake_ledger.py failures build/clang-asan/flake-ledger.json --job "$JOB" --output "$GITHUB_STEP_SUMMARY" \
+          --title 'Tests fail under ASan/UBSan in the nightly run of every test'
+    - name: Preserve structured test reports
+      if: always()
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: ${{ inputs.scope == 'all' && 'ctest-clang-asan-all' || 'ctest-clang-asan' }}
+        path: |
+          build/clang-asan/ctest-results.xml
+          build/clang-asan/ctest-results-retry.xml
+          build/clang-asan/flake-ledger.json
+          build/clang-asan/registered-tests.json
+          build/clang-asan/Testing/Temporary/LastTest.log
+          build/clang-asan/Testing/Temporary/LastTestsFailed.log
+          build/clang-asan/build-identity/build-info.json
+          build/qt-asan/BUILD
+        if-no-files-found: warn
+        retention-days: 30

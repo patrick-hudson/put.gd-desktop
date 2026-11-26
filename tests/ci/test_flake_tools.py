@@ -395,6 +395,123 @@ class Tracker(unittest.TestCase):
             self.assertIn('Flaky-test tracker not updated', result.stdout)
 
 
+
+class SanitizerTracker(unittest.TestCase):
+    """`failures`: the nightly sanitizer run of every test files what failed in one issue (#2065)."""
+    TITLE = 'Tests fail under ASan/UBSan in the nightly run of every test'
+
+    def ledger(self, **tests):
+        return {'schemaVersion': 1,
+                'source': {'kind': 'ci', 'GITHUB_REPOSITORY': 'o/r', 'GITHUB_RUN_ID': '5', 'GITHUB_RUN_ATTEMPT': '1',
+                           'GITHUB_SHA': 'abcdef1234567890', 'GITHUB_REF_NAME': 'nightly', 'GITHUB_EVENT_NAME': 'schedule'},
+                'summary': {'unexplainedCtestFailure': False},
+                'tests': {'steady': {'labels': ['unit'], 'outcome': 'passed',
+                                     'attempts': [{'outcome': 'passed', 'details': []}]}, **tests}}
+
+    class FakeSearch(Tracker.FakeGitHub):
+        # The issue lookup is a title search: GitHub answers {'items': [...]}.
+        def call(self, method, path, body=None):
+            if method == 'GET':
+                self.calls.append((method, path, body))
+                return {'items': self.issues}
+            return super().call(method, path, body)
+
+    def file(self, ledger, existing=()):
+        github = self.FakeSearch(list(existing))
+        original = ledger_tool.GitHub
+        ledger_tool.GitHub = lambda repo, token: github
+        try:
+            with tempfile.TemporaryDirectory() as directory:
+                summary = Path(directory) / 'summary.md'
+                code = ledger_tool.failures(ledger, self.TITLE, 'sanitizers (every test)', 'o/r', 'token', summary)
+                return code, github.calls, summary.read_text()
+        finally:
+            ledger_tool.GitHub = original
+
+    def test_a_clean_run_files_nothing_and_passes(self):
+        code, calls, summary = self.file(self.ledger())
+        self.assertEqual((code, calls), (0, []))
+        self.assertIn('Every test passed under ASan/UBSan.', summary)
+
+    def test_a_failed_test_opens_the_issue_once_with_its_report(self):
+        ub = {'labels': ['unit'], 'outcome': 'failed', 'attempts': [{'outcome': 'failed', 'details': [
+            '/src/a.cpp:9:3: runtime error: signed integer overflow', 'SUMMARY: UndefinedBehaviorSanitizer: x']}]}
+        code, calls, summary = self.file(self.ledger(history_contract=ub))
+        self.assertEqual(code, 1)
+        created = [body for method, path, body in calls if method == 'POST' and path == '/repos/o/r/issues']
+        self.assertEqual([(body['title'], body['labels']) for body in created], [(self.TITLE, ['area: tests'])])
+        comment = [body for method, path, body in calls if path == '/repos/o/r/issues/99/comments'][0]['body']
+        self.assertIn('`history_contract`: failed', comment)
+        self.assertIn('runtime error: signed integer overflow', comment)
+        self.assertIn('https://github.com/o/r/actions/runs/5/attempts/1', comment)
+        self.assertIn('`abcdef123456` on `nightly`', comment)
+        self.assertNotIn('steady', comment)
+        self.assertIn('runtime error: signed integer overflow', summary)
+
+    def test_an_open_issue_gets_a_comment_and_other_titles_are_ignored(self):
+        failed = {'labels': ['unit'], 'outcome': 'failed', 'attempts': [{'outcome': 'failed', 'details': ['FAIL! x']}]}
+        existing = [{'number': 3, 'title': 'Something else', 'state': 'open'},
+                    {'number': 7, 'title': self.TITLE, 'state': 'open', 'html_url': 'u'}]
+        code, calls, _ = self.file(self.ledger(a=failed), existing)
+        self.assertEqual(code, 1)
+        self.assertEqual([(m, p) for m, p, _ in calls if m != 'GET'], [('POST', '/repos/o/r/issues/7/comments')])
+        # Found by its exact title among open issues, not by a label someone may remove.
+        search = [p for m, p, _ in calls if m == 'GET'][0]
+        self.assertTrue(search.startswith('/search/issues?q='), search)
+        self.assertNotIn('label', search)
+
+    def test_a_sanitizer_report_its_retry_hid_still_fails(self):
+        hidden = {'labels': ['integration'], 'outcome': 'passed_on_retry', 'attempts': [
+            {'outcome': 'failed', 'details': ['FAIL! x', '==1==ERROR: AddressSanitizer: heap-use-after-free']},
+            {'outcome': 'passed', 'details': []}]}
+        plain_flake = {'labels': ['integration'], 'outcome': 'passed_on_retry', 'attempts': [
+            {'outcome': 'failed', 'details': ['FAIL! timeout']}, {'outcome': 'passed', 'details': []}]}
+        code, calls, _ = self.file(self.ledger(gui_hidden=hidden, gui_flake=plain_flake))
+        self.assertEqual(code, 1)
+        comment = [body for method, path, body in calls if path.endswith('/comments')][0]['body']
+        self.assertIn('`gui_hidden`: sanitizer report, then passed its retry', comment)
+        self.assertIn('heap-use-after-free', comment)
+        self.assertNotIn('gui_flake', comment)
+        # A flake without a sanitizer report is the flaky-test tracker's, not a failure.
+        self.assertEqual(self.file(self.ledger(gui_flake=plain_flake))[:2], (0, []))
+
+    def test_a_missing_ledger_or_an_unexplained_ctest_failure_counts(self):
+        code, calls, _ = self.file(None)
+        self.assertEqual(code, 1)
+        self.assertIn('no test ledger', [b for _, p, b in calls if p.endswith('/comments')][0]['body'])
+        ledger = self.ledger()
+        ledger['summary']['unexplainedCtestFailure'] = True
+        self.assertEqual(self.file(ledger)[0], 1)
+
+    def test_a_run_of_no_tests_fails_and_a_long_failure_keeps_its_report(self):
+        empty = self.ledger()
+        empty['tests'] = {}
+        code, calls, _ = self.file(empty)
+        self.assertEqual(code, 1)
+        self.assertIn('no test ran', [b for _, p, b in calls if p.endswith('/comments')][0]['body'])
+        long = {'labels': ['unit'], 'outcome': 'failed', 'attempts': [{'outcome': 'failed', 'details': ['FAIL! x'] * 24,
+                                                                       'sanitizer': ['==3==ERROR: AddressSanitizer: x']}]}
+        comment = [b for _, p, b in self.file(self.ledger(a=long))[1] if p.endswith('/comments')][0]['body']
+        self.assertIn('AddressSanitizer: x', comment)
+
+    def test_without_a_token_it_still_fails_the_step(self):
+        self.assertEqual(ledger_tool.failures(None, self.TITLE, 'job', 'o/r', ''), 1)
+
+    def test_a_sanitizer_report_after_many_failure_lines_is_still_seen(self):
+        output = ''.join(f'FAIL!  : T::case{i}() x\n' for i in range(40)) + '==7==ERROR: AddressSanitizer: heap-use-after-free\n'
+        with tempfile.TemporaryDirectory() as directory:
+            junit = Path(directory) / 'r.xml'
+            junit.write_text('<?xml version="1.0"?><testsuite><testcase name="gui_x" status="fail"><failure message="Failed"/>'
+                             f'<system-out>{output}</system-out></testcase></testsuite>')
+            attempt = retry.junit_results(junit)['gui_x']
+        self.assertEqual(len(attempt['details']), 24)
+        self.assertNotIn('AddressSanitizer', ''.join(attempt['details']))
+        self.assertEqual(ledger_tool.sanitizer_report(attempt), ['==7==ERROR: AddressSanitizer: heap-use-after-free'])
+
+    def test_ctest_retry_keeps_ubsan_runtime_error_lines(self):
+        line = '/src/core/History.cpp:41:12: runtime error: load of value 7, which is not a valid value'
+        self.assertEqual([m.group(0) for m in retry.FAILURE_LINE.finditer('PASS : x\n' + line + '\n')], [line])
+
 class Stress(unittest.TestCase):
     def test_counts_every_iteration_into_one_ledger_and_stops_its_own_loops(self):
         with FakeCTest({'gui_flaky': {'labels': ['integration'], 'results': ['pass', 'fail', 'pass']},

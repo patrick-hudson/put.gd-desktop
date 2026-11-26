@@ -1,0 +1,21 @@
+# LeakSanitizer suppressions for the clang-asan test presets (CMakePresets.json sets
+# LSAN_OPTIONS). Only reports from inside a third-party library belong here, each with
+# its reason; a leak through put.gd code is fixed, not suppressed (#2065).
+#
+# Ubuntu 26.04's fontconfig (2.17) leaks the configuration state it parses with expat
+# the first time Qt adds an application font: QFontDatabase::addApplicationFont ->
+# QFontconfigDatabase::addApplicationFont -> FcConfigGetFonts -> XML_ParseBuffer.
+# 320 bytes once per process, in every test that loads put.gd's bundled fonts
+# (src/ui/Fonts.cpp), and in the helpers they start, which then exit non-zero.
+# Fedora 45's fontconfig doesn't. A `leak:` rule matches any frame of the allocation
+# stack, and fontconfig never calls back into put.gd, so this can't hide a put.gd leak.
+leak:FcConfigGetFonts
+
+# libdbus on Ubuntu 26.04: the read buffer of the bus connection that QtDBus's own
+# thread services (QDBusConnectionManager -> libdbus -> _dbus_read ->
+# _dbus_string_lengthen) is still allocated when a process exits, with no pointer
+# LeakSanitizer can follow. 1032 bytes once per process that talks to the session bus,
+# such as the capture and record helpers, which then exit 1. Only allocations made
+# inside _dbus_read match; a D-Bus message or connection put.gd leaked would be
+# allocated from put.gd's own frames and still be reported.
+leak:_dbus_read
