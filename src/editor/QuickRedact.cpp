@@ -2513,19 +2513,20 @@ bool timestamp(const QString& text) {
  return false;
 }
 // #2076: ...and only where the number ends with it: a timestamp the pattern cut short of more digit
-// groups (2026-11-24 06 12 34, then 56 78) is a date and another number, not one timestamp.
+// groups spaced the way its time is (2026-11-24 06 12 34, then 56 78) is a date and another number,
+// not one timestamp. A group set apart some other way is another field (2026-11-24-21-54-26 1234).
 bool timestampAt(const QString& text,qsizetype start,qsizetype length) {
  const auto end=start+length;
- if(end<text.size()){
-  qsizetype k=end;if(text.at(k)==' '||text.at(k)=='-'||text.at(k)=='.'||text.at(k)=='/')++k;
-  if(k<text.size()&&text.at(k).isDigit())return false;
+ if(end+1<text.size()&&!text.at(end).isDigit()&&text.at(end+1).isDigit()){
+  qsizetype k=end-1;while(k>start&&text.at(k).isDigit())--k;
+  if(k>start&&text.at(k)==text.at(end))return false;
  }
  return timestamp(text.mid(start,length));
 }
-// #2076: a 14-digit run that is a whole date and time (20261124215421) is no card: no card issuer
-// numbers start 19 or 20.
+// #2076: a 14-digit run that is a whole date and time (20261124215421), or 17 with its milliseconds,
+// is no card: no card issuer numbers start 19 or 20.
 bool compactTimestamp(const QString& text) {
- static const QRegularExpression shape(R"(^((?:19|20)\d\d)(\d\d)(\d\d)([01]\d|2[0-3])([0-5]\d)([0-5]\d)$)");
+ static const QRegularExpression shape(R"(^((?:19|20)\d\d)(\d\d)(\d\d)([01]\d|2[0-3])([0-5]\d)([0-5]\d)(?:\d{3})?$)");
  const auto m=shape.match(text);
  return m.hasMatch()&&QDate(m.captured(1).toInt(),m.captured(2).toInt(),m.captured(3).toInt()).isValid();
 }
@@ -3220,9 +3221,14 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
     };
     // #1939: nor is a longer run of four-digit groups printed evenly (a tracking number).
     const auto fours=[&]{const auto text=found.captured();const auto groups=numberGroups(text);for(qsizetype i=0;i+1<groups.size();++i)if(groups.at(i).size()!=4)return false;return groups.size()>2&&!found.captured().contains('-');};
-    // #2076: nor one that starts with a date and its time (20261124 215426 1234): its date is no phone.
-    const auto timestamped=[&]{for(qsizetype end=found.capturedStart()+1;end<found.capturedEnd();++end)if(joined.text.at(end)==' '&&timestamp(joined.text.mid(found.capturedStart(),end-found.capturedStart())))return true;return false;};
-    if(rule.category=="phone"&&rule.valid&&!rule.valid(found.captured())&&digits(found.captured())>15&&!((cardShaped(found.captured())||fours())&&evenlySpaced())&&!timestamped()){
+    // #2076: one that starts with a date and its time (20261124 215426 555-0123) is the timestamp, then
+    // another number: matching starts again after the longest timestamp at a space.
+    if(rule.category=="phone"&&rule.valid&&!rule.valid(found.captured())&&digits(found.captured())>15){
+     qsizetype stamp=-1;
+     for(qsizetype end=found.capturedStart()+1;end<found.capturedEnd();++end)if(joined.text.at(end)==' '&&timestamp(joined.text.mid(found.capturedStart(),end-found.capturedStart())))stamp=end;
+     if(stamp>0){offset=stamp;continue;}
+    }
+    if(rule.category=="phone"&&rule.valid&&!rule.valid(found.captured())&&digits(found.captured())>15&&!((cardShaped(found.captured())||fours())&&evenlySpaced())){
      const auto accept=[&](qsizetype end){
       const auto prefix=joined.text.mid(found.capturedStart(),end-found.capturedStart());
       const auto shorter=rule.pattern.match(prefix);
