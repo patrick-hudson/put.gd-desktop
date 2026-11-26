@@ -127,10 +127,23 @@ clears it. `sealSplit` means the two-file form works too: a page and its data fi
 side under one public Link address. Per-object presigned or authorized links can't give that,
 because the page fetches `./NAME.bin` without the first link's query. A provider with
 `serverNamesObjects` never gets the two-file form, because the page must name its data file.
-S3 and R2 clear `sealUnavailable` and set `sealSplit` unless `linkMode` is `presigned`;
-Backblaze B2 sets `sealSplit` only for public links; WebDAV clears it and sets `sealSplit`, and
-Nextcloud keeps a reason; SFTP clears it only with a Link address; the custom uploader clears
-it without `sealSplit`; Proton Drive keeps a reason. A sealed upload is an ordinary upload to
+Per provider:
+
+| Provider | `sealUnavailable` | `sealSplit` |
+| --- | --- | --- |
+| S3 and R2 | Always empty, presigned links included | True unless `linkMode` is `presigned` |
+| Backblaze B2 | Always empty, authorized links included | True only for `linkMode` `public` |
+| WebDAV | Empty | True |
+| Nextcloud | "Nextcloud share links download HTML files instead of opening them, so a sealed page can't open there." | False |
+| SFTP | Empty with a Link address, else "Sealed links need a Link address for this destination." | True with a Link address |
+| Custom uploader | Empty | False |
+| Proton Drive | "Proton Drive already encrypts files end to end." | False |
+
+So a presigned or authorized link still takes one-page sealed uploads up to 64 MB; only a
+larger file fails, with `seal_split_unavailable`. `ProviderCapabilities::toJson` gives the
+pair as `sealLinks` (true when `sealUnavailable` is empty), `sealSplit`, and
+`sealUnavailable` only when it isn't empty, in the `capabilities` method's `providers` and in
+`history.detail`'s `capabilities`. A sealed upload is an ordinary upload to
 the provider: an HTML artifact under a random name and, in the two-file form, a second ordinary
 upload before it. It gets no `anticipate` warm-up, so a file sealing refuses never reaches the
 provider ([the pipeline](sealed-links.md#the-pipeline)).

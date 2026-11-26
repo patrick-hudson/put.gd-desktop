@@ -28,7 +28,8 @@ normalization) to the keychain or for this session only; `putgd-cli` refuses tha
 `credentials_require_settings`, so the passphrase never becomes a process argument.
 `setup.unlockSealPassphrase` reads a saved one, and the startup read above also starts one
 `unlockSealPassphrase` job for each destination in `passphrase` mode whose passphrase is saved
-to the keychain and not loaded. Either answers `seal_passphrase_unset` when the destination
+to the keychain and not loaded. The startup read starts every such job, even past the cap of
+32 setup jobs at once that applies to other requests. Either answers `seal_passphrase_unset` when the destination
 has no `passphraseCredentials`. Storing and unlocking one destination's passphrase run one at
 a time, and a keychain passphrase entry takes the same one-at-a-time lock as any other
 keychain entry. Settings refuses a passphrase reference that another keychain entry also uses

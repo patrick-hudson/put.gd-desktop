@@ -605,9 +605,11 @@ the destination as saved, and is removed with the destination. Loading drops an 
 destination with session-only keys is never written, so it ends with the resident like that
 destination's own record. New credentials stored for the destination, or for another destination that
 shares its keychain entry, remove it too, and a check that ran while the keys changed, or was
-cancelled, records nothing. Each `destinationStatus` entry
-carries it as `seal`, `{state: passed|failed|untested, reason?}`, also when the destination's
-own check is untested. An upload decides with the fingerprint of the settings it was
+cancelled, records nothing. A Test whose destination was saved with another fingerprint or
+credential revision before it finished runs no check and reports it `untested`. Each
+`destinationStatus` entry carries it as `seal`, `{state: passed|failed|untested, reason?,
+fingerprint?}`, also when the destination's own check is untested. `fingerprint` is the one
+the check ran on, so Settings can show an edited, unsaved connection as untested. An upload decides with the fingerprint of the settings it was
 accepted with.
 
 A file that cannot be read whole starts empty. On reading, a revision must be an exact

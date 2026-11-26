@@ -31,7 +31,7 @@ The user guide gives the same table in plain words:
 | The chat or email service the link is sent through | **No.** It receives the full link, key included. When that service is outside your trust boundary, set a passphrase and send it another way. |
 | Anyone the full link is forwarded to | **No**, unless a passphrase is set (see below) |
 | The recipient's browser history, synced history, and extensions that can read tabs or history | **No.** The key stays in the address bar like any bearer link. |
-| Someone on the network path of a plain `http` link | **Yes.** The Test check refuses links that aren't https, and the viewer decrypts only on secure pages. |
+| Someone on the network path of a plain `http` link | **No.** An active attacker can serve another page in its place, one that reads the fragment. The protection is that the Test check refuses a link that isn't https (loopback excepted), so sealed uploads never get a plain `http` link. |
 | Someone who can *change* files in the bucket and swaps the page for one that steals the key | **No** for the page on its own. Stated as a known limit. `putgd-cli open` verifies the page before decrypting. |
 | Recipient's device or browser compromised | No |
 
@@ -145,7 +145,9 @@ prints the new hash for this document; `--check` changes nothing and fails when 
 of date. The unit test `seal_format_contract` checks the compiled-in viewer against the pin,
 and the sealing helper refuses to seal with a viewer that doesn't match
 (`seal_viewer_changed`). A change to the viewer is therefore always a deliberate, reviewed
-change to this hash.
+change to this hash. The CSP stops fetches; `pin_viewer.py` also refuses a viewer that names
+an outside address a later edit could navigate to, written plainly (`https://`), protocol-relative
+(`//host`) or hidden in a character reference or escape.
 
 A sealed page is the viewer with its marker `<!--putgd-sealed-->` replaced by one data
 element, and nothing else changed:
@@ -194,11 +196,13 @@ sets `referrer` to `no-referrer` and `robots` to `noindex, nofollow`.
   file system or IndexedDB): many links share one origin, such as path-style S3 and B2's
   `/file/` links, so any other page there could read it.
 
-The viewer works offline once loaded, and in phone browsers through the QR code: WebCrypto
-works in current iOS and Android browsers. Browsers offer WebCrypto only on secure pages
+A one-page link works offline once loaded; a two-file link needs its `./NAME.bin` fetch
+first. The viewer works in phone browsers through the QR code: WebCrypto works in current iOS
+and Android browsers. Browsers offer WebCrypto only on secure pages
 (https, or this computer), so on a plain `http` page the viewer decrypts nothing and says
-"This browser decrypts only on secure pages. Ask for an https link." It sends no request with
-the key and keeps the key only in the address bar, which also puts it in the browser's
+"This browser decrypts only on secure pages. Ask for an https link." That refusal is not a
+protection against a network attacker, who can serve another page in its place. It sends no
+request with the key and keeps the key only in the address bar, which also puts it in the browser's
 history.
 
 The viewer also refuses a key that isn't the canonical base64url form, a container larger
@@ -254,14 +258,25 @@ Sealing sits in the shared pipeline between the immutable artifact and naming, i
    review. Before a sensitive text check's editor opens it is refused with
    `seal_unavailable`, while the recording runs or exports with `recording_state`, once the
    edit was submitted or the upload started (`enqueue` closed the choice) with
-   `seal_too_late`, and once the operation finished with `operation_not_found`. To seal a
-   capture from the start, pass `seal` with `action.invoke` or `upload.files`. The choice is
-   written into the operation's `seal.requested` before its first artifact is stored, so a
+   `seal_too_late`, and once the operation finished, or for an ID no operation has, with
+   `operation_not_found`. The toggle's rules hold in both windows. On is offered only where
+   the destination can seal (`available`); Off always is. Asking for the state the toggle
+   already has succeeds and changes nothing, even while the toggle is disabled. Turning it on
+   where sealing is unavailable answers `seal_unavailable` with the reason before any other
+   refusal, an export in review included. After a failed upload preparation the editor gives
+   back its controls with the same rule, so Seal stays disabled where it can't be turned on.
+   To seal a capture from the start, pass `seal` with `action.invoke` (region, window,
+   monitor, desktop, repeat, clipboard and edit; `scroll`, `record` and `text` refuse it with
+   `invalid_request`) or `upload.files`. The choice is written into the operation's `seal.requested` before its first artifact is stored, so a
    restart keeps it. Diagnostics package uploads are never sealed.
 2. **Refusals.** When sealing was asked for and can't happen, the file is never uploaded
    unsealed. The item fails before anything is sent, with one of:
    - `seal_unavailable`: the destination type can't serve a sealed page (its provider's
      `sealUnavailable`, such as Nextcloud or Proton Drive).
+   - `seal_needs_link`: the capture's route publishes privately (`publicationMode`
+     `private`, or `default` where the provider's default is private), so the upload gets no
+     link and nobody could open the page. It is checked before the Test check and before
+     anything is sealed.
    - `seal_check_required`: the destination hasn't passed the sealed-link Test check for the
      settings this upload was accepted with, or failed it (the message gives the check's
      reason).
@@ -276,7 +291,18 @@ Sealing sits in the shared pipeline between the immutable artifact and naming, i
      expiring links, B2 with authorized links, custom uploaders). An SFTP destination without
      a Link address can't seal any file, so it answers `seal_unavailable`.
    - `seal_failed` (or `seal_viewer_changed`): the sealing helper is missing, failed, timed out
-     or wrote files that didn't match its answer.
+     or wrote files that didn't match its answer, or a file already sits at one of the job's
+     output paths. `SealJob` removes only files it made: a path that is already there is never
+     touched, and a helper that answers with an error removes its own.
+   - `cancelled`: **Cancel** while the helper runs or while its output is checked. `SealJob`
+     answers `cancelled`, not a mismatch, and the item ends `cancelled` with "Upload cancelled
+     before it started. Select Retry upload to try again."
+
+   The order is `seal_unavailable`, `seal_needs_link`, `seal_check_required`,
+   `seal_passphrase_missing`, `seal_passphrase_locked`, then the size refusals. The editor's
+   and review's **Seal** toggle (`OperationService::sealOptions`) is offered as On only when
+   none of the first three applies, and its tooltip gives the first that does. `operation.seal`
+   failures are written to the error log under the `upload` kind.
 
    A sealed request reaches its destination only once its file is sealed. It skips the
    warm-up connection that other uploads open when the action starts
@@ -298,7 +324,10 @@ Sealing sits in the shared pipeline between the immutable artifact and naming, i
    the item with `seal_name_taken`. An unknown data-file outcome is reconciled before it is
    ever sent again, as an item's own upload is. A data file still `uploading` when put.gd
    stopped becomes `unknown` at the next start, and its multipart upload is cleaned up with
-   the item's own.
+   the item's own. When the destination refuses to abort the data file's multipart upload,
+   it is kept and reported like any kept upload: once, in the `incompleteUploadNotice` with
+   its size, and in `cache.clear`'s `incompleteUploads` with `reported`. The data file keeps
+   its own once-only mark (`incompleteUploadReported` in `seal.data`), apart from the page's.
 6. **Retry** sends the same page and data file again, so a link already shared keeps working.
    An item a Retry sends that was never sealed (it failed or was cancelled first) is sealed
    then. While Forget key writes the operation's record, `operation.retry`,
@@ -338,6 +367,11 @@ An item's `seal` record:
   isn't a sealed link, and `history_busy` while its upload runs, a Retry included, or another
   History change of it is being written (`OperationService::holdOperation`): "This upload is
   running, or History is already changing it. Wait a moment, then select Forget key again."
+- History's row menu offers **Forget key…** for a single-file row. For a row with several
+  files it offers **Forget key for NAME…**, for the file chosen in the details pane (the
+  first until another is chosen), once that file is sealed and its key isn't forgotten. A
+  sealed row says "Sealed link" or "Sealed link, key forgotten" in its tooltip, its
+  accessible text and a failed row's description.
 - A forgotten key stays forgotten whatever copy of the operation a writer saves later, such as
   a Retry, a copy or a local-save retry that read the operation before Forget key. Saving an
   operation with sealed keys takes the write lock first, reads the forgotten mark from the
@@ -349,8 +383,14 @@ An item's `seal` record:
   (`sealDataProgress`), and its outcome is the target's `sealDataStatus`. When the page went
   and the data file didn't, the target stays `failed` or `unknown` with `seal_data_left`, and
   **Retry deletion** finds the page gone and tries the data file again. A quit between the two
-  leaves it `unknown`. A data file that changed at the destination isn't put.gd's to delete:
-  the deletion reports `seal_data_left` with `dataStatus` `changed` and leaves it.
+  leaves it `unknown` with "The sealed page was deleted, but put.gd quit before deleting its
+  data file. Select Retry deletion." Once Quit has begun, the data file's delete intent isn't
+  acknowledged (the journal goes back to before it), so no further delete is sent during
+  shutdown. History keeps the record while the data file's checkpoint holds a request phase,
+  as it does for the page's own (`HistoryStore::releasable`). A file beside the page that
+  changed at the destination may be a replacement, not put.gd's data file, so it isn't
+  put.gd's to delete: the deletion reports `seal_data_left` with `dataStatus` `changed` and
+  leaves it.
 - A data file the destination can't delete safely stays, and the deletion says so before it
   starts. `HistoryService::prepare` asks the provider about the data file's own receipt. When
   its `safeRemoval()` is false (a WebDAV data file over 256 MB on a server that returns no
@@ -385,10 +425,19 @@ failed check never fails the Test; it only decides whether sealed uploads may go
    redirects that stay as safe, a 60-second transfer limit and 1 MB at most.
 5. The check passes only for HTTP 200, a `Content-Type` of `text/html` (parameters ignored),
    no `Content-Disposition: attachment`, a final address after redirects that is still https
-   (or loopback), and bytes identical to the page that was uploaded. A server that rewrites the
+   (or loopback), and bytes identical to the page that was uploaded: the same size and
+   SHA-256, and not cut off at the 1 MB limit. A server that rewrites the
    page would break the byte-for-byte check `putgd-cli open` relies on.
 6. The test page is deleted whatever the fetch found, when the destination can delete it
-   safely; otherwise it is left and the result says so.
+   safely; otherwise it is left and the result says so. The local copy of the test page is
+   removed on every way out, a failed write included.
+
+The check runs only on the connection the Test checked. When the destination's connection
+fingerprint or credential revision changed since the Test started, no check runs and `seal`
+is `{state: "untested", reason: "The destination changed during the test. Test again."}`.
+A cancel during the check ends the Test `cancelled` with "The connection test passed, but
+the sealed-link check was cancelled. Test again to check sealed links." (`details`
+`connectionPassed: true`), and the destination's own Test still counts as passed.
 
 The result is `seal` in the Test's result: `{state, reason?, cleanup}` with `state` `passed`,
 `failed`, `untested`, `unsupported` or `cancelled` and `cleanup` `removed`, `left`, `failed` or `unknown`. While it runs,
@@ -405,13 +454,21 @@ credentials stored for the destination, or for one that shares its keychain entr
 records nothing and is reported `untested` with "New credentials were stored during the
 check. Test again." A cancelled check records nothing. A cancel stops the page fetch at once and still deletes the
 test page. Each
-entry of `destinationStatus` carries it as `seal` (`{state: passed|failed|untested, reason?}`).
+entry of `destinationStatus` carries it as `seal` (`{state: passed|failed|untested, reason?,
+fingerprint?}`). `fingerprint` is the connection a passed or failed check ran on. Settings
+compares it with the destination as edited, so an edited connection shows `untested` and
+**On** isn't offered until a Test of that connection passes.
 
 ## Where it works
 
 Each provider declares `sealUnavailable` (why it can't, empty when it can) and `sealSplit`
 (whether the two-file form works) in its capabilities
-([provider contract](storage-providers.md)). A provider that says nothing can't seal.
+([provider contract](storage-providers.md)). A provider that says nothing can't seal. The
+capabilities JSON gives them as `sealLinks` (true when `sealUnavailable` is empty),
+`sealSplit`, and `sealUnavailable` only when it isn't empty. The `capabilities` method's
+`providers` entries describe each type with no destination settings, so SFTP there says
+`sealLinks: false` (no Link address) and S3 says `sealSplit: true`. `history.detail`'s
+`capabilities` for an item without a receipt are its own destination's.
 
 | Destination | Sealed links |
 | --- | --- |
@@ -435,7 +492,10 @@ A destination's default is its profile's `seal` key, `{mode, passphraseCredentia
 `mode` `off` (also when absent), `on` or `passphrase`
 ([configuration](configuration.md#sealed-links-setting)). Settings → Destinations shows it as
 **Seal links**: **Off**, **On** or **On with a passphrase**. Changing it affects new uploads
-only. **On** stays offered only after a passed check; **Off** always is. Agents drive it with
+only. **On** stays offered only after a passed check of the connection as shown; **Off**
+always is. Editing any connection setting marks the check untested in the window until the
+edited destination passes a Test. A typed passphrase is cleared once Settings accepts the
+store, and stays typed when it is refused. Agents drive it with
 `ui.sealLinks` (MCP `drive_seal_links`): `inspect`, `mode` and `unlock`. Its `available` says
 whether sealing can be turned on there, and `modeEnabled` whether the choice can change. A
 passphrase is typed in the window only.
@@ -443,7 +503,8 @@ passphrase is typed in the window only.
 The passphrase is kept like any other secret, in its own keychain entry or for this session
 only, never in `config.json` ([credentials](credentials.md)). `setup.storeSealPassphrase`
 saves it from Settings, `setup.unlockSealPassphrase` reads it, and the startup credential read
-loads a saved one. The two run one at a time per destination and take the passphrase
+loads a saved one. The startup read starts one job for every saved entry, even past the cap
+of 32 setup jobs at once. The two run one at a time per destination and take the passphrase
 entry's keychain lock. A passphrase reference shared with any other keychain entry, a
 destination's keys or another passphrase, is refused, because saving one would replace the
 other. `putgd-cli upload --passphrase-file` can give one upload its own passphrase,
@@ -489,7 +550,10 @@ has a passphrase and the page size, and the Test check's HTTP status, content ty
   Retry uploads the same ciphertext; large files seal as a page and data file; a file too large
   to seal, or too large for one page where the destination can't serve two files, is never
   sent, and its Retry fails the same way (`fileTooLargeToSealIsNeverSent`,
-  `twoFilesWhereLinksCantServeThemIsNeverSent`); Forget key leaves no link, and a writer that
+  `twoFilesWhereLinksCantServeThemIsNeverSent`); a private upload is refused with
+  `seal_needs_link` and goes out privately with Seal off (`privateUploadIsNeverSealed`); a
+  file already at a job's output path is never deleted (`refusedOutputPathIsNeverDeleted`);
+  Forget key leaves no link, and a writer that
   read the operation earlier can't put the key back.
 - `tests/seal/browser_vectors.py` serves the pinned viewer on 127.0.0.1 and opens
   `tests/seal/harness.html` in headless Firefox and Chromium. WebCrypto seals every vector to
