@@ -2265,6 +2265,22 @@ with n.controller_shutdown(workers):
             with self.assertRaisesRegex(RuntimeError,'carry-back unresolved'):
                 nightly.baton_returned('/current')
 
+    def test_an_earlier_lend_is_not_this_attempts_carry_back_through_a_home_alias(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            real = Path(tmp)/'var/home'
+            folder = real/'putgd-lab/proton/receipts/2026-11-26T12-59-01Z-run'
+            folder.mkdir(parents=True)
+            (folder/'lend.json').write_text('{}')
+            (real/'putgd-lab/locks').mkdir(parents=True)
+            alias = Path(tmp)/'home'
+            alias.symlink_to(real)
+            (real/'putgd-lab/locks/proton-registry.json').write_text(json.dumps(dict(lastLend=dict(
+                run='/current', carriedBack='carry-back-1.json', receipts=str(folder)))))
+            with patch.object(nightly.Path, 'home', return_value=alias):
+                before = nightly.lend_receipts()  # read through the alias, as the worker does
+                self.assertFalse(nightly.baton_returned('/current', before))
+                self.assertTrue(nightly.baton_returned('/current', set()))
+
     def test_stable_draft_requires_explicit_named_opt_in_and_timer_ignores_it(self):
         draft = dict(tag_name='v26.1104.3870', draft=True, published_at=None)
         published = dict(tag_name='v26.1104.3869-nightly', draft=False, published_at='today')
