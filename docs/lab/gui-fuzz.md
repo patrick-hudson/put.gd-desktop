@@ -116,6 +116,17 @@ Findings that were not put.gd's: Ubuntu's app store opened for a file with no ha
 now closes such windows), `shell_modal_stuck` once on GNOME while a portal file chooser was open (not reproduced; the
 witness now reports which actors hold the grab), and `nemo-desktop` crashing in `nemo_window_slot_get_window`.
 
+Published nightly 26.1125.7045 in disposable two-head guests, 2026-11-25/26 ([#2066](https://github.com/patrick-hudson/put.gd-desktop/issues/2066)).
+
+| Desktop | Hours | Sessions | Actions | Findings |
+| --- | ---: | ---: | ---: | --- |
+| Plasma 6.8, Aurora Fedora 45 | 4.35 | 34 | 10,658 | no put.gd defect. Eight random-walk `plasmashell` crashes matched the known `QWaylandXdgSurface::applyConfigure` output/scale-churn trap; fresh no-app, idle-resident, selector-open and History/Edit-window controls each had zero shell crashes |
+| Plasma, Kubuntu 26.04 | 2.93 | 30 | 8,876 | no put.gd defect. The KWin fence loaded. Three `plasmashell` crashes matched the same known trap |
+| GNOME, Fedora 44 | 1.12 | 6 | 1,525 | no put.gd defect. Two random-walk `gnome-shell` crashes had incomplete evidence in already-retired guests; fresh no-app, idle-resident and selector-open controls each had zero shell crashes |
+| Cinnamon, Mint 22.3 | 2.50 | 30 | 7,490 | no put.gd defect. One Cinnamon and two `nemo-desktop` crashes were desktop-process events |
+
+Invalid setup probes and handoff interruptions are excluded from these totals.
+
 ## Known limits
 
 - **GNOME's snapshot stamp.** A GNOME snapshot is stamped when the Shell publishes its reply, not when it sampled the focus and the
