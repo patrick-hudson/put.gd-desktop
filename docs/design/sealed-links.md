@@ -182,8 +182,10 @@ sets `referrer` to `no-referrer` and `robots` to `noindex, nofollow`.
   handed to the browser as `application/octet-stream`, so HTML never renders as a page.
   **Download** is offered for every type.
 - **Too large for the browser.** Before showing anything, the viewer reads back the first, middle
-  and last byte of the file it put together. Chrome can't read back a file that large that a page
-  builds from about 256 MB up, and its player then stays blank. When the read fails, the viewer
+  and last byte of the file it put together, before the player or **Download** gets it. A
+  browser can refuse to read back a large file a page builds: headless Chrome does from about
+  512 MB. And a desktop Chrome player handed a 1 GB file without that read stayed blank, but
+  played it once the viewer had read it. When the read fails, the viewer
   says "This file is too large for this browser to show. Select Save to file to save it." and
   offers **Save to file**, which writes the decrypted file straight into the file the person
   picks in the browser's save dialog (`showSaveFilePicker`). A browser without that dialog says
@@ -355,8 +357,8 @@ An item's `seal` record:
   strong ETag, such as Apache's mod_dav), the target gets `sealDataKept` and its confirmation
   adds "The sealed link's data file beside it stays at the destination, because put.gd can't
   delete it safely there." with the provider's `removeUnavailable` reason, then "It holds only
-  encrypted data. Someone who saved the page and has the full link can still open it until
-  you delete the file there yourself." The deletion removes the page and ends `removed`, with
+  encrypted data. Someone who saved the page and has the full link (and its passphrase, if it
+  has one) can still open it until you delete the file there yourself." The deletion removes the page and ends `removed`, with
   `sealDataStatus` `kept`, not with `seal_data_left`. `seal_data_left` is only for a data file
   put.gd could have deleted and didn't.
 - Keys are kept in History's database and the operation journal, the same places and the same
@@ -466,8 +468,8 @@ has a passphrase and the page size, and the Test check's HTTP status, content ty
   ([History](#history)). The user deletes the data file at the destination if it matters.
 - **The two-file form holds the whole file in the browser.** The viewer keeps every decrypted
   chunk in memory until the last one opens, so a 2 GB file needs that much memory in the
-  recipient's browser. Chrome shows a large file only through **Save to file**
-  ([after decrypting](#after-decrypting)); Firefox plays it in the page.
+  recipient's browser. A browser that can't read back a file that large offers
+  **Save to file** instead ([after decrypting](#after-decrypting)).
 - **Memory wiping is best effort.** put.gd wipes the key, the passphrase bytes, the derived keys
   and the decrypted buffers that OpenSSL works on. Qt strings that held the passphrase or the
   link make their own copies, so put.gd can't promise that memory is wiped.
