@@ -560,7 +560,8 @@ Settings closes. Saving a destination whose **Encrypted links** mode didn't chan
 whether encryption can be turned on there, `modeEnabled` whether the choice can change and
 `saved` whether the file has the mode shown, with nothing for this
 destination still waiting to save. `mode` answers only once the file has the new
-mode, or with `settings_not_saved` when it isn't saved (#2103): until then an agent's next
+mode and a fresh read from the resident confirms it, or with `settings_not_saved` when it isn't
+saved or can't be confirmed (#2103): until then an agent's next
 `setup.storeEncryptPassphrase` could read the old mode. A passphrase is typed in the window only.
 
 The passphrase is kept like any other secret, in its own keychain entry or for this session
