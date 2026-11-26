@@ -355,23 +355,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   operations_.recordingCommand("review",p,reply);return;
  }
  if(method=="recording.saveCopy") {if(!fields(p,{"id","path"},{"overwrite"})||!string(p,"id")||!string(p,"path",4096)||(p.contains("overwrite")&&!p["overwrite"].isBool())){reply(invalid(),{});return;}operations_.recordingCommand("saveCopy",p,reply);return;}
- // #2079: encrypt sets the review's Encrypt toggle for this upload first.
+ // #2079: encrypt decides this upload alone; the review's Encrypt toggle is left as the user set it.
  if(method=="recording.upload") {if(!fields(p,{"id","revision"},{"encrypt"})||!string(p,"id")||!p["revision"].isDouble()||(p.contains("encrypt")&&!p["encrypt"].isBool())){reply(invalid(),{});return;}
-  // A refused upload (a stale revision, the wrong state) leaves the toggle as it was: the window's
-  // choice is read first and put back, so a refusal never changes what a later upload does.
-  if(p.contains("encrypt")){auto params=p;params.remove("encrypt");const auto id=p["id"].toString();const bool wanted=p["encrypt"].toBool();
-   operations_.recordingCommand("review",{{"id",id},{"action","inspect"}},[this,params,reply,id,wanted](Error e,QJsonObject state){
-    if(e){reply(e,{});return;}
-    const bool before=state["encrypt"].toObject()["on"].toBool();
-    operations_.setEncrypt(id,wanted,[this,params,reply,id,wanted,before](Error e,QJsonObject){
-     if(e){reply(e,{});return;}
-     operations_.recordingCommand("upload",params,[this,reply,id,wanted,before](Error e,QJsonObject result){
-      if(!e||before==wanted){reply(e,result);return;}
-      operations_.setEncrypt(id,before,[reply,e,result](Error,QJsonObject){reply(e,result);});
-     });
-    });
-   });
-   return;}
   operations_.recordingCommand("upload",p,reply);return;}
  // #2079: the Encrypt toggle beside Upload in the editor and recording review, for a capture that hasn't started uploading.
  if(method=="operation.encrypt") {if(!fields(p,{"id","enabled"})||!string(p,"id")||!p["enabled"].isBool()){reply(invalid(),{});return;}operations_.setEncrypt(p["id"].toString(),p["enabled"].toBool(),reply);return;}

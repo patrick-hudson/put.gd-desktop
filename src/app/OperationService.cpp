@@ -138,12 +138,15 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
   return options;
  };
  host.encrypt=[this](const QString& id,bool on){recordEncrypt(id,on);};
+ host.encryptRefusal=[this](const Operation& op){const auto options=encryptOptions(op);return options["available"].toBool()?QString():options["reason"].toString(QStringLiteral("Encrypted links aren't available for this upload."));};
  host.settings=[this]{return settings_.snapshot();};
  host.accept=[this](Operation& op){return acceptRecording(op);};
  host.persist=[this](const Operation& op,std::function<void(Error)> done){const auto path=databasePath();background([path,op](Error& e){HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[done](Error e,QJsonObject){done(e);});};
  host.observe=[this](const Operation& op){observe(op.publicJson());emit changed(op.id);emit observationsChanged();};
  host.admit=[this](Operation op,ClipboardPayload payload,std::function<void()> released){
   auto flag=active_.value(op.id);if(!flag){released();return;}
+  // #2079: an upload request that said encrypt decides; the review toggle's choice doesn't override it.
+  if(op.encrypt.contains("requested")){std::lock_guard lock(encryptHooksMutex_);encryptChoices_.remove(op.id);}
   Job job{op,std::move(payload),true,flag,{}};
   // The staged export stays until the artifact store has streamed it.
   job.payloadLease=std::shared_ptr<qint64>(new qint64(0),[released](qint64* value){released();delete value;});

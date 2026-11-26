@@ -1101,6 +1101,13 @@ void RecordingService::exportTo(const QString& command, const QJsonObject& param
         if (!integer(params["revision"], 1, 1LL << 52, &revision)) { reply(invalid("upload takes the edit revision it was reviewed at"), {}); return; }
         // An upload exports exactly the revision it was started at, or nothing.
         if (quint64(revision) != s.edit.revision) { reply({"recording_stale", "Your edits changed, so the upload didn't start. Check your edits, then select Upload again.", {{"currentRevision", double(s.edit.revision)}}}, {}); return; }
+        // #2079: an upload request's own encrypt decides this upload; the review's toggle is left
+        // as the user set it. Encryption asked for where it can't happen is refused here, before
+        // anything is exported or sent.
+        if (params.contains("encrypt") && !params["encrypt"].isBool()) { reply(invalid("encrypt is true or false"), {}); return; }
+        if (params["encrypt"].toBool() && host_.encryptRefusal) {
+            if (const auto reason = host_.encryptRefusal(s.op); !reason.isEmpty()) { reply({"encrypt_unavailable", reason + " Upload it without encryption.", {}}, {}); return; }
+        }
     }
     s.lastExportRequest = params;
     s.lastExportRequest["config"] = s.config.toJson();  // a retry exports exactly this output
@@ -1124,7 +1131,8 @@ void RecordingService::exportTo(const QString& command, const QJsonObject& param
     reply({}, publicJson(s));
     if (!session_ || session_->generation != generation) return;
     s.helperExporting = true;
-    backend_->exportClip(s.op.id, edit, config, output, marshal(generation, [this, command, destination, overwrite, output, edit, config, done](Error error, QJsonObject result) {
+    const auto requestedEncrypt = command == "upload" ? params.value("encrypt") : QJsonValue();
+    backend_->exportClip(s.op.id, edit, config, output, marshal(generation, [this, command, destination, overwrite, output, edit, config, done, requestedEncrypt](Error error, QJsonObject result) {
         auto& s = *session_;
         // Past its deadline the helper may still be exporting; its late result says when it stops.
         if (error.code != "recording_helper_timeout") s.helperExporting = false;
@@ -1164,6 +1172,7 @@ void RecordingService::exportTo(const QString& command, const QJsonObject& param
         payload.files = {output};
         payload.mime = config.mime();
         auto op = finished.op;
+        if (requestedEncrypt.isBool()) op.encrypt["requested"] = requestedEncrypt.toBool();
         op.advance(OperationState::Acquiring);
         op.phase = "queued";
         const auto staging = finished.staging;
