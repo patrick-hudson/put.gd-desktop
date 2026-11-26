@@ -1627,6 +1627,9 @@ other tool active it does not. The user's side is in the
   - Speed (#1897): each segment is scanned once with one pattern of every prefix's head, and a
     prefix's own pattern runs only where its head occurs; the run search looks only as far as 256
     characters reach from each word and rules a window out from running counts before reading it.
+    After each run it finds, the search goes on in the rest of the segment; whether that part is
+    interface text, or holds a clock time beside a date, also comes from running counts by word, so
+    a line of many runs costs its length, not its square (#2112).
     A line of thousands of token-shaped words takes well under a second.
   - A word belongs to one match at most. Where kinds overlap the more specific wins, in the order
     key, email, card, ip, phone, name, list. A login inside an email address stays part of the
