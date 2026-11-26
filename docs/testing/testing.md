@@ -174,6 +174,13 @@ Repeat the affected sanitizer contracts with
 `payload_contract|archive_contract|upload_naming_contract|settings_contract|operations_contract|gui_settings_[a-z]+|gui_history_view|collision_policy_integration`
 as the CTest `-R` expression, using the ASan/UBSan settings in [build.md](../release/build.md)
 and the instrumented Qt environment in [thread-sanitizer.md](thread-sanitizer.md).
+To run every test under ASan/UBSan, as the nightly workflow does for each new nightly
+source, build
+the `clang-asan` preset and run `ctest --preset clang-asan-all`
+([ci.md](../release/ci.md#every-test-under-the-sanitizers-nightly)). The `clang-asan` test
+preset alone runs only the core contracts the per-pull-request job runs. Both presets read
+`tests/sanitizer/lsan.supp`, which may hold only leaks inside a third-party library, each
+with its reason.
 Keep separate JUnit/logs per attempt; a prior failure remains evidence even when
 the final source passes. Native UI witnesses and the exact controlled inputs are
 recorded in [the settings-refinement evidence](https://github.com/patrick-hudson/put.gd-evidence/blob/874703b35562c732268c6fe0bc9b42614ffda928/records/2026-10-08-settings-refinement.json); offscreen results establish no
