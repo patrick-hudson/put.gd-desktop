@@ -501,8 +501,9 @@ The key and `link` are bearer secrets, like a presigned link: anyone who reads t
 the file. An item that was to be sealed and couldn't be fails with `seal_check_required`,
 `seal_unavailable`, `seal_too_large`, `seal_split_unavailable`, `seal_passphrase_locked`,
 `seal_passphrase_missing`, `seal_needs_link` (a guard: a private upload gets no link, but no
-current destination offers both private uploads and sealed links), `seal_failed`, `seal_viewer_changed` or `seal_name_taken`, and nothing of it is
-uploaded. **Cancel** while it is sealed ends it `cancelled`.
+current destination offers both private uploads and sealed links), `seal_failed`, `seal_viewer_changed` or `seal_name_taken`. It is never sent unsealed. Most of
+these fail before anything is sent, but `seal_name_taken` can follow a sent data-file upload
+that the destination refused because the name was taken. **Cancel** while it is sealed ends it `cancelled`.
 A sealed request is never sent unsealed, and a Retry keeps it sealed. To send such a file as
 an ordinary link, upload it again with `"seal":{"enabled":false}`. Its phase is `sealing`
 while the helper runs.
