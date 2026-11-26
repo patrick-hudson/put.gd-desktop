@@ -579,6 +579,41 @@ private slots:
         if (expected == "failed") QCOMPARE(result.error.code, QString("http_delete_unconfirmed"));
         QCOMPARE(f.stored(), expected == "removed" ? 0 : 1);
     }
+    // #2100: XBackBone 3.8.2's deletion URL answers with a confirmation form, and the form's
+    // POST answers 302 whether or not it deleted the file. The redirect is not followed. It
+    // shows a deletion only when the link served the file just before and is gone after.
+    void aRedirectedConfirmationNeedsTheLinkGone_data() {
+        QTest::addColumn<QString>("shape");
+        QTest::addColumn<QString>("expected");
+        QTest::addColumn<int>("stored");
+        QTest::newRow("deleted") << QString("deleted") << QString("removed") << 0;
+        QTest::newRow("refused") << QString("refused") << QString("failed") << 1;
+        QTest::newRow("link-missing-before") << QString("missing-before") << QString("unknown") << 0;
+    }
+    void aRedirectedConfirmationNeedsTheLinkGone() {
+        QFETCH(QString, shape);
+        QFETCH(QString, expected);
+        QFETCH(int, stored);
+        HttpFixture f;
+        f.reset();
+        const auto uploaded = f.upload(f.image());
+        QCOMPARE(uploaded.status, QString("uploaded"));
+        const QJsonObject form{{"call", "delete"}, {"form", true}};
+        if (shape == "deleted") f.rules({form, {{"call", "confirm"}, {"status", 302}, {"location", f.base + "/"}}});
+        else if (shape == "refused") f.rules({form, {{"call", "confirm"}, {"status", 302}, {"location", uploaded.receipt.directUrl}, {"store", false}}});
+        else f.rules({{{"call", "file"}, {"status", 404}, {"body", "not found"}}, form, {{"call", "confirm"}, {"status", 302}, {"location", f.base + "/"}}});
+        const auto result = f.remove(uploaded.receipt);
+        QVERIFY2(result.status == expected, qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
+        QCOMPARE(f.events("confirm").size(), 1);
+        if (expected == "failed") QCOMPARE(result.error.code, QString("http_delete_unconfirmed"));
+        if (expected == "unknown") {
+            QCOMPARE(result.error.code, QString("http_outcome_unknown"));
+            QCOMPARE(result.error.details["httpStatus"].toInt(), 302);
+            QCOMPARE(result.error.details["checkBeforeStatus"].toInt(), 404);
+            QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
+        }
+        QCOMPARE(f.stored(), stored);
+    }
     // Review of #1603. A deletion URL that names no stored value, and redirects to
     // another host: the redirect is not followed (the other host never sees the
     // deletion), so the outcome is unknown with the intent kept.

@@ -969,7 +969,11 @@ private:
         // The outcome. Byte comparisons cannot tell a deleted file from a page that only
         // changed (an error banner on an HTML host), so only these show anything:
         // - removed: the deletion itself succeeded (a 2xx from the deletion URL, or from
-        //   its confirmation) and the link then answers a whole 404 or 410;
+        //   its confirmation) and the link then answers a whole 404 or 410; or the deletion
+        //   answered with a redirect that is not followed (XBackBone redirects after its
+        //   confirmation form, #2100), the link served a whole 200 just before, and it then
+        //   answers a whole 404 or 410. A redirect alone never shows a deletion: XBackBone
+        //   also redirects a refused one, and its link still answers then;
         // - already missing: the deletion URL itself (not an address it redirected to)
         //   answers a whole 404 or 410 on a first attempt, and so does the link (on a retry
         //   of a sent intent, that is removed);
@@ -987,6 +991,8 @@ private:
             const bool deleted = r.status >= 200 && r.status < 300;
             const bool alreadyGone = !confirmed && ownAnswer && gone(r);
             if (gone(after) && deleted) return finish("removed");
+            const bool redirected = r.status >= 300 && r.status < 400;
+            if (gone(after) && redirected && before.status == 200 && whole(before)) return finish("removed");
             // A 202 accepts the deletion for later; while the link still answers, nothing confirms
             // the file is gone (#1690).
             if (r.status == 202) {
