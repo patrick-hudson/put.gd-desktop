@@ -3034,8 +3034,9 @@ ReviewWindow::DriveResult ReviewWindow::driveAction(const QJsonObject& params) {
     if (action == "seal") {
         if (!params["on"].isBool()) return invalid("seal takes on: true or false");
         if (!seal_ || seal_->isHidden()) return invalid("This recording has no upload destination");
-        if (!seal_->isEnabled() && params["on"].toBool() != seal_->isChecked()) return DriveResult{"recording_state", "Seal can't change while an export runs", {}};
+        // Unavailable is said first, as the editor does: a disabled toggle here may only mean that.
         if (params["on"].toBool() && !sealAvailable_) return DriveResult{"seal_unavailable", sealReason_, {}};
+        if (!seal_->isEnabled() && params["on"].toBool() != seal_->isChecked()) return DriveResult{"recording_state", "Seal can't change while an export runs", {}};
         seal_->setChecked(params["on"].toBool());
         return done();
     }

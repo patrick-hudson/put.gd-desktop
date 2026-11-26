@@ -160,7 +160,12 @@ private slots:
   std::thread worker([&]{auto image=noise({160,90},8);result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).withSeal({{"available",false},{"on",false},{"reason","Select Test upload and link for this destination first."}}).run(image,"Upload to synthetic destination",64*1024*1024,session);});
   auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
   QVERIFY(waitPhase(*session,"editing"));
-  QCOMPARE(ask(*session,"seal",{{"on",true}}).error.code,QString("seal_unavailable"));
+  const auto refused=ask(*session,"seal",{{"on",true}});
+  QCOMPARE(refused.error.code,QString("seal_unavailable"));QCOMPARE(refused.error.message,QString("Select Test upload and link for this destination first."));
+  const auto state=ask(*session,"inspect").result;const auto seal=state["view"].toObject().contains("seal")?state["view"].toObject()["seal"].toObject():state["seal"].toObject();
+  QVERIFY2(!seal["on"].toBool()&&!seal["available"].toBool(),qPrintable(QJsonDocument(state).toJson()));QCOMPARE(seal["reason"].toString(),QString("Select Test upload and link for this destination first."));
+  // Off where it is already off succeeds: automation can make sure sealing is off.
+  const auto off=ask(*session,"seal",{{"on",false}});QVERIFY2(!off.error,qPrintable(off.error.code+": "+off.error.message));QVERIFY(!off.result["on"].toBool());
   QVERIFY(!ask(*session,"cancel").error);
  }
  // #1618: the saved Quick redact words and patterns ride the bootstrap frame, only when

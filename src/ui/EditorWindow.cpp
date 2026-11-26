@@ -991,6 +991,8 @@ void EditorWindow::setFailure(const QString& message){saveFeedbackTimer_->stop()
 void EditorWindow::showPreparationFailed(const QString& reason){
  // Nothing was handed off: the draft and its controls come back as they were.
  busy_=false;for(auto* widget:actionable())widget->setEnabled(true);unsetCursor();
+ // Seal keeps its own rule: On only where the destination can seal, Off always.
+ seal_->setEnabled(sealAvailable_||seal_->isChecked());
  message_->hide();destination_->setVisible(!destination_->text().isEmpty());
  setNotice(reason);refresh();keepEditing_->setFocus();
 }
@@ -1012,6 +1014,8 @@ void EditorWindow::setSeal(const QJsonObject& seal) {
 bool EditorWindow::setSealOn(bool on,QString* refusal) {
  if(seal_->isHidden()){*refusal=QStringLiteral("This edit has no upload destination.");return false;}
  if(on&&!sealAvailable_){*refusal=sealReason_;return false;}
+ // Asking for the state it already has changes nothing and succeeds.
+ if(on==seal_->isChecked())return true;
  if(!seal_->isEnabled()){*refusal=QStringLiteral("Seal can't be changed right now.");return false;}
  seal_->setChecked(on);if(!sealAvailable_)seal_->setEnabled(false);return true;
 }
