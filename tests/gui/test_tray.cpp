@@ -161,14 +161,14 @@ private slots:
   QTest::newRow("plasma bad factor")<<"KDE"<<""<<"fast"<<-1<<456<<"kwin-fadingpopups";
   QTest::newRow("gnome")<<"GNOME"<<""<<""<<-1<<184<<"gnome-popup-animation";
   QTest::newRow("ubuntu gnome off")<<"ubuntu:GNOME"<<""<<""<<0<<34<<"gnome-animations-off";
-  QTest::newRow("cinnamon")<<"X-Cinnamon"<<""<<""<<1<<184<<"cinnamon-menu-effects";
-  QTest::newRow("cinnamon off")<<"X-Cinnamon"<<""<<""<<0<<34<<"cinnamon-menu-effects-off";
+  // Cinnamon shows no fade, with or without its menu effects: one frame.
+  QTest::newRow("cinnamon")<<"X-Cinnamon"<<""<<""<<-1<<34<<"cinnamon-menu";
   QTest::newRow("unmeasured")<<"Hyprland"<<""<<""<<-1<<traysettle::unknownFadeMs<<"unmeasured-desktop";
  }
  void aClosedMenuFadesForTheDesktopsTime() {
   QFETCH(QString,desktop);QFETCH(QString,fadingPopups);QFETCH(QString,factor);QFETCH(int,animations);QFETCH(int,ms);QFETCH(QString,source);
   traysettle::FadeInputs in;in.desktop=desktop;in.kwinFadingPopups=fadingPopups;in.kdeAnimationFactor=factor;
-  if(animations>=0){in.gnomeAnimations=animations==1;in.cinnamonMenuEffects=animations==1;}
+  if(animations>=0)in.gnomeAnimations=animations==1;
   const auto fade=traysettle::fade(in);
   QCOMPARE(fade.ms,ms);QCOMPARE(fade.source,source);
   QCOMPARE(traysettle::remainingMs(fade,ms+500),0);QCOMPARE(traysettle::remainingMs(fade,-5),ms);QCOMPARE(traysettle::remainingMs(fade,10),qMax(0,ms-10));

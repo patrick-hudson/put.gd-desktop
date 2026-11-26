@@ -13,8 +13,9 @@
 // host closed it and how long the desktop's compositor keeps drawing a closed
 // popup while it fades out. Measured on the lab desktops (click to last visible
 // frame): Plasma 6.3 and 6.8 about 470 ms (KWin's fadingpopups effect), GNOME on
-// Fedora 44 about 150 ms (the shell's popup animation). Without the wait every Repeat
-// last region, monitor and desktop capture from the menu caught it on both.
+// Fedora 44 about 150 ms (the shell's popup animation), Cinnamon on Mint 22.3 under
+// 30 ms (no fade). Without the wait every Repeat last region, monitor and desktop
+// capture from the menu caught it on Plasma and GNOME; Cinnamon never did.
 namespace putgd::traysettle {
 // Tray rows whose work reads the screen, now or from a frozen selection.
 bool readsScreen(const QString& command);
@@ -26,7 +27,6 @@ struct FadeInputs {
  QString kwinFadingPopups;              // kwinrc [Plugins] fadingpopupsEnabled
  QString kdeAnimationFactor;            // kdeglobals [KDE] AnimationDurationFactor
  std::optional<bool> gnomeAnimations;   // org.gnome.desktop.interface enable-animations
- std::optional<bool> cinnamonMenuEffects; // org.cinnamon desktop-effects-on-menus
 };
 // One frame at 30 Hz: the compositor's next frame after the popup's last one.
 constexpr int frameMarginMs = 34;
@@ -62,8 +62,8 @@ public:
  QJsonObject state() const;
  // Tests set the fade instead of reading the desktop.
  void setFade(const traysettle::Fade& fade) { fade_ = fade; fixedFade_ = true; }
- // The desktop's inputs as this session has them; GNOME's and Cinnamon's
- // settings arrive later, through their own calls.
+ // The desktop's inputs as this session has them; GNOME's setting arrives
+ // later, through the portal.
  static traysettle::FadeInputs readInputs();
 private:
  struct Waiting { quint64 id = 0; QString command; std::function<void()> run; QElapsedTimer clock; bool awaitedClose = false; };
