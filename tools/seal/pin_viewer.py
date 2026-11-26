@@ -23,11 +23,20 @@ def csp_hash(text: str) -> str:
     return base64.b64encode(hashlib.sha256(text.encode("utf-8")).digest()).decode()
 
 
+# The one policy the viewer may carry; only the two hashes change.
+CSP = re.compile(r'<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src \'sha256-[A-Za-z0-9+/=]*\'; '
+                 r'style-src \'sha256-[A-Za-z0-9+/=]*\'; img-src blob:; media-src blob:; connect-src \'none\'; base-uri \'none\'; form-action \'none\'">')
+
+
 def pinned(page: str) -> str:
     script = re.search(r"<script>(.*?)</script>", page, re.S)
     style = re.search(r"<style>(.*?)</style>", page, re.S)
-    if not script or not style:
+    if not script or not style or page.count("<script") != 1 or page.count("<style") != 1 or "<link rel=\"stylesheet" in page:
         raise SystemExit("viewer.html needs exactly one inline <script> and one <style>")
+    if len(CSP.findall(page)) != 1 or page.count("Content-Security-Policy") != 1:
+        raise SystemExit("viewer.html's CSP must be exactly the pinned policy (see CSP in tools/seal/pin_viewer.py)")
+    if page.count("<!--putgd-sealed-->") != 1 or re.search(r"https?://", page):
+        raise SystemExit("viewer.html needs one <!--putgd-sealed--> marker and no outside address")
     page = re.sub(r"script-src 'sha256-[^']*'", f"script-src 'sha256-{csp_hash(script.group(1))}'", page, count=1)
     return re.sub(r"style-src 'sha256-[^']*'", f"style-src 'sha256-{csp_hash(style.group(1))}'", page, count=1)
 

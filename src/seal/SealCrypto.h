@@ -56,7 +56,8 @@ qint64 containerBytes(qint64 plaintextBytes,qint64 chunkSize=chunkBytes);
 QByteArray encodeMeta(const Meta&);
 using Sink=std::function<bool(const char*,qint64)>;
 // Seals `input` (exactly meta.size bytes are read) into sink. A passphrase, when not
-// empty, is a second factor beside the key. Iterations below 600,000 are for tests only.
+// empty, is a second factor beside the key: one line of at most 1024 bytes once NFC
+// normalized. Version 1 always writes 600,000 iterations; `iterations` is ignored.
 Error seal(QIODevice& input,const Meta& meta,const QByteArray& key,const QString& passphrase,const Sink& sink,
            int iterations=passphraseIterations,const Fixed& fixed={});
 // Reads and checks a header; an error says the link is damaged or not a sealed link.

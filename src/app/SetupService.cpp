@@ -20,7 +20,7 @@ bool validInput(const QString& kind,const QJsonObject& input) {
  if(kind=="trustHostKey")return input.size()==1&&input["fingerprint"].isString()&&!input["fingerprint"].toString().isEmpty()&&input["fingerprint"].toString().size()<=128;
  if(kind=="storeSharePassword")return input.size()==2&&input["password"].isString()&&input["password"].toString().size()<=4096&&input["reference"].isString()&&!input["reference"].toString().isEmpty()&&input["reference"].toString().size()<=256;
  // #2079: a destination's Seal links passphrase, one line of 1 to 1024 bytes.
- if(kind=="storeSealPassphrase")return input.size()==1&&input["passphrase"].isString()&&!input["passphrase"].toString().isEmpty()&&input["passphrase"].toString().toUtf8().size()<=1024&&!input["passphrase"].toString().contains('\n');
+ if(kind=="storeSealPassphrase")return input.size()==1&&input["passphrase"].isString()&&!input["passphrase"].toString().isEmpty()&&input["passphrase"].toString().toUtf8().size()<=1024&&!input["passphrase"].toString().contains('\n')&&!input["passphrase"].toString().contains('\r');
  if(kind!="storeCredentials")return input.isEmpty();
  // Named values of a custom HTTP uploader: {"values":{key:value}}; the provider checks them.
  if(input.size()==1&&input.contains("values")) {

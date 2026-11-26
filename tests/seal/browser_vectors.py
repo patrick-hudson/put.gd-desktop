@@ -32,16 +32,16 @@ HERE = ROOT / "tests/seal"
 VIEWER = (ROOT / "src/seal/viewer.html").read_bytes()
 MARKER = b"<!--putgd-sealed-->"
 VECTORS = json.loads((ROOT / "tests/fixtures/seal/vectors.json").read_text(encoding="utf-8"))
-SPLIT_BIN = "Zq8Rk2mPw7Ta.bin"
+SPLIT_VECTORS = ("multi", "passphrase")
 STATIC = {"/harness.html": ("text/html", HERE / "harness.html"), "/harness.js": ("text/javascript", HERE / "harness.js"),
           "/reference_seal.js": ("text/javascript", HERE / "reference_seal.js")}
 
 
-def page(container: bytes | None, split: bool = False) -> bytes:
+def page(container: bytes | None, split: bool = False, vid: str = "") -> bytes:
     prefix, suffix = VIEWER.split(MARKER)
     if split:
         prefix = prefix.replace(b"connect-src 'none'", b"connect-src 'self'")
-        element = b'<script id="putgd-sealed" type="application/octet-stream" data-form="split" data-bin="' + SPLIT_BIN.encode() + b'"></script>'
+        element = b'<script id="putgd-sealed" type="application/octet-stream" data-form="split" data-bin="' + vid.encode() + b'.bin"></script>'
     else:
         element = b'<script id="putgd-sealed" type="application/octet-stream" data-form="inline">' + base64.b64encode(container) + b"</script>"
     return prefix + element + suffix
@@ -83,10 +83,10 @@ def handler(run: Run):
                     data = bytearray(run.containers[vid])
                     data[len(data) // 2] ^= 1
                     return self.send(200, page(bytes(data)), "text/html")
-                return self.send(200, page(run.containers[vid], form in ("split", "split-missing")), "text/html")
-            match = re.fullmatch(r"/split/" + re.escape(SPLIT_BIN), path)
-            if match:
-                return self.send(200, run.containers["multi"], "application/octet-stream")
+                return self.send(200, page(run.containers[vid], form in ("split", "split-missing"), vid), "text/html")
+            match = re.fullmatch(r"/split/(\w+)\.bin", path)
+            if match and match.group(1) in run.containers:
+                return self.send(200, run.containers[match.group(1)], "application/octet-stream")
             return self.send(404)
 
         def do_POST(self):
@@ -119,7 +119,7 @@ def browser_command(name: str, url: str, profile: str) -> list[str] | None:
 
 
 ALLOWED = re.compile(r"^/(harness\.html|harness\.js|reference_seal\.js|vectors\.json|result|container/\w+|"
-                     r"(page|split|tampered|split-missing)/\w+\.html|(split|split-missing)/" + re.escape(SPLIT_BIN) + r")$")
+                     r"(page|split|tampered|split-missing)/\w+\.html|(split|split-missing)/\w+\.bin)$")
 
 
 def run_browser(name: str, timeout: float) -> list[str]:
@@ -158,9 +158,10 @@ def run_browser(name: str, timeout: float) -> list[str]:
     for path in run.requests:
         if not ALLOWED.match(path):
             problems.append(f"{name}: unexpected request {path}")
-    bins = run.requests.count("/split/" + SPLIT_BIN)
-    if run.result and bins != 1:
-        problems.append(f"{name}: the split page asked for its data {bins} times, not once")
+    for vid in SPLIT_VECTORS:
+        bins = run.requests.count(f"/split/{vid}.bin")
+        if run.result and bins != 1:
+            problems.append(f"{name}: the {vid} split page asked for its data {bins} times, not once")
     return problems
 
 

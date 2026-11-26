@@ -49,6 +49,7 @@ QJsonObject runSealCheck(StorageProvider& provider,const Destination& destinatio
  else if(!got["network"].toString().isEmpty()||got["httpStatus"].toInt()!=200)reason=got["httpStatus"].toInt()?QStringLiteral("The test page's link answered HTTP %1.").arg(got["httpStatus"].toInt()):QStringLiteral("Couldn't open the test page's link.");
  else if(got["contentType"].toString()!="text/html")reason=QStringLiteral("The destination serves .html files as %1, so browsers won't open a sealed page.").arg(got["contentType"].toString().isEmpty()?QStringLiteral("no type"):got["contentType"].toString());
  else if(got["attachment"].toBool())reason=QStringLiteral("The destination makes browsers download .html files instead of opening them.");
+ else if(got["finalScheme"]!="https"&&!QStringList{"localhost","127.0.0.1","::1"}.contains(got["finalHost"].toString()))reason=QStringLiteral("The link address isn't https, and browsers decrypt sealed pages only on https pages.");
  else if(got["sha256"].toString()!=artifact.sha256)reason=QStringLiteral("The destination changed the test page's bytes, so a sealed page can't be checked.");
  const auto left=cleanup();
  logging::info(logSettings(),"Sealed-link check",{{"provider",destination.providerId},{"profileId",destination.profileId},{"passed",reason.isEmpty()},{"httpStatus",got["httpStatus"]},{"contentType",got["contentType"]},{"cleanup",left}});

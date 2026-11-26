@@ -4,6 +4,7 @@
 #include <QJsonObject>
 #include <QScopeGuard>
 #include <QtEndian>
+#include <cmath>
 #include <memory>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -34,19 +35,29 @@ QByteArray hmac(const QByteArray& key,const QByteArray& message) {
  if(!HMAC(EVP_sha256(),key.constData(),int(key.size()),bytes(message),size_t(message.size()),reinterpret_cast<unsigned char*>(out.data()),&length)||length!=32)return {};
  return out;
 }
+// The passphrase as both sides derive from it: NFC, then UTF-8.
+QByteArray passphraseBytes(const QString& passphrase) {return passphrase.normalized(QString::NormalizationForm_C).toUtf8();}
 QByteArray passphraseKey(const QString& passphrase,const QByteArray& salt,quint32 iterations) {
- const auto text=passphrase.normalized(QString::NormalizationForm_C).toUtf8();
+ auto text=passphraseBytes(passphrase);
  QByteArray out(keyBytes,'\0');
- if(PKCS5_PBKDF2_HMAC(text.constData(),int(text.size()),bytes(salt),int(salt.size()),int(iterations),EVP_sha256(),keyBytes,reinterpret_cast<unsigned char*>(out.data()))!=1)return {};
+ const bool ok=PKCS5_PBKDF2_HMAC(text.constData(),int(text.size()),bytes(salt),int(salt.size()),int(iterations),EVP_sha256(),keyBytes,reinterpret_cast<unsigned char*>(out.data()))==1;
+ OPENSSL_cleanse(text.data(),size_t(text.size()));
+ if(!ok){OPENSSL_cleanse(out.data(),size_t(out.size()));return {};}
  return out;
+}
+// One line of 1 to 1024 bytes once normalized: what the viewer's field and putgd-cli open can take.
+bool usablePassphrase(const QString& passphrase) {
+ if(passphrase.contains('\n')||passphrase.contains('\r'))return false;
+ auto text=passphraseBytes(passphrase);const bool ok=text.size()<=maximumPassphraseBytes;OPENSSL_cleanse(text.data(),size_t(text.size()));return ok;
 }
 QByteArray keyCheck(const QByteArray& key,const QByteArray& salt,const QByteArray& head) {
  const auto check=hkdf(key,salt,checkInfo);return check.isEmpty()?QByteArray():hmac(check,head);
 }
 QByteArray fileKey(const QByteArray& key,const Header& header,const QString& passphrase) {
  auto ikm=key;
- if(header.passphrase) {const auto derived=passphraseKey(passphrase,header.salt,header.iterations);if(derived.isEmpty())return {};ikm+=derived;}
- return hkdf(ikm,header.salt,payloadInfo);
+ if(header.passphrase) {auto derived=passphraseKey(passphrase,header.salt,header.iterations);if(derived.isEmpty()){OPENSSL_cleanse(ikm.data(),size_t(ikm.size()));return {};}ikm+=derived;OPENSSL_cleanse(derived.data(),size_t(derived.size()));}
+ auto derived=hkdf(ikm,header.salt,payloadInfo);OPENSSL_cleanse(ikm.data(),size_t(ikm.size()));
+ return derived;
 }
 // The chunk's nonce tail and additional data tail: u32 BE index || u8 last.
 QByteArray position(quint32 index,bool last) {QByteArray out(5,'\0');qToBigEndian(index,out.data());out[4]=last?1:0;return out;}
@@ -80,6 +91,16 @@ struct Cipher {
   return ok;
  }
 };
+// The meta record exactly as the viewer accepts it: an object with string name and type and a
+// whole size from 0 to the sealing limit.
+bool parseMeta(const QByteArray& json,Meta& meta) {
+ QJsonParseError error;const auto document=QJsonDocument::fromJson(json,&error);
+ if(error.error!=QJsonParseError::NoError||!document.isObject())return false;
+ const auto object=document.object();const auto size=object.value("size");
+ if(!object.value("name").isString()||!object.value("type").isString()||!size.isDouble())return false;
+ const double value=size.toDouble();if(value<0||value>double(sealLimit)||value!=std::floor(value))return false;
+ meta={object.value("name").toString(),object.value("type").toString(),qint64(value)};return true;
+}
 bool readExactly(QIODevice& input,char* into,qint64 size) {
  qint64 done=0;
  while(done<size){const auto got=input.read(into+done,size-done);if(got<=0){if(got==0&&input.waitForReadyRead(30000))continue;return false;}done+=got;}
@@ -109,9 +130,9 @@ QByteArray encodeMeta(const Meta& meta) {
 Error seal(QIODevice& input,const Meta& meta,const QByteArray& key,const QString& passphrase,const Sink& sink,int iterations,const Fixed& fixed) {
  if(key.size()!=keyBytes)return failed("the key is invalid");
  if(meta.size<0||meta.size>sealLimit)return failed("the file is too large");
- if(passphrase.toUtf8().size()>maximumPassphraseBytes)return failed("the passphrase is too long");
+ if(!passphrase.isEmpty()&&!usablePassphrase(passphrase))return failed("the passphrase must be one line of at most 1024 bytes");
  const auto encodedMeta=encodeMeta(meta);if(encodedMeta.size()>maximumMetaBytes+4)return failed("the file name is too long");
- Header header;header.passphrase=!passphrase.isEmpty();header.chunkSize=quint32(chunkBytes);header.iterations=header.passphrase?quint32(iterations):0;
+ Header header;header.passphrase=!passphrase.isEmpty();header.chunkSize=quint32(chunkBytes);header.iterations=header.passphrase?quint32(passphraseIterations):0;Q_UNUSED(iterations);
  header.salt=fixed.salt.size()==32?fixed.salt:QByteArray(32,'\0');header.noncePrefix=fixed.noncePrefix.size()==7?fixed.noncePrefix:QByteArray(7,'\0');
  if(fixed.salt.size()!=32&&RAND_bytes(reinterpret_cast<unsigned char*>(header.salt.data()),32)!=1)return failed("no random bytes");
  if(fixed.noncePrefix.size()!=7&&RAND_bytes(reinterpret_cast<unsigned char*>(header.noncePrefix.data()),7)!=1)return failed("no random bytes");
@@ -126,6 +147,7 @@ Error seal(QIODevice& input,const Meta& meta,const QByteArray& key,const QString
  if(!sink(header.bytes.constData(),header.bytes.size()))return failed("couldn't write the sealed file");
  const qint64 total=encodedMeta.size()+meta.size;
  QByteArray plain;plain.reserve(int(chunkBytes));QByteArray out;
+ const auto wipe=qScopeGuard([&plain]{plain.resize(plain.capacity());OPENSSL_cleanse(plain.data(),size_t(plain.size()));});
  qint64 consumed=0,fileRead=0;quint32 index=0;
  while(consumed<total) {
   plain.clear();
@@ -139,7 +161,6 @@ Error seal(QIODevice& input,const Meta& meta,const QByteArray& key,const QString
   if(index==0xffffffffu&&!last)return failed("the file is too large");
   ++index;
  }
- OPENSSL_cleanse(plain.data(),size_t(plain.capacity()));
  return {};
 }
 Error parseHeader(const QByteArray& value,Header& header) {
@@ -149,7 +170,8 @@ Error parseHeader(const QByteArray& value,Header& header) {
  header.passphrase=flags&1;header.chunkSize=qFromBigEndian<quint32>(value.constData()+12);header.iterations=qFromBigEndian<quint32>(value.constData()+16);
  // Version 1 fixes the chunk size and the passphrase cost: anything else is not ours.
  if(header.chunkSize!=quint32(chunkBytes))return damaged();
- if(header.passphrase?header.iterations<1000||header.iterations>10000000:header.iterations!=0)return damaged();
+ // Version 1 fixes the passphrase cost at 600,000 iterations.
+ if(header.passphrase?header.iterations!=quint32(passphraseIterations):header.iterations!=0)return damaged();
  for(int i=59;i<64;++i)if(value[i]!=0)return damaged();
  header.salt=value.mid(20,32);header.noncePrefix=value.mid(52,7);header.bytes=value;
  return {};
@@ -165,7 +187,7 @@ Error open(QIODevice& input,qint64 total,const QByteArray& key,const QString& pa
  Header header;if(auto e=parseHeader(head,header))return e;
  if(!keyMatches(header,key))return damaged();
  if(header.passphrase&&passphrase.isEmpty())return {"seal_passphrase_required","This link needs its passphrase.",{}};
- if(passphrase.toUtf8().size()>maximumPassphraseBytes)return {"seal_passphrase","That passphrase doesn't open this link.",{}};
+ if(!usablePassphrase(passphrase))return {"seal_passphrase","That passphrase doesn't open this link.",{}};
  Cipher cipher;cipher.key=fileKey(key,header,header.passphrase?passphrase:QString());cipher.header=header.bytes;cipher.prefix=header.noncePrefix;
  if(cipher.key.isEmpty())return damaged();
  const auto clean=qScopeGuard([&cipher]{OPENSSL_cleanse(cipher.key.data(),size_t(cipher.key.size()));});
@@ -185,16 +207,16 @@ Error open(QIODevice& input,qint64 total,const QByteArray& key,const QString& pa
    const auto take=qMin<qint64>(need,out.size());metaBuffer.append(out.constData(),take);offset=take;
    if(metaLength<0&&metaBuffer.size()==4){metaLength=qFromBigEndian<quint32>(metaBuffer.constData());if(metaLength>maximumMetaBytes)return damaged();
     const auto more=qMin<qint64>(metaLength,out.size()-offset);metaBuffer.append(out.constData()+offset,more);offset+=more;}
-   if(metaLength>=0&&metaBuffer.size()==4+metaLength&&meta) {
-    const auto object=QJsonDocument::fromJson(metaBuffer.mid(4)).object();
-    meta->name=object["name"].toString();meta->type=object["type"].toString();meta->size=qint64(object["size"].toDouble(-1));
+   if(metaLength>=0&&metaBuffer.size()==4+metaLength) {
+    Meta parsed;if(!parseMeta(metaBuffer.mid(4),parsed))return damaged();
+    if(meta)*meta=parsed;
    }
   }
   if(offset<out.size()){fileBytes+=out.size()-offset;if(!sink(out.constData()+offset,out.size()-offset))return {"seal_write_failed","Couldn't write the opened file.",{}};}
  }
  if(metaLength<0||metaBuffer.size()!=4+metaLength)return damaged();
- const auto object=QJsonDocument::fromJson(metaBuffer.mid(4)).object();
- if(!object["size"].isDouble()||qint64(object["size"].toDouble())!=fileBytes)return damaged();
+ Meta parsed;if(!parseMeta(metaBuffer.mid(4),parsed)||parsed.size!=fileBytes)return damaged();
+ in.fill('\0');out.fill('\0');
  return {};
 }
 }

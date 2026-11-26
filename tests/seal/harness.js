@@ -30,7 +30,7 @@
    const c=await SealRef.seal(file,{name:v.name,type:v.type},key,unhex(v.salt),unhex(v.noncePrefix),v.passphrase,v.iterations);
    note(v.id,"reference seal equals C++",await sha(c)===v.containerSha256,await sha(c));
    if(!v.container)await fetch("/container/"+v.id,{method:"POST",body:b64(c)});
-   const forms=v.id==="multi"?["page","split"]:["page"];
+   const forms=v.id==="multi"||v.id==="passphrase"?["page","split"]:["page"];
    for(const form of forms){
     let d=await load("/"+form+"/"+v.id+".html#"+frag(key));
     if(v.passphrase){

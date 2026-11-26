@@ -52,7 +52,7 @@ Fetched fetch(const QUrl& url,qint64 limit,QIODevice& sink) {
   if(out.bytes>limit){out.tooLarge=true;reply->abort();return;}if(sink.write(data)!=data.size()){writeFailed=true;reply->abort();}});
  QObject::connect(reply,&QNetworkReply::finished,&loop,&QEventLoop::quit);
  if(!reply->isFinished())loop.exec();
- if(reply->isOpen()&&!out.tooLarge&&!writeFailed){const auto data=reply->readAll();out.bytes+=data.size();if(out.bytes>limit)out.tooLarge=true;else sink.write(data);}
+ if(reply->isOpen()&&!out.tooLarge&&!writeFailed){const auto data=reply->readAll();out.bytes+=data.size();if(out.bytes>limit)out.tooLarge=true;else if(sink.write(data)!=data.size())writeFailed=true;}
  out.status=reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
  out.contentType=reply->rawHeader("Content-Type");out.disposition=reply->rawHeader("Content-Disposition");
  out.finalUrl=reply->url();
@@ -63,9 +63,11 @@ Fetched fetch(const QUrl& url,qint64 limit,QIODevice& sink) {
 QString readPassphrase(const QString& path,Error& error) {
  if(path.isEmpty())return {};
  QFile file(path);if(!file.open(QIODevice::ReadOnly)){error={"seal_passphrase_file","Couldn't read the passphrase file.",{}};return {};}
- auto text=QString::fromUtf8(file.read(seal::maximumPassphraseBytes+2));
+ // The whole file is the passphrase and one optional line ending: nothing beyond it is ignored.
+ const auto raw=file.read(seal::maximumPassphraseBytes+3);const bool more=!file.atEnd();
+ auto text=QString::fromUtf8(raw);
  if(text.endsWith('\n'))text.chop(1);if(text.endsWith('\r'))text.chop(1);
- if(text.isEmpty()||text.contains('\n')||text.toUtf8().size()>seal::maximumPassphraseBytes){error={"seal_passphrase_file","The passphrase file must hold one line of 1 to 1024 bytes.",{}};return {};}
+ if(more||text.isEmpty()||text.contains('\n')||text.contains('\r')||text.normalized(QString::NormalizationForm_C).toUtf8().size()>seal::maximumPassphraseBytes){error={"seal_passphrase_file","The passphrase file must hold one line of 1 to 1024 bytes.",{}};return {};}
  return text;
 }
 QString safeName(QString name) {
@@ -76,9 +78,12 @@ QString safeName(QString name) {
 }
 int open(const QStringList& args) {
  QCommandLineParser parser;parser.addOption({{"o","output"},"Where to write the opened file","file"});parser.addOption({"passphrase-file","A file holding the link's passphrase","file"});
- parser.addPositionalArgument("url","The sealed link, including everything after #");
- if(!parser.parse(args)||parser.positionalArguments().size()!=1)return finish({"invalid_request","Usage: putgd-cli open URL [-o FILE] [--passphrase-file FILE]",{}});
- const QUrl url(parser.positionalArguments()[0],QUrl::StrictMode);
+ parser.addPositionalArgument("url","The sealed link, including everything after #, or - to read it from standard input");
+ if(!parser.parse(args)||parser.positionalArguments().size()!=1)return finish({"invalid_request","Usage: putgd-cli open URL|- [-o FILE] [--passphrase-file FILE]",{}});
+ // "-" reads the link from standard input, so its key stays out of the command line and shell history.
+ QString text=parser.positionalArguments()[0];
+ if(text=="-"){QFile in;if(!in.open(stdin,QIODevice::ReadOnly))return finish({"invalid_request","Couldn't read the link.",{}});text=QString::fromUtf8(in.readLine(16384)).trimmed();}
+ const QUrl url(text,QUrl::StrictMode);
  if(!url.isValid()||(url.scheme()!="https"&&url.scheme()!="http"))return finish({"invalid_request","The sealed link must be an http or https address.",{}});
  const auto key=seal::keyFromFragment(url.fragment(QUrl::FullyEncoded));
  if(key.isEmpty())return finish({"seal_key_missing","This link is missing its key. Use the full link, including everything after #.",{}});
@@ -128,7 +133,9 @@ int probe(const QStringList& args) {
  const auto got=fetch(url,maximumProbeBytes,body);
  const auto type=QString::fromLatin1(got.contentType).section(';',0,0).trimmed().toLower();
  const auto disposition=QString::fromLatin1(got.disposition).section(';',0,0).trimmed().toLower();
- return finish({},{{"httpStatus",got.status},{"network",got.network},{"tooLarge",got.tooLarge},{"contentType",type},{"attachment",disposition=="attachment"},
+ // Where the page ended up after redirects, scheme and host only: browsers decrypt only on secure pages.
+ const auto final=got.finalUrl.isValid()&&!got.finalUrl.isEmpty()?got.finalUrl:url;
+ return finish({},{{"httpStatus",got.status},{"network",got.network},{"tooLarge",got.tooLarge},{"contentType",type},{"attachment",disposition=="attachment"},{"finalScheme",final.scheme()},{"finalHost",final.host()},
   {"bytes",double(got.bytes)},{"sha256",QString::fromLatin1(QCryptographicHash::hash(body.data(),QCryptographicHash::Sha256).toHex())}});
 }
 int upload(const QStringList& args) {

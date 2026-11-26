@@ -115,6 +115,10 @@ private slots:
   auto key=v.key;key[0]=char(key[0]^1);QCOMPARE(opened(container,key,v.passphrase).code,QString("seal_damaged"));
   // The header records the passphrase: clearing its flag breaks the key check.
   auto cleared=container;cleared[9]=0;for(int i=16;i<20;++i)cleared[i]=0;QCOMPARE(opened(cleared,v.key,{}).code,QString("seal_damaged"));
+  // A passphrase nobody can type into the viewer's field or a passphrase file is refused, and
+  // the 1024-byte limit counts the normalized form both sides derive from.
+  for(const auto& bad:{QStringLiteral("two\nlines"),QStringLiteral("cr\rhere"),QString(1025,QChar('a'))}){auto refused=v;refused.passphrase=bad;QVERIFY(sealed(refused).isEmpty());}
+  auto longest=v;longest.passphrase=QString(1024,QChar('a'));QVERIFY(!sealed(longest).isEmpty());
   // Without a fixed salt every seal differs.
   auto random=v;random.fixed={};QVERIFY(sealed(random)!=sealed(random));
  }
