@@ -105,6 +105,7 @@ private slots:
  // with Off saved by another client, choosing the passphrase mode the window still shows isn't ok
  // until the resident confirms it.
  void encryptedLinksModeIsConfirmedByTheResident(){
+  QFETCH(bool,late);
   QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
   UiSessionFixture fixture(service,secrets);DestinationStatus checks(dir.filePath("destination-status.json"),service);fixture.server.setDestinationStatus(&checks);
   const auto saved=[&]{return service.document()["profiles"].toArray().first().toObject();};
@@ -115,8 +116,13 @@ private slots:
   const auto fileMode=[&]{return saved()["encrypt"].toObject()["mode"].toString("off");};
   QVERIFY(waitFor([&]{auto inspect=std::make_shared<QJsonObject>();settings->encryptedLinksCommand({{"action","inspect"}},[inspect](Error,QJsonObject s){*inspect=s;});return waitFor([&]{return !inspect->isEmpty();})&&(*inspect)["available"].toBool();}));
   {auto answer=drive("passphrase");QVERIFY(waitFor([&]{return answer->done;},10000));QVERIFY2(!answer->error,qPrintable(answer->error.message));QCOMPARE(fileMode(),QStringLiteral("passphrase"));}
-  // Another client turns it off; the window doesn't read that until the held snapshots go.
-  fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="ui.snapshot";};
+  // Another client turns it off; the window doesn't read that until the held snapshots go, or
+  // (late) a snapshot the resident read before the change answers after it. The resident tells a
+  // window about a change with refreshSnapshot (UiApplicationController), which joins one in flight.
+  QObject::disconnect(&service,&SettingsService::statusChanged,&fixture.session,&UiSession::invalidate);
+  QObject::connect(&service,&SettingsService::statusChanged,&fixture.session,[&]{fixture.session.refreshSnapshot();});
+  if(late){bool read=false;fixture.client.replyDelayMs.insert("ui.snapshot",300);fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject&){if(method=="ui.snapshot")read=true;};fixture.session.refreshSnapshot();QVERIFY(waitFor([&]{return read;}));}
+  else fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="ui.snapshot";};
   auto off=service.document();auto profiles=off["profiles"].toArray();auto profile=profiles.first().toObject();profile["encrypt"]=QJsonObject{{"mode","off"}};profiles[0]=profile;off["profiles"]=profiles;
   bool done=false;fixture.server.dispatch({{"schemaVersion",1},{"requestId","outside-off"},{"session",fixture.server.socketPath()},{"method","settings.save"},{"params",QJsonObject{{"document",off},{"expectedRevision",service.revision()}}}},[&](Error e,QJsonObject){QVERIFY(!e);done=true;});QVERIFY(waitFor([&]{return done;}));QCOMPARE(fileMode(),QStringLiteral("off"));
   auto answer=drive("passphrase");
@@ -125,6 +131,7 @@ private slots:
   QVERIFY(waitFor([&]{return answer->done;},10000));
   if(!answer->error)QCOMPARE(fileMode(),QStringLiteral("passphrase"));else QCOMPARE(answer->error.code,QStringLiteral("settings_not_saved"));
  }
+ void encryptedLinksModeIsConfirmedByTheResident_data(){QTest::addColumn<bool>("late");QTest::newRow("snapshot held")<<false;QTest::newRow("snapshot read before the change, answered after")<<true;}
  void encryptedLinksModeAnswersOnlyOnceSaved_data(){
   QTest::addColumn<bool>("settle");QTest::addColumn<bool>("conflict");
   QTest::newRow("right after the outside changes")<<false<<false;QTest::newRow("once the window has them")<<true<<false;QTest::newRow("refused as a conflict")<<true<<true;

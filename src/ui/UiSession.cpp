@@ -24,7 +24,12 @@ void UiSession::refreshSnapshot(std::function<void(Error)> callback){
  if(callback)snapshotCallbacks_.append(std::move(callback));
  if(snapshotActive_||mutations_){snapshotPending_=true;return;}
  snapshotActive_=true;snapshotPending_=false;const auto generation=generation_;
+ snapshotCallbacks_.append(std::exchange(nextSnapshotCallbacks_,{}));
  request("ui.snapshot",{},this,[this,generation](Error e,QJsonObject data){snapshotActive_=false;if(generation!=generation_){snapshotPending_=true;refreshSnapshot();return;}if(!e)applySnapshot(data);else emit unavailable(e);auto callbacks=std::exchange(snapshotCallbacks_,{});for(auto& cb:callbacks)cb(e);if(snapshotPending_)refreshSnapshot();});
+}
+void UiSession::refreshSnapshotAfter(std::function<void(Error)> callback){
+ if(!snapshotActive_){refreshSnapshot(std::move(callback));return;}
+ nextSnapshotCallbacks_.append(std::move(callback));snapshotPending_=true;
 }
 void UiSession::invalidate(){++generation_;refreshSnapshot();}
 void UiSession::saveAsync(const QJsonObject& document,const QString& expected,std::function<void(Result)> callback){

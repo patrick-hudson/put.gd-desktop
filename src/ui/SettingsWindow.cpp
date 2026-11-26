@@ -4222,9 +4222,9 @@ void SettingsWindow::encryptedLinksCommand(const QJsonObject& params,std::functi
  // Within the resident's 10 s deadline for a window's answer (UiProcessController).
  QTimer::singleShot(8000,this,[this,serial]{settleEncryptWaits(serial);});
  // The resident's own copy confirms it: a change made elsewhere that this window hasn't read yet
- // could otherwise make the change look already saved. A snapshot asked for while a save is in
- // flight is read after it.
- settings_.refreshSnapshot([g=QPointer<SettingsWindow>(this),serial](Error e){if(!g)return;for(auto& wait:g->encryptWaits_)if(wait.serial==serial){wait.confirmed=true;wait.confirmError=e;}g->settleEncryptWaits();});
+ // could otherwise make the change look already saved. Only a snapshot requested after this call
+ // counts, and one asked for while a save is in flight is requested after it.
+ settings_.refreshSnapshotAfter([g=QPointer<SettingsWindow>(this),serial](Error e){if(!g)return;for(auto& wait:g->encryptWaits_)if(wait.serial==serial){wait.confirmed=true;wait.confirmError=e;}g->settleEncryptWaits();});
  settleEncryptWaits();
 }
 QString SettingsWindow::savedEncryptMode(const QString& profileId)const{

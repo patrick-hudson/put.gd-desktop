@@ -13,6 +13,9 @@ public:
  int previewWorkers() const {return previews_.maxThreadCount();}
  ~UiSession() override;
  void refreshSnapshot(std::function<void(Error)> callback={});
+ // The same, but the callback waits for a snapshot requested after this call, never one already
+ // in flight, which may predate a change the caller needs to see (#2103).
+ void refreshSnapshotAfter(std::function<void(Error)> callback);
  void applySnapshot(const QJsonObject&);
  void invalidate();
  const QJsonObject& document()const{return document_;}
@@ -67,6 +70,6 @@ private:
  int mutations_=0;
  quint64 generation_=0;
  qint64 credentialGeneration_=-1;
- QList<std::function<void(Error)>> snapshotCallbacks_;
+ QList<std::function<void(Error)>> snapshotCallbacks_;QList<std::function<void(Error)>> nextSnapshotCallbacks_;
 };
 }
