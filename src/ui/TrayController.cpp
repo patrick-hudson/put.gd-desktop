@@ -730,6 +730,7 @@ void TrayController::showSettings() { showView("settings"); }
 void TrayController::showHistory() { showView("history"); }
 void TrayController::runMenuCommand(const QString& action,const QString& token) {
  // #2081: work that reads the screen waits until the menu it was chosen from is gone.
+ // Only the two menus call this; hotkeys, the main window and session methods never wait.
  const auto run=[guard=QPointer<TrayController>(this),action,token]{
   if(!guard)return;
   // Views opened for this click carry the host's token, so Wayland activates them.
@@ -767,6 +768,7 @@ void TrayController::invokeShortcut(const QString& action) {
  // This tray's own open menu holds the keyboard and mouse a selection needs,
  // so close it first. A desktop or window capture keeps it in the picture (#341).
  if (menu_ && menu_->isVisible() && !QStringList{"desktop", "window", "monitor", "repeat"}.contains(action)) menu_->hide();
+ // A hotkey starts at once: only a row chosen in the menu waits for the menu to go (runMenuCommand, #2081).
  invokeAction(action, true);
 }
 void TrayController::invokeAction(const QString& action, bool fromShortcut, const QJsonObject& options) {
