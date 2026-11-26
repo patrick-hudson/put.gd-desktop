@@ -2531,10 +2531,11 @@ bool compactTimestamp(const QString& text) {
  return m.hasMatch()&&QDate(m.captured(1).toInt(),m.captured(2).toInt(),m.captured(3).toInt()).isValid();
 }
 // #2076: a word or setting name that names a phone: each part of it split at ".", "_" or "-" (phone.pid,
-// tlf, ph.pid, Tel=), as a calling word or with a phone word inside it (mobileNo, userPhone).
+// tlf, ph.pid, Tel=), as a calling word or with a phone word inside it (mobileNo, userPhone,
+// emergencyContact). A word that only holds one by chance (recall) keeps its number: the safe side.
 bool namesPhone(const QString& name) {
  static const QRegularExpression word(QStringLiteral("^(?:tel|tele|telefon|telefone|telephone|telefono|tlf|phone|ph|mobile|mobil|mob|movil|cell|cel|celular|handy|fax|msisdn|whatsapp|call|contact|kontakt|number|num|no|nr)$"),QRegularExpression::CaseInsensitiveOption),
-  inside(QStringLiteral("tel|phone|mobil|msisdn|whatsapp|handy"),QRegularExpression::CaseInsensitiveOption);
+  inside(QStringLiteral("tel|phone|mobil|msisdn|whatsapp|handy|contact|call|cell|fax|number"),QRegularExpression::CaseInsensitiveOption);
  static const QRegularExpression parts(QStringLiteral("[._=:#-]+"));
  for(const auto& part:name.split(parts,Qt::SkipEmptyParts))if(word.match(part).hasMatch()||inside.match(part).hasMatch())return true;
  return false;
