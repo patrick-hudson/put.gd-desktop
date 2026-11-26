@@ -259,7 +259,7 @@ QJsonObject HistoryService::prepare(const QStringList& ids,const QJsonArray& pro
    const auto partCaps=provider->receiptCapabilities(StorageReceipt::fromJson(part["receipt"].toObject()));
    if(!partCaps.safeRemoval()) {
     target["sealDataKept"]=true;
-    target["effect"]=caps.deletionEffect+" The sealed link's data file beside it stays at the destination, because put.gd can't delete it safely there."+(partCaps.removeUnavailable.isEmpty()?QString():" "+partCaps.removeUnavailable)+" It holds only encrypted data, and nobody can open it once the page is gone.";
+    target["effect"]=caps.deletionEffect+" The sealed link's data file beside it stays at the destination, because put.gd can't delete it safely there."+(partCaps.removeUnavailable.isEmpty()?QString():" "+partCaps.removeUnavailable)+" It holds only encrypted data. Someone who saved the page and has the full link can still open it until you delete the file there yourself.";
    }
   }
   targets.append(target);
