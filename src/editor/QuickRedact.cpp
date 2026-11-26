@@ -770,13 +770,22 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
   return all.odd<20&&all.ordinary>=all.odd&&all.spoken&&!all.secret;
  }();
  const auto endOf=[&](int j){return j+1<segment.starts.size()?segment.starts.at(j+1):int(segment.text.size());};
- // #2084: a hex run takes no piece that is a clock time of its own: ps's start time ("625799" "625287"
- // "Sat" "Oct" "24" "01:26:36") is hex only through "Sat" and "Oct" misread (5af, 0cf). A run beside
- // the time is still tried without it.
+ // #2084: a hex run takes no piece that is a clock time of its own beside a date's words: ps's start
+ // time ("625799" "625287" "Sat" "Oct" "24" "01:26:36" "2026") is hex only through "Sat" and "Oct"
+ // misread (5af, 0cf). The clock counts only when the part also holds a weekday or month name or a
+ // year (19xx, 20xx) as a piece of its own, so a hex secret recognition split around a clock-shaped
+ // piece stays a run (Sol on #2090). A run beside the time is still tried without it.
  QList<int> clocks;
- {static const QRegularExpression clock(QStringLiteral("^\\d{1,2}:\\d\\d(?::\\d\\d)?[,.]?$"));
-  for(int p=first;p<=last;++p)if(clock.match(segment.text.mid(segment.starts.at(p),endOf(p)-segment.starts.at(p))).hasMatch())clocks.append(p);}
- const auto clockIn=[&](int from,int to){return std::any_of(clocks.cbegin(),clocks.cend(),[&](int p){return p>=from&&p<=to;});};
+ {static const QRegularExpression clock(QStringLiteral("^\\d{1,2}:\\d\\d(?::\\d\\d)?[,.]?$")),
+   date(QStringLiteral("^(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|(?:19|20)\\d\\d)[,.]?$"));
+  bool dated=false;QList<int> pieces;
+  for(int p=first;p<=last;++p){
+   const auto piece=segment.text.mid(segment.starts.at(p),endOf(p)-segment.starts.at(p));
+   if(clock.match(piece).hasMatch())pieces.append(p);else dated=dated||date.match(piece).hasMatch();
+  }
+  // How many clock pieces lie before each piece, so a window asks in constant time.
+  if(dated&&!pieces.isEmpty()){clocks.fill(0,last-first+2);for(const int p:pieces)++clocks[p-first+1];for(int i=1;i<clocks.size();++i)clocks[i]+=clocks[i-1];}}
+ const auto clockIn=[&](int from,int to){return !clocks.isEmpty()&&clocks.at(to-first+1)>clocks.at(from-first);};
  int reach=first;
  for(int i=first;i<=last;++i){
   reach=qMax(reach,i);
@@ -1130,11 +1139,12 @@ QList<QList<int>> structuralMatches(const Segment& segment,const QList<QString>&
  }
  return out;
 }
-// #2084: whether a word names a secret: a part of it, split at anything but a letter and at a
-// lowercase-to-capital change, is a secret word (TOKEN, apiKey, my-secret.txt).
+// #2084: whether a word names a secret: a part of it, split at anything but a letter, at a
+// lowercase-to-capital change and before the last capital of a run of them, is a secret word (TOKEN,
+// apiKey, APISecret, my-secret.txt).
 bool namesSecret(const QString& word) {
  static const QSet<QString> secrets{"secret","key","token","password","passwd","pwd","signing","private","hmac","auth","credential","credentials","apikey","api"};
- static const QRegularExpression parts(QStringLiteral("[^A-Za-z]+|(?<=[a-z])(?=[A-Z])"));
+ static const QRegularExpression parts(QStringLiteral("[^A-Za-z]+|(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])"));
  const auto split=word.split(parts,Qt::SkipEmptyParts);
  return std::any_of(split.cbegin(),split.cend(),[](const QString& part){return secrets.contains(part.toLower());});
 }
@@ -1502,10 +1512,10 @@ QSet<int> publicWords(const QMap<int,QList<int>>& lines,const QList<QString>& pl
  // words after it in its column, right below or above a row that shows a digest before a file name
  // (its digest starting within four characters of that one's, within two and a half of its heights),
  // is a row of the listing too when recognition broke its name ("Sc" "reen-Capture-…" "-png",
- // "invoice-INV-2026-71617" "-" "pdf"): the name's words run together end in a dot, or in one of
- // ".", "-", "«", "," and a short extension, with a digit before it; no word holds an "=" but
- // sha256sum's mark, and none names a secret. Only a row shown by its own name vouches for another.
- {static const QRegularExpression broken(QStringLiteral("\\d[^\\s=]*(?:\\.|[.\\-«,]\\s?[A-Za-z][A-Za-z0-9]{1,4})$"));
+ // "invoice-INV-2026-71617" "-" "pdf"): the name's words run together hold a digit and end in one of
+ // ".", "-", "«", "," and a common file extension; no word holds an "=" but sha256sum's mark, and none
+ // names a secret. Only a row shown by its own name vouches for another.
+ {static const QRegularExpression broken(QStringLiteral("\\d[^\\s=]*[.\\-«,]\\s?(?:png|jpe?g|gif|webp|heic|svg|pdf|txt|csv|md|log|json|xml|ya?ml|gz|xz|bz2?|zst|zip|tar|tgz|7z|iso|img|deb|rpm|AppImage|mp4|webm|mkv|mov|mp3|wav|sql|sh|py|exe|bin|dmg)$"),QRegularExpression::CaseInsensitiveOption);
   QList<int> found;
   for(auto it=listed.cbegin();it!=listed.cend();++it){
    if(it->named)continue;
@@ -3691,13 +3701,6 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
      const auto& field=candidates.at(first).text;
      const bool apart=second>=0&&candidates.at(second).text==QLatin1String(":");
      if(!words.contains(first)&&(header.match(field).hasMatch()||(apart&&header.match(field+QLatin1Char(':')).hasMatch())))continue;
-    }
-    // #2084: digits read inside one hex word of a digest's length (32, 40 or 64 characters, one more or
-    // less: an MD5, SHA-1 or SHA-256) are no card: "4e03047240129765f285…" before its ref.
-    if(rule.category=="card"&&words.size()==1){
-     const auto& word=candidates.at(words.first()).text;
-     const bool digestLength=std::abs(int(word.size())-32)<=1||std::abs(int(word.size())-40)<=1||std::abs(int(word.size())-64)<=1;
-     if(digestLength&&hexRun(word))continue;
     }
     // Merge both views before reserving any word, so a wrapped continuation
     // cannot be discarded merely because its prefix matched the plain view.

@@ -1070,7 +1070,6 @@ private slots:
   QTest::newRow("git log's abbreviated hash with its first character lost")<<QStringList{logRow("g1"),h40.mid(1,6)+" "+h40+" 2026-10-01 21:00:00 -0500 release"}<<QStringList{};
   QTest::newRow("a lockfile's sha256 label read stuck to its value")<<QStringList{"openssl 6.14.38 sha256lJ"+h64,"zstd 2.2.31 sha25elf"+g64}<<QStringList{};
   QTest::newRow("ps start times are no hex")<<QStringList{"625799 625287 Sat Oct 24 01:26:36 2026 32-17:53:36 75044 /usr/bin/nemo-desktop","625806 625287 Sat Oct 24 01:26:36 2026 32-17:53:36 5912 /usr/libexec/geoclue-2.0/demos/agent"}<<QStringList{};
-  QTest::newRow("digits inside a public digest are no card")<<QStringList{"4e03047240129765f285cf18076923cf97d676ef refs/tags/v1.4.2"}<<QStringList{};
   // Fails closed: a hex run that only looks like a listing's row stays covered.
   QTest::newRow("a hex run before words with no digit stays covered")<<QStringList{k64+"  copied for deploy.sh"}<<QStringList{"key: "+k64+" copied for"};
   QTest::newRow("a hex run before a name that names a token stays covered")<<QStringList{k64+"  token 2026 deploy.sh"}<<QStringList{"key: "+k64+" token 2026"};
@@ -1086,6 +1085,10 @@ private slots:
   QTest::newRow("a hex run beside a clock time stays covered")<<QStringList{"12:00:01 "+k40}<<QStringList{"key: 12:00:01 "+k40};
   // Sol on #2090.
   QTest::newRow("a hex row with a date below a listing row stays covered")<<QStringList{h64+"  Capture-2026-10-17-07-34-31.png",k64+"  CREATED 2026-01-01"}<<QStringList{"key: "+k64+" CREATED 2026-01-01"};
+  QTest::newRow("a hex row with a dated sentence below a listing row stays covered")<<QStringList{h64+"  Capture-2026-10-17-07-34-31.png",k64+"  CREATED 2026-01-01."}<<QStringList{"key: "+k64+" CREATED 2026-01-01."};
+  QTest::newRow("a hex row with a date and a short word below a listing row stays covered")<<QStringList{h64+"  Capture-2026-10-17-07-34-31.png",k64+"  rotated 2026-01-01-utc"}<<QStringList{"key: "+k64+" rotated 2026-01-01-utc"};
+  QTest::newRow("a misread sha256 label after an acronym's secret word stays covered")<<QStringList{"APISecret copied from sha256l"+k64}<<QStringList{"key: APISecret copied from sha256l"+k64};
+  QTest::newRow("a hex secret split around a clock-shaped piece stays covered")<<QStringList{k64.left(28)+" 12:34:56 "+k64.mid(28,28)}<<QStringList{"key: "+k64.left(28)+" 12:34:56 "+k64.mid(28,28)};
   QTest::newRow("a hex secret a space before a digest stays covered")<<QStringList{k64.left(32)+" "+h64.left(32)+"  ubuntu.iso"}<<QStringList{"key: "+k64.left(32)+" "+h64.left(32)+" ubuntu.iso"};
   QTest::newRow("a hex secret after a glued sha256 label's digest stays covered")<<QStringList{"sha256lJ"+h64+" "+k64}<<QStringList{"key: sha256lJ"+h64+" "+k64};
   QTest::newRow("a hex secret with a clock-shaped misread inside stays covered")<<QStringList{k40.left(10)+"12:34"+k40.mid(15)}<<QStringList{"key: "+k40.left(10)+"12:34"+k40.mid(15)};
@@ -1114,15 +1117,15 @@ private slots:
   QList<RecognizedWord> stray{{h64.left(27),QRect(3,0,253,14),90,0},{"fF",QRect(219,0,7,14),90,0},{h64.mid(29),QRect(259,0,255,14),90,0},{"VID_20261026_201759.mp4",QRect(529,0,185,14),90,0}};
   QCOMPARE(found(stray,QStringList{"key"}),QStringList{});
  }
- // #2084 (Sol on #2090): only a hex word of a digest's length hides card digits; a card glued to a
- // longer hex field is still a card when cards alone are asked for.
+ // #2084 (Sol on #2090): hiding a public digest from the key rule hides no card: a card glued to a hex
+ // field is still a card when cards alone are asked for, at a digest's length too.
  void cardsInsideHexWords() {
-  const auto digest=QStringLiteral("4e03047240129765f285cf18076923cf97d676ef");
-  QList<RecognizedWord> ref{{digest,QRect(0,0,320,14),90,0},{"refs/tags/v1.4.2",QRect(328,0,128,14),90,0}};
-  QCOMPARE(found(ref,QStringList{"card"}),QStringList{});
   const auto glued=QStringLiteral("4111111111111111")+hexOf("z",30);
   QList<RecognizedWord> card{{glued,QRect(0,0,int(glued.size())*8,14),90,0}};
   QCOMPARE(found(card,QStringList{"card"}),QStringList{"card: "+glued});
+  const auto sized=QStringLiteral("4111111111111111")+hexOf("z",16);
+  QList<RecognizedWord> listed{{sized,QRect(0,0,int(sized.size())*8,14),90,0},{"refs/tags/v1.4.2",QRect(int(sized.size())*8+16,0,128,14),90,0}};
+  QCOMPARE(found(listed,QStringList{"card"}),QStringList{"card: "+sized});
  }
  // #1940: a value of no fixed length (a DKIM signature, a kubeconfig certificate) runs on only over rows
  // a wrap leaves, each reaching the right edge: a key's row after the certificate's short last row is
