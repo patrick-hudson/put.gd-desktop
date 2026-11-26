@@ -291,7 +291,10 @@ Sealing sits in the shared pipeline between the immutable artifact and naming, i
    - `seal_needs_link`: the capture's route publishes privately (`publicationMode`
      `private`, or `default` where the provider's default is private), so the upload gets no
      link and nobody could open the page. It is checked before the Test check and before
-     anything is sealed.
+     anything is sealed. It is a guard for a destination that offers both private uploads
+     and sealed links, and no current destination does. Only Proton Drive offers private
+     uploads (`privateUploads`), and it refuses Seal first with `seal_unavailable`. Every
+     other destination refuses Private upload earlier, with `unsupported_capability`.
    - `seal_check_required`: the destination hasn't passed the sealed-link Test check for the
      settings this upload was accepted with, or failed it (the message gives the check's
      reason).
@@ -401,7 +404,8 @@ An item's `seal` record:
   and the data file didn't, the target stays `failed` or `unknown` with `seal_data_left`, and
   **Retry deletion** finds the page gone and tries the data file again. `failed` keeps "The
   sealed page was deleted, but its data file beside it wasn't. It holds only encrypted data.
-  Select Retry deletion." An `unknown` data file isn't reported as left, because put.gd only
+  Select Retry deletion." For an `unknown` data file put.gd still reports `seal_data_left`, with `dataStatus`
+  `unknown`, but its message doesn't claim the file is still there, because put.gd only
   doesn't know yet: "The sealed page was deleted, but put.gd couldn't confirm whether its
   data file was deleted. Select Retry deletion to check again." A quit after the page went
   and before the data file's turn leaves the target `unknown`, with `dataStatus` the data
