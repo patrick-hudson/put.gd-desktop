@@ -145,7 +145,8 @@ prints the new hash for this document; `--check` changes nothing and fails when 
 of date. The unit test `seal_format_contract` checks the compiled-in viewer against the pin,
 and the sealing helper refuses to seal with a viewer that doesn't match
 (`seal_viewer_changed`). A change to the viewer is therefore always a deliberate, reviewed
-change to this hash. The CSP stops fetches; `pin_viewer.py` also refuses a viewer that names
+change to this hash. The CSP allows no fetch except, in the two-file form, the page's own
+`./NAME.bin` on its origin; `pin_viewer.py` also refuses a viewer that names
 an outside address a later edit could navigate to, written plainly (`https://`), protocol-relative
 (`//host`) or hidden in a character reference or escape.
 
