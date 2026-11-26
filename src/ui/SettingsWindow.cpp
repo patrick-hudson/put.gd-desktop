@@ -1471,6 +1471,8 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  encryptPanel_=new EncryptedLinksPanel(this);
  encryptPanel_->build(encryptForm,[&](QFormLayout* form,const QString& label,QWidget* control,const QString& hint){return setting(form,label,control,{},hint);});
  connect(encryptPanel_,&EncryptedLinksPanel::edited,this,[this]{if(loading_)return;dirty();queueEdit(encryptPanel_->control(),"/profiles/{profile}/encrypt");emit viewStateChanged();});
+ // #2103: a save's answer, a conflict or a stop settles the ui.encryptedLinks calls waiting on it.
+ connect(this,&SettingsWindow::viewStateChanged,this,[this]{if(!encryptWaits_.isEmpty())settleEncryptWaits();});
  connect(encryptPanel_,&EncryptedLinksPanel::storePassphrase,this,[this](const QString& text){if(admitSetup())beginSetup("storeEncryptPassphrase",{{"passphrase",text}});});
  connect(encryptPanel_,&EncryptedLinksPanel::unlockPassphrase,this,[this]{if(admitSetup())beginSetup("unlockEncryptPassphrase");});
  connect(&settings_,&UiSession::destinationStatusChanged,this,[this]{loadEncryptPanel(true);});
@@ -1627,6 +1629,7 @@ const QList<SettingsWindow::DestinationType>& SettingsWindow::destinationTypes()
 }
 SettingsWindow::~SettingsWindow(){
  revealUpdates_=false;
+ for(auto& wait:std::exchange(encryptWaits_,{}))wait.reply({"ui_view_closed","Settings closed before Encrypted links was saved.",{}},{});
  for(auto* child:findChildren<QObject*>())disconnect(child,nullptr,this,nullptr);
  if(destinationPage_)for(auto* child:destinationPage_->findChildren<QObject*>())disconnect(child,nullptr,this,nullptr);
  disconnect(&settings_,nullptr,this,nullptr);
@@ -4212,6 +4215,40 @@ void SettingsWindow::encryptedLinksCommand(const QJsonObject& params,std::functi
  if(profileIndex_<0||!encryptPanel_){reply({"profile_not_found","Select a destination first.",{}},{});return;}
  const auto action=params["action"].toString();
  if(action!="inspect"){QString refusal;if(!encryptPanel_->drive(params,&refusal)){reply({"encrypt_unavailable",refusal,{}},{});return;}}
- auto state=encryptPanel_->viewState();state["profileId"]=profileId_->text();reply({},state);
+ if(action!="mode"){reply({},encryptState());return;}
+ // #2103: a mode change answers once the file has it, never while it is only queued: an agent's
+ // next call, such as setup.storeEncryptPassphrase, reads the saved mode.
+ const auto serial=++encryptWaitSerial_;encryptWaits_.append({serial,profileId_->text(),encryptPanel_->mode(),std::move(reply)});
+ // Within the resident's 10 s deadline for a window's answer (UiProcessController).
+ QTimer::singleShot(8000,this,[this,serial]{settleEncryptWaits(serial);});
+ settleEncryptWaits();
+}
+QString SettingsWindow::savedEncryptMode(const QString& profileId)const{
+ for(const auto& value:settings_.document()["profiles"].toArray())if(const auto profile=value.toObject();profile.value("id")==profileId)return profile.value("encrypt").toObject().value("mode").toString(QStringLiteral("off"));
+ return {};
+}
+// saved: the file has the mode shown, with nothing for this destination still waiting to be sent.
+QJsonObject SettingsWindow::encryptState()const{
+ auto state=encryptPanel_->viewState();const auto id=profileId_->text();state["profileId"]=id;
+ state["saved"]=savedEncryptMode(id)==encryptPanel_->mode()&&!queued("destination:"+id);return state;
+}
+// Each waiting mode change is answered once the file has it, or with settings_not_saved once it can't
+// be: saving stopped (a conflict, a failure waiting for Retry saving), the edit was refused or replaced,
+// or, at its deadline (expired), it is still queued, such as behind a destination setup.
+void SettingsWindow::settleEncryptWaits(quint64 expired){
+ QList<std::pair<EncryptWait,Error>> answered;
+ for(int i=0;i<encryptWaits_.size();){
+  const auto& wait=encryptWaits_[i];const bool pending=queued("destination:"+wait.profileId);
+  Error error;bool done=true;
+  if(savedEncryptMode(wait.profileId)==wait.mode&&!pending){}
+  else if(conflict_||autosaveBlocked_){const auto shown=status_->property("feedbackTone")=="error"?status_->text():QString();error={"settings_not_saved",shown.isEmpty()?QStringLiteral("Encrypted links wasn't saved. Settings stopped saving; see its message."):"Encrypted links wasn't saved. "+shown,{}};}
+  else if(!pending){QString reason;for(auto it=notSaved_.cbegin();it!=notSaved_.cend();++it)if(it.key().section('|',0,0)==wait.profileId)reason=it.value();
+   error={"settings_not_saved",reason.isEmpty()?QStringLiteral("Encrypted links wasn't saved. It was changed again before it saved."):"Encrypted links wasn't saved: "+reason,{}};}
+  else if(wait.serial==expired)error={"settings_not_saved",QStringLiteral("Encrypted links isn't saved yet. Inspect it again until saved is true before relying on it."),{{"pending",true}}};
+  else done=false;
+  if(!done){++i;continue;}
+  answered.append({encryptWaits_.takeAt(i),error});
+ }
+ for(auto& [wait,error]:answered)if(error)wait.reply(error,{});else wait.reply({},encryptPanel_&&wait.profileId==profileId_->text()?encryptState():QJsonObject{{"profileId",wait.profileId},{"mode",wait.mode},{"saved",true}});
 }
 }
