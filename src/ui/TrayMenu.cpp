@@ -67,6 +67,8 @@ constexpr Row rows[] {
  /*47*/ {Kind::Separator, "", "", 0, "traySeparatorClipboard"},
  /*48*/ {Kind::Separator, "", "", 0, "traySeparatorSettings"},
  /*49*/ {Kind::Separator, "", "", 0, "traySeparatorQuit"},
+ // #2079: Capture region with Seal on for this upload, shown under Capture region when its destination can seal.
+ /*50*/ {Kind::Command, "region-sealed", "Capture region (sealed)", 0, "trayRegionSealed"},
 };
 constexpr int total = sizeof(rows) / sizeof(rows[0]);
 // Output detail rows in order: the first six, then 38, 40 and 45.
@@ -91,6 +93,7 @@ QList<int> children(int id) {
   for (const auto& command : Settings::actionTable()) {
    if (command.group != group) { result.append(group == 0 ? 6 : 10); group = command.group; }
    for (int child = 1; child <= total; ++child) if (row(child).parent == 0 && row(child).kind == Kind::Command && QLatin1String(row(child).action) == command.action) result.append(child);
+   if (command.action == "region") result.append(50);
    if (command.action == "edit") result.append(13);
   }
   result.append({47, 33, 23, 48, 8, 7, 17, 49, 12});
@@ -122,6 +125,7 @@ Shown shown(int id, const State& state) {
  case 23: s.label = state.output; break;
  case 33: s.label = commandtext::delayTitle(state.delay); break;
  case 44: s.label = commandtext::hotkeysImmediate(); s.conditional = true; s.visible = state.delay > 0 && !state.hotkeysDelay; break;
+ case 50: s.conditional = true; s.visible = state.sealedRegion; break;
  default: break;
  }
  if (r.kind == Kind::Choice) { const int seconds = command.mid(6).toInt(); s.label = commandtext::delayChoice(seconds); s.toggle = seconds == state.delay ? 1 : 0; }

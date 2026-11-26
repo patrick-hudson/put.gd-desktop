@@ -253,6 +253,9 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
             if (!profile["seal"].isObject() || !keys(seal, seal.contains("passphraseCredentials") ? QStringList{"mode", "passphraseCredentials"} : QStringList{"mode"}) || !choice(seal["mode"], {"off", "on", "passphrase"}) ||
                 (seal["mode"] == "passphrase" && !passOk) || (seal.contains("passphraseCredentials") && !passOk))
                 return invalid("/profiles/seal", "Choose Off, On or On with a passphrase for Seal links.");
+            // Proton Drive is end-to-end encrypted already, and Nextcloud shares download HTML.
+            if (seal["mode"] != "off" && (profile["provider"] == "proton-drive" || profile["provider"] == "nextcloud"))
+                return invalid("/profiles/seal", "This destination type can't seal links. Set Seal links to Off.");
             if (pass["mode"] == "keychain" && pass["reference"] == profile["credentials"].toObject()["reference"])
                 return invalid("/profiles/seal", "The Seal links passphrase needs its own keychain reference, not the destination's.");
         }

@@ -809,7 +809,10 @@ public:
   else if(grid()||below)itemWidth=body.width();
   const auto titleFont=historyTitleFont(!grid()&&chosen),metaFont=Ui::font(Ui::Type::technical);
   const int lineTop=grid()?body.top():rowTop+(compact?compactTextInset():rowTextInset());
-  if(!grid())Ui::paintText(*p,QRectF(columns.item.left(),lineTop,itemWidth,QFontMetrics(titleFont).height()),i.data().toString(),t.text,titleFont,Qt::AlignLeft|Qt::AlignVCenter,compact?Qt::ElideRight:titleElision(i.data().toString()));
+  // #2079: a sealed link shows a lock before its name.
+  if(!grid()){const int titleHeight=QFontMetrics(titleFont).height();int lock=0;
+   if(i.data(HistoryModel::RecordRole).toJsonObject()["sealed"].toBool()){lock=titleHeight-2;Ui::icon("lock").paint(p,QRect(columns.item.left(),lineTop+1,lock,lock));lock+=space(Space::xs);}
+   Ui::paintText(*p,QRectF(columns.item.left()+lock,lineTop,itemWidth-lock,titleHeight),i.data().toString(),t.text,titleFont,Qt::AlignLeft|Qt::AlignVCenter,compact?Qt::ElideRight:titleElision(i.data().toString()));}
   const int metadataWidth=compact?qMax(20,body.width()-(below||failed?0:compactActionWidth(i))):!grid()&&failed?inlineTextWidth(outer,i):itemWidth;
   const int metadataTop=compact?compactMetadataTop(outer,i):lineTop+QFontMetrics(titleFont).height()+(grid()?space(Space::xs):6);
   const QRectF metadata(columns.item.left(),metadataTop,metadataWidth,QFontMetrics(metaFont).height());
@@ -1636,6 +1639,9 @@ void HistoryWindow::showRowMenu(const QModelIndex& i,const QPoint& point,bool ov
  // #1871: an SFTP upload without a Link address has no link; where it went on the server instead.
  if(files.size()==1&&!row["linkAvailable"].toBool()&&files.first().toObject()["uploadStatus"]=="uploaded"){const auto receipt=files.first().toObject()["receipt"].toObject();const auto place=receipt["objectReference"].toObject()["location"].toString();if(receipt["destination"].toObject()["providerId"]=="sftp"&&!place.isEmpty())menu.addAction(Ui::icon("copy"),"Copy path",this,[this,place]{QGuiApplication::clipboard()->setText(place);notify({},"Path copied: "+place);});}
  if(remaining("Copy result")&&HistoryModel::copyLocalResult(row))menu.addAction("Copy result",this,[this]{operationAction("operation.copy");});
+ // #2079: Forget key leaves the file at the destination and no way to open it.
+ if(remaining("Forget key")&&files.size()==1&&row["sealed"].toBool()&&!row["seal"].toObject()["keyForgotten"].toBool()&&!i.data(HistoryModel::ActiveRole).toBool())
+  menu.addAction(Ui::icon("lock"),"Forget key…",this,[this,id=files.first().toObject()["id"].toString()]{forgetSealKey(id);});
  if(remaining("Open in browser")&&files.size()==1&&row["linkAvailable"].toBool())menu.addAction("Open in browser",this,[this,url=files.first().toObject()["link"].toString()]{openBrowser(url);});
  if(remaining("Edit image…")&&editable(row)){auto* edit=menu.addAction("Edit image…",this,[this,row]{editAgain(row);});edit->setToolTip("Edit the saved copy. Earlier marks are already flattened.");}
  // #1428: one file only; disabled with the reason when it cannot apply.
@@ -2123,5 +2129,12 @@ void HistoryWindow::showItem(const QString& historyId){
    if(const auto name=data["name"].toString();!name.isEmpty()){auto* search=g->findChild<QLineEdit*>("historySearch");const QSignalBlocker block(search);search->setText(name);}
    g->restoreSelection_={historyId};g->restoringSelection_=true;g->selectedItemId_=historyId;g->applyFilters();}
  });
+}
+void HistoryWindow::forgetSealKey(const QString& id){
+ QMessageBox box(QMessageBox::Warning,"Forget key — put.gd","Forget this sealed link's key?",QMessageBox::Cancel,this);
+ box.setInformativeText("Nobody can open the file again, put.gd included. It stays at the destination until you delete it there.");
+ auto* forget=box.addButton("Forget key",QMessageBox::DestructiveRole);forget->setObjectName("historyForgetKeyConfirm");box.setDefaultButton(QMessageBox::Cancel);
+ box.exec();if(box.clickedButton()!=forget)return;
+ session_.request("history.forgetKey",{{"id",id}},this,[g=QPointer<HistoryWindow>(this)](Error e,QJsonObject){if(g)g->notify(e,"Key forgotten.");});
 }
 }

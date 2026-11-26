@@ -128,7 +128,13 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  source_.setRegionScreenshotFirst(settings_.snapshot().regionSelectionMode=="screenshot_first");
  connect(&settings_,&SettingsService::accepted,this,[this]{uploadSlots_.setCapacity(settings_.snapshot().limits.concurrentUploads);source_.setRegionScreenshotFirst(settings_.snapshot().regionSelectionMode=="screenshot_first");pump();});
  RecordingService::Host host;
- host.reviewOptions=[this](const Operation& op){return uploadReviewOptions(op,providers_);};
+ host.reviewOptions=[this](const Operation& op){
+  auto options=uploadReviewOptions(op,providers_);
+  // #2079: the review's Seal toggle starts from the destination's setting.
+  if(options["destination"]!="local"){const auto seal=sealOptions(op);QJsonObject start{{"available",seal["available"]},{"on",seal["on"]}};if(seal.contains("reason"))start["reason"]=seal["reason"];options["seal"]=start;}
+  return options;
+ };
+ host.seal=[this](const QString& id,bool on){recordSeal(id,on);};
  host.settings=[this]{return settings_.snapshot();};
  host.accept=[this](Operation& op){return acceptRecording(op);};
  host.persist=[this](const Operation& op,std::function<void(Error)> done){const auto path=databasePath();background([path,op](Error& e){HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[done](Error e,QJsonObject){done(e);});};
@@ -559,6 +565,8 @@ void OperationService::uploadFiles(const QStringList& paths,const QString& profi
   op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=++invocation_;op.clipboardRevision=source_.clipboardRevision();op.destination=destination;
   if(seal.contains("enabled"))op.seal={{"requested",seal["enabled"].toBool()}};
   const auto sealPassphrase=seal["passphrase"].toString();
+  // The passphrase itself is never kept; a Retry that still has to seal refuses without it.
+  if(!sealPassphrase.isEmpty())op.seal["passphraseFrom"]="request";
   auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);sensitiveModes_.insert(op.id,sensitiveMode);beginUploadCopies(op,false);anticipate(op);
   ClipboardPayload payload;payload.kind="files";payload.files=selected->files;payload.zipFolders=selected->zipFolders;
   const auto origins=selected->origins;const auto database=databasePath();
@@ -986,6 +994,12 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
    owner->copyEditedImage(id,std::move(png),std::move(done));
   },Qt::QueuedConnection);
  });
+ // #2079: the Seal toggle beside Upload, starting from the destination's setting; each change is this upload's choice.
+ const auto sealOptionsNow=sealOptions(op);
+ const QJsonObject sealStart=routeOf(op).destination=="upload"&&!op.destination.profileId.isEmpty()?QJsonObject{{"available",sealOptionsNow["available"]},{"on",sealOptionsNow["on"]},{"reason",sealOptionsNow["reason"]}}:QJsonObject{};
+ session->setSealHandler([owner=QPointer<OperationService>(this),id=op.id](bool on){
+  QMetaObject::invokeMethod(QCoreApplication::instance(),[owner,id,on]{if(owner&&!owner->stopping_)owner->recordSeal(id,on);},Qt::QueuedConnection);
+ });
  session->setTextCopyHandler([owner=QPointer<OperationService>(this),id=op.id](QString text,std::function<void(Error)> done){
   QMetaObject::invokeMethod(QCoreApplication::instance(),[owner,id,text=std::move(text),done=std::move(done)]() mutable {
    if(!owner||owner->stopping_){done({"editor_closed","The editor closed before the text was copied",{}});return;}
@@ -1007,11 +1021,11 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
     const bool png=imageFormatHint(header)=="png",jpeg=header.startsWith(QByteArray::fromHex("ffd8ff"));
     const auto frames=header.indexOf("acTL"),data=header.indexOf("IDAT");
     if((!png&&!jpeg)||(png&&frames>=0&&(data<0||frames<data))){edited->error={"edit_source_unsupported","The editor opens static PNG or JPEG files",{}};return QJsonObject{};}
-    *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withAllCores(allCores).withRedactList(redactTerms,redactPatterns).withSubmissionError(submissionError).withLinks(links).withStyle(style,styleStart,styleLimit).runFile(file,maximum,destination,outputBytes,session);
+    *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withAllCores(allCores).withRedactList(redactTerms,redactPatterns).withSubmissionError(submissionError).withLinks(links).withSeal(sealStart).withStyle(style,styleStart,styleLimit).runFile(file,maximum,destination,outputBytes,session);
     if(edited->error.code=="source_unsupported")edited->error={"edit_source_unsupported","The editor opens static PNG or JPEG files",{}};
     return QJsonObject{};
    }
-   *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withAllCores(allCores).withRedactList(redactTerms,redactPatterns).withSubmissionError(submissionError).withLinks(links).withStyle(style,styleStart,styleLimit).run(*image,destination,outputBytes,session);
+   *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withAllCores(allCores).withRedactList(redactTerms,redactPatterns).withSubmissionError(submissionError).withLinks(links).withSeal(sealStart).withStyle(style,styleStart,styleLimit).run(*image,destination,outputBytes,session);
    return QJsonObject{};
   },[=,this](Error,QJsonObject) mutable {
    if(editingId_==op.id){editor_.reset();editingId_.clear();}
@@ -1324,6 +1338,14 @@ void OperationService::editorCommand(const QString& id,const QString& command,co
 void OperationService::pump() {
  while(!queue_.isEmpty()&&running_<queue_.head().op.settings.limits.concurrentUploads&&!stopping_) {auto job=queue_.dequeue();++running_;if(!job.op.destination.profileId.isEmpty())emit uploadStarting(job.op);background([this,job=std::move(job)](Error&) mutable {return run(std::move(job)).toJson();},[this](Error,QJsonObject doc) {--running_;auto op=Operation::fromJson(doc);finish(op);pump();});}
 }
+bool OperationService::sealAvailableFor(const QString& action) const {
+ Operation op;op.action=action;op.settings=settings_.snapshot();
+ const auto route=op.settings.actions.value(action);
+ if(route.destination!="upload"||route.profileId.isEmpty())return false;
+ const auto profile=op.settings.profiles.value(route.profileId);
+ op.destination={profile["provider"].toString(),route.profileId,{},profile["settings"].toObject(),profile["credentials"].toObject()};
+ return sealOptions(op)["available"].toBool();
+}
 bool OperationService::sealWanted(const Operation& op) const {
  if(op.action==diagnosticsAction)return false;
  if(op.seal.contains("requested"))return op.seal.value("requested").toBool();
@@ -1348,9 +1370,15 @@ QJsonObject OperationService::sealOptions(const Operation& op) const {
 void OperationService::setSeal(const QString& id,bool enabled,JsonReply reply) {
  const auto found=active_.constFind(id);
  if(found==active_.cend()){reply({"operation_not_found","That operation isn't waiting to upload.",{}},{});return;}
+ // The open editor's own toggle, as a click sets it: its change comes back through recordSeal.
+ if(editor_&&editingId_==id){editorCommand(id,"seal",{{"on",enabled}},[reply,id,enabled](Error e,QJsonObject state){if(e){reply(e,{});return;}reply({},{{"operationId",id},{"seal",enabled},{"editor",state}});});return;}
+ recordSeal(id,enabled);
+ reply({},{{"operationId",id},{"seal",enabled}});
+}
+void OperationService::recordSeal(const QString& id,bool enabled) {
+ if(!active_.contains(id))return;
  {std::lock_guard lock(sealHooksMutex_);sealChoices_.insert(id,enabled);}
  logging::info(logOperation(),"Seal choice set",{{"operationId",id},{"enabled",enabled}});
- reply({},{{"operationId",id},{"seal",enabled}});
 }
 // Sealed links (#2079). An upload is sealed when it asked to be (op.seal.requested), else when its
 // destination's Seal links setting is on. A sealed item uploads a sealed page under a random name
@@ -1358,7 +1386,7 @@ void OperationService::setSeal(const QString& id,bool enabled,JsonReply reply) {
 bool OperationService::sealItems(Operation& op,const ProviderCapabilities& capabilities,const QString& requestPassphrase,const std::shared_ptr<std::atomic_bool>& cancelled,const std::function<bool(const OperationItem&)>& saveItem) {
  const auto profile=op.settings.profiles.value(op.destination.profileId);
  const auto setting=profile.value("seal").toObject().value("mode").toString(QStringLiteral("off"));
- {std::lock_guard lock(sealHooksMutex_);if(const auto choice=sealChoices_.constFind(op.id);choice!=sealChoices_.cend())op.seal={{"requested",*choice}};}
+ {std::lock_guard lock(sealHooksMutex_);if(const auto choice=sealChoices_.constFind(op.id);choice!=sealChoices_.cend())op.seal["requested"]=*choice;}
  if(!sealWanted(op))return true;
  QJsonObject check;QString passphrase=requestPassphrase;
  {std::lock_guard lock(sealHooksMutex_);if(sealCheck_)check=sealCheck_(op.destination.profileId,profile);if(passphrase.isEmpty()&&setting=="passphrase"&&sealPassphrase_)passphrase=sealPassphrase_(op.destination.profileId,profile);}
@@ -1370,6 +1398,7 @@ bool OperationService::sealItems(Operation& op,const ProviderCapabilities& capab
   Error refusal;
   if(!capabilities.sealUnavailable.isEmpty())refusal={"seal_unavailable",capabilities.sealUnavailable+" Turn off Seal to upload it.",{}};
   else if(check.value("state")!="passed")refusal={"seal_check_required",check.value("state")=="failed"?"This destination didn't pass the sealed-link check: "+check.value("reason").toString()+" Turn off Seal to upload it.":QStringLiteral("Select Test upload and link for this destination before uploading sealed links."),{}};
+  else if(op.seal.value("passphraseFrom")=="request"&&requestPassphrase.isEmpty())refusal={"seal_passphrase_missing","This upload's passphrase came with the request and isn't kept, so it can't be sealed now. Upload the file again with its passphrase.",{}};
   else if(setting=="passphrase"&&passphrase.isEmpty())refusal={"seal_passphrase_locked","The Seal links passphrase isn't loaded. Unlock it in Destinations, then select Retry upload.",{}};
   if(refusal) {item.uploadStatus="failed";item.phase="failed";item.error=refusal;if(!saveItem(item))return false;continue;}
   // The format's limits, as the design sets them: such a file uploads unsealed and says why.
@@ -1379,7 +1408,8 @@ bool OperationService::sealItems(Operation& op,const ProviderCapabilities& capab
   else if(split&&(!capabilities.sealSplit||capabilities.serverNamesObjects))off=QStringLiteral("Files over 64 MB are sealed as two files, which this destination's links can't serve, so this one uploaded without sealing.");
   if(!off.isEmpty()){item.seal={{"status","off"},{"reason",off}};logging::info(logOperation(),"Upload not sealed",{{"operationId",op.id},{"itemId",item.artifact.id},{"bytes",double(item.artifact.bytes)}});if(!saveItem(item))return false;continue;}
   item.phase="sealing";observe(op.publicJson());
-  const auto pageName=SealJob::randomName("html"),binName=split?SealJob::randomName("bin"):QString();
+  // The page and its data file share one random stem, as the design shows (k3Xq….html, k3Xq….bin).
+  const auto pageName=SealJob::randomName("html"),binName=split?pageName.chopped(5)+".bin":QString();
   const SealJob sealer(sealHelper_);
   auto result=sealer.run(item.artifact,QFileInfo(item.artifact.path).absolutePath(),split?"split":"inline",pageName,binName,passphrase,cancelled);
   if(result.error) {
@@ -2202,7 +2232,7 @@ QJsonObject OperationService::capabilities() const {
   {"editor",QJsonObject{{"available",editor},{"admissionPixels",double(EditorJob::admissionPixels)},{"open",!editingId_.isEmpty()},
    {"sources",QJsonArray{"region","window","desktop","clipboard","file","scroll"}},{"fileFormats",QJsonArray{"png","jpeg"}},{"output","png"},
    {"shapes",QJsonArray{"redact","blur","arrow","rectangle","text","highlight","step","pen","ellipse","line"}},{"blurStyles",QJsonArray{"blur","pixelate"}},
-   {"commands",QJsonArray{"inspect","apply","preview","saveCopy","copy","fileDialog","view","submit","cancel","raise"}}}},
+   {"commands",QJsonArray{"inspect","apply","preview","saveCopy","copy","fileDialog","view","seal","submit","cancel","raise"}}}},
   {"scroll",scroll_->capabilities()},{"recording",recording_->capabilities()},{"text",text_->capabilities(textSourceErrors())}};
 }
 QJsonObject OperationService::diagnostics() const {

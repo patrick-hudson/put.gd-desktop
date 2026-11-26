@@ -1326,8 +1326,26 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
     actionRow->addSpacing(12 - actionRow->spacing());
     actionRow->addWidget(save_);
     actionRow->addWidget(destinationMenu_);
+    // #2079: Seal, beside Upload: this upload only, starting from the destination's Seal links setting.
+    seal_ = new QPushButton("Seal", actions);
+    seal_->setObjectName("reviewSeal");
+    seal_->setCheckable(true);
+    seal_->setIcon(Ui::icon("lock"));
+    Ui::role(seal_, "quiet");
+    seal_->setProperty("driveAction", QJsonObject{{"action", "seal"}});
+    {
+        const auto seal = options.seal;
+        sealAvailable_ = seal.value("available").toBool();
+        sealReason_ = seal.value("reason").toString();
+        seal_->setChecked(seal.value("on").toBool());
+        seal_->setEnabled(sealAvailable_ || seal_->isChecked());
+        seal_->setToolTip(sealAvailable_ ? QStringLiteral("Seal this upload: only someone with the full link can open it") : sealReason_);
+        seal_->setVisible(!seal.isEmpty());
+    }
+    connect(seal_, &QPushButton::toggled, this, [this](bool on) { if (!sealAvailable_) seal_->setEnabled(on); emit sealToggled(on); });
+    actionRow->addWidget(seal_);
     actionRow->addWidget(upload_);
-    for (auto* button : std::initializer_list<QWidget*>{format_, cancel_, save_, destinationMenu_, upload_}) {
+    for (auto* button : std::initializer_list<QWidget*>{format_, cancel_, save_, destinationMenu_, seal_, upload_}) {
         // A click never takes the keys; Tab still reaches them (Q16).
         button->setFocusPolicy(Qt::TabFocus);
         button->setProperty("uiDensity", "compact");
@@ -2983,6 +3001,7 @@ QJsonObject ReviewWindow::inspect() const {
         {"discardConfirmation", QJsonObject{{"open", bool(discard_)}, {"text", discard_ ? QJsonValue(discard_->text()) : QJsonValue(QJsonValue::Null)}}},
         {"fileDialog", chooser_->state()},
         {"format", QJsonObject{{"format", config_.format}, {"codec", config_.codec}}},
+        {"seal", QJsonObject{{"shown", seal_ && seal_->isVisibleTo(this)}, {"on", seal_ && seal_->isChecked()}, {"available", sealAvailable_}, {"reason", sealReason_}}},
         {"video", QJsonObject{{"rect", rect(video)}, {"share", double(video.width()) * video.height() / area}}},
         {"header", QJsonObject{{"visible", header_->isVisibleTo(this)}, {"rect", rect(header_->geometry())}, {"customFrame", Ui::WindowHeader::customFrame()}}}};
 }
@@ -3009,6 +3028,14 @@ ReviewWindow::DriveResult ReviewWindow::driveAction(const QJsonObject& params) {
     const auto invalid = [](const QString& message) { return DriveResult{"invalid_request", message, {}}; };
     auto done = [this](const QString& error = {}) { return error.isEmpty() ? DriveResult{{}, {}, inspect()} : DriveResult{"invalid_request", error, {}}; };
     if (action == "inspect") return done();
+    // #2079: the Seal toggle beside Upload, as a click sets it.
+    if (action == "seal") {
+        if (!params["on"].isBool()) return invalid("seal takes on: true or false");
+        if (!seal_ || seal_->isHidden()) return invalid("This recording has no upload destination");
+        if (params["on"].toBool() && !sealAvailable_) return DriveResult{"seal_unavailable", sealReason_, {}};
+        seal_->setChecked(params["on"].toBool());
+        return done();
+    }
     // The discard confirmation, as the Discard… button, the close button and its two answers.
     if (action == "keepReviewing" || action == "confirmDiscard") {
         if (!discard_) return {"recording_state", "No discard confirmation is open", {}};

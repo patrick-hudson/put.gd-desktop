@@ -228,8 +228,10 @@ QVariant HistoryModel::data(const QModelIndex& i,int role)const{
  const auto r=record(i.row());const auto op=r["operation"].toObject();
  if(role==RecordRole)return r;
  if(role==Qt::DisplayRole){const auto name=r["name"].toString();return r["mime"].toString().startsWith("image/")?QFileInfo(name).completeBaseName():name;}
- if(role==Qt::AccessibleTextRole)return r["name"].toString()+". "+statusText(r);
- if(role==Qt::ToolTipRole)return Ui::tooltipText(r["name"].toString()+"\n"+statusText(r));
+ // #2079: a sealed link says so, as its lock glyph shows.
+ const QString sealed=r["sealed"].toBool()?(r["seal"].toObject()["keyForgotten"].toBool()?QStringLiteral("Sealed link, key forgotten. "):QStringLiteral("Sealed link. ")):QString();
+ if(role==Qt::AccessibleTextRole)return r["name"].toString()+". "+sealed+statusText(r);
+ if(role==Qt::ToolTipRole)return Ui::tooltipText(r["name"].toString()+"\n"+sealed+statusText(r));
  if(role==DayRole){if(!daySections())return QString{};const auto current=section(i.row());return i.row()==0||current!=section(i.row()-1)?current:QString{};}
  if(role==SectionRole)return daySections()?section(i.row()):QString{};
  if(role==DayCountRole){if(!daySections()||facts_.at(i.row()).active)return QString{};const auto date=createdAt_.at(i.row()).date();return dayCounts_.contains(date)?itemCount(dayCounts_.value(date)):QString{};}

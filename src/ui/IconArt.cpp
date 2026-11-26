@@ -338,6 +338,10 @@ QImage symbol(const QString& name,const QColor& color,int scale,const QColor& se
  } else if(name=="folder-new"||name=="save") {
   p.drawPath(folder());p.drawLine(12,10,12,17);
   if(name=="save"){p.drawLine(8,13,12,17);p.drawLine(12,17,16,13);}else p.drawLine(8,13,16,13);
+ } else if(name=="lock") {
+  // Sealed links (#2079): a padlock, the body filled at secondary weight.
+  QPainterPath shackle;shackle.moveTo(8,11);shackle.lineTo(8,8);shackle.cubicTo(8,3.5,16,3.5,16,8);shackle.lineTo(16,11);p.drawPath(shackle);
+  rounded(5,11,14,10,2);p.drawLine(QPointF(12,15),QPointF(12,17.5));
  } else if(name=="eye") {
   QPainterPath eye;eye.moveTo(2,12);eye.cubicTo(7,4,17,4,22,12);eye.cubicTo(17,20,7,20,2,12);eye.closeSubpath();p.drawPath(eye);p.drawEllipse(QPointF(12,12),3,3);
  } else if(name=="view-list") {

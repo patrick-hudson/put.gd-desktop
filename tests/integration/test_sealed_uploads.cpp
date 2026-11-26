@@ -130,6 +130,23 @@ private slots:
   QVERIFY(!open(*f.provider,item.link(),"correct horse",plain,meta));QCOMPARE(plain,QByteArray("behind two locks"));
   QVERIFY(!QJsonDocument(op.toJson()).toJson().contains("correct horse"));
  }
+ // A passphrase that came with the request (putgd-cli upload --passphrase-file) is never kept:
+ // a Retry that still has to seal refuses rather than seal without it.
+ void retryNeverSealsWithoutTheRequestsPassphrase() {
+  Fixture f({{"mode","on"}});f.checkState="untested";PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto op=f.upload("needs its passphrase","p.txt",{{"enabled",true},{"passphrase","given once"}});
+  QCOMPARE(op.items.first().error.code,QString("seal_check_required"));QCOMPARE(op.seal["passphraseFrom"].toString(),QString("request"));
+  QVERIFY(!QJsonDocument(op.toJson()).toJson().contains("given once"));
+  f.checkState="passed";bool accepted=false;f.operations->retry(op.id,[&](Error e,QJsonObject){QVERIFY2(!e,qPrintable(e.message));accepted=true;});PUTGD_TRY_VERIFY(accepted);
+  HistoryStore journal(f.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(op.id).items.first().error.code,QString("seal_passphrase_missing"));
+  QCOMPARE(f.provider->count(),0);
+ }
+ // The page and its data file share one random stem.
+ void splitNamesShareOneStem() {
+  Fixture f({{"mode","on"}});PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto item=f.upload(pattern(seal::inlineLimit+1),"v.webm").items.first();
+  QCOMPARE(item.seal["data"].toObject()["candidate"].toString(),item.candidate.chopped(5)+".bin");
+ }
  // Retry sends the same sealed page, so a link someone already has keeps working.
  void retryUploadsTheSameCiphertext() {
   Fixture f({{"mode","on"}});f.provider->failNext=1;PUTGD_TRY_VERIFY(f.operations->ready());

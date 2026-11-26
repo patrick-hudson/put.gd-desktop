@@ -200,6 +200,12 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  }
  // #1872: the Nextcloud and WebDAV forms in the open Destinations page, edited and signed in as a
  // user does. Settings values and button presses only, never a credential.
+ // #2079: Destinations → Sealed links as a user drives it: inspect, mode {mode} or unlock.
+ if(method=="ui.sealLinks") {
+  if(!fields(p,{"action"},{"profileId","mode"})||!QStringList{"inspect","mode","unlock"}.contains(p["action"].toString())||(p["action"]=="mode")!=p.contains("mode")||(p.contains("mode")&&!QStringList{"off","on","passphrase"}.contains(p["mode"].toString()))||(p.contains("profileId")&&!string(p,"profileId",64))){reply(invalid(),{});return;}
+  if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
+  uiCommand_("sealLinks",p,std::move(reply));return;
+ }
  if(method=="ui.davDestination") {
   static const QHash<QString,QStringList> allowed{{"inspect",{"profileId"}},{"set",{"field","value","profileId"}},{"add",{"label","provider"}},{"appPassword",{"value","profileId"}},
    {"signIn",{"profileId"}},{"cancelSignIn",{"profileId"}},{"openBrowser",{"profileId"}},{"signOut",{"profileId"}},{"createFolder",{"profileId"}},{"test",{"profileId"}},{"unlock",{"profileId"}}};
@@ -238,7 +244,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   operations_.invoke("edit",reply,p);return;
  }
  // Agent control of the one open editor; the helper validates each command.
- if(QStringList{"editor.inspect","editor.apply","editor.preview","editor.saveCopy","editor.copy","editor.fileDialog","editor.submit","editor.cancel","editor.raise"}.contains(method)) {
+ if(QStringList{"editor.inspect","editor.apply","editor.preview","editor.saveCopy","editor.copy","editor.fileDialog","editor.seal","editor.submit","editor.cancel","editor.raise"}.contains(method)) {
   if(!string(p,"id")){reply(invalid(),{});return;}
   auto params=p;params.remove("id");operations_.editorCommand(p["id"].toString(),method.mid(7),params,reply);return;
  }
@@ -335,7 +341,9 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
    // The review window's feel controls (S, N, = / -, a cover bar's slide, the "+n" chip, [ ], Up / Down).
    "setSkimming","setSnapping","zoomIn","zoomOut","retimeCover","moreCovers","markSelection","editPoint",
    // A cut's Set to playhead and the overview track.
-   "setCutEdge","scrollTimeline"};
+   "setCutEdge","scrollTimeline",
+   // #2079: the Seal toggle beside Upload.
+   "seal"};
   // The numbers are plain JSON numbers (the window checks ranges and whole values); the strings are bounded.
   const auto number=[&](const char* key){return !p.contains(key)||p[key].isDouble();};
   if(!fields(p,{"id","action"},{"time","speed","kind","rect","maskId","strength","format","codec","start","end","cutId","editId","edge","level","mode","dx","dy","delta","open","width","height","on","at"})||!string(p,"id")||!string(p,"action",32)||!actions.contains(p["action"].toString())

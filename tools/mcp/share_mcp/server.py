@@ -960,6 +960,22 @@ def create_server(adapter: CliAdapter) -> MCPServer:
             return invalid()
         return await adapter.call('operation.seal', {'id': id, 'enabled': enabled})
 
+    @server.tool(annotations=effect)
+    async def drive_seal_links(action: str, mode: str | None = None, profile_id: str | None = None) -> Json:
+        """Work Destinations → Sealed links for the shown (or profile_id) destination, as a user does (#2079): inspect (mode, check passed|failed|untested, reason, available, passphraseLoaded, unlockOffered), mode {off|on|passphrase} (refused with seal_unavailable until Test upload and link passed the sealed-link check; off always works), unlock (reads the saved passphrase from the keychain; may prompt). A passphrase is typed in the window only, never passed here. Destinations must be open (ui_view_closed otherwise)."""
+        if action not in {'inspect', 'mode', 'unlock'} or (action == 'mode') != (mode is not None):
+            return invalid()
+        if mode is not None and mode not in {'off', 'on', 'passphrase'}:
+            return invalid()
+        if profile_id is not None and not identifier(profile_id, 64):
+            return invalid()
+        params: Json = {'action': action}
+        if mode is not None:
+            params['mode'] = mode
+        if profile_id is not None:
+            params['profileId'] = profile_id
+        return await adapter.call('ui.sealLinks', params)
+
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True, open_world_hint=False))
     async def forget_history_key(id: str) -> Json:
         """Forget key (#2079): remove a sealed link's key from History. The file stays at the destination and nobody, put.gd included, can open it again; Copy link and QR code stop being offered. history_not_sealed for an item that isn't a sealed link; history_busy while its upload runs."""

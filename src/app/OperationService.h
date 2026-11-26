@@ -114,9 +114,13 @@ public:
  // #2079: the Seal toggle beside Upload in the editor and recording review, and agents:
  // sets this waiting operation's own Seal choice until its upload starts sealing.
  void setSeal(const QString& id,bool enabled,JsonReply reply);
+ // The choice itself, from the editor's toggle or setSeal.
+ void recordSeal(const QString& id,bool enabled);
  // What an upload of this operation would do about sealing: {on, setting, available,
  // reason?, passphrase}. `on` is the operation's own choice, else the destination's.
  QJsonObject sealOptions(const Operation&) const;
+ // Whether an upload of this action, as Settings routes it now, could be sealed (the tray's row).
+ bool sealAvailableFor(const QString& action) const;
  // Tests may point sealing at another putgd-cli.
  void setSealHelperForTesting(const QString& path) {sealHelper_=path;}
  // This resident's installation class ("system" or "appimage"); tests may set it.

@@ -59,6 +59,8 @@ void EditorSession::setCopyHandler(CopyHandler handler){std::lock_guard lock(mut
 EditorSession::CopyHandler EditorSession::copyHandler() const {std::lock_guard lock(mutex_);return copyHandler_;}
 void EditorSession::finishCopy(Error error){std::lock_guard lock(mutex_);copyResult_=std::move(error);}
 std::optional<Error> EditorSession::takeCopyResult(){std::lock_guard lock(mutex_);return std::exchange(copyResult_,std::nullopt);}
+void EditorSession::setSealHandler(SealHandler handler){std::lock_guard lock(mutex_);sealHandler_=std::move(handler);}
+EditorSession::SealHandler EditorSession::sealHandler() const {std::lock_guard lock(mutex_);return sealHandler_;}
 void EditorSession::setTextCopyHandler(TextCopyHandler handler){std::lock_guard lock(mutex_);textCopyHandler_=std::move(handler);}
 EditorSession::TextCopyHandler EditorSession::textCopyHandler() const {std::lock_guard lock(mutex_);return textCopyHandler_;}
 void EditorSession::finishTextCopy(const QString& copyId,Error error){std::lock_guard lock(mutex_);textCopyResults_.append({copyId,std::move(error)});}
@@ -185,6 +187,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  if(submissionError_)request["submissionError"]=QJsonObject{{"code",submissionError_.code},{"message",submissionError_.message}};
  request["destination"]=destination.left(200).isEmpty()?QStringLiteral("Upload"):destination.left(200);
  if(links_)request["links"]=*links_;
+ if(!seal_.isEmpty()){QJsonObject seal{{"available",seal_.value("available").toBool()},{"on",seal_.value("on").toBool()}};if(seal_.value("reason").isString()&&!seal_.value("reason").toString().isEmpty())seal["reason"]=seal_.value("reason").toString().left(300);request["seal"]=seal;}
  request["recentColors"]=QJsonArray::fromStringList(recentColors_.mid(0,Settings::maximumRecentColors));
  request["appearance"]=appearance_=="light"?QStringLiteral("light"):QStringLiteral("dark");
  request["textLanguages"]=QJsonArray::fromStringList(textjob::validLanguages(textLanguages_)?textLanguages_:QStringList{});
@@ -306,6 +309,12 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
    return;
   }
   // Copy text (#1428): plain text, answered with copyResult for its copyId.
+  // #2079: the Seal toggle; the resident applies it when this upload starts.
+  if(type=="seal"&&editing&&!finalizing&&!checkpoint){
+   if(payload.size()!=4||!payload["on"].isBool()){protocolFailed=true;return;}
+   if(const auto handler=session->sealHandler())handler(payload["on"].toBool());
+   return;
+  }
   if(type=="copyText"&&editing&&!finalizing&&!checkpoint){
    if(payload.size()!=5||!payload["copyId"].isString()||payload["copyId"].toString().isEmpty()||payload["copyId"].toString().size()>64||!payload["text"].isString()||payload["text"].toString().size()>maximumTextCopyCharacters){protocolFailed=true;return;}
    const auto id=payload["copyId"].toString();const auto handler=session->textCopyHandler();

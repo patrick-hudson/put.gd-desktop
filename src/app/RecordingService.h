@@ -36,6 +36,8 @@ public:
         // Saves a change the recording bar made to a remembered preference
         // (#1364: the microphone toggle); optional.
         std::function<void(const QJsonObject& preferences)> remember;
+        // #2079: the review's Seal toggle changed for this operation; optional.
+        std::function<void(const QString& operationId, bool on)> seal;
     };
     RecordingService(QString stagingRoot, Host, QObject* parent = nullptr);
     ~RecordingService() override;
