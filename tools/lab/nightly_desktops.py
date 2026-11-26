@@ -1431,16 +1431,71 @@ def retire(run, out, rows):
     finish_retirement(run, out)
 
 
-def baton_returned(run):
+def baton_returned(run, before=None):
+    """Whether the lend for RUN carried its copy back; with BEFORE (lend_receipts() taken ahead of
+    this attempt), only a lend started since counts, not an earlier attempt's."""
     locks = Path.home()/'putgd-lab/locks'
     proton = locks/'proton.lock'
     if proton.exists() and 'lent copy outstanding' in proton.read_text():
         raise RuntimeError('Proton carry-back unresolved; overlay retained')
     last = json.loads((locks/'proton-registry.json').read_text()).get('lastLend', {})
+    if before is not None and Path(str(last.get('receipts'))).resolve()/'lend.json' in before:
+        return False
     if last.get('run') == str(run) and last.get('carriedBack'):
         return True
     # lend may stop while preparing the guest, before exporting any session.
     return False
+
+
+def lend_receipts():
+    # The folder is resolved (on Atomic /home is a link to /var/home, and the lend runs with the
+    # resolved HOME); lend.json itself is not, so private_file still refuses a link there.
+    return {path.parent.resolve()/path.name for path in (Path.home()/'putgd-lab/proton/receipts').glob('*/lend.json')}
+
+
+# A guest keyring's provider as the receipts record it (a process name, truncated to 15 bytes),
+# and the fixed name a public assertion uses; any other value is left out.
+KEYRING_PROVIDERS = {'ksecretd': 'ksecretd', 'kwalletd6': 'kwalletd6', 'kwalletd5': 'kwalletd5',
+                     'gnome-keyring-d': 'gnome-keyring', 'oo7-daemon': 'oo7-daemon'}
+LEND_STEPS = {'import': 'guest keychain import refused', 'export': "builder's session export refused",
+              'prepare_keyring': 'guest keyring preparation failed', 'place_brokers': 'guest broker placement failed',
+              'host_brokers': "builder's lab brokers missing or unsafe"}
+
+
+def clean_lend_failure(run, before):
+    """Why the one lend of RUN started since BEFORE stopped ahead of its test, when its receipts prove
+    nothing was left in the guest's keychain (#2105); None otherwise. The reason is built only from
+    fixed text and receipt categories, never from a lend's own message."""
+    from tools.lab.provision_live_credentials import _load_receipt
+    lends = []
+    for path in lend_receipts()-before:
+        try:
+            lent = json.loads(private_file(path).read_text())
+        except (OSError, ValueError, RuntimeError):
+            return None
+        if lent.get('run') == str(run):
+            lends.append((path.parent, lent))
+    if len(lends) != 1:
+        return None
+    folder, lent = lends[0]
+    if lent.get('step') not in ('provision_failed_abandoned', 'lend_failed') or lent.get('reference'):
+        return None
+    for receipt in folder.glob('provision*.json'):
+        try:
+            _, value = _load_receipt(receipt)
+        except Exception:  # noqa: BLE001 - an unreadable receipt proves nothing
+            return None
+        if value.get('state') != 'cleanup_confirmed':
+            return None
+    reason = 'Proton lend stopped before the test: '+LEND_STEPS.get(lent.get('failedStep'), 'lend failed')
+    tries = len(lent.get('provisionTries') or [])
+    if tries > 1:
+        reason += f' on {tries} tries'
+    keyring = lent.get('guestKeyring') or {}
+    provider = KEYRING_PROVIDERS.get(keyring.get('provider')) if isinstance(keyring.get('provider'), str) else None
+    if provider:
+        reason += f'; guest keyring {provider}'+(' (just restarted)' if keyring.get('restarted') is True else '')
+    return reason+'; nothing left in the guest'
 
 
 def package_path(artifacts, tag, row, identity):
@@ -1567,6 +1622,7 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
                                 '--out', str(target), '--campaign', 'nightly-desktops',
                                 '--coverage', str(rowout/(name+'-coverage.json'))]
                             if destination == 'proton':
+                                lends_before = lend_receipts()
                                 proton_command = config.get('protonCommand', [sys.executable, str(ROOT/'tools/lab/proton_lab.py')])
                                 check = [*proton_command, 'check', '--session', session,
                                          '--owner', 'nightly-desktops']
@@ -1594,10 +1650,18 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
                             cells[flow].update(observed)
                             if destination == 'proton':
                                 # lend must have returned the baton even when assertions failed.
-                                returned = baton_returned(run)
+                                returned = baton_returned(run, lends_before)
                                 command(check, log=rowout/(name+'-check-after.json'), env=env)
                                 if not returned:
-                                    raise NotRun('Proton guest provisioning did not complete; source check passed')
+                                    failure = clean_lend_failure(run, lends_before)
+                                    if failure is None:
+                                        raise NotRun('Proton guest provisioning did not complete; source check passed')
+                                    # Nothing reached the guest's keychain, or it was removed: the
+                                    # cell's next attempt may lend again (#2105). The attempt's own
+                                    # lend failed, so whatever verdict found is not its result.
+                                    observed.update(cell(assertion=failure), attempt=attempt)
+                                    cells[flow].update(observed)
+                                    continue
                             marker_left = (run/lab.LIVE_CLEANUP_MARKER).exists()
                             if marker_left or lost_guest_session(target):
                                 # The failing cell is the row's reported result (#1214). A live cleanup that is

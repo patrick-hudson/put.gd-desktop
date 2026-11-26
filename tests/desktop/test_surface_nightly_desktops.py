@@ -477,6 +477,117 @@ class NightlyTests(unittest.TestCase):
             self.reset = reset
             return records[0], cells, retire, (root/'putgd-lab/locks/tier1-guest.lock.d').exists()
 
+    def proton_lend_row(self, lends, provision_state='cleanup_confirmed', provider='ksecretd'):
+        """Run a live Proton-only row whose lends play LENDS in turn: 'clean' stops before the test with
+        its import cleaned up, 'green' and 'red' carry back after a passed or failed test (#2105)."""
+        from tools.lab import lab, nightly_desktop_guest as guest, provision_live_credentials as credentials
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            locks = root/'putgd-lab/locks'
+            locks.mkdir(parents=True)
+            (locks/'proton-registry.json').write_text('{}')
+            pins = root/'pins'
+            pins.write_text('localhost ssh-ed25519 synthetic-public-pin\n')
+            artifacts = root/'artifacts'
+            (artifacts/'packages').mkdir(parents=True)
+            package = artifacts/'packages/putgd-test-test.deb'
+            package.write_bytes(b'synthetic package')
+            identity = dict(driver=BUILD, gitCommit=BUILD, packages={package.name:nightly.digest(package)})
+            row = dict(name='Test', profile='test', knownHosts=str(pins), bootstrapKey='unused', live=True,
+                       package='deb', asset='test.deb', desktop='test', golden='/unused/golden')
+            plays = list(lends)
+            attempts, results = [], []
+            def private(path, value):
+                path.write_text(json.dumps(value))
+                path.chmod(0o600)
+            def command(argv, **kwargs):
+                if argv[:2] == ['git', 'rev-parse']:
+                    return BUILD
+                if 'launch' in argv:
+                    run = Path(argv[argv.index('--run')+1])
+                    run.mkdir(parents=True)
+                    (run/'state.json').write_text('{}')
+                if 'lend' in argv:
+                    run = argv[argv.index('lend')+1]
+                    attempts.append(Path(argv[argv.index('--out')+1]).name)
+                    folder = root/f'putgd-lab/proton/receipts/2026-11-26T12-59-0{len(attempts)}Z-run'
+                    folder.mkdir(parents=True)
+                    play = plays.pop(0)
+                    results.append(play)
+                    if play in ('green', 'red'):
+                        private(folder/'lend.json', dict(run=run, step='cleaned', reference='putgd-lab-x'))
+                        (locks/'proton-registry.json').write_text(json.dumps(dict(lastLend=dict(
+                            run=run, carriedBack='carry-back-1.json', receipts=str(folder)))))
+                        return
+                    for name in ('provision-1.json', 'provision.json'):
+                        private(folder/name, dict(state=provision_state))
+                    private(folder/'lend.json', dict(
+                        run=run, step='provision_failed_abandoned', failedStep='import', reference=None,
+                        failure='synthetic private text', guestKeyring=dict(provider=provider, restarted=True),
+                        provisionTries=[dict(attempt=1), dict(attempt=2)]))
+                    raise RuntimeError('lend failed (exit 1); private log retained')
+            verdict = nightly.verdict
+            def observed(target, recipe):
+                last = results[-1] if results else None
+                return (nightly.cell('green') if last == 'green' else
+                        nightly.cell('red', 'synthetic functional failure') if last == 'red' else verdict(target, recipe))
+            loaded = lambda path: (path, json.loads(Path(path).read_text()))
+            with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
+                    patch.object(nightly, 'await_host', return_value=0), patch.object(nightly, 'preflight', return_value={}), \
+                    patch.object(nightly, 'command', side_effect=command), patch.object(nightly, 'verdict', side_effect=observed), \
+                    patch.object(nightly, 'LOCAL', []), patch.object(nightly, 'LIVE', ['proton_region_upload']), \
+                    patch.object(credentials, '_load_receipt', side_effect=loaded), \
+                    patch.object(guest, 'prepare', return_value=root/'profiles'), \
+                    patch.object(guest, 'hold_package_updates'), \
+                    patch.object(lab, 'state', return_value=dict(id='test', golden_sha256='a'*64)), \
+                    patch.object(lab, 'reset'), patch.object(nightly, 'guest_clients_live', return_value=False), \
+                    patch.object(nightly, 'retire'), patch('tools.lab.desktop_lock.Desktop') as lock:
+                lock.return_value.acquire.return_value = {}
+                lock.return_value.release.return_value = {}
+                lock.return_value.heartbeat.return_value = {}
+                lock.return_value.status.return_value = dict(state='free')
+                records = nightly.worker_run(dict(host='d69', rows=[row]), 'vtest', identity, artifacts, root/'output',
+                                             nightly.time.monotonic() + 10**6)
+            return records[0], attempts
+
+    def test_a_cleanly_failed_proton_lend_runs_the_cells_second_attempt(self):
+        record, attempts = self.proton_lend_row(['clean', 'green'])
+        self.assertEqual(attempts, ['proton_region_upload-1', 'proton_region_upload-2'])
+        upload = record['cells']['proton_region_upload']
+        self.assertEqual(upload['status'], 'green')
+        first = upload['attempts'][0]
+        self.assertEqual(first['status'], 'not_run')
+        self.assertEqual(first['assertion'], 'Proton lend stopped before the test: guest keychain import refused on '
+                                             '2 tries; guest keyring ksecretd (just restarted); nothing left in the guest')
+        self.assertNotIn('notRunReason', record)
+
+    def test_a_proton_lend_that_fails_cleanly_twice_names_the_lend_step_not_a_missing_receipt(self):
+        record, attempts = self.proton_lend_row(['clean', 'clean'])
+        self.assertEqual(len(attempts), 2)
+        upload = record['cells']['proton_region_upload']
+        self.assertEqual(upload['status'], 'not_run')
+        self.assertTrue(upload['assertion'].startswith('Proton lend stopped before the test: guest keychain import'))
+        self.assertNotIn('receipt missing', upload['assertion'])
+        self.assertNotIn('synthetic private text', json.dumps(record))
+
+    def test_a_clean_lend_failure_after_an_earlier_attempts_carry_back_still_names_the_lend(self):
+        record, attempts = self.proton_lend_row(['red', 'clean'])
+        upload = record['cells']['proton_region_upload']
+        self.assertEqual([a['status'] for a in upload['attempts']], ['red', 'not_run'])
+        self.assertTrue(upload['attempts'][1]['assertion'].startswith('Proton lend stopped before the test'))
+        self.assertEqual(upload['status'], 'not_run')
+
+    def test_an_unknown_keyring_provider_is_left_out_of_the_assertion(self):
+        record, _ = self.proton_lend_row(['clean', 'clean'], provider='synthetic-secret')
+        assertion = record['cells']['proton_region_upload']['assertion']
+        self.assertNotIn('synthetic-secret', json.dumps(record))
+        self.assertNotIn('guest keyring', assertion)
+
+    def test_a_proton_lend_whose_import_is_not_proven_clean_still_stops_the_row(self):
+        record, attempts = self.proton_lend_row(['clean', 'green'], provision_state='import_pending')
+        self.assertEqual(attempts, ['proton_region_upload-1'])
+        self.assertIn('Proton guest provisioning did not complete', record['notRunReason'])
+
     def test_lost_session_stops_the_row_with_the_first_failure(self):
         record, cells, retire, slot = self.lost_session_row(['notification monitor cleanup unavailable',
                                                              'resident quit transport unavailable; private session retained'])
@@ -2153,6 +2264,30 @@ with n.controller_shutdown(workers):
             (locks/'proton.lock').write_text('blocked: lent copy outstanding on second attempt\n')
             with self.assertRaisesRegex(RuntimeError,'carry-back unresolved'):
                 nightly.baton_returned('/current')
+
+    def test_an_earlier_lend_is_not_this_attempts_carry_back_through_a_home_alias(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            real = Path(tmp)/'var/home'
+            folder = real/'putgd-lab/proton/receipts/2026-11-26T12-59-01Z-run'
+            folder.mkdir(parents=True)
+            (folder/'lend.json').write_text('{}')
+            (real/'putgd-lab/locks').mkdir(parents=True)
+            alias = Path(tmp)/'home'
+            alias.symlink_to(real)
+            (real/'putgd-lab/locks/proton-registry.json').write_text(json.dumps(dict(lastLend=dict(
+                run='/current', carriedBack='carry-back-1.json', receipts=str(folder)))))
+            with patch.object(nightly.Path, 'home', return_value=alias):
+                before = nightly.lend_receipts()  # read through the alias, as the worker does
+                self.assertFalse(nightly.baton_returned('/current', before))
+                self.assertTrue(nightly.baton_returned('/current', set()))
+            # A linked lend.json keeps its own name, so private_file still sees and refuses the link.
+            linked = real/'putgd-lab/proton/receipts/2026-11-26T13-00-00Z-run'
+            linked.mkdir()
+            (linked/'lend.json').symlink_to(folder/'lend.json')
+            with patch.object(nightly.Path, 'home', return_value=alias):
+                self.assertIn(linked/'lend.json', nightly.lend_receipts())
+                with self.assertRaises(RuntimeError):
+                    nightly.private_file(linked/'lend.json')
 
     def test_stable_draft_requires_explicit_named_opt_in_and_timer_ignores_it(self):
         draft = dict(tag_name='v26.1104.3870', draft=True, published_at=None)
