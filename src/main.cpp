@@ -266,13 +266,13 @@ int main(int argc,char* argv[]) {
  putgd::CredentialStore credentials;
  putgd::ProviderRegistry providers;
  auto s3=std::make_shared<putgd::S3Provider>(credentials);providers.add("s3",s3);
- auto proton=std::make_shared<putgd::ProtonProvider>();providers.add("proton-drive",proton);
  auto b2=std::make_shared<putgd::B2Provider>(credentials);providers.add("backblaze-b2",b2);
  auto r2=std::make_shared<putgd::R2Provider>(s3);providers.add(putgd::r2::providerId,r2);
- auto http=std::make_shared<putgd::HttpUploaderProvider>(credentials);providers.add(putgd::http::providerId,http);
  auto nextcloud=std::make_shared<putgd::DavProvider>(credentials,putgd::dav::nextcloudId);providers.add(putgd::dav::nextcloudId,nextcloud);
- auto webdav=std::make_shared<putgd::DavProvider>(credentials,putgd::dav::webdavId);providers.add(putgd::dav::webdavId,webdav);
+ auto proton=std::make_shared<putgd::ProtonProvider>();providers.add("proton-drive",proton);
  auto sftp=std::make_shared<putgd::SftpProvider>(credentials,locations.configRoot+"/ssh/known_hosts");providers.add(putgd::sftp::providerId,sftp);
+ auto webdav=std::make_shared<putgd::DavProvider>(credentials,putgd::dav::webdavId);providers.add(putgd::dav::webdavId,webdav);
+ auto http=std::make_shared<putgd::HttpUploaderProvider>(credentials);providers.add(putgd::http::providerId,http);
  putgd::SettingsService settings(locations.configPath(),[&providers](const auto& id,const auto& value) {return providers.validate(id,value);},nullptr,[&providers](const auto& id,const auto& value){return providers.validateCredentials(id,value);},[&providers](const auto& id,const auto& value){return providers.validateStored(id,value);});
  std::unique_ptr<putgd::SourceAdapter> source;
  std::function<void()> bindSource;

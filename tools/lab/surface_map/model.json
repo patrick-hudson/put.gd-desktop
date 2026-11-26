@@ -398,7 +398,7 @@
   {"id": "history.cancel-all-dialog", "surface": "history", "kind": "button", "label": "Cancel all N active uploads? Keep uploading / Cancel N uploads", "to": "confirm", "method": "operation.cancel", "source": "src/ui/HistoryWindow.cpp"},
 
   {"id": "destinations.list", "surface": "destinations", "kind": "button", "label": "Destination rail (select; drag to reorder)", "control": "destinationList", "source": "src/ui/SettingsWindow.cpp"},
-  {"id": "destinations.add", "surface": "destinations", "kind": "button", "label": "Add destination: Amazon S3 / S3-compatible, Proton Drive, Backblaze B2 (name dialog)", "control": "addS3Destination", "method": "settings.patch", "source": "src/ui/SettingsWindow.cpp"},
+  {"id": "destinations.add", "surface": "destinations", "kind": "button", "label": "Add destination: Object storage (Amazon S3 / S3-compatible, Backblaze B2, Cloudflare R2), Cloud drives (Nextcloud, Proton Drive), File servers (SFTP, WebDAV), Custom uploader (HTTP) (name dialog)", "control": "addS3Destination", "method": "settings.patch", "source": "src/ui/SettingsWindow.cpp"},
   {"id": "destinations.rename", "surface": "destinations", "kind": "field", "label": "Destination name (editable title)", "control": "destinationLabel", "source": "src/ui/SettingsWindow.cpp"},
   {"id": "destinations.add-credentials", "surface": "destinations", "kind": "button", "label": "Add credentials…", "control": "addDestinationCredentials", "source": "src/ui/SettingsWindow.cpp"},
   {"id": "destinations.make-default", "surface": "destinations", "kind": "button", "label": "Make default… (confirm when untested)", "control": "makeDefaultDestination", "to": "confirm", "source": "src/ui/SettingsWindow.cpp"},

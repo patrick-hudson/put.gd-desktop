@@ -635,7 +635,7 @@ int main(int argc,char** argv){
  };
  if(!captureQuestion("confirm-make-default-untested",[&]{window.findChild<QPushButton*>("makeDefaultDestination")->click();})||
     !captureQuestion("confirm-remove-destination",[&]{window.findChild<QPushButton*>("removeDestination")->click();})||
-    !captureQuestion("confirm-add-destination-name",[&]{auto* add=window.findChild<QPushButton*>("addS3Destination");add->menu()->actions().first()->trigger();}))return 2;
+    !captureQuestion("confirm-add-destination-name",[&]{auto* add=window.findChild<QPushButton*>("addS3Destination");for(auto* action:add->menu()->actions())if(!action->isSeparator()){action->trigger();break;}}))return 2;
  destinations->setCurrentRow(0);
  if(!captureQuestion("confirm-new-proton-folder",[&]{window.findChild<QPushButton*>("createProtonFolder")->click();}))return 2;
  destinations->setCurrentRow(1);

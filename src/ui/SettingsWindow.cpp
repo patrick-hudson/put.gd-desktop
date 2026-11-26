@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 #include "SettingsWindow.h"
 #include "ErrorLogPage.h"
@@ -1294,24 +1295,38 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  auto* testScope=new QLabel;testScope->setObjectName("destinationTestScope");testScope->setWordWrap(true);testScope->setTextFormat(Qt::PlainText);testScope->setProperty("uiStatus",true);Ui::role(testScope,"secondary");auto* test=new QPushButton("Test upload and link");test->setObjectName("testDestination");test->setSizePolicy(QSizePolicy::Maximum,QSizePolicy::Fixed);defaultButton_=new QPushButton("Make default");defaultButton_->setObjectName("makeDefaultDestination");titleActions->addWidget(defaultButton_);auto* more=new QPushButton;more->setIcon(Ui::chromeIcon("more"));more->setToolTip("Destination actions");more->setProperty("noChevron",true);more->setAccessibleName("Destination actions");more->setObjectName("destinationActions");more->setFixedSize(Ui::scaled(36),Ui::scaled(36));titleActions->addWidget(more);
  headerLayout->addLayout(titleActions,0,1,Qt::AlignRight|Qt::AlignVCenter);
  auto* description=new QLabel("Amazon S3 or compatible storage.");description->setWordWrap(true);description->setObjectName("destinationProviderDescription");Ui::role(description,"bodySecondary");description->setContentsMargins(0,space(Space::s),0,0);headerLayout->addWidget(description,1,0,1,2);
- auto* destinationMenu=new QMenu(more);more->setMenu(destinationMenu);auto* rename=destinationMenu->addAction("Rename destination");rename->setObjectName("renameDestination");connect(rename,&QAction::triggered,this,[this]{QTimer::singleShot(0,this,[this]{profileLabel_->setFocus(Qt::ShortcutFocusReason);profileLabel_->selectAll();});});destinationMenu->addSeparator();auto* serviceMenu=destinationMenu->addMenu("Storage service");auto* services=new QActionGroup(serviceMenu);services->setObjectName("storageServices");services->setExclusive(true);for(const auto& service:QList<QPair<QString,QString>>{{"Amazon S3 / compatible","s3"},{"Proton Drive","proton-drive"},{"Backblaze B2","backblaze-b2"},{"Cloudflare R2",r2::providerId},{"Nextcloud",dav::nextcloudId},{"WebDAV",dav::webdavId},{"Custom uploader (HTTP)",CustomUploaderPanel::provider()},{"SFTP",SftpPanel::provider()}}){auto* action=serviceMenu->addAction(service.first);action->setCheckable(true);action->setData(service.second);services->addAction(action);connect(action,&QAction::triggered,this,[this,action]{providerType_->setCurrentIndex(providerType_->findData(action->data()));});}auto* remove=new QPushButton("Remove destination",this);remove->setObjectName("removeDestination");remove->hide();connect(destinationMenu->addAction("Remove destination…"),&QAction::triggered,remove,&QPushButton::click);destinationMenu->addSeparator();moveUp_=destinationMenu->addAction("Move up");moveDown_=destinationMenu->addAction("Move down");
+ auto* destinationMenu=new QMenu(more);more->setMenu(destinationMenu);auto* rename=destinationMenu->addAction("Rename destination");rename->setObjectName("renameDestination");connect(rename,&QAction::triggered,this,[this]{QTimer::singleShot(0,this,[this]{profileLabel_->setFocus(Qt::ShortcutFocusReason);profileLabel_->selectAll();});});destinationMenu->addSeparator();auto* serviceMenu=destinationMenu->addMenu("Storage service");serviceMenu->setObjectName("storageServiceMenu");auto* services=new QActionGroup(serviceMenu);services->setObjectName("storageServices");services->setExclusive(true);
+ const auto populateDestinationMenu=[](QMenu* menu,const auto& addEntry){
+  QString currentGroup;bool started=false;
+  for(const auto& type:destinationTypes()){
+   if(!started||type.group!=currentGroup){
+    if(!type.group.isEmpty())menu->addSection(type.group);
+    else if(started)menu->addSeparator();
+    currentGroup=type.group;
+   }
+   started=true;
+   addEntry(menu,type);
+  }
+ };
+ populateDestinationMenu(serviceMenu,[this,services](QMenu* menu,const DestinationType& type){
+  auto* action=menu->addAction(type.label);action->setCheckable(true);action->setData(type.id);services->addAction(action);
+  connect(action,&QAction::triggered,this,[this,action]{providerType_->setCurrentIndex(providerType_->findData(action->data()));});
+ });
+ auto* remove=new QPushButton("Remove destination",this);remove->setObjectName("removeDestination");remove->hide();connect(destinationMenu->addAction("Remove destination…"),&QAction::triggered,remove,&QPushButton::click);destinationMenu->addSeparator();moveUp_=destinationMenu->addAction("Move up");moveDown_=destinationMenu->addAction("Move down");
  for(auto* move:{moveUp_,moveDown_}){move->setObjectName(move==moveUp_?"moveDestinationUp":"moveDestinationDown");move->setShortcut(QKeySequence(Qt::ALT|(move==moveUp_?Qt::Key_Up:Qt::Key_Down)));move->setShortcutContext(Qt::WidgetShortcut);destinationList_->addAction(move);connect(move,&QAction::triggered,this,[this,move]{QJsonObject result;if(auto error=moveSelectedDestination(move==moveUp_?-1:1,{},result))status(error);});}
  destinationList->moveRequested=[this](int from,int to){if(auto error=moveDestination(from,to))status(error);};
  destinationMenu->addSeparator();connect(destinationMenu->addAction("Copy details"),&QAction::triggered,this,[this]{qApp->clipboard()->setText(QString::fromUtf8(QJsonDocument(editedProfile()).toJson(QJsonDocument::Indented)));});
- auto* dev=new QPushButton("Import development S3",this);dev->setObjectName("importDevelopmentS3");dev->hide();auto* addMenu=new QMenu(add);add->setMenu(addMenu);connect(addMenu->addAction("Amazon S3 / S3-compatible"),&QAction::triggered,this,[this]{addS3Profile();});connect(addMenu->addAction("Proton Drive"),&QAction::triggered,this,[this]{const auto count=profile_->count();addS3Profile("Proton Drive");if(profile_->count()==count)return;providerType_->setCurrentIndex(providerType_->findData("proton-drive"));queueEdit(profileLabel_);});connect(addMenu->addAction("Backblaze B2"),&QAction::triggered,this,[this]{const auto count=profile_->count();addS3Profile("Backblaze B2");if(profile_->count()==count)return;providerType_->setCurrentIndex(providerType_->findData("backblaze-b2"));queueEdit(profileLabel_);});
- // #1678: Cloudflare R2, its own destination type over the S3 API.
- {auto* r2Add=addMenu->addAction("Cloudflare R2");r2Add->setObjectName("addCloudflareR2");connect(r2Add,&QAction::triggered,this,[this]{const auto count=profile_->count();addS3Profile("Cloudflare R2",{},r2::providerId);if(profile_->count()==count)return;providerType_->setCurrentIndex(providerType_->findData(r2::providerId));queueEdit(profileLabel_);});}
- // #1361: one HTTP request the user describes, or imports from a ShareX .sxcu file.
- // #1872: Nextcloud and WebDAV start as themselves, never as an S3 draft that is then switched.
- for(const auto& [name,provider]:QList<QPair<QString,QString>>{{"Nextcloud",dav::nextcloudId},{"WebDAV",dav::webdavId}}){auto* add=addMenu->addAction(name);add->setObjectName(provider==dav::nextcloudId?"addNextcloud":"addWebdav");connect(add,&QAction::triggered,this,[this,name,provider]{const auto count=profile_->count();addS3Profile(name,{},provider);if(profile_->count()==count)return;queueEdit(profileLabel_);});}
- {auto* custom=addMenu->addAction("Custom uploader (HTTP)");custom->setObjectName("addCustomUploader");connect(custom,&QAction::triggered,this,[this]{const auto count=profile_->count();addS3Profile("Custom uploader");if(profile_->count()==count)return;providerType_->setCurrentIndex(providerType_->findData(CustomUploaderPanel::provider()));queueEdit(profileLabel_);});}
- // #1871: SFTP to the user's own server, over their own ssh.
- {auto* sftpAdd=addMenu->addAction("SFTP");sftpAdd->setObjectName("addSftp");connect(sftpAdd,&QAction::triggered,this,[this]{const auto count=profile_->count();addS3Profile("SFTP",{},SftpPanel::provider());if(profile_->count()==count)return;queueEdit(profileLabel_);});}
+ auto* dev=new QPushButton("Import development S3",this);dev->setObjectName("importDevelopmentS3");dev->hide();auto* addMenu=new QMenu(add);addMenu->setObjectName("destinationAddMenu");add->setMenu(addMenu);
+ populateDestinationMenu(addMenu,[this](QMenu* menu,const DestinationType& type){
+  auto* item=menu->addAction(type.label);item->setObjectName(type.addActionName);item->setData(type.id);
+  connect(item,&QAction::triggered,this,[this,type]{const auto count=profile_->count();addS3Profile(type.defaultName,{},type.id);if(profile_->count()==count)return;if(type.id!="s3")queueEdit(profileLabel_);});
+ });
 #ifndef NDEBUG
+ addMenu->addSeparator();
  connect(addMenu->addAction("Import development S3"),&QAction::triggered,dev,&QPushButton::click);
 #endif
  auto* destinationDetails=PreferenceRows::card(pageLayout,"Where files go");destinationDetails->parentWidget()->setObjectName("destinationEditor");
- providerType_=choices(this,"storageProvider",{});providerType_->addItem("Amazon S3","s3");providerType_->addItem("Proton Drive","proton-drive");providerType_->addItem("Backblaze B2","backblaze-b2");providerType_->addItem("Cloudflare R2",r2::providerId);providerType_->addItem("Nextcloud",dav::nextcloudId);providerType_->addItem("WebDAV",dav::webdavId);providerType_->addItem("Custom uploader (HTTP)",CustomUploaderPanel::provider());providerType_->addItem("SFTP",SftpPanel::provider());connect(providerType_,&QComboBox::currentIndexChanged,this,[this,services]{for(auto* action:services->actions())action->setChecked(action->data()==providerType_->currentData());});setting(destinationDetails,"Storage service",providerType_,"/profiles/{profile}");
+ providerType_=choices(this,"storageProvider",{});for(const auto& type:destinationTypes())providerType_->addItem(type.label,type.id);connect(providerType_,&QComboBox::currentIndexChanged,this,[this,services]{for(auto* action:services->actions())action->setChecked(action->data()==providerType_->currentData());});setting(destinationDetails,"Storage service",providerType_,"/profiles/{profile}");
  auto* s3Service=choices(this,"s3Service",{"Amazon S3","Other S3-compatible"});s3Service->setAccessibleName("S3-compatible service");auto* s3ServiceRow=setting(destinationDetails,"S3 service",s3Service,{});s3Service->setAccessibleName("S3-compatible service");
  // #1678: Cloudflare R2 names its account and jurisdiction; put.gd builds the endpoint from them.
  r2AccountId_=input(this,"r2AccountId");r2AccountId_->setPlaceholderText("32 characters, such as 0123456789abcdef0123456789abcdef");
@@ -1574,6 +1589,31 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  // The wheel scrolls the page: a number under the pointer must not change, or take focus, as the page moves past it.
  for(auto* spin:findChildren<QAbstractSpinBox*>()){spin->setFocusPolicy(Qt::StrongFocus);spin->installEventFilter(this);}
  refresh();refreshDiagnostics();refreshDestinationList();updateProviderVisibility_();refreshEffectiveLimits();fitRails();
+}
+const QList<SettingsWindow::DestinationType>& SettingsWindow::destinationTypes(){
+ // #2088: one ordered list for Add destination, Storage service and the hidden provider selector.
+ // Grouped by how the user thinks about the destination, and sorted alphabetically within each
+ // group so a new provider slots into place by its group and label.
+ static const QList<DestinationType> types=[]{
+  const QStringList groupOrder{"Object storage","Cloud drives","File servers",{}};
+  QList<DestinationType> list{
+   {"s3","Amazon S3 / S3-compatible","S3 destination","addS3","Object storage"},
+   {"backblaze-b2","Backblaze B2","Backblaze B2","addBackblazeB2","Object storage"},
+   {r2::providerId,"Cloudflare R2","Cloudflare R2","addCloudflareR2","Object storage"},
+   {dav::nextcloudId,"Nextcloud","Nextcloud","addNextcloud","Cloud drives"},
+   {"proton-drive","Proton Drive","Proton Drive","addProtonDrive","Cloud drives"},
+   {SftpPanel::provider(),"SFTP","SFTP","addSftp","File servers"},
+   {dav::webdavId,"WebDAV","WebDAV","addWebdav","File servers"},
+   {CustomUploaderPanel::provider(),"Custom uploader (HTTP)","Custom uploader","addCustomUploader",{}},
+  };
+  const auto rank=[&](const QString& group){const auto i=groupOrder.indexOf(group);return i<0?groupOrder.size():i;};
+  std::stable_sort(list.begin(),list.end(),[&](const DestinationType& a,const DestinationType& b){
+   const auto ga=rank(a.group),gb=rank(b.group);
+   return ga!=gb?ga<gb:a.label.compare(b.label,Qt::CaseInsensitive)<0;
+  });
+  return list;
+ }();
+ return types;
 }
 SettingsWindow::~SettingsWindow(){
  revealUpdates_=false;
