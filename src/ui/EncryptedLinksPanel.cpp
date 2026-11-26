@@ -59,6 +59,8 @@ QWidget* EncryptedLinksPanel::control() const {return mode_;}
 QString EncryptedLinksPanel::mode() const {return mode_?mode_->currentData().toString():QStringLiteral("off");}
 QJsonObject EncryptedLinksPanel::apply(QJsonObject profile) const {
  const auto chosen=mode();
+ // The mode as saved is left exactly as saved, fields and all: no edit, no change.
+ if(chosen==profile.value("encrypt").toObject().value("mode").toString(QStringLiteral("off")))return profile;
  if(chosen=="off"){if(profile.contains("encrypt"))profile["encrypt"]=QJsonObject{{"mode","off"}};return profile;}
  QJsonObject encrypt{{"mode",chosen}};
  if(chosen=="passphrase") {

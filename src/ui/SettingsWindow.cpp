@@ -3666,6 +3666,8 @@ void SettingsWindow::clearCredentialInputs(){
  credentialDrafts_.clear();provisionalCredentials_.clear();
  if(protonPassword_)protonPassword_->clear();
  access_->clear();secret_->clear();token_->clear();if(uploader_)uploader_->clearTypedSecrets();if(sftpPanel_)sftpPanel_->clearTypedSecrets();
+ // #2079: a typed Encrypted links passphrase goes with the other typed secrets.
+ if(encryptPanel_)encryptPanel_->clearPassphrase();
 }
 void SettingsWindow::closeEvent(QCloseEvent* event){clearCredentialInputs();RetainedWindow::closeEvent(event);}
 Error SettingsWindow::actionSaveError()const{

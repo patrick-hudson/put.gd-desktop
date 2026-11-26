@@ -40,6 +40,12 @@ struct Harness {
 };
 }
 
+// Recordings upload to the test destination, with its Encrypted links setting and label as given.
+void uploadRecordings(Harness& h,const QJsonObject& encrypt,const QString& label={}){
+ auto doc=h.settings.snapshot().document;auto actions=doc["actions"].toObject();auto route=actions["region"].toObject();route["shortcut"]="";actions["record"]=route;doc["actions"]=actions;
+ auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();if(!encrypt.isEmpty())profile["encrypt"]=encrypt;if(!label.isEmpty())profile["label"]=label;profiles[0]=profile;doc["profiles"]=profiles;
+ if(!h.settings.save(doc,h.settings.revision()))qFatal("configuration rejected");
+}
 class RecordingServiceContract:public QObject {
  Q_OBJECT
 private slots:
@@ -504,6 +510,33 @@ private slots:
   if(command=="upload"){PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("completed"));QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));}
   else {PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));QCOMPARE(h.rec("inspect",{{"id",id}}).result["edit"].toObject(),before["edit"].toObject());QVERIFY(!h.rec("cancel",{{"id",id}}).error);}
   QCOMPARE(h.provider->uploads.load(),0);
+ }
+ // #2079: recording.upload with encrypt sets the review's Encrypt toggle first. An upload that is
+ // refused puts the toggle back, so the next upload isn't sent unencrypted by a request that never ran.
+ void refusedUploadLeavesTheEncryptChoice(){
+  Harness h(false);uploadRecordings(h,QJsonObject{{"mode","on"}});PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());
+  QVERIFY(!h.rec("start",{{"id",id}}).error);QCOMPARE(h.rec("stop",{{"id",id}}).result["state"].toString(),QString("reviewing"));
+  // The window shows Encrypt on; each toggle sends the window's encrypt event, as a click does.
+  const auto toggled=[&h,id](bool on){return std::function<void()>([&h,id,on]{h.backend->sink({{"id",id},{"event","encrypt"},{"on",on}});});};
+  h.backend->reviewReplies={QJsonObject{{"encrypt",QJsonObject{{"shown",true},{"on",true}}}}};
+  h.backend->reviewHooks={nullptr,toggled(false),nullptr,toggled(true),nullptr};
+  QCOMPARE(h.rec("upload",{{"id",id},{"revision",7},{"encrypt",false}}).error.code,QString("recording_stale"));
+  QVERIFY(h.backend->reviewHooks.isEmpty());  // turned off for the request, then back on
+  // The next upload asks for encryption, as the toggle shows. Here that fails before sending (the
+  // fixture's destination type can't encrypt); without the rollback it would go out unencrypted.
+  const auto uploaded=h.rec("upload",{{"id",id},{"revision",1}});QVERIFY2(!uploaded.error,qPrintable(uploaded.error.message));
+  HistoryStore journal(h.operations->databasePath());PUTGD_TRY_VERIFY(journal.operation(id).stateName()!="recording"&&!journal.operation(id).active());
+  const auto op=journal.operation(id);QCOMPARE(op.items.size(),1);QCOMPARE(op.items.first().error.code,QString("encrypt_unavailable"));QCOMPARE(h.provider->uploads.load(),0);
+ }
+ // The review's Encrypt toggle comes with any upload route, even to a destination called "local".
+ void encryptToggleFollowsTheRouteNotTheLabel(){
+  Harness h(false);uploadRecordings(h,{},QStringLiteral("local"));PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());
+  QCOMPARE(h.backend->lastReviewOptions["destination"].toString(),QString("local"));QVERIFY(h.backend->lastReviewOptions.contains("encrypt"));
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+  Harness local;PUTGD_TRY_VERIFY(local.operations->ready());const auto saved=local.prepareReady();QVERIFY(!saved.isEmpty());
+  QVERIFY(!local.backend->lastReviewOptions.contains("encrypt"));QVERIFY(!local.rec("cancel",{{"id",saved}}).error);
  }
  void lateStopReplyCannotChangeACancelledSessionsSuccessor(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);h.backend->deferStop=true;

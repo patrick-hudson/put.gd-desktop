@@ -42,7 +42,7 @@ EncryptJob::Result EncryptJob::run(const Artifact& file,const QString& directory
  // this user racing it.
  struct Owned {QString path;int fd=-1;};
  std::vector<Owned> owned;
- const auto cloencryptl=qScopeGuard([&owned]{for(const auto& file:owned)::close(file.fd);});
+ const auto closeAll=qScopeGuard([&owned]{for(const auto& file:owned)::close(file.fd);});
  const auto make=[&owned](const QString& path){const int fd=::open(QFile::encodeName(path).constData(),O_RDONLY|O_CREAT|O_EXCL|O_NOFOLLOW|O_CLOEXEC,0600);if(fd<0)return false;owned.push_back({path,fd});return true;};
  const auto discard=[&owned]{for(const auto& file:owned){struct stat mine{},there{};
   if(::fstat(file.fd,&mine)==0&&::lstat(QFile::encodeName(file.path).constData(),&there)==0&&mine.st_dev==there.st_dev&&mine.st_ino==there.st_ino)QFile::remove(file.path);}};

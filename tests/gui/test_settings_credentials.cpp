@@ -1,5 +1,9 @@
 #include <QJsonArray>
 #include "SettingsGuiFixture.h"
+#include "ui/EncryptedLinksPanel.h"
+#include <QFormLayout>
+#include <QHBoxLayout>
+#include <QLineEdit>
 // Secrets typed, stored or revealed in Settings never reach the configuration,
 // saved view state, a credential hint reply or another destination.
 class SettingsGui:public SettingsGuiFixture {
@@ -49,6 +53,24 @@ private slots:
    draft["profiles"]=QJsonArray{profileWith(QJsonObject{{"mode","on"},{"passphrase","not here"}})};settings["draft"]=draft;withEncrypt["settings"]=settings;QVERIFY(validateUiState(withEncrypt));
    draft["profiles"]=QJsonArray{profileWith(QJsonObject{{"mode","always"}})};settings["draft"]=draft;withEncrypt["settings"]=settings;QVERIFY(validateUiState(withEncrypt));}
   auto main=state["main"].toObject();main["secretKey"]="synthetic-secret";state["main"]=main;auto error=validateUiState(state);QVERIFY(error);QVERIFY(!QJsonDocument(error.toJson()).toJson().contains("synthetic-secret"));
+ }
+ // #2079: a profile whose Encrypted links mode isn't edited comes back exactly as saved, fields
+ // the settings allow (a kept passphrase reference) included, so it never reads as an edit; a
+ // typed passphrase goes when Settings clears its typed secrets.
+ void encryptedLinksKeepAnUneditedProfile(){
+  QWidget host;auto* form=new QFormLayout(&host);EncryptedLinksPanel panel(&host);
+  panel.build(form,[](QFormLayout* rows,const QString& label,QWidget* control,const QString&){auto* row=new QWidget;auto* line=new QHBoxLayout(row);line->addWidget(control);rows->addRow(label,row);return row;});
+  const QJsonObject reference{{"mode","session"},{"reference",QJsonValue::Null}};
+  for(const auto* mode:{"off","on","passphrase"}){
+   const QJsonObject profile{{"id","p"},{"provider","s3"},{"credentials",reference},{"encrypt",QJsonObject{{"mode",mode},{"passphraseCredentials",reference}}}};
+   panel.load(profile,{{"encrypt",QJsonObject{{"state","passed"}}}},false,false);QCOMPARE(panel.apply(profile),profile);
+  }
+  auto* typed=host.findChild<QLineEdit*>("encryptedLinksPassphrase");QVERIFY(typed);typed->setText("typed but never saved");panel.clearPassphrase();QVERIFY(typed->text().isEmpty());
+  // Closing Settings clears a passphrase typed and never saved, with the other typed secrets.
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(Settings::developmentTemplate(),{}));
+  UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
+  auto* field=window.findChild<QLineEdit*>("encryptedLinksPassphrase");QVERIFY(field);field->setText("typed but never saved");
+  window.settings()->close();QVERIFY(field->text().isEmpty());
  }
 };
 QTEST_MAIN(SettingsGui)

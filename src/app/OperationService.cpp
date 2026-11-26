@@ -133,7 +133,8 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  host.reviewOptions=[this](const Operation& op){
   auto options=uploadReviewOptions(op,providers_);
   // #2079: the review's Encrypt toggle starts from the destination's setting.
-  if(options["destination"]!="local"){const auto encrypt=encryptOptions(op);QJsonObject start{{"available",encrypt["available"]},{"on",encrypt["on"]}};if(encrypt.contains("reason"))start["reason"]=encrypt["reason"];options["encrypt"]=start;}
+  // Shown for an upload route, whatever the destination is called.
+  if(routeOf(op).destination=="upload"&&!op.destination.profileId.isEmpty()){const auto encrypt=encryptOptions(op);QJsonObject start{{"available",encrypt["available"]},{"on",encrypt["on"]}};if(encrypt.contains("reason"))start["reason"]=encrypt["reason"];options["encrypt"]=start;}
   return options;
  };
  host.encrypt=[this](const QString& id,bool on){recordEncrypt(id,on);};
