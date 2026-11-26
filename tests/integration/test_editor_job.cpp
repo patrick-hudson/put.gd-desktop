@@ -7,6 +7,8 @@
 #include <QImage>
 #include <QImageWriter>
 #include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QRandomGenerator>
 #include <QSemaphore>
 #include <QTemporaryDir>
