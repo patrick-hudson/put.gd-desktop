@@ -65,6 +65,13 @@ bool settled(Harness& h,const QString& id,Operation& op){
 }
 // The window's own Upload or Try again, as its buttons send them: no encrypt of their own.
 void windowUpload(Harness& h,const QString& id,const char* event="uploadRequested"){h.backend->sink({{"id",id},{"event",event},{"revision",1}});}
+// The window's Upload was refused before any export: the window is raised with the reason
+// (containing `reason`), and offers no Try again, since there is no failed export to retry.
+bool refusedBeforeExport(Harness& h,const QString& id,const QString& reason){
+ if(!putgd::test::waitFor([&]{return h.backend->log.contains("raise");}))return false;
+ const auto raised=h.backend->lastControlParams;
+ return raised["error"].toString().contains(reason)&&!raised["retry"].toBool()&&h.backend->exports==0&&h.provider->uploads.load()==0&&h.state(id)=="reviewing";
+}
 // No review command set the window's Encrypt toggle.
 bool noToggleCommands(const Harness& h){for(const auto& call:h.backend->reviewCalls)if(call["action"]=="encrypt")return false;return true;}
 class RecordingServiceContract:public QObject {
@@ -573,21 +580,22 @@ private slots:
   Harness h(false);uploadRecordings(h,QJsonObject{{"mode","on"}});PUTGD_TRY_VERIFY(h.operations->ready());
   const auto id=reviewing(h);QVERIFY(!id.isEmpty());
   QCOMPARE(h.rec("upload",{{"id",id},{"revision",7},{"encrypt",false}}).error.code,QString("recording_stale"));QVERIFY(noToggleCommands(h));
-  windowUpload(h,id);
-  Operation op;QVERIFY(settled(h,id,op));QCOMPARE(op.items.value(0).error.code,QString("encrypt_unavailable"));QCOMPARE(h.provider->uploads.load(),0);
+  windowUpload(h,id);QVERIFY(refusedBeforeExport(h,id,"doesn't support encrypted links"));
  }
  // A toggle change the window sends while an export runs is kept: the export in flight keeps the
  // choice it was admitted with, and the window's next Upload uses the toggle as the window shows it.
+ void toggleChangedDuringAnExportAppliesToTheNextUpload_data(){QTest::addColumn<bool>("on");QTest::newRow("turned on")<<true;QTest::newRow("turned off")<<false;}
  void toggleChangedDuringAnExportAppliesToTheNextUpload(){
-  Harness h(false);uploadRecordings(h,QJsonObject{{"mode","off"}});encryptable(h);PUTGD_TRY_VERIFY(h.operations->ready());
+  QFETCH(bool,on);
+  Harness h(false);uploadRecordings(h,QJsonObject{{"mode",on?"off":"on"}});encryptable(h);PUTGD_TRY_VERIFY(h.operations->ready());
   const auto id=reviewing(h);QVERIFY(!id.isEmpty());
   h.backend->deferExports=true;h.backend->failExport=true;
   windowUpload(h,id);PUTGD_TRY_COMPARE(h.state(id),QString("exporting"));
-  h.backend->sink({{"id",id},{"event","encrypt"},{"on",true}});
+  h.backend->sink({{"id",id},{"event","encrypt"},{"on",on}});
   PUTGD_TRY_COMPARE(h.backend->pendingExports.size(),1);h.backend->pendingExports.takeFirst()();PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
   h.backend->deferExports=false;h.backend->failExport=false;
   windowUpload(h,id);
-  Operation op;QVERIFY(settled(h,id,op));QCOMPARE(op.stateName(),QString("completed"));QVERIFY(op.items.value(0).encrypted());QCOMPARE(h.provider->uploads.load(),1);
+  Operation op;QVERIFY(settled(h,id,op));QCOMPARE(op.stateName(),QString("completed"));QCOMPARE(op.items.value(0).encrypted(),on);QCOMPARE(h.provider->uploads.load(),1);
  }
  // encrypt true with a saved passphrase that isn't loaded is refused before the export, as the upload
  // would refuse it after; nothing is exported.
@@ -595,7 +603,10 @@ private slots:
   Harness h(false);uploadRecordings(h,QJsonObject{{"mode","passphrase"},{"passphraseCredentials",QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}}});encryptable(h);PUTGD_TRY_VERIFY(h.operations->ready());
   const auto id=reviewing(h);QVERIFY(!id.isEmpty());
   QCOMPARE(h.rec("upload",{{"id",id},{"revision",1},{"encrypt",true}}).error.code,QString("encrypt_passphrase_locked"));
-  QCOMPARE(h.backend->exports,0);QCOMPARE(h.state(id),QString("reviewing"));QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+  QCOMPARE(h.backend->exports,0);QCOMPARE(h.state(id),QString("reviewing"));
+  // The window's Upload, with the toggle on (the destination's setting), is refused the same way.
+  windowUpload(h,id);QVERIFY(refusedBeforeExport(h,id,"passphrase isn't loaded"));
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
  }
  // The export in flight keeps the choice it was admitted with: Encrypt turned on during a plain
  // upload's export doesn't encrypt that upload.
