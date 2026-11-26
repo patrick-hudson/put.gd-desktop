@@ -297,9 +297,11 @@ Sealing sits in the shared pipeline between the immutable artifact and naming, i
      reason).
    - `seal_passphrase_locked`: the destination asks for a passphrase and it isn't loaded and
      the request didn't carry one. Uploads never unlock the keychain.
-   - `seal_passphrase_missing`: a Retry of an upload whose passphrase came only with its
-     request (`upload.files`'s `seal.passphrase`). That passphrase is held in memory for the
-     request and never kept, so the file must be uploaded again with it.
+   - `seal_passphrase_missing`: a Retry that must seal an item not sealed yet, in an upload
+     whose passphrase came only with its request (`upload.files`'s `seal.passphrase`). That
+     passphrase is held in memory for the request and never kept, so the file must be
+     uploaded again with it. An item that was already sealed is sent again as it is and
+     needs no passphrase.
    - `seal_too_large`: the file is over 2 GB, the largest file the format seals.
    - `seal_split_unavailable`: the file is over 64 MB, so it needs the page and a data file
      beside it, and the destination's links can't serve the two side by side (S3 and R2 with

@@ -242,8 +242,10 @@ by either rejection.
 ## Sealed links
 
 These come from [sealed links](../design/sealed-links.md). When an upload was to be sealed and
-can't be, the file is never uploaded unsealed. The item fails before anything is sent, and
-**Retry upload** tries again once the cause is fixed. **Retry upload** keeps the upload
+can't be, the file is never uploaded unsealed. Most of these fail the item before anything is
+sent. `seal_name_taken` can also come after the data file's upload was sent, when the
+destination refuses it because the name is taken. **Retry upload** tries again once the cause
+is fixed. **Retry upload** keeps the upload
 sealed, so a file too large to seal fails the same way again. To upload it as an ordinary
 link, turn off **Seal** and upload it again.
 
@@ -254,7 +256,7 @@ link, turn off **Seal** and upload it again.
 | `seal_needs_link` | none | "Sealed files open only from their link, and Sharing is set to Private upload. Change Sharing in Settings → Capture, or turn off Seal to upload it privately." A private upload gets no link, so nobody could open a sealed file. put.gd refuses it before sealing anything. Change **Sharing** for that capture in **Settings → Capture**, or turn off **Seal** |
 | `seal_too_large` | none | "This file is too large to seal (2 GB limit). Turn off Seal to upload it as an ordinary link." Sealed links hold files up to 2 GB. Nothing was sent. Turn off **Seal** and upload the file again |
 | `seal_split_unavailable` | none | "Files over 64 MB are sealed as a page and a data file beside it, which this destination's links can't serve. Turn off Seal to upload it as an ordinary link." S3 and R2 with expiring links, B2 with authorized links and custom uploaders seal files up to 64 MB. Nothing was sent. Turn off **Seal** and upload the file again, or use a destination with public links |
-| `seal_passphrase_missing` | none | "This upload's passphrase came with the request and isn't kept, so it can't be sealed now. Upload the file again with its passphrase." **Retry upload** of an upload whose passphrase came only with its request, such as `putgd-cli upload --passphrase-file`. put.gd never stores that passphrase. Upload the file again with `--passphrase-file` |
+| `seal_passphrase_missing` | none | "This upload's passphrase came with the request and isn't kept, so it can't be sealed now. Upload the file again with its passphrase." **Retry upload** of an upload whose passphrase came only with its request, such as `putgd-cli upload --passphrase-file`, when a file in it still has to be sealed. put.gd never stores that passphrase. Files that were already sealed are sent again as they are. Upload the file again with `--passphrase-file` |
 | `seal_passphrase_locked` | none | "The Seal links passphrase isn't loaded. Unlock it in Destinations, then select Retry upload." The destination is set to **On with a passphrase** and its saved passphrase wasn't read, for example because the keyring was locked at startup. Uploads never unlock the keychain |
 | `seal_failed` | none | Sealing didn't finish, so the upload didn't start: `putgd-cli` is missing from this installation or didn't start (reinstall put.gd), sealing took over 30 minutes, the sealed file didn't match what `putgd-cli` reported, or put.gd couldn't make the sealed file's working copy in its private folder ("Couldn't create the sealed file's working copy.", or from `putgd-cli` "Couldn't open the file for the sealed page." or "Couldn't open the file for the sealed data file."). put.gd only ever deletes working files it made itself. **Cancel** while a file is sealed ends it `cancelled` with "Upload cancelled before it started. Select Retry upload to try again." Select **Retry upload**, and send a [diagnostics package](../design/diagnostics.md) if it repeats |
 | `seal_viewer_changed` | none | "This build's sealed-link viewer doesn't match its pinned hash." This build of put.gd is damaged or was changed. Reinstall it |
