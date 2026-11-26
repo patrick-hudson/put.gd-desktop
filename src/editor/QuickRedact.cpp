@@ -1311,10 +1311,15 @@ QSet<int> publicWords(const QMap<int,QList<int>>& lines,const QList<QString>& pl
   // (sha25e, sha2S6, shaS12) and its colon read as l, I, J, f, |, [ or ( or lost, then hex as read.
   // The value is the rest of that word and the hex words joined after it (up to six, each within one
   // and a half characters, less than a space once it is whole), to a digest's length within two; only
-  // those words are skipped.
+  // those words are skipped, and only for a misread label on a row with no secret word.
   for(int i=0;i<n;++i){
    static const QRegularExpression glued(QStringLiteral("^[\"'(\\[]?sha(?:1|224|256|384|512|2[5S][6e]|[5S][1lI]2)[:;lIiJjft|!\\[\\](]{0,3}(?=[0-9a-fA-FoOlI]{6})"));
    const auto m=glued.match(plain.at(line.at(i)));if(!m.hasMatch())continue;
+   // Read right, "sha256:" is a hash word and takes the hash-word rule, with its veto (Sol on #2090);
+   // misread, it is skipped only on a row that names no secret and not after an authorization scheme.
+   static const QRegularExpression exact(QStringLiteral("^[\"'(\\[]?sha(?:1|224|256|384|512)[:-]"),QRegularExpression::CaseInsensitiveOption);
+   static const QSet<QString> schemes{"bearer","basic","token","bot","digest","negotiate"};
+   if(exact.match(plain.at(line.at(i))).hasMatch()||(i>0&&schemes.contains(plain.at(line.at(i-1)).toLower()))||std::any_of(line.cbegin(),line.cend(),[&](int w){return namesSecret(plain.at(w));}))continue;
    QString value=plain.at(line.at(i)).mid(m.capturedLength());int last=-1;
    for(int j=i;j<n&&j<i+6;++j){
     // Past a whole digest only with less than a space before the next piece, as in digestAt.

@@ -1090,6 +1090,8 @@ private slots:
   QTest::newRow("a hex secret after a glued sha256 label's digest stays covered")<<QStringList{"sha256lJ"+h64+" "+k64}<<QStringList{"key: sha256lJ"+h64+" "+k64};
   QTest::newRow("a hex secret with a clock-shaped misread inside stays covered")<<QStringList{k40.left(10)+"12:34"+k40.mid(15)}<<QStringList{"key: "+k40.left(10)+"12:34"+k40.mid(15)};
   QTest::newRow("a lone abbreviated and full hash stays covered")<<QStringList{k40.left(7)+" "+k40+" 2026-10-10"}<<QStringList{"key: "+k40.left(7)+" "+k40+" 2026-10-10"};
+  QTest::newRow("a hex value after a bearer scheme and a misread sha256 label stays covered")<<QStringList{"Authorization: Bearer sha256l"+k64}<<QStringList{"key: Authorization: Bearer sha256l"+k64};
+  QTest::newRow("a misread sha256 label after a key word stays covered")<<QStringList{"Your key is sha256l"+k64}<<QStringList{"key: key is sha256l"+k64};
   QTest::newRow("a misread sha256 label beside a secret's name stays covered")<<QStringList{"SECRET=sha2S6l"+k64}<<QStringList{"key: SECRET=sha2S6l"+k64};
  }
  void misreadHashListings() {
