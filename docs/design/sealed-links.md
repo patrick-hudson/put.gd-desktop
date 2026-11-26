@@ -35,6 +35,9 @@ The user guide gives the same table in plain words:
 | Someone who can *change* files in the bucket and swaps the page for one that steals the key | **No** for the page on its own. Stated as a known limit. `putgd-cli open` verifies the page before decrypting. |
 | Recipient's device or browser compromised | No |
 
+Other processes running as the same user are trusted: sealing's file handling guards against
+files put.gd didn't create, not against such a process racing it in put.gd's private folders.
+
 A chat service is not protected in general. A link-preview bot that only fetches the URL never
 sends the fragment, so the destination's logs and the bot never see the key, and the chat
 usually shows no preview. But the messaging service stores and delivers the message itself,
@@ -233,11 +236,22 @@ The resident never maps libcrypto:
 Each item is sealed by a short-lived `putgd-cli --seal-job` child (`src/core/SealJob.cpp`,
 `src/seal/SealJobMain.cpp`). The resident writes one JSON request on its standard input: the
 file's private path, size, name and type, the form, the output paths and, when there is one,
-the passphrase. The child runs with core dumps off and a lower priority, reads exactly the
-stated size, and writes the page (and data file) as new owner-only files that must not exist
-yet, then syncs them. It answers on standard output with the key and the size and SHA-256 of
-each file. The resident hashes the files itself and refuses them when they differ, then
-records them as the item's artifacts. Sealing a file has a 30-minute deadline and stops on
+the passphrase. Before it starts the child, the resident creates each output in the
+operation's private folder itself: an empty file with mode 0600, opened with
+`O_CREAT|O_EXCL|O_NOFOLLOW`, whose descriptor it keeps. When it can't create one, the item
+fails with `seal_failed` ("Couldn't create the sealed file's working copy.") and no child
+starts. The child runs with core dumps off and a lower priority, reads exactly the stated
+size, and only writes: it opens each output path without creating it and refuses anything
+that isn't an empty, owner-only regular file of this user, never through a link ("Couldn't
+open the file for the sealed page.", "Couldn't open the file for the sealed data file."). It
+syncs what it wrote and never creates or deletes a file. It answers on standard output with
+the key and the size and SHA-256 of each file. The resident hashes the files itself through
+the descriptors it kept, so it checks the files it created, and refuses them when they
+differ, then records them as the item's artifacts. After a refusal, a crash, a timeout, a
+failed start, a cancel or a mismatch, the resident deletes an output path only while its
+device and inode still match the file it created, so it never deletes a file that took the
+path. A cancel that arrives as the child finishes ends `cancelled` before the output is
+checked. Sealing a file has a 30-minute deadline and stops on
 cancel. The passphrase reaches the child only on standard input, and the key comes back only
 on standard output; neither is ever on a command line.
 
@@ -292,9 +306,9 @@ Sealing sits in the shared pipeline between the immutable artifact and naming, i
      expiring links, B2 with authorized links, custom uploaders). An SFTP destination without
      a Link address can't seal any file, so it answers `seal_unavailable`.
    - `seal_failed` (or `seal_viewer_changed`): the sealing helper is missing, failed, timed out
-     or wrote files that didn't match its answer, or a file already sits at one of the job's
-     output paths. `SealJob` removes only files it made: a path that is already there is never
-     touched, and a helper that answers with an error removes its own.
+     or wrote files that didn't match its answer, or the resident couldn't create the job's
+     output files ([process boundaries](#process-boundaries)). Only files the resident created
+     are ever removed again.
    - `cancelled`: **Cancel** while the helper runs or while its output is checked. `SealJob`
      answers `cancelled`, not a mismatch, and the item ends `cancelled` with "Upload cancelled
      before it started. Select Retry upload to try again."
@@ -383,11 +397,22 @@ An item's `seal` record:
   is checked and deleted like the page, with its own durable checkpoint
   (`sealDataProgress`), and its outcome is the target's `sealDataStatus`. When the page went
   and the data file didn't, the target stays `failed` or `unknown` with `seal_data_left`, and
-  **Retry deletion** finds the page gone and tries the data file again. A quit between the two
-  leaves it `unknown` with "The sealed page was deleted, but put.gd quit before deleting its
-  data file. Select Retry deletion." Once Quit has begun, the data file's delete intent isn't
-  acknowledged (the journal goes back to before it), so no further delete is sent during
-  shutdown. History keeps the record while the data file's checkpoint holds a request phase,
+  **Retry deletion** finds the page gone and tries the data file again. `failed` keeps "The
+  sealed page was deleted, but its data file beside it wasn't. It holds only encrypted data.
+  Select Retry deletion." An `unknown` data file isn't reported as left, because put.gd only
+  doesn't know yet: "The sealed page was deleted, but put.gd couldn't confirm whether its
+  data file was deleted. Select Retry deletion to check again." A quit after the page went
+  and before the data file's delete began leaves it `unknown` with "The sealed page was
+  deleted, but put.gd quit before deleting its data file. Select Retry deletion." Once Quit
+  has begun, the data file's delete intent isn't acknowledged (the journal goes back to
+  before it), so no further delete is sent during shutdown. A failed or unknown result read
+  after Quit began proves nothing about the server. When a delete checkpoint of the data file
+  was already acknowledged, the request may have gone out, so `sealDataStatus` is `unknown`
+  with `delete_unknown` ("put.gd quit before confirming whether the data file was deleted.
+  Select Retry deletion to check again.") and the target's message is "The sealed page was
+  deleted, but put.gd quit before confirming whether its data file was deleted. Select Retry
+  deletion to check again." Without an acknowledged checkpoint nothing that deletes was sent
+  this time, so the data file keeps `unknown` if it was `unknown` and is otherwise `failed`. History keeps the record while the data file's checkpoint holds a request phase,
   as it does for the page's own (`HistoryStore::releasable`). A file beside the page that
   changed at the destination may be a replacement, not put.gd's data file, so it isn't
   put.gd's to delete: the deletion reports `seal_data_left` with `dataStatus` `changed` and
@@ -436,9 +461,11 @@ failed check never fails the Test; it only decides whether sealed uploads may go
 The check runs only on the connection the Test checked. When the destination's connection
 fingerprint or credential revision changed since the Test started, no check runs and `seal`
 is `{state: "untested", reason: "The destination changed during the test. Test again."}`.
-A cancel during the check ends the Test `cancelled` with "The connection test passed, but
-the sealed-link check was cancelled. Test again to check sealed links." (`details`
-`connectionPassed: true`), and the destination's own Test still counts as passed.
+A cancel during the check, or one that arrives while the check cleans up its test page,
+ends the Test `cancelled`: the setup job fails with error `cancelled`, "The connection test
+passed, but the sealed-link check was cancelled. Test again to check sealed links."
+(`details` `connectionPassed: true`), its `result.seal.state` is `cancelled`, and the
+destination's own Test record still counts as passed.
 
 The result is `seal` in the Test's result: `{state, reason?, cleanup}` with `state` `passed`,
 `failed`, `untested`, `unsupported` or `cancelled` and `cleanup` `removed`, `left`, `failed` or `unknown`. While it runs,
@@ -553,7 +580,10 @@ has a passphrase and the page size, and the Test check's HTTP status, content ty
   sent, and its Retry fails the same way (`fileTooLargeToSealIsNeverSent`,
   `twoFilesWhereLinksCantServeThemIsNeverSent`); a private upload is refused with
   `seal_needs_link` and goes out privately with Seal off (`privateUploadIsNeverSealed`); a
-  file already at a job's output path is never deleted (`refusedOutputPathIsNeverDeleted`);
+  file already at a job's output path, or one that took a path while the helper ran, survives
+  a refusal, a crash or a Cancel (`foreignFileAtAnOutputPathSurvives`,
+  `cancelLeavesAFileThatTookAnOutputPath`); a Cancel during the Test's check cancels the Test
+  and keeps the connection's pass (`cancelDuringTheSealCheckCancelsTheTest`);
   Forget key leaves no link, and a writer that
   read the operation earlier can't put the key back.
 - `tests/seal/browser_vectors.py` serves the pinned viewer on 127.0.0.1 and opens

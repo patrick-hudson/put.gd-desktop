@@ -511,8 +511,9 @@ while the helper runs.
 with `state` `passed`, `failed`, `untested` (the destination was saved with another connection
 or new credentials during the test, and no check ran: "The destination changed during the
 test. Test again.", or new credentials were stored during the check), `unsupported` or
-`cancelled` and `cleanup` `removed`, `left`, `failed` or `unknown`. A cancel during the check
-fails the test with `cancelled` and `details.connectionPassed` true; the connection test
+`cancelled` and `cleanup` `removed`, `left`, `failed` or `unknown`. A cancel during the check,
+or while it cleans up its test page, fails the setup job with `cancelled`,
+`details.connectionPassed` true and `result.seal.state` `cancelled`; the connection test
 itself still counts as passed. While it runs, `setup.inspect` shows `event` `{"step":"seal","status":"running"}`.
 Every `destinationStatus` entry in `settings.get` has `seal` `{state, reason?, fingerprint?}`
 with `state` `passed`, `failed` or `untested`; `fingerprint` names the connection a passed or
