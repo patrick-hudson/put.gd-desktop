@@ -183,7 +183,7 @@ ProviderCapabilities S3Provider::capabilities(const Destination& destination) co
     result.settlesUploads = true;
     // A presigned link signs one object, so an encrypted page can't fetch its data file beside it.
     result.encryptUnavailable.clear();
-    result.encryptsplit = destination.settings["linkMode"].toString() != QLatin1String("presigned");
+    result.encryptSplit = destination.settings["linkMode"].toString() != QLatin1String("presigned");
     return result;
 }
 QString S3Provider::serializationKey(const Destination& destination, const QJsonObject& object, const QString& candidate) const {

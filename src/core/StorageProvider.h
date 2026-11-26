@@ -30,11 +30,11 @@ struct ProviderCapabilities {
  // Why this recorded upload cannot be deleted, when remove is false for it alone.
  QString removeUnavailable;
  // Encrypted links (#2079): why an encrypted page can't be uploaded here, in one sentence; empty
- // when it can (the destination's Test check still decides). encryptsplit: the two-file form
+ // when it can (the destination's Test check still decides). encryptSplit: the two-file form
  // also works, a page and its data file side by side under one public Link address, which
  // per-file presigned or authorized links can't give.
  QString encryptUnavailable=QStringLiteral("This destination type doesn't support encrypted links.");
- bool encryptsplit=false;
+ bool encryptSplit=false;
  // Whether a recorded object can be deleted without risking another object.
  bool safeRemoval() const {return remove&&!deletionEffect.isEmpty()&&(referenceDelete||(stat&&(conditionalDelete||versionAddressing)));}
  QJsonObject toJson() const;

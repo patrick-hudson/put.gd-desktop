@@ -357,7 +357,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   }
   // #2079: the Encrypt toggle beside Upload, as a click sets it.
   if(name=="encrypt"){if(params.size()!=1||!params["on"].isBool())return denied("invalid_request","encrypt takes on: true or false");if(!open)return denied("editor_finalizing","The edit was already submitted or discarded");
-   QString refusal;if(!window->setEncryptOn(params["on"].toBool(),&refusal))return denied("encrypt_unavailable",refusal);return window->encryptstate();}
+   QString refusal;if(!window->setEncryptOn(params["on"].toBool(),&refusal))return denied("encrypt_unavailable",refusal);return window->encryptState();}
   if(name=="submit"){if(!params.isEmpty())return denied("invalid_request","submit has no parameters");if(!open)return denied("editor_finalizing","The edit was already submitted or discarded");if(submissionError){submit();return denied(submissionError.code,submissionError.message);}QTimer::singleShot(0,&app,submit);return {{"submitted",true}};}
   if(name=="cancel"){if(!params.isEmpty())return denied("invalid_request","cancel has no parameters");if(!open)return denied("editor_finalizing","The edit was already submitted or discarded");QTimer::singleShot(0,&app,[&]{if(!terminal&&!finalizing){window->setBusy("Discarding…");refuse("edit_cancelled");}});return {{"cancelled",true}};}
   return denied("invalid_request","Unknown editor command");

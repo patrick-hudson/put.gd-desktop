@@ -1019,7 +1019,7 @@ bool EditorWindow::setEncryptOn(bool on,QString* refusal) {
  if(!encrypt_->isEnabled()){*refusal=QStringLiteral("Encrypt can't be changed right now.");return false;}
  encrypt_->setChecked(on);if(!encryptAvailable_)encrypt_->setEnabled(false);return true;
 }
-QJsonObject EditorWindow::encryptstate() const {
+QJsonObject EditorWindow::encryptState() const {
  QJsonObject out{{"shown",!encrypt_->isHidden()},{"on",encrypt_->isChecked()},{"available",encryptAvailable_},{"enabled",encrypt_->isEnabled()}};
  if(!encryptReason_.isEmpty())out["reason"]=encryptReason_;return out;
 }
@@ -1037,7 +1037,7 @@ QJsonObject EditorWindow::viewState() const {
   {"message",message.isEmpty()?QJsonValue():QJsonValue(message)},{"lastSave",save.isEmpty()?QJsonValue():QJsonValue(save)},
   {"saveFeedbackVisible",saveFeedbackVisible_&&!busy_&&!savingCopy_},{"saveDetailsOpen",saveError_->fullTextPopup()&&saveError_->fullTextPopup()->isVisible()},
   {"lastShowInFolder",lastShowInFolder_.isEmpty()?QJsonValue():QJsonValue(lastShowInFolder_)},{"lastCopiedPath",lastCopiedPath_.isEmpty()?QJsonValue():QJsonValue(lastCopiedPath_)},
-  {"encrypt",encryptstate()},{"cancelLabel",cancel_->text()},{"destination",QJsonObject{{"text",destination_->text()+(sharingMode_->text().isEmpty()?QString():" · "+sharingMode_->text())},{"sharingMode",sharingMode_->text()},{"above",destinationAbove_}}},
+  {"encrypt",encryptState()},{"cancelLabel",cancel_->text()},{"destination",QJsonObject{{"text",destination_->text()+(sharingMode_->text().isEmpty()?QString():" · "+sharingMode_->text())},{"sharingMode",sharingMode_->text()},{"above",destinationAbove_}}},
   {"preparationFailure",notice_->isHidden()?QJsonValue():QJsonValue(QJsonObject{{"text",noticeText_->text()}})},
   {"keyboardHelp",QJsonObject{{"open",findChild<QToolButton*>("editorKeyboardHelp")->isChecked()},{"text",findChild<QWidget*>("editorKeyboardHelpText")->property("text").toString()}}},
   {"discardConfirmation",QJsonObject{{"open",bool(discard_)},{"text",discard_?QJsonValue(discard_->property("confirmationText").toString()):QJsonValue()}}}};

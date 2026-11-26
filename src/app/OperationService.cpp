@@ -664,7 +664,7 @@ void OperationService::runCheck(Job job) {
  const auto coveredRoot=root_+"/covered/"+id;
  // #2079: Open in editor offers the Encrypt toggle beside Upload, as Capture region & edit does.
  const auto encryptNow=encryptOptions(op);
- const QJsonObject encryptstart=routeOf(op).destination=="upload"&&!op.destination.profileId.isEmpty()?QJsonObject{{"available",encryptNow["available"]},{"on",encryptNow["on"]},{"reason",encryptNow["reason"]}}:QJsonObject{};
+ const QJsonObject encryptStart=routeOf(op).destination=="upload"&&!op.destination.profileId.isEmpty()?QJsonObject{{"available",encryptNow["available"]},{"on",encryptNow["on"]},{"reason",encryptNow["reason"]}}:QJsonObject{};
  session->setEncryptHandler([owner=QPointer<OperationService>(this),id](bool on){
   QMetaObject::invokeMethod(QCoreApplication::instance(),[owner,id,on]{if(owner&&!owner->stopping_)owner->recordEncrypt(id,on);},Qt::QueuedConnection);
  });
@@ -675,7 +675,7 @@ void OperationService::runCheck(Job job) {
  auto clock=std::make_shared<QElapsedTimer>();clock->start();
  background([=](Error&){
   // #1893: Open in editor (the sensitive prompt) of a capture opens with its capture style on; a selected file's starts plain.
-  const auto make=[&](EditorJob::Check check){return EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(languages).withAllCores(allCores).withRedactList(terms,patterns).withLinks(links).withEncrypt(encryptstart).withStyle(captureStyle,captureStyle.enabled&&QStringList{"region","window","monitor","desktop","scroll"}.contains(shared->op.action),styleLimit).withCheck(std::move(check));};
+  const auto make=[&](EditorJob::Check check){return EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(languages).withAllCores(allCores).withRedactList(terms,patterns).withLinks(links).withEncrypt(encryptStart).withStyle(captureStyle,captureStyle.enabled&&QStringList{"region","window","monitor","desktop","scroll"}.contains(shared->op.action),styleLimit).withCheck(std::move(check));};
   if(shared->payload.kind=="image"){
    // The original stays here for Upload anyway; the helper reads a staged copy.
    QImage copy=shared->payload.image;*outcome=make({categories,prompt,true,{},cover}).run(copy,destination,outputBytes,session);
@@ -1014,7 +1014,7 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
  });
  // #2079: the Encrypt toggle beside Upload, starting from the destination's setting; each change is this upload's choice.
  const auto encryptOptionsNow=encryptOptions(op);
- const QJsonObject encryptstart=routeOf(op).destination=="upload"&&!op.destination.profileId.isEmpty()?QJsonObject{{"available",encryptOptionsNow["available"]},{"on",encryptOptionsNow["on"]},{"reason",encryptOptionsNow["reason"]}}:QJsonObject{};
+ const QJsonObject encryptStart=routeOf(op).destination=="upload"&&!op.destination.profileId.isEmpty()?QJsonObject{{"available",encryptOptionsNow["available"]},{"on",encryptOptionsNow["on"]},{"reason",encryptOptionsNow["reason"]}}:QJsonObject{};
  session->setEncryptHandler([owner=QPointer<OperationService>(this),id=op.id](bool on){
   QMetaObject::invokeMethod(QCoreApplication::instance(),[owner,id,on]{if(owner&&!owner->stopping_)owner->recordEncrypt(id,on);},Qt::QueuedConnection);
  });
@@ -1039,11 +1039,11 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
     const bool png=imageFormatHint(header)=="png",jpeg=header.startsWith(QByteArray::fromHex("ffd8ff"));
     const auto frames=header.indexOf("acTL"),data=header.indexOf("IDAT");
     if((!png&&!jpeg)||(png&&frames>=0&&(data<0||frames<data))){edited->error={"edit_source_unsupported","The editor opens static PNG or JPEG files",{}};return QJsonObject{};}
-    *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withAllCores(allCores).withRedactList(redactTerms,redactPatterns).withSubmissionError(submissionError).withLinks(links).withEncrypt(encryptstart).withStyle(style,styleStart,styleLimit).runFile(file,maximum,destination,outputBytes,session);
+    *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withAllCores(allCores).withRedactList(redactTerms,redactPatterns).withSubmissionError(submissionError).withLinks(links).withEncrypt(encryptStart).withStyle(style,styleStart,styleLimit).runFile(file,maximum,destination,outputBytes,session);
     if(edited->error.code=="source_unsupported")edited->error={"edit_source_unsupported","The editor opens static PNG or JPEG files",{}};
     return QJsonObject{};
    }
-   *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withAllCores(allCores).withRedactList(redactTerms,redactPatterns).withSubmissionError(submissionError).withLinks(links).withEncrypt(encryptstart).withStyle(style,styleStart,styleLimit).run(*image,destination,outputBytes,session);
+   *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withAllCores(allCores).withRedactList(redactTerms,redactPatterns).withSubmissionError(submissionError).withLinks(links).withEncrypt(encryptStart).withStyle(style,styleStart,styleLimit).run(*image,destination,outputBytes,session);
    return QJsonObject{};
   },[=,this](Error,QJsonObject) mutable {
    if(editingId_==op.id){editor_.reset();editingId_.clear();}
@@ -1442,7 +1442,7 @@ bool OperationService::encryptItems(Operation& op,const ProviderCapabilities& ca
   // uploaded unencrypted; the user turns off Encrypt and uploads again for an ordinary link.
   const bool split=item.artifact.bytes>encryptInlineLimit_;
   if(!refusal&&item.artifact.bytes>encryptTotalLimit_)refusal={"encrypt_too_large","This file is too large to encrypt (2 GB limit). Turn off Encrypt to upload it as an ordinary link.",{}};
-  else if(!refusal&&split&&(!capabilities.encryptsplit||capabilities.serverNamesObjects))refusal={"encrypt_split_unavailable","Files over 64 MB are encrypted as a page and a data file beside it, which this destination's links can't serve. Turn off Encrypt to upload it as an ordinary link.",{}};
+  else if(!refusal&&split&&(!capabilities.encryptSplit||capabilities.serverNamesObjects))refusal={"encrypt_split_unavailable","Files over 64 MB are encrypted as a page and a data file beside it, which this destination's links can't serve. Turn off Encrypt to upload it as an ordinary link.",{}};
   if(refusal) {item.uploadStatus="failed";item.phase="failed";item.error=refusal;logging::info(logOperation(),"Upload not encrypted, so not sent",{{"operationId",op.id},{"itemId",item.artifact.id},{"code",refusal.code},{"bytes",double(item.artifact.bytes)}});if(!saveItem(item))return false;continue;}
   item.phase="encrypting";observe(op.publicJson());
   // The page and its data file share one random stem, as the design shows (k3Xq….html, k3Xq….bin).

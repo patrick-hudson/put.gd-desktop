@@ -144,7 +144,7 @@ public:
  void setEncrypt(const QJsonObject& encrypt);
  // The toggle as a click sets it; refused while encrypting isn't available here.
  bool setEncryptOn(bool on,QString* refusal);
- QJsonObject encryptstate() const;
+ QJsonObject encryptState() const;
  // Save a copy…: the desktop's chooser (#259), then the sanitized PNG; false
  // while busy or while the chooser is already open. editor.fileDialog drives it.
  bool saveCopy();

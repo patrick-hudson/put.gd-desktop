@@ -22,10 +22,10 @@ namespace {
 // the encrypted page and its data file are read back from here as a browser would get them.
 class KeepingProvider final:public StorageProvider {
 public:
- OpaqueProvider storage;mutable QMutex mutex;QHash<QString,QByteArray> files;QString encryptUnavailable;bool encryptsplit=true,privateUploads=false;int failNext=0;QString linkBase=QStringLiteral("https://files.example.invalid/f/");
+ OpaqueProvider storage;mutable QMutex mutex;QHash<QString,QByteArray> files;QString encryptUnavailable;bool encryptSplit=true,privateUploads=false;int failNext=0;QString linkBase=QStringLiteral("https://files.example.invalid/f/");
  // Like SFTP: an upload journals its temporary file through the checkpoint first, and refuses without one.
  bool requireCheckpoint=false;std::atomic_bool checkpointAnswered{false};QStringList revisionsSeen;
- ProviderCapabilities capabilities(const Destination& d) const override {auto c=storage.capabilities(d);c.encryptUnavailable=encryptUnavailable;c.encryptsplit=encryptsplit;c.privateUploads=privateUploads;return c;}
+ ProviderCapabilities capabilities(const Destination& d) const override {auto c=storage.capabilities(d);c.encryptUnavailable=encryptUnavailable;c.encryptSplit=encryptSplit;c.privateUploads=privateUploads;return c;}
  QString serializationKey(const Destination& d,const QJsonObject& o,const QString& n) const override {return storage.serializationKey(d,o,n);}
  Error validateSettings(const QJsonObject& s) const override {return storage.validateSettings(s);}
  void checkName(const Destination& d,const QString& n,std::function<void(NameCheck)> cb,std::shared_ptr<std::atomic_bool> c={}) override {storage.checkName(d,n,cb,c);}
@@ -333,7 +333,7 @@ private slots:
   const auto plain=f.upload(pattern(129),"huge-again.bin",{{"enabled",false}});QCOMPARE(plain.items.first().uploadStatus,QString("uploaded"));QCOMPARE(f.provider->count(),1);
  }
  void twoFilesWhereLinksCantServeThemIsNeverSent() {
-  Fixture f({{"mode","on"}});f.provider->encryptsplit=false;f.operations->setEncryptLimitsForTesting(64,1LL<<30);PUTGD_TRY_VERIFY(f.operations->ready());
+  Fixture f({{"mode","on"}});f.provider->encryptSplit=false;f.operations->setEncryptLimitsForTesting(64,1LL<<30);PUTGD_TRY_VERIFY(f.operations->ready());
   const auto op=f.upload(pattern(65),"big.bin");const auto item=op.items.first();
   QCOMPARE(item.uploadStatus,QString("failed"));QCOMPARE(item.error.code,QString("encrypt_split_unavailable"));QVERIFY(item.encrypt.isEmpty());QCOMPARE(f.provider->count(),0);
   QCOMPARE(f.provider->storage.uploads.load(),0);QCOMPARE(f.provider->storage.checks.load(),0);QVERIFY(op.stateName()!="completed");
