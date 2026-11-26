@@ -199,7 +199,7 @@ whose `size` isn't a whole number from 0 to 2 GB.
 | --- | --- |
 | Up to 64 MB (67,108,864 bytes) | One self-contained `.html` page. Works on every destination that serves HTML as a page. |
 | Over 64 MB, up to 2 GB (2,147,483,648 bytes) | The page plus `NAME.bin` beside it. The page fetches `./NAME.bin` from its own origin, so no CORS setup is needed. This needs a destination with a public Link address; per-object presigned or authorized links can't serve it. |
-| Over 2 GB, or over 64 MB where the destination can't serve two files | The file uploads unsealed. The notification and History say why in one sentence. |
+| Over 2 GB, or over 64 MB where the destination can't serve two files | Nothing uploads. The item fails before anything is sent, with `seal_too_large` or `seal_split_unavailable`. Turn off **Seal** to upload it as an ordinary link. |
 
 The one-page form holds base64, so its page is about a third larger than the file. The page
 gets a random name of 12 letters and digits (`SealJob::randomName`), never the capture's own
@@ -237,12 +237,15 @@ Sealing sits in the shared pipeline between the immutable artifact and naming, i
    `passphrase` in the settings the upload was accepted with. The **Seal** toggle beside
    Upload in the editor (also the editor the sensitive text prompt opens) and in recording
    review sets the operation's own choice. `operation.seal` works that window's own toggle
-   (`editor.seal` and the review's `seal` action are the same toggle). While a recording runs
-   it keeps the choice and the review window starts from it, during an export it is refused
-   with `recording_state`, and once the upload started (`enqueue` closed the choice) it is
-   `seal_too_late`. The choice is written into the operation's `seal.requested` before its
-   first artifact is stored, so a restart keeps it. Diagnostics package uploads are never
-   sealed.
+   (`editor.seal` and the review's `seal` action are the same toggle), and it is accepted
+   only while that window is open: the editor while it is editing, or the recording in
+   review. Before a sensitive text check's editor opens it is refused with
+   `seal_unavailable`, while the recording runs or exports with `recording_state`, once the
+   edit was submitted or the upload started (`enqueue` closed the choice) with
+   `seal_too_late`, and once the operation finished with `operation_not_found`. To seal a
+   capture from the start, pass `seal` with `action.invoke` or `upload.files`. The choice is
+   written into the operation's `seal.requested` before its first artifact is stored, so a
+   restart keeps it. Diagnostics package uploads are never sealed.
 2. **Refusals.** When sealing was asked for and can't happen, the file is never uploaded
    unsealed. The item fails before anything is sent, with one of:
    - `seal_unavailable`: the destination type can't serve a sealed page (its provider's
@@ -255,12 +258,17 @@ Sealing sits in the shared pipeline between the immutable artifact and naming, i
    - `seal_passphrase_missing`: a Retry of an upload whose passphrase came only with its
      request (`upload.files`'s `seal.passphrase`). That passphrase is held in memory for the
      request and never kept, so the file must be uploaded again with it.
+   - `seal_too_large`: the file is over 2 GB, the largest file the format seals.
+   - `seal_split_unavailable`: the file is over 64 MB, so it needs the page and a data file
+     beside it, and the destination's links can't serve the two side by side (S3 and R2 with
+     expiring links, B2 with authorized links, custom uploaders). An SFTP destination without
+     a Link address can't seal any file, so it answers `seal_unavailable`.
    - `seal_failed` (or `seal_viewer_changed`): the sealing helper is missing, failed, timed out
      or wrote files that didn't match its answer.
-3. **Size exceptions.** A file over 2 GB, or over 64 MB on a destination without the two-file
-   form, uploads unsealed with `seal.status: off` and a one-sentence `reason`, which the
-   notification and History show. This is the one case where a file meant to be sealed goes
-   out unsealed, as the design set it.
+3. **No exceptions.** `OperationService::sendable` sends an item of an upload that is to be
+   sealed only once it is sealed. A Retry keeps the upload sealed, so a file sealing can't
+   take fails the same way again. To send it as an ordinary link, the user turns off **Seal**
+   and uploads it again.
 4. **Sealing.** The item's phase is `sealing` while the helper runs. The item keeps its own
    file as its artifact, for previews and local copies; what uploads under the item's
    candidate name is the sealed page (`OperationItem::uploadArtifact`).
@@ -282,14 +290,13 @@ Sealing sits in the shared pipeline between the immutable artifact and naming, i
 
 When every file of an upload is sealed and its link is copied, the notification's title is
 `Sealed link copied` (`Sealed links copied` for several) and its body is `Sealed link copied
-to clipboard.`, followed by `Send the passphrase separately.` when a passphrase is set. A
-reason a file went out unsealed is added to the body.
+to clipboard.`, followed by `Send the passphrase separately.` when a passphrase is set.
 
 An item's `seal` record:
 
 | Field | Meaning |
 | --- | --- |
-| `status` | `sealed`, or `off` with `reason` when sealing was turned off for it by size |
+| `status` | `sealed`. An item that couldn't be sealed fails with its error and has no `seal` record |
 | `form` | `inline` (one page) or `split` (page and data file) |
 | `key` | The fragment `v1.…`; empty with `keyForgotten: true` after Forget key |
 | `passphrase` | `true` when the link also needs a passphrase. The passphrase itself is never kept here. |
@@ -309,7 +316,14 @@ An item's `seal` record:
   offered. The file stays at the destination, and anyone who already has the full link can
   still open it until the file is deleted there. `history_not_sealed` answers for an item that
   isn't a sealed link, and `history_busy` while its upload runs, a Retry included, or another
-  Forget key writes it (`OperationService::holdOperation`).
+  History change of it is being written (`OperationService::holdOperation`): "This upload is
+  running, or History is already changing it. Wait a moment, then select Forget key again."
+- A forgotten key stays forgotten whatever copy of the operation a writer saves later, such as
+  a Retry, a copy or a local-save retry that read the operation before Forget key. Saving an
+  operation with sealed keys takes the write lock first, reads the forgotten mark from the
+  operation's journal in one query and clears those keys before it writes
+  (`HistoryStore::persistOperation`). The journal outlives the History record, so the mark
+  holds after the record is removed.
 - **Delete from destination** deletes the page, then the data file beside it. The data file
   is checked and deleted like the page, with its own durable checkpoint
   (`sealDataProgress`), and its outcome is the target's `sealDataStatus`. When the page went
@@ -347,15 +361,16 @@ failed check never fails the Test; it only decides whether sealed uploads may go
    safely; otherwise it is left and the result says so.
 
 The result is `seal` in the Test's result: `{state, reason?, cleanup}` with `state` `passed`,
-`failed`, `unsupported` or `cancelled` and `cleanup` `removed`, `left`, `failed` or `unknown`. While it runs,
+`failed`, `untested`, `unsupported` or `cancelled` and `cleanup` `removed`, `left`, `failed` or `unknown`. While it runs,
 `setup.inspect` shows the event `{step: "seal", status: "running"}`. The resident keeps it in
 `destination-status.json` under `sealChecks`, keyed by destination, with `passed`, a `reason`
 of at most 300 characters and the connection fingerprint
 ([destination checks](configuration.md#destination-checks)). It counts only while the
 fingerprint matches the destination as saved, and it is forgotten with the destination. New
 credentials stored for the destination, or for one that shares its keychain entry, clear it
-(`DestinationStatus::credentialsChanged`). A check that ran while the keys changed, or that
-was cancelled, records nothing. A cancel stops the page fetch at once and still deletes the
+(`DestinationStatus::credentialsChanged`). A check that ran while new keys were stored
+records nothing and is reported `untested` with "New credentials were stored during the
+check. Test again." A cancelled check records nothing. A cancel stops the page fetch at once and still deletes the
 test page. Each
 entry of `destinationStatus` carries it as `seal` (`{state: passed|failed|untested, reason?}`).
 
@@ -404,7 +419,7 @@ which stays in memory and reaches only the sealing helper.
 ## Diagnostics and logs
 
 A diagnostics package carries each item's seal `status`, `form`, `passphrase`,
-`keyForgotten`, the unsealed `reason` and the data file's upload status. It never carries the
+`keyForgotten` and the data file's upload status. It never carries the
 key, the link or the passphrase. The log records that a file was sealed, its form, whether it
 has a passphrase and the page size, and the Test check's HTTP status, content type and cleanup.
 
@@ -432,7 +447,10 @@ has a passphrase and the page size, and the Test check's HTTP status, content ty
   destination's; sealing that can't happen uploads nothing (`seal_check_required`,
   `seal_unavailable`, `seal_passphrase_locked`); the passphrase is needed beside the link;
   Retry uploads the same ciphertext; large files seal as a page and data file; a file too large
-  for the destination uploads unsealed with its reason; and Forget key leaves no link.
+  to seal, or too large for one page where the destination can't serve two files, is never
+  sent, and its Retry fails the same way (`fileTooLargeToSealIsNeverSent`,
+  `twoFilesWhereLinksCantServeThemIsNeverSent`); Forget key leaves no link, and a writer that
+  read the operation earlier can't put the key back.
 - `tests/seal/browser_vectors.py` serves the pinned viewer on 127.0.0.1 and opens
   `tests/seal/harness.html` in headless Firefox and Chromium. WebCrypto seals every vector to
   the same bytes as C++, and each page opens as a recipient would: one page and two files, a

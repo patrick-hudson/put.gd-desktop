@@ -16,7 +16,7 @@ the [overview](overview.md) and [architecture](architecture.md).
 - The idle target is 40 MiB RSS for the resident and any surviving product helpers after work drains.
 - The synthetic UI catalog and widget tests establish design and widget behavior only.
 - Windows and Flatpak are out of scope.
-- A file meant to be sealed never uploads unsealed, except when it is too large for the sealed forms, and then the notification and History say why. The resident never maps libcrypto: only `putgd-cli` seals and opens sealed links, and the key leaves the computer only in the link's fragment.
+- A file meant to be sealed never uploads unsealed, with no exceptions. A file sealing can't take fails before anything is sent, and the user turns off Seal to upload it as an ordinary link. The resident never maps libcrypto: only `putgd-cli` seals and opens sealed links, and the key leaves the computer only in the link's fragment.
 - Text is recognized only on an explicit action, and nothing recognized is stored. Recognition runs only in the temporary `putgd-ocr` helper, so the resident and `putgd-ui` never link or load Tesseract, Leptonica or ZXing-cpp.
 
 ## Documents
