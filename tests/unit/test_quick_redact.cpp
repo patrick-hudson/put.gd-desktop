@@ -232,7 +232,7 @@ private slots:
   QTest::newRow("a process ID and setting counts are no phone")<<"kwin_wayland_wrapper[1445660]: | audit: pid=3945093 auid=4294967295 ses=4294967295"<<QStringList{"phone"}<<QStringList{};
   QTest::newRow("a phone setting or bracket stays a phone")<<"tel=2025550143 | msisdn=2125550100 | Call [202-555-0143] | Call[202-555-0143] | ph=2025550143 | phone-work=2025550143 | mobileNo=2025550143"<<QStringList{"phone"}
    <<QStringList{"phone: tel=2025550143","phone: msisdn=2125550100","phone: [202-555-0143]","phone: Call[202-555-0143]","phone: ph=2025550143","phone: phone-work=2025550143","phone: mobileNo=2025550143"};
-  QTest::newRow("a phone after a setting's count is a phone")<<"pid=1234 2025550143 | pid=123456 2025550143"<<QStringList{"phone"}<<QStringList{"phone: 2025550143","phone: 2025550143"};
+  QTest::newRow("a phone after a setting's count is a phone")<<"pid=1234 2025550143 | pid=123456 2025550143 | pid=(202) 555-0143"<<QStringList{"phone"}<<QStringList{"phone: 2025550143","phone: 2025550143","phone: pid=(202) 555-0143"};
   QTest::newRow("a phone in a setting or bracket that names none is a phone")<<"port=+442079460958 | code=202-555-0143 | phone.pid=2025550143 | Call[2025550143]:"<<QStringList{"phone"}
    <<QStringList{"phone: port=+442079460958","phone: code=202-555-0143","phone: phone.pid=2025550143","phone: Call[2025550143]:"};
   QTest::newRow("a labelled phone with a dotted tail is a phone")<<"Tel 44 20.7946.0958"<<QStringList{"phone"}<<QStringList{"phone: 44 20.7946.0958"};

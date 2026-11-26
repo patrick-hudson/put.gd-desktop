@@ -3231,7 +3231,8 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
       const auto last=name.section(QLatin1Char('.'),-1).toLower();
       if(counts.contains(last)&&!phoneWord.match(name).hasMatch()){
        qsizetype valueEnd=start;while(valueEnd<end&&t.at(valueEnd).isDigit())++valueEnd;
-       offset=valueEnd;continue;
+       // A value that doesn't start with a digit ("(") is no count; matching goes on as usual.
+       if(valueEnd>start){offset=valueEnd;continue;}
       }
      }
     }
