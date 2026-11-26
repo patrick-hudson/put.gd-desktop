@@ -1184,18 +1184,78 @@ other tool active it does not. The user's side is in the
       byte or word groups or more, or twelve byte groups or more without one; the groups (and the
       offset) are skipped, while the text column after them is only evidence for the fallback below
       and is still matched. A fingerprint of exactly ten groups of four hex is skipped;
-    - a digest: up to four words joined, 129 characters at most, 32, 40, 56, 64, 96 or 128 hex
-      characters within two as read. It is skipped when it starts its row (after a line number)
-      before a ref (`refs/…`, `HEAD`) or a file name in its own column (within four characters of it,
-      not in a pane beside it, #1958), the rest of that column at most a word in brackets. It is also skipped on the rows after a checksum tool (`md5sum`, `sha*sum`, `b2sum`,
+    - a digest: up to six words joined, 130 characters at most, whose length is within two of 32,
+      40, 56, 64, 96 or 128 and that hold a digit once the confusions are mapped. Each word is hex
+      as read: at most one character in eight outside hex once the confusions are mapped (the same
+      test for the glued label's value below). Each word joins
+      within one and a half characters of the furthest right edge so far, and, once the words so far
+      already make a digest, within 0.95 of a character or less (under a space: two digests or a
+      digest and a hex secret printed side by side stay apart); the longest join that reaches a
+      digest's length counts (#2084: a SHA-256
+      split after 42 characters is not a SHA-1 and a remainder). It is skipped when it starts its row
+      (after a line number) before a ref (`refs/…`, `HEAD`) or a file name in its own column (within
+      four characters of it, not in a pane beside it, #1958), the rest of that column at most a word in
+      brackets. #2084: the file name may also be read as recognition reads one, filling the rest of
+      the column, up to five words once its split pieces are joined back (below):
+      - after sha256sum's binary-mode `*` read as one or two of `*`, `=`, `|`, `~`, `+` and `§`, as a
+        word of its own or stuck to the name's start;
+      - with pieces less than three quarters of a character apart joined back, and an extension
+        split off after the dot in one or two pieces within one and a half characters
+        (`IMG_20261117_082356.` `jpg`, `.` `j` `pg`; a letter, then up to eleven letters or digits);
+      - with spaces (`Screenshot From 2026-11-10 01-21-08.png`) only after a gap of one and a half
+        characters or more from the digest, or after the binary mark as a word of its own (on the
+        rows after any of the commands below, whatever the gap): a digit somewhere in the name, no
+        word naming a secret, and no word of eight letters and digits or more with both before its
+        extension. The last word is the file name.
+      Here and in the rules below, a word names a secret when a part of it, split at anything but an
+      ASCII letter, at a lowercase-to-capital change and before the last capital of a run of
+      capitals when a lowercase letter follows it (`apiKey`, `APISecret`, `my-secret`, `TOKEN2`), is,
+      ignoring case, a secret word:
+      `secret`, `key`, `token`, `password`, `passwd`, `pwd`, `signing`, `private`, `hmac`, `auth`,
+      `credential`, `credentials`, `apikey` or `api`.
+    - a checksum listing whose command scrolled away (#2084): a row with a digest at its start and
+      more words in its column, right below or above a row skipped by the rule before for its own file
+      name or ref (its digest starting within four characters of that one's, within two and a half
+      heights), when its name's words run together have a digit and after it end in `.`, `-`, `«` or
+      `,` (a space may follow) and a common file extension, in any case: `png`, `jpg`, `jpeg`, `gif`,
+      `webp`, `heic`, `svg`, `pdf`, `txt`, `csv`, `md`, `log`, `json`, `xml`, `yml`, `yaml`, `gz`, `xz`,
+      `bz`, `bz2`, `zst`, `zip`, `tar`, `tgz`, `7z`, `iso`, `img`, `deb`, `rpm`, `AppImage`, `mp4`,
+      `webm`, `mkv`, `mov`, `mp3`, `wav`, `sql`, `sh`, `py`, `exe`, `bin` or `dmg`
+      (`Sc` `reen-Capture-2026-10-26-00-49-08` `-png`). One of its words is shaped like a file's stem:
+      after at most two marks, it starts with two letters or more, and after letters and digits
+      alone comes a `-` or `_`, followed by a digit, with only letters, digits, `-` or `_` allowed in
+      between
+      (so `rotated 2026-01-01 - log` and `2026-01-01-utc` are no name), its words
+      hold no `=` but the binary mark, and they name no secret. A row found this way vouches for no other.
+    - git log's abbreviated hash before its full one (`--format='%h %H …'`, #2084): the row's first
+      word (after a line number or a lone mark) of 6 to 12 characters with a digit, hex after the confusions but for one character, then within
+      four characters a digest of 40 or 64 characters (within two). Compared without case, after the
+      confusions and with `¢` read as `c`, the abbreviation is at most two edits (one for six
+      characters) from the start of the full hash, and no word on the row names a secret. Such a row
+      is skipped only when the row right above or below is one too, its abbreviation within four
+      characters of this one's and within two and a half heights.
+    - a lockfile's `sha256:` stuck to its value as read (#2084): a word that starts, after an
+      optional `"`, `'`, `(` or `[`, with `sha` and `1`, `224`, `256`, `384`, `512`, or a misreading of
+      `256` (`25` or `2S` then `6` or `e`) or of `512` (`5` or `S`, then `1`, `l` or `I`, then `2`),
+      then up to three of `:`, `;`, `l`, `I`, `i`, `J`, `j`, `f`, `t`, `|`, `!`, `[`, `]` and `(`, then
+      six characters of hex or `o`, `O`, `l`, `I`. Its value is the rest of the word, hex as read, and
+      the hex words after it, six words at most with the label's, each within one and a half
+      characters of the word before (0.95 or less once the value is a digest's length), to 32, 40,
+      64, 96 or 128 characters within two; the word and
+      those words are skipped, nothing else on the row. A label read right (`sha256:`, `sha512-`)
+      takes the hash-word rule instead, and a misread one is not skipped on a row with a secret word
+      or right after an authorization scheme (`Bearer`, `Basic`, `token`, `bot`, `digest`,
+      `negotiate`).
+    - a digest on the rows after a checksum tool (`md5sum`, `sha*sum`, `b2sum`,
       `b3sum`, `cksum`, as read too: `mdSsum`), a git plumbing command (`rev-parse`, `show-ref`,
       `ls-remote`, `rev-list`, `cat-file`, `submodule` and the like) or `podman`/`docker` with
       `--no-trunc`, `inspect` or `--digests`. The row is cut into columns at gaps of more than four
       characters; the first column whose words (after a line number) hold the whole command anchors
       the rows. Each later row needs a column starting within four characters of the anchor (after a
       line number only when the command's row has one), right below the row before (within two and a
-      half heights), a digest there followed by nothing or one more word, the first row's form, and
-      no `=` anywhere on the row; anything else, or 200 rows, ends them;
+      half heights), a digest there followed by nothing, one more word, or a file name as recognition
+      reads one (above, #2084), the first row's form, and no `=` anywhere on the row but the binary
+      mark at the name's start; anything else, or 200 rows, ends them;
     - the value of a label that names an identifier, a public key or a signature, from these
       families: request, trace and event identifiers in hex and dashes (`ID`, `Event ID`, `trace_id`,
       `span_id`, `request_id`, `req`, `correlation_id`, `Boot ID`, `Machine ID`,
@@ -1230,7 +1290,12 @@ other tool active it does not. The user's side is in the
     to 16 hex and a word containing an algorithm's name, `sha2`, `md5`, `rsa`, `ed25519`, `x86_64` or
     `aarch64`, are not such words), or when the segment joined holds a known prefix's token or a JSON
     web token. The same holds for a segment that ends its row when the next row's first segment
-    starts at that row's first word and holds such a word. This restores the ordinary matching of
+    starts at that row's first word and holds such a word, unless the row is a digest's row (before a
+    file name or ref, or after a checksum command) whose last word alone passes the file-name test
+    (no space, `=` or `:` in it, and either a name ending in a letter, digit, `_`, `)` or `-`, a
+    dot and an extension of a letter and up to eleven letters or digits, or a path with a slash and
+    something after it, `refs/…` included; #2084): a token's head would end its row, so the next row is matched
+    as its own. This restores the ordinary matching of
     those words; it doesn't by itself guarantee a mark.
   - Not keys either (#1940):
     - the repeated-run rule (above) skips a run whose commonest letters as read (up to four, making
@@ -1245,6 +1310,15 @@ other tool active it does not. The user's side is in the
       confusions above, such as `l`, `I`, `i`, `|`, `!` for `1` and `S` for `5`), not counting an `o`
       or `O` read for zero, so a receipt's leaders
       (`ccooecoo`) and a page's ornament read as `EOEOEOOOOO` (#1975) are no hex;
+    - a hex run takes in no word that is a clock time of its own (one or two digits, a colon, two
+      digits, and optionally a colon and two more, then at most a comma or a dot) when the part of
+      the segment being matched also holds, as a word of its own, an English weekday or month in
+      three letters with a capital (`Mon` to `Sun`, and `Jan` to `Nov` but for `Feb`, which like `Dec`
+      is all hex letters; a comma or dot after it allowed), which no hex word is, and `ps` always
+      shows the weekday; so `ps`'s start time (`625799 625287 Sat Oct 24 01:26:36 2026`, hex only
+      through `Sat` and `Oct` misread) is no hex (#2084). A run beside the time is still tried without
+      it; a colon misread inside one hex word, or a clock-shaped piece with no such date word beside
+      it, does not count;
     - a hash word names a digest only in the run's own segment or in up to three words and 32
       characters on each side of it, stopping at a word with seven hex characters in a row or a gap
       wider than 30 characters, so a `commit <sha>` in another window on the same row leaves a hex
