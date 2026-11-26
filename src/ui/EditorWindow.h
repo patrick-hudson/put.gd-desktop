@@ -140,6 +140,11 @@ public:
  // The output Upload uses, as the resident phrases it, shown in the footer.
  // `links`: whether the destination gives a link (commandtext::givesLinks); the mode comes from it.
  void setDestination(const QString&,bool links);
+ // #2079: the Encrypt toggle beside Upload: {available, on, reason?}. Empty: no toggle (no upload route).
+ void setEncrypt(const QJsonObject& encrypt);
+ // The toggle as a click sets it; refused while encrypting isn't available here.
+ bool setEncryptOn(bool on,QString* refusal);
+ QJsonObject encryptState() const;
  // Save a copy…: the desktop's chooser (#259), then the sanitized PNG; false
  // while busy or while the chooser is already open. editor.fileDialog drives it.
  bool saveCopy();
@@ -221,6 +226,7 @@ public:
  // Removes every suggested mark as one undo step; hand-drawn marks stay. Returns how many.
  int removeSuggestions();
 signals:
+ void encryptToggled(bool on);
  void uploadRequested();
  void cancelRequested();
  void copyRequested();
@@ -283,6 +289,7 @@ private:
  Ui::WindowHeader* header_=nullptr;
  QPushButton *copyImage_=nullptr;QJsonObject lastCopy_;
  QGridLayout* toolbarGrid_=nullptr;QBoxLayout *toolsLayout_=nullptr,*actionsLayout_=nullptr;QWidget* actionsSeparator_=nullptr;bool toolbarWrapped_=false;
+ QPushButton* encrypt_=nullptr;QString encryptReason_;bool encryptAvailable_=false;
  QPushButton *upload_=nullptr,*save_=nullptr,*cancel_=nullptr,*place_=nullptr,*showFolder_=nullptr,*copyPath_=nullptr,*chooseAnother_=nullptr,*remove_=nullptr;
  QSplitter* splitter_=nullptr;int propertiesWidth_=240;
  QWidget *canvasViewport_=nullptr,*side_=nullptr,*document_=nullptr;QScrollArea* propertiesScroll_=nullptr;

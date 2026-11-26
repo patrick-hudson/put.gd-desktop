@@ -6,6 +6,7 @@
 #include <QObject>
 #include <QSet>
 #include <functional>
+#include <mutex>
 namespace putgd {
 class OperationService;
 // The resident's record of each destination's last check (#1692): passed or failed, by a
@@ -46,6 +47,16 @@ public:
  // entry put.gd never wrote. Forgotten once no destination names the entry.
  bool keychainSaved(const QString& reference) const {return keychainEntries_.contains(reference);}
  void keychainWritten(const QString& reference);
+ // Encrypted links (#2079): the Test check of whether this destination serves an encrypted page
+ // as a page (text/html, inline, the exact bytes). Tied to the connection fingerprint
+ // like a test; the Encrypted links setting and per-upload Encrypt are available only while it
+ // passed. reason is one sentence when it failed.
+ void encryptChecked(const QString& profileId,const QString& fingerprint,bool passed,const QString& reason);
+ // {state: passed|failed|untested, reason?} against the destination's current settings.
+ QJsonObject encryptCheck(const QString& profileId) const;
+ // The same for a connection fingerprint the caller computed (an accepted upload's own
+ // settings); safe from any thread.
+ QJsonObject encryptCheckFor(const QString& profileId,const QString& fingerprint) const;
  // Forgets destinations that are no longer configured.
  void prune();
  // {profileId: {state: passed|failed|untested, source: test|upload, errorCode, fingerprint}}
@@ -64,6 +75,9 @@ private:
  QString path_;
  SettingsService& settings_;
  QHash<QString,Record> records_;
+ struct EncryptRecord {bool passed=false;QString reason,fingerprint;quint64 credentialRevision=0;};
+ QHash<QString,EncryptRecord> encryptRecords_; // written on the owning thread, under encryptMutex_
+ mutable std::mutex encryptMutex_;
  QHash<QString,quint64> credentialRevisions_;
  QSet<QString> keychainEntries_;
  QHash<QString,Attempt> attempts_;

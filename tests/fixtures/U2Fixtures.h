@@ -51,7 +51,9 @@ public:
  QHash<QString,QString> deletionResults;std::function<void(const DeleteRequest&)> checkpointObserver;
  static QString fileId(const QString& candidate) {return "opaque:α/%?#:"+QString::fromLatin1(QCryptographicHash::hash(candidate.toUtf8(),QCryptographicHash::Sha256).toHex());}
  bool reportsUploadProgress() const override {return prepareUploads;}
- ProviderCapabilities capabilities(const Destination&) const override {if(capabilitiesGate)capabilitiesGate();ProviderCapabilities c{true,true,true,true,true,allowDelete,true,255,"Remove only the recorded opaque file revision"};c.maximumObjectBytes=maximumObjectBytes;return c;}
+ ProviderCapabilities capabilities(const Destination&) const override {if(capabilitiesGate)capabilitiesGate();ProviderCapabilities c{true,true,true,true,true,allowDelete,true,255,"Remove only the recorded opaque file revision"};c.maximumObjectBytes=maximumObjectBytes;if(encryptable)c.encryptUnavailable.clear();return c;}
+ // #2079: whether this destination type can take an encrypted page (its Test check still decides).
+ bool encryptable=false;
  QString serializationKey(const Destination& d,const QJsonObject& ref,const QString& name) const override {return d.settings["workspace"].toString()+":"+(ref.isEmpty()?fileId(name):ref["fileId"].toString());}
  Error validateSettings(const QJsonObject& s) const override {if(s.size()!=1||!s["workspace"].isString())return {"config_invalid","A workspace is required",{}};return {};}
  void checkName(const Destination&,const QString& name,std::function<void(NameCheck)> cb, std::shared_ptr<std::atomic_bool> cancellation = {}) override {if(cancellation&&cancellation->load()){cb({"inconclusive",{},{},{"cancelled","Synthetic name check cancelled",{}}});return;}++checks;countRequest();QMutexLocker lock(&mutex);auto id=fileId(name);auto found=objects.value(id);NameCheck r{objects.contains(id)?"present":"absent",{{"format",1},{"fileId",id}},found.concurrencyToken,{}};lock.unlock();if(deferChecks)QMetaObject::invokeMethod(dispatcher,[this,cb,r]{checkCompletions.append([cb,r]{cb(r);});},Qt::QueuedConnection);else cb(r);}

@@ -1,0 +1,207 @@
+#include "encrypt/EncryptCrypto.h"
+#include "encrypt/EncryptPage.h"
+#include <QBuffer>
+#include <QCryptographicHash>
+#include <QFile>
+#include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QProcess>
+#include <QTemporaryDir>
+#include <QTest>
+using namespace putgd;
+namespace {
+const QString vectorsPath=QStringLiteral("tests/fixtures/encrypt/vectors.json");
+QByteArray content(const QJsonObject& spec) {
+ if(spec.contains("text"))return spec["text"].toString().toUtf8();
+ if(spec.contains("hex"))return QByteArray::fromHex(spec["hex"].toString().toLatin1());
+ const qint64 size=qint64(spec["pattern"].toDouble());QByteArray out(size,'\0');
+ for(qint64 i=0;i<size;++i)out[i]=char((i*31+7)%251);
+ return out;
+}
+struct Vector {QJsonObject json;QByteArray plain,key;encrypt::Fixed fixed;encrypt::Meta meta;QString passphrase;int iterations=0;};
+Vector vector(const QJsonObject& json) {
+ Vector v;v.json=json;v.plain=content(json["content"].toObject());v.key=QByteArray::fromHex(json["link"].toString().toLatin1());
+ v.fixed={QByteArray::fromHex(json["salt"].toString().toLatin1()),QByteArray::fromHex(json["noncePrefix"].toString().toLatin1())};
+ v.meta={json["name"].toString(),json["type"].toString(),v.plain.size()};v.passphrase=json["passphrase"].toString();v.iterations=json["iterations"].toInt();
+ return v;
+}
+QJsonObject document() {QFile file(vectorsPath);if(!file.open(QIODevice::ReadOnly))return {};return QJsonDocument::fromJson(file.readAll()).object();}
+QByteArray encrypted(const Vector& v) {
+ QBuffer input;input.setData(v.plain);input.open(QIODevice::ReadOnly);QByteArray out;
+ const auto error=encrypt::encrypt(input,v.meta,v.key,v.passphrase,[&out](const char* d,qint64 n){out.append(d,n);return true;},v.iterations?v.iterations:encrypt::passphraseIterations,v.fixed);
+ return error?QByteArray():out;
+}
+Error opened(const QByteArray& container,const QByteArray& key,const QString& passphrase,QByteArray* plain=nullptr,encrypt::Meta* meta=nullptr) {
+ QBuffer input;input.setData(container);input.open(QIODevice::ReadOnly);QByteArray out;
+ const auto error=encrypt::open(input,container.size(),key,passphrase,[&out](const char* d,qint64 n){out.append(d,n);return true;},meta);
+ if(plain)*plain=out;return error;
+}
+Vector named(const QString& id) {for(const auto& entry:document()["vectors"].toArray())if(entry.toObject()["id"]==id)return vector(entry.toObject());return {};}
+constexpr qint64 full=encrypt::chunkBytes+encrypt::tagBytes;
+}
+// Encrypted links (#2079): the container format against fixed vectors, every way a
+// container can be changed, and the pinned viewer page.
+class EncryptTest:public QObject {
+ Q_OBJECT
+private slots:
+ // Each vector encrypts to the same bytes every time and opens to its file and description.
+ // PUTGD_ENCRYPT_WRITE_VECTORS=1 rewrites the hashes and small containers (a format change only).
+ void vectorsEncryptAndOpenIdentically() {
+  auto doc=document();auto list=doc["vectors"].toArray();QVERIFY(!list.isEmpty());
+  const bool write=qEnvironmentVariableIsSet("PUTGD_ENCRYPT_WRITE_VECTORS");
+  for(qsizetype i=0;i<list.size();++i) {
+   auto json=list[i].toObject();const auto v=vector(json);
+   const auto container=encrypted(v);QVERIFY2(!container.isEmpty(),qPrintable(json["id"].toString()));
+   QCOMPARE(container.size(),encrypt::containerBytes(encrypt::encodeMeta(v.meta).size()+v.plain.size()));
+   const auto digest=QString::fromLatin1(QCryptographicHash::hash(container,QCryptographicHash::Sha256).toHex());
+   if(write){json["containerSha256"]=digest;json["container"]=container.size()<65536?QString::fromLatin1(container.toBase64()):QString();list[i]=json;}
+   else {
+    QCOMPARE(digest,json["containerSha256"].toString());
+    if(!json["container"].toString().isEmpty())QCOMPARE(container,QByteArray::fromBase64(json["container"].toString().toLatin1()));
+   }
+   QByteArray plain;encrypt::Meta meta;const auto error=opened(container,v.key,v.passphrase,&plain,&meta);
+   QVERIFY2(!error,qPrintable(json["id"].toString()+": "+error.message));
+   QCOMPARE(plain,v.plain);QCOMPARE(meta.name,v.meta.name);QCOMPARE(meta.type,v.meta.type);QCOMPARE(meta.size,v.meta.size);
+  }
+  if(write){doc["vectors"]=list;QFile file(vectorsPath);QVERIFY(file.open(QIODevice::WriteOnly|QIODevice::Truncate));file.write(QJsonDocument(doc).toJson(QJsonDocument::Indented));}
+ }
+ // Every chunk but the last is full; a plaintext of exactly one chunk is one last chunk.
+ void boundaryVectorIsOneFullChunk() {
+  const auto v=named("boundary");QCOMPARE(encrypt::encodeMeta(v.meta).size()+v.plain.size(),encrypt::chunkBytes);
+  QCOMPARE(encrypted(v).size(),qint64(encrypt::headerBytes)+full);
+ }
+ void changedBytesNeverOpen() {
+  const auto v=named("multi");const auto container=encrypted(v);QVERIFY(container.size()>encrypt::headerBytes+2*full);
+  const auto damaged=[&](const QByteArray& bytes){return opened(bytes,v.key,{}).code;};
+  // One bit anywhere: the header's magic, version, flags, chunk size, salt, nonce prefix,
+  // reserved bytes and key check, and the first, middle and last chunk and their tags.
+  for(const qint64 at:{0LL,8LL,9LL,13LL,17LL,25LL,55LL,60LL,70LL,96LL,96+full-1,96+full+500,qint64(container.size())-17,qint64(container.size())-1}) {
+   auto changed=container;changed[at]=char(changed[at]^0x01);
+   const auto code=damaged(changed);QVERIFY2(code=="encrypt_damaged"||code=="encrypt_version",qPrintable(QString::number(at)+" "+code));
+  }
+  // Cut: the last chunk gone (the new last isn't marked last), one byte gone, all but the header.
+  QCOMPARE(damaged(container.left(encrypt::headerBytes+2*full)),QString("encrypt_damaged"));
+  QCOMPARE(damaged(container.chopped(1)),QString("encrypt_damaged"));
+  QCOMPARE(damaged(container.left(encrypt::headerBytes)),QString("encrypt_damaged"));
+  QCOMPARE(damaged(container.left(encrypt::headerBytes+full)),QString("encrypt_damaged"));
+  // Reordered chunks, a chunk repeated, bytes added after the end.
+  const auto head=container.left(encrypt::headerBytes),c0=container.mid(encrypt::headerBytes,full),c1=container.mid(encrypt::headerBytes+full,full),c2=container.mid(encrypt::headerBytes+2*full);
+  QCOMPARE(damaged(head+c1+c0+c2),QString("encrypt_damaged"));
+  QCOMPARE(damaged(head+c0+c1+c1+c2),QString("encrypt_damaged"));
+  QCOMPARE(damaged(head+c0+c2),QString("encrypt_damaged"));
+  QCOMPARE(damaged(container+QByteArray(17,'\0')),QString("encrypt_damaged"));
+  // A chunk from another container with the same key but a different salt.
+  auto other=v;other.fixed.salt[0]=char(other.fixed.salt[0]^1);const auto second=encrypted(other);
+  QCOMPARE(damaged(head+second.mid(encrypt::headerBytes,full)+c1+c2),QString("encrypt_damaged"));
+  // Nothing of a chunk that fails is written.
+  QByteArray plain;opened(head+c0+c1,v.key,{},&plain);QCOMPARE(plain.size(),encrypt::chunkBytes-encrypt::encodeMeta(v.meta).size());
+ }
+ void wrongKeyNeverOpens() {
+  const auto v=named("hello");const auto container=encrypted(v);
+  auto key=v.key;key[31]=char(key[31]^0x80);
+  QCOMPARE(opened(container,key,{}).code,QString("encrypt_damaged"));
+  QCOMPARE(opened(container,QByteArray(32,'\0'),{}).code,QString("encrypt_damaged"));
+  QCOMPARE(opened(container,v.key.left(31),{}).code,QString("encrypt_damaged"));
+ }
+ // The passphrase is a second factor: the key alone, or a wrong passphrase, opens nothing.
+ // Its Unicode form doesn't matter (NFC on both sides).
+ void passphraseIsASecondFactor() {
+  const auto v=named("passphrase");const auto container=encrypted(v);
+  QCOMPARE(opened(container,v.key,{}).code,QString("encrypt_passphrase_required"));
+  QCOMPARE(opened(container,v.key,"ete ☃ battery").code,QString("encrypt_passphrase"));
+  QCOMPARE(opened(container,v.key,v.passphrase+" ").code,QString("encrypt_passphrase"));
+  QByteArray plain;QVERIFY(!opened(container,v.key,QString::fromUtf8("été ☃ battery"),&plain));QCOMPARE(plain,v.plain);
+  auto key=v.key;key[0]=char(key[0]^1);QCOMPARE(opened(container,key,v.passphrase).code,QString("encrypt_damaged"));
+  // The header records the passphrase: clearing its flag breaks the key check.
+  auto cleared=container;cleared[9]=0;for(int i=16;i<20;++i)cleared[i]=0;QCOMPARE(opened(cleared,v.key,{}).code,QString("encrypt_damaged"));
+  // A passphrase nobody can type into the viewer's field or a passphrase file is refused, and
+  // the 1024-byte limit counts the normalized form both sides derive from.
+  for(const auto& bad:{QStringLiteral("two\nlines"),QStringLiteral("cr\rhere"),QString(1025,QChar('a'))}){auto refused=v;refused.passphrase=bad;QVERIFY(encrypted(refused).isEmpty());}
+  auto longest=v;longest.passphrase=QString(1024,QChar('a'));QVERIFY(!encrypted(longest).isEmpty());
+  // Without a fixed salt every encrypt differs.
+  auto random=v;random.fixed={};QVERIFY(encrypted(random)!=encrypted(random));
+ }
+ void fragmentsCarryOnlyCanonicalKeys() {
+  const auto v=named("hello");const auto text=encrypt::fragment(v.key);
+  QCOMPARE(text.size(),46);QVERIFY(text.startsWith("v1."));
+  QCOMPARE(encrypt::keyFromFragment(text),v.key);QCOMPARE(encrypt::keyFromFragment("#"+text),v.key);
+  QVERIFY(encrypt::keyFromFragment(text.chopped(1)).isEmpty());QVERIFY(encrypt::keyFromFragment("v2."+text.mid(3)).isEmpty());
+  QVERIFY(encrypt::keyFromFragment(text.left(45)+"+").isEmpty());
+  // The last character holds 4 unused bits: a different one decoding to the same key isn't the key's form.
+  auto last=text;const QString alphabet="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  last[45]=alphabet[(alphabet.indexOf(text[45])|1)==alphabet.indexOf(text[45])?alphabet.indexOf(text[45])-1:alphabet.indexOf(text[45])+1];
+  QVERIFY(encrypt::keyFromFragment(last).isEmpty());
+  QCOMPARE(encrypt::randomKey().size(),32);QVERIFY(encrypt::randomKey()!=encrypt::randomKey());
+ }
+ // The compiled-in viewer is src/encrypt/viewer.html byte for byte, at the pinned hash.
+ void viewerIsPinned() {
+  QVERIFY(encrypt::viewerIntact());
+  QFile file("src/encrypt/viewer.html");QVERIFY(file.open(QIODevice::ReadOnly));QCOMPARE(file.readAll(),encrypt::viewer());
+  QCOMPARE(QString::fromLatin1(QCryptographicHash::hash(encrypt::viewer(),QCryptographicHash::Sha256).toHex()),QString::fromLatin1(encrypt::viewerSha256));
+  const auto csp=encrypt::pagePrefix(false);
+  QVERIFY(csp.contains("default-src 'none'"));QVERIFY(csp.contains("img-src blob:; media-src blob:; connect-src 'none'"));
+  QVERIFY(encrypt::pagePrefix(true).contains("connect-src 'self'"));QVERIFY(!encrypt::pagePrefix(true).contains("connect-src 'none'"));
+  QVERIFY(!encrypt::viewer().contains("http://")&&!encrypt::viewer().contains("https://"));
+ }
+ void pagesParseOnlyWhenUnchanged() {
+  const auto container=encrypted(named("hello"));
+  const auto page=encrypt::pagePrefix(false)+encrypt::dataOpen(false)+container.toBase64()+encrypt::dataClose()+encrypt::pageSuffix();
+  encrypt::ParsedPage parsed;QVERIFY(!encrypt::parsePage(page,parsed));QVERIFY(!parsed.split);QCOMPARE(QByteArray::fromBase64(parsed.base64),container);
+  const auto split=encrypt::pagePrefix(true)+encrypt::dataOpen(true,"k3Xq9vTa2mPw.bin")+encrypt::dataClose()+encrypt::pageSuffix();
+  QVERIFY(!encrypt::parsePage(split,parsed));QVERIFY(parsed.split);QCOMPARE(parsed.bin,QString("k3Xq9vTa2mPw.bin"));
+  // Any change outside the data, a split page under the inline CSP, a bad name or data.
+  auto changed=page;changed.replace("Encrypted with put.gd","Encrypted with put.gx");QCOMPARE(encrypt::parsePage(changed,parsed).code,QString("encrypt_page_changed"));
+  auto script=page;script.replace("\"use strict\";","\"use strict\";fetch('//x');");QCOMPARE(encrypt::parsePage(script,parsed).code,QString("encrypt_page_changed"));
+  QCOMPARE(encrypt::parsePage(encrypt::pagePrefix(false)+encrypt::dataOpen(true,"a.bin")+encrypt::dataClose()+encrypt::pageSuffix(),parsed).code,QString("encrypt_page_changed"));
+  QCOMPARE(encrypt::parsePage(encrypt::pagePrefix(true)+encrypt::dataOpen(true,"../a.bin")+encrypt::dataClose()+encrypt::pageSuffix(),parsed).code,QString("encrypt_page_changed"));
+  QCOMPARE(encrypt::parsePage(encrypt::pagePrefix(false)+encrypt::dataOpen(false)+"QUJD</script><script>x"+encrypt::dataClose()+encrypt::pageSuffix(),parsed).code,QString("encrypt_page_changed"));
+  QCOMPARE(encrypt::parsePage(encrypt::pagePrefix(false)+encrypt::dataOpen(false)+"QUJ=D==="+encrypt::dataClose()+encrypt::pageSuffix(),parsed).code,QString("encrypt_page_changed"));
+ }
+ // The Test check's page is the probe vector, and opens with its public key.
+ void probePageIsTheProbeVector() {
+  const auto v=named("probe");encrypt::ParsedPage parsed;QVERIFY(!encrypt::parsePage(encrypt::probePage(),parsed));
+  QCOMPARE(QByteArray::fromBase64(parsed.base64),encrypted(v));
+  QCOMPARE(encrypt::keyFromFragment(encrypt::probeFragment()),v.key);
+ }
+ // The resident's helper: putgd-cli --encrypt-job writes a page (and a data file) and answers the key.
+ void encryptJobWritesPagesThatOpen() {
+  const auto cli=qEnvironmentVariable("PUTGD_TEST_CLI");if(cli.isEmpty())QSKIP("PUTGD_TEST_CLI is not set");
+  QTemporaryDir dir;QVERIFY(dir.isValid());
+  const auto v=named("multi");QFile in(dir.filePath("in"));QVERIFY(in.open(QIODevice::WriteOnly));in.write(v.plain);in.close();
+  for(const bool split:{false,true}) {
+   QJsonObject request{{"input",in.fileName()},{"bytes",double(v.plain.size())},{"name","pattern.bin"},{"type","application/octet-stream"},{"form",split?"split":"inline"},
+    {"page",dir.filePath(split?"split.html":"inline.html")},{"passphrase","hunter2"}};
+   if(split){request["data"]=dir.filePath("split.bin");request["bin"]="Abc123.bin";}
+   // The resident makes the outputs, empty and private; the helper only writes into them.
+   for(const auto* key:{"page","data"})if(request.contains(key)){QFile out(request[key].toString());QVERIFY(out.open(QIODevice::WriteOnly|QIODevice::NewOnly));QVERIFY(out.setPermissions(QFile::ReadOwner|QFile::WriteOwner));}
+   // An output that isn't the resident's empty private file is refused and left as it is.
+   {QFile shared(dir.filePath("shared.html"));QVERIFY(shared.open(QIODevice::WriteOnly));shared.close();QVERIFY(QFile::setPermissions(shared.fileName(),QFile::ReadOwner|QFile::WriteOwner|QFile::ReadOther));auto loose=request;loose["page"]=shared.fileName();
+    QProcess job;job.start(cli,{"--encrypt-job"});QVERIFY(job.waitForStarted());job.write(QJsonDocument(loose).toJson());job.closeWriteChannel();QVERIFY(job.waitForFinished(60000));
+    QCOMPARE(QJsonDocument::fromJson(job.readAllStandardOutput()).object()["ok"],QJsonValue(false));QVERIFY(QFileInfo::exists(shared.fileName()));QCOMPARE(QFileInfo(shared.fileName()).size(),0);}
+   QProcess job;job.start(cli,{"--encrypt-job"});QVERIFY(job.waitForStarted());job.write(QJsonDocument(request).toJson());job.closeWriteChannel();QVERIFY(job.waitForFinished(60000));
+   const auto answer=QJsonDocument::fromJson(job.readAllStandardOutput()).object();QVERIFY2(answer["ok"].toBool(),job.readAllStandardError().constData());
+   const auto key=encrypt::keyFromFragment(answer["key"].toString());QCOMPARE(key.size(),32);
+   QFile page(request["page"].toString());QVERIFY(page.open(QIODevice::ReadOnly));const auto bytes=page.readAll();
+   QCOMPARE(QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex()),answer["page"].toObject()["sha256"].toString());
+   const auto shared=QFile::ReadGroup|QFile::WriteGroup|QFile::ExeGroup|QFile::ReadOther|QFile::WriteOther|QFile::ExeOther;
+   QVERIFY((page.permissions()&shared)==0);
+   if(split)QVERIFY((QFile(request["data"].toString()).permissions()&shared)==0);
+   encrypt::ParsedPage parsed;QVERIFY(!encrypt::parsePage(bytes,parsed));QCOMPARE(parsed.split,split);
+   QByteArray container;
+   if(split){QCOMPARE(parsed.bin,QString("Abc123.bin"));QFile data(request["data"].toString());QVERIFY(data.open(QIODevice::ReadOnly));container=data.readAll();
+    QCOMPARE(QString::fromLatin1(QCryptographicHash::hash(container,QCryptographicHash::Sha256).toHex()),answer["data"].toObject()["sha256"].toString());}
+   else container=QByteArray::fromBase64(parsed.base64);
+   QByteArray plain;QVERIFY(!opened(container,key,"hunter2",&plain));QCOMPARE(plain,v.plain);
+   // A written output is never overwritten.
+   QProcess again;again.start(cli,{"--encrypt-job"});QVERIFY(again.waitForStarted());again.write(QJsonDocument(request).toJson());again.closeWriteChannel();QVERIFY(again.waitForFinished(60000));
+   QCOMPARE(again.exitStatus(),QProcess::NormalExit);QVERIFY(again.exitCode()!=0);
+   const auto refused=QJsonDocument::fromJson(again.readAllStandardOutput()).object();
+   QCOMPARE(refused["ok"],QJsonValue(false));QCOMPARE(refused["error"].toObject()["code"].toString(),QString("encrypt_failed"));
+   QFile kept(request["page"].toString());QVERIFY(kept.open(QIODevice::ReadOnly));QCOMPARE(kept.readAll(),bytes);
+  }
+ }
+};
+QTEST_GUILESS_MAIN(EncryptTest)
+#include "test_encrypt.moc"

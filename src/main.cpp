@@ -24,6 +24,9 @@
 #include "app/RecordingHelperBackend.h"
 #include "app/ScrollHelperBackend.h"
 #include "app/SetupService.h"
+#include "app/EncryptCheck.h"
+#include "core/DestinationCheck.h"
+#include "core/EncryptJob.h"
 #include "app/DestinationTestJournal.h"
 #include "app/StorageLocations.h"
 #include "ui/Appearance.h"
@@ -553,6 +556,35 @@ int main(int argc,char* argv[]) {
   operations.background([proton,method,destination,input,event](putgd::Error& error){return proton->setup(method,destination,input,error,event);},std::move(reply));
  };
  setup.setProviderSetup(providerSetup);
+ // Encrypted links (#2079): a passed Test also checks the destination serves an encrypted page as a
+ // page, on a worker; the record ties the result to the connection the test checked.
+ setup.setEncryptChecker([&operations,&providers,&destinationStatus,&settings,stateRoot](const QString& profileId,const QJsonObject& profile,std::shared_ptr<std::atomic_bool> cancelled,std::function<void(QJsonObject)> done){
+  auto provider=providers.find(profile["provider"].toString());
+  // The revision the request carries, as every other request does: workers refuse one without it.
+  const auto destination=putgd::encryptCheckDestination(profileId,profile,settings.revision());
+  if(!provider||!provider->capabilities(destination).encryptUnavailable.isEmpty()){
+   const auto reason=provider?provider->capabilities(destination).encryptUnavailable:QStringLiteral("This destination is unavailable.");
+   destinationStatus.encryptChecked(profileId,putgd::destinationcheck::fingerprint(profile),false,reason);
+   done({{"state","unsupported"},{"reason",reason}});return;
+  }
+  const auto fingerprint=putgd::destinationcheck::fingerprint(profile);
+  const auto revision=destinationStatus.credentialRevision(profileId);
+  const auto cli=QDir(QCoreApplication::applicationDirPath()).filePath("putgd-cli");
+  operations.background([provider,destination,stateRoot,cli,cancelled](putgd::Error&){return putgd::runEncryptCheck(*provider,destination,stateRoot+"/encrypt-check",cli,cancelled);},
+   [&destinationStatus,profileId,fingerprint,revision,done,cancelled](putgd::Error,QJsonObject encrypt){
+    // A cancelled check records nothing, and neither does one that ran while new keys were stored.
+    if(destinationStatus.credentialRevision(profileId)!=revision){done({{"state","untested"},{"reason",QStringLiteral("New credentials were stored during the check. Test again.")}});return;}
+    if(!(cancelled&&cancelled->load()))destinationStatus.encryptChecked(profileId,fingerprint,encrypt["state"]=="passed",encrypt["reason"].toString());
+    done(encrypt);
+   });
+ });
+ operations.setEncryptHooks([&destinationStatus](const QString& profileId,const QJsonObject& profile){return destinationStatus.encryptCheckFor(profileId,putgd::destinationcheck::fingerprint(profile));},
+  [&credentials](const QString& profileId,const QJsonObject& profile)->QString{
+   const auto reference=profile.value("encrypt").toObject().value("passphraseCredentials").toObject();
+   if(reference.isEmpty())return {};
+   const auto cached=credentials.cached(putgd::encryptPassphraseId(profileId),reference);
+   return cached?cached->values.value("passphrase"):QString();
+  });
  setup.setNamedCredentials([](const QJsonObject& profile,const QMap<QString,QString>& values,QStringList* names){return profile["provider"]==putgd::sftp::providerId?putgd::sftp::namedCredentials(profile,values,names):putgd::http::namedCredentials(profile,values,names);});
  setup.setCredentialBinding([](const QJsonObject& profile){const auto provider=profile["provider"].toString();return putgd::dav::isDav(provider)?putgd::dav::binding(profile["settings"].toObject(),provider):QString();});
  server.setSetupService(&setup);

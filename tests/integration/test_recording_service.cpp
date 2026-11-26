@@ -40,6 +40,40 @@ struct Harness {
 };
 }
 
+// Recordings upload to the test destination, with its Encrypted links setting and label as given.
+void uploadRecordings(Harness& h,const QJsonObject& encrypt,const QString& label={}){
+ auto doc=h.settings.snapshot().document;auto actions=doc["actions"].toObject();auto route=actions["region"].toObject();route["shortcut"]="";actions["record"]=route;doc["actions"]=actions;
+ auto profiles=doc["profiles"].toArray();auto profile=profiles[0].toObject();if(!encrypt.isEmpty())profile["encrypt"]=encrypt;if(!label.isEmpty())profile["label"]=label;profiles[0]=profile;doc["profiles"]=profiles;
+ if(!h.settings.save(doc,h.settings.revision()))qFatal("configuration rejected");
+}
+// The test destination can encrypt and passed its check, with this build's putgd-cli doing it.
+void encryptable(Harness& h){
+ h.provider->encryptable=true;h.operations->setEncryptHelperForTesting(QStringLiteral(PUTGD_CLI_PATH));
+ h.operations->setEncryptHooks([](const QString&,const QJsonObject&){return QJsonObject{{"state","passed"}};},[](const QString&,const QJsonObject&){return QString();});
+}
+// A recording stopped and in review at revision 1.
+QString reviewing(Harness& h){
+ const auto id=h.prepareReady();if(id.isEmpty()||h.rec("start",{{"id",id}}).error)return {};
+ return h.rec("stop",{{"id",id}}).result["state"]=="reviewing"?id:QString();
+}
+// The recording's operation once its upload has finished (recording.upload answers when the export starts).
+// False when it hasn't finished in time; callers QVERIFY it.
+bool settled(Harness& h,const QString& id,Operation& op){
+ HistoryStore journal(h.operations->databasePath());
+ const bool done=putgd::test::waitFor([&]{const auto now=journal.operation(id);return QStringList{"completed","partial","failed","cancelled"}.contains(now.stateName())&&!now.items.isEmpty()&&h.operations->diagnostics()["activeOperations"].toInt()==0;},20000);
+ op=journal.operation(id);return done;
+}
+// The window's own Upload or Try again, as its buttons send them: no encrypt of their own.
+void windowUpload(Harness& h,const QString& id,const char* event="uploadRequested"){h.backend->sink({{"id",id},{"event",event},{"revision",1}});}
+// The window's Upload was refused before any export: the window is raised with the reason
+// (containing `reason`), and offers no Try again, since there is no failed export to retry.
+bool refusedBeforeExport(Harness& h,const QString& id,const QString& reason){
+ if(!putgd::test::waitFor([&]{return h.backend->log.contains("raise");}))return false;
+ const auto raised=h.backend->lastControlParams;
+ return raised["error"].toString().contains(reason)&&!raised["retry"].toBool(true)&&h.backend->exports==0&&h.provider->uploads.load()==0&&h.state(id)=="reviewing";
+}
+// No review command set the window's Encrypt toggle.
+bool noToggleCommands(const Harness& h){for(const auto& call:h.backend->reviewCalls)if(call["action"]=="encrypt")return false;return true;}
 class RecordingServiceContract:public QObject {
  Q_OBJECT
 private slots:
@@ -504,6 +538,114 @@ private slots:
   if(command=="upload"){PUTGD_TRY_COMPARE(journal.operation(id).stateName(),QString("completed"));QCOMPARE(h.rec("inspect",{{"id",id}}).error.code,QString("recording_unavailable"));}
   else {PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));QCOMPARE(h.rec("inspect",{{"id",id}}).result["edit"].toObject(),before["edit"].toObject());QVERIFY(!h.rec("cancel",{{"id",id}}).error);}
   QCOMPARE(h.provider->uploads.load(),0);
+ }
+ // #2079: recording.upload's encrypt decides that upload alone. The review's Encrypt toggle is never
+ // driven by it: no review command is sent, and an upload started later from the window still
+ // follows the toggle as the user set it.
+ void uploadRequestsEncryptWithoutTouchingTheToggle_data(){
+  QTest::addColumn<bool>("toggle");QTest::addColumn<bool>("request");
+  QTest::newRow("encrypt with the toggle off")<<false<<true;QTest::newRow("plain with the toggle on")<<true<<false;
+ }
+ void uploadRequestsEncryptWithoutTouchingTheToggle(){
+  QFETCH(bool,toggle);QFETCH(bool,request);
+  Harness h(false);uploadRecordings(h,QJsonObject{{"mode",toggle?"on":"off"}});encryptable(h);PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=reviewing(h);QVERIFY(!id.isEmpty());
+  // The user set the toggle (the window's encrypt event, as a click sends).
+  h.backend->sink({{"id",id},{"event","encrypt"},{"on",toggle}});
+  const auto uploaded=h.rec("upload",{{"id",id},{"revision",1},{"encrypt",request}});QVERIFY2(!uploaded.error,qPrintable(uploaded.error.message));
+  QVERIFY(noToggleCommands(h));
+  Operation op;QVERIFY(settled(h,id,op));QCOMPARE(op.stateName(),QString("completed"));
+  const auto item=op.items.value(0);QCOMPARE(item.uploadStatus,QString("uploaded"));QCOMPARE(item.encrypted(),request);QCOMPARE(h.provider->uploads.load(),1);
+ }
+ // Asked for where it can't happen, or at a stale revision, it is refused before anything is
+ // exported or sent, and it leaves the toggle as it was: a later upload from the window follows it.
+ void refusedEncryptRequestsChangeNothing_data(){
+  QTest::addColumn<bool>("canEncrypt");QTest::addColumn<int>("revision");QTest::addColumn<QString>("code");
+  QTest::newRow("destination can't encrypt")<<false<<1<<"encrypt_unavailable";QTest::newRow("stale revision")<<true<<7<<"recording_stale";
+ }
+ void refusedEncryptRequestsChangeNothing(){
+  QFETCH(bool,canEncrypt);QFETCH(int,revision);QFETCH(QString,code);
+  Harness h(false);uploadRecordings(h,QJsonObject{{"mode","off"}});if(canEncrypt)encryptable(h);PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=reviewing(h);QVERIFY(!id.isEmpty());
+  QCOMPARE(h.rec("upload",{{"id",id},{"revision",revision},{"encrypt",true}}).error.code,code);
+  QCOMPARE(h.backend->exports,0);QCOMPARE(h.state(id),QString("reviewing"));QVERIFY(noToggleCommands(h));
+  // The window's own Upload (no encrypt) follows the toggle, still off: a plain upload.
+  QVERIFY2(!h.rec("upload",{{"id",id},{"revision",1}}).error,"plain upload");
+  Operation op;QVERIFY(settled(h,id,op));QCOMPARE(op.stateName(),QString("completed"));
+  const auto item=op.items.value(0);QCOMPARE(item.uploadStatus,QString("uploaded"));QVERIFY(!item.encrypted());QCOMPARE(h.provider->uploads.load(),1);
+ }
+ // Encrypt on but unavailable (the destination type can't encrypt), a refused plain request, then the
+ // window's Upload: it still asks for encryption, as the window shows, so nothing goes out in plaintext.
+ void refusedPlainRequestLeavesAnUnavailableToggleOn(){
+  Harness h(false);uploadRecordings(h,QJsonObject{{"mode","on"}});PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=reviewing(h);QVERIFY(!id.isEmpty());
+  QCOMPARE(h.rec("upload",{{"id",id},{"revision",7},{"encrypt",false}}).error.code,QString("recording_stale"));QVERIFY(noToggleCommands(h));
+  windowUpload(h,id);QVERIFY(refusedBeforeExport(h,id,"doesn't support encrypted links"));
+ }
+ // A toggle change the window sends while an export runs is kept: the export in flight keeps the
+ // choice it was admitted with, and the window's next Upload uses the toggle as the window shows it.
+ void toggleChangedDuringAnExportAppliesToTheNextUpload_data(){QTest::addColumn<bool>("on");QTest::newRow("turned on")<<true;QTest::newRow("turned off")<<false;}
+ void toggleChangedDuringAnExportAppliesToTheNextUpload(){
+  QFETCH(bool,on);
+  Harness h(false);uploadRecordings(h,QJsonObject{{"mode",on?"off":"on"}});encryptable(h);PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=reviewing(h);QVERIFY(!id.isEmpty());
+  h.backend->deferExports=true;h.backend->failExport=true;
+  windowUpload(h,id);PUTGD_TRY_COMPARE(h.state(id),QString("exporting"));
+  h.backend->sink({{"id",id},{"event","encrypt"},{"on",on}});
+  PUTGD_TRY_COMPARE(h.backend->pendingExports.size(),1);h.backend->pendingExports.takeFirst()();PUTGD_TRY_COMPARE(h.state(id),QString("reviewing"));
+  h.backend->deferExports=false;h.backend->failExport=false;
+  windowUpload(h,id);
+  Operation op;QVERIFY(settled(h,id,op));QCOMPARE(op.stateName(),QString("completed"));QCOMPARE(op.items.value(0).encrypted(),on);QCOMPARE(h.provider->uploads.load(),1);
+ }
+ // encrypt true with a saved passphrase that isn't loaded is refused before the export, as the upload
+ // would refuse it after; nothing is exported.
+ void encryptRequestWithALockedPassphraseExportsNothing(){
+  Harness h(false);uploadRecordings(h,QJsonObject{{"mode","passphrase"},{"passphraseCredentials",QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}}});encryptable(h);PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=reviewing(h);QVERIFY(!id.isEmpty());
+  QCOMPARE(h.rec("upload",{{"id",id},{"revision",1},{"encrypt",true}}).error.code,QString("encrypt_passphrase_locked"));
+  QCOMPARE(h.backend->exports,0);QCOMPARE(h.state(id),QString("reviewing"));
+  // The window's Upload, with the toggle on (the destination's setting), is refused the same way.
+  windowUpload(h,id);QVERIFY(refusedBeforeExport(h,id,"passphrase isn't loaded"));
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+ }
+ // The export in flight keeps the choice it was admitted with: Encrypt turned on during a plain
+ // upload's export doesn't encrypt that upload.
+ void inFlightUploadKeepsItsAdmittedChoice(){
+  Harness h(false);uploadRecordings(h,QJsonObject{{"mode","off"}});encryptable(h);PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=reviewing(h);QVERIFY(!id.isEmpty());
+  h.backend->deferExports=true;windowUpload(h,id);PUTGD_TRY_COMPARE(h.state(id),QString("exporting"));
+  h.backend->sink({{"id",id},{"event","encrypt"},{"on",true}});
+  PUTGD_TRY_COMPARE(h.backend->pendingExports.size(),1);h.backend->pendingExports.takeFirst()();
+  Operation op;QVERIFY(settled(h,id,op));QCOMPARE(op.stateName(),QString("completed"));QVERIFY(!op.items.value(0).encrypted());QCOMPARE(h.provider->uploads.load(),1);
+ }
+ // Try again keeps the choice the failed upload was admitted with, from the toggle too: encrypted
+ // by the toggle, failed, toggle turned off, Try again uploads encrypted.
+ void retryKeepsTheTogglesChoice(){
+  Harness h(false);uploadRecordings(h,QJsonObject{{"mode","on"}});encryptable(h);PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=reviewing(h);QVERIFY(!id.isEmpty());
+  h.backend->failExport=true;windowUpload(h,id);
+  PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["lastExport"].toObject()["status"].toString(),QString("failed"));QCOMPARE(h.state(id),QString("reviewing"));
+  h.backend->sink({{"id",id},{"event","encrypt"},{"on",false}});
+  h.backend->failExport=false;windowUpload(h,id,"retryExportRequested");
+  Operation op;QVERIFY(settled(h,id,op));QCOMPARE(op.stateName(),QString("completed"));QVERIFY(op.items.value(0).encrypted());QCOMPARE(h.provider->uploads.load(),1);
+ }
+ // Try again after a failed recording.upload with encrypt true uploads encrypted, the toggle off.
+ void retryOfAnEncryptRequestStaysEncrypted(){
+  Harness h(false);uploadRecordings(h,QJsonObject{{"mode","off"}});encryptable(h);PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=reviewing(h);QVERIFY(!id.isEmpty());
+  h.backend->failExport=true;QVERIFY(!h.rec("upload",{{"id",id},{"revision",1},{"encrypt",true}}).error);
+  PUTGD_TRY_COMPARE(h.rec("inspect",{{"id",id}}).result["lastExport"].toObject()["status"].toString(),QString("failed"));QCOMPARE(h.state(id),QString("reviewing"));
+  h.backend->failExport=false;windowUpload(h,id,"retryExportRequested");
+  Operation op;QVERIFY(settled(h,id,op));QCOMPARE(op.stateName(),QString("completed"));QVERIFY(op.items.value(0).encrypted());QCOMPARE(h.provider->uploads.load(),1);QVERIFY(noToggleCommands(h));
+ }
+ // The review's Encrypt toggle comes with any upload route, even to a destination called "local".
+ void encryptToggleFollowsTheRouteNotTheLabel(){
+  Harness h(false);uploadRecordings(h,{},QStringLiteral("local"));PUTGD_TRY_VERIFY(h.operations->ready());
+  const auto id=h.prepareReady();QVERIFY(!id.isEmpty());
+  QCOMPARE(h.backend->lastReviewOptions["destination"].toString(),QString("local"));QVERIFY(h.backend->lastReviewOptions.contains("encrypt"));
+  QVERIFY(!h.rec("cancel",{{"id",id}}).error);
+  Harness local;PUTGD_TRY_VERIFY(local.operations->ready());const auto saved=local.prepareReady();QVERIFY(!saved.isEmpty());
+  QVERIFY(!local.backend->lastReviewOptions.contains("encrypt"));QVERIFY(!local.rec("cancel",{{"id",saved}}).error);
  }
  void lateStopReplyCannotChangeACancelledSessionsSuccessor(){
   Harness h;PUTGD_TRY_VERIFY(h.operations->ready());const auto id=h.prepareReady();QVERIFY(!id.isEmpty());QVERIFY(!h.rec("start",{{"id",id}}).error);h.backend->deferStop=true;

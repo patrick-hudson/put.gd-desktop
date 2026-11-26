@@ -1,14 +1,14 @@
 #include <cstring>
 #include "UpdateCheck.h"
 #include "UpdateInstall.h"
-#include "app/LocalServer.h"
+#include "EncryptCommands.h"
+#include "SessionRequest.h"
+#include "encrypt/EncryptJobMain.h"
 #include "core/BuildInfo.h"
 #include <QCoreApplication>
 #include <QCommandLineParser>
-#include <QDeadlineTimer>
 #include <QDir>
 #include <QJsonDocument>
-#include <QLocalSocket>
 #include <QUuid>
 #include <cstdio>
 int main(int argc,char** argv) {
@@ -17,6 +17,9 @@ int main(int argc,char** argv) {
  }
  if(putgd::isInstallMode(argc,argv))return putgd::runInstallMode(argc,argv);
  if(putgd::isUpdateMode(argc,argv))return putgd::runUpdateMode(argc,argv);
+ // Encrypted links (#2079): the resident's encrypting helper, and open, upload and the Test probe.
+ if(putgd::encrypt::isEncryptJob(argc,argv))return putgd::encrypt::runEncryptJob();
+ if(putgd::cli::isEncryptCommand(argc,argv))return putgd::cli::runEncryptCommand(argc,argv);
  QCoreApplication app(argc,argv);QCoreApplication::setOrganizationName("putgd");QCoreApplication::setApplicationName("putgd-cli");QCoreApplication::setApplicationVersion(putgd::buildVersion());
  QCommandLineParser parser;parser.addOption({"params-stdin","Read the JSON parameter object from standard input"});parser.setApplicationDescription("JSON client for the resident put.gd session");parser.addHelpOption();parser.addVersionOption();parser.addOption({"socket","Session socket path","path"});parser.addOption({"request-id","Correlation ID","id"});
  // diagnostics.bundle options (#74); the same fields as its JSON parameters.
@@ -25,10 +28,9 @@ int main(int argc,char** argv) {
  parser.addOption({"upload","diagnostics.bundle: also upload the saved package to a working destination and return its link"});parser.addOption({"profile","diagnostics.bundle --upload: the destination (default: the capture destination)","id"});
  parser.addOption({"copy-link","diagnostics.bundle --upload: also copy the link to the clipboard"});parser.addPositionalArgument("method","Versioned session method");parser.addPositionalArgument("params","JSON parameter object (default {})","[params]");parser.process(app);
  const auto args=parser.positionalArguments();const auto id=parser.isSet("request-id")?parser.value("request-id"):QUuid::createUuid().toString(QUuid::WithoutBraces);
- auto output=[](const QJsonObject& result) {const auto bytes=QJsonDocument(result).toJson(QJsonDocument::Compact)+'\n';std::fwrite(bytes.constData(),1,bytes.size(),stdout);};
- auto error=[&](QString code,QString message) {output(putgd::LocalServer::response(id,{code,message,{}},{}));return 1;};
+ auto error=[&](QString code,QString message) {return putgd::cli::fail(id,code,message);};
  if(args.size()<1||args.size()>2)return error("invalid_request","Supply a method and optional JSON parameter object");
- if(args[0]=="setup.storeCredentials"||args[0]=="setup.storeSharePassword")return error("credentials_require_settings","Enter credentials in Destinations.");
+ if(args[0]=="setup.storeCredentials"||args[0]=="setup.storeSharePassword"||args[0]=="setup.storeEncryptPassphrase")return error("credentials_require_settings","Enter credentials in Destinations.");
  if(args[0]=="setup.revealCredentialSecret")return error("credentials_require_settings","View credentials in Destinations.");
  // The error log's entries come from put.gd itself; its own windows add theirs (#1753).
  if(args[0]=="errors.record")return error("invalid_request","errors.record is for put.gd's own windows; read the log with errors.list.");
@@ -58,11 +60,5 @@ int main(int argc,char** argv) {
  if(args[0]=="settings.importUploader"&&params.object()["path"].isString()&&!params.object()["path"].toString().isEmpty()) {
   auto object=params.object();object["path"]=QDir::cleanPath(QDir::current().absoluteFilePath(object["path"].toString()));params=QJsonDocument(object);
  }
- const auto path=parser.isSet("socket")?parser.value("socket"):putgd::LocalServer::defaultSocketPath();QLocalSocket socket;socket.connectToServer(path);
- if(!socket.waitForConnected(3000))return error("session_unavailable","put.gd isn't running. Start put.gd in this user session first.");
- QJsonObject request{{"schemaVersion",1},{"requestId",id},{"session",path},{"method",args[0]},{"params",params.object()}};
- socket.write(QJsonDocument(request).toJson(QJsonDocument::Compact)+'\n');if(!socket.waitForBytesWritten(3000))return error("transport_failed","Couldn't send the request to put.gd.");
- QDeadlineTimer deadline(putgd::LocalServer::replyDeadlineMs(args[0]));
- QByteArray reply;while(!reply.contains('\n')) {if(!socket.waitForReadyRead(int(deadline.remainingTime())))return error("transport_failed","put.gd didn't return a complete response.");reply+=socket.readAll();if(reply.size()>16*1024*1024)return error("response_too_large","Response from put.gd exceeds 16 MB.");}
- auto response=QJsonDocument::fromJson(reply,&parseError);if(parseError.error!=QJsonParseError::NoError||!response.isObject()||response.object()["schemaVersion"]!=1||response.object()["requestId"]!=id||!response.object()["ok"].isBool())return error("invalid_response","Response from put.gd was invalid or didn't match the request.");output(response.object());return response.object()["ok"].toBool()?0:1;
+ return putgd::cli::sendSessionRequest(parser.value("socket"),id,args[0],params.object());
 }

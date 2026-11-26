@@ -7,11 +7,14 @@
 #include <QImage>
 #include <QImageWriter>
 #include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QRandomGenerator>
 #include <QSemaphore>
 #include <QTemporaryDir>
 #include <QScopeGuard>
 #include <QTest>
+#include "fixtures/Waits.h"
 #include <thread>
 #include <mutex>
 #include <atomic>
@@ -136,6 +139,35 @@ private slots:
   QCOMPARE(QSize(result.width,result.height),expected);QCOMPARE(QImage::fromData(result.png,"PNG").size(),expected);
  }
 
+ // #2079: the Encrypt toggle rides the bootstrap frame; the window shows it, the encrypt command flips
+ // it as a click does, and each change reaches the resident's encrypt handler.
+ void encryptToggleStartsShownAndReportsChanges(){
+  QTemporaryDir root;const auto staging=root.filePath("editing");
+  auto session=std::make_shared<EditorSession>();EditorResult result;std::atomic_int changes{0};std::atomic_bool last{false};
+  session->setEncryptHandler([&](bool on){last=on;++changes;});
+  std::thread worker([&]{auto image=noise({160,90},7);result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).withLinks(true).withEncrypt({{"available",true},{"on",false}}).run(image,"Upload to synthetic destination",64*1024*1024,session);});
+  auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
+  QVERIFY(waitPhase(*session,"editing"));
+  auto state=ask(*session,"inspect").result;QVERIFY2(state["view"].toObject()["encrypt"].toObject()["shown"].toBool()||state["encrypt"].toObject()["shown"].toBool(),qPrintable(QJsonDocument(state).toJson()));
+  const auto turned=ask(*session,"encrypt",{{"on",true}});QVERIFY2(!turned.error,qPrintable(turned.error.message));QVERIFY(turned.result["on"].toBool());
+  PUTGD_TRY_COMPARE(changes.load(),1);QVERIFY(last.load());
+  QVERIFY(!ask(*session,"submit").error);worker.join();QVERIFY2(!result.error,qPrintable(result.error.code+": "+result.error.message));
+ }
+ // A destination that can't encrypt: the toggle shows its reason and refuses On.
+ void encryptToggleRefusesOnWhereUnavailable(){
+  QTemporaryDir root;const auto staging=root.filePath("editing");
+  auto session=std::make_shared<EditorSession>();EditorResult result;
+  std::thread worker([&]{auto image=noise({160,90},8);result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).withEncrypt({{"available",false},{"on",false},{"reason","Select Test upload and link for this destination first."}}).run(image,"Upload to synthetic destination",64*1024*1024,session);});
+  auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
+  QVERIFY(waitPhase(*session,"editing"));
+  const auto refused=ask(*session,"encrypt",{{"on",true}});
+  QCOMPARE(refused.error.code,QString("encrypt_unavailable"));QCOMPARE(refused.error.message,QString("Select Test upload and link for this destination first."));
+  const auto state=ask(*session,"inspect").result;const auto encrypt=state["view"].toObject().contains("encrypt")?state["view"].toObject()["encrypt"].toObject():state["encrypt"].toObject();
+  QVERIFY2(!encrypt["on"].toBool()&&!encrypt["available"].toBool(),qPrintable(QJsonDocument(state).toJson()));QCOMPARE(encrypt["reason"].toString(),QString("Select Test upload and link for this destination first."));
+  // Off where it is already off succeeds: automation can make sure encrypting is off.
+  const auto off=ask(*session,"encrypt",{{"on",false}});QVERIFY2(!off.error,qPrintable(off.error.code+": "+off.error.message));QVERIFY(!off.result["on"].toBool());
+  QVERIFY(!ask(*session,"cancel").error);
+ }
  // #1618: the saved Quick redact words and patterns ride the bootstrap frame, only when
  // not empty, and the editor accepts them (its exact key count allows both). redactText's own
  // checks answer at once, before any recognition: terms and patterns need the list category.

@@ -36,6 +36,15 @@ public:
         // Saves a change the recording bar made to a remembered preference
         // (#1364: the microphone toggle); optional.
         std::function<void(const QJsonObject& preferences)> remember;
+        // #2079: the review's Encrypt toggle changed for this operation; optional.
+        std::function<void(const QString& operationId, bool on)> encrypt;
+        // #2079: why this operation can't be encrypted now (encrypt_unavailable, or
+        // encrypt_passphrase_locked), or no error when it can; an upload request that asks for
+        // encryption is refused with it before anything is exported. Optional.
+        std::function<Error(const Operation&)> encryptRefusal;
+        // #2079: the Encrypt choice the review's toggle holds now (as the window shows it); an
+        // upload started without its own encrypt is admitted with it. Optional.
+        std::function<bool(const Operation&)> encryptChoice;
     };
     RecordingService(QString stagingRoot, Host, QObject* parent = nullptr);
     ~RecordingService() override;
@@ -51,6 +60,9 @@ public:
     QJsonObject capabilities() const;
     bool active() const { return session_.has_value(); }
     QString activeId() const { return session_ ? session_->op.id : QString{}; }
+    // #2079: where the session is, for the Encrypt toggle: its window is open, or an export runs.
+    bool reviewing() const { return session_ && session_->state == RecordingState::Reviewing; }
+    bool exporting() const { return session_ && session_->state == RecordingState::Exporting; }
     // capabilities | windows | prepare | start | pause | resume | stop | cancel |
     // inspect | select | raise | overlay | edit | preview | saveCopy | upload
     void command(const QString& command, const QJsonObject& params, JsonReply);

@@ -25,7 +25,7 @@ std::optional<bool> kdeBool(const QString& value) {
 }
 bool readsScreen(const QString& command) {
  // "edit" is Capture region & edit; the Edit image submenu's clipboard and file rows read no screen.
- return QStringList{"region", "repeat", "window", "monitor", "desktop", "scroll", "edit", "record", "text"}.contains(command);
+ return QStringList{"region", "region-encrypted", "repeat", "window", "monitor", "desktop", "scroll", "edit", "record", "text"}.contains(command);
 }
 Fade fade(const FadeInputs& in) {
  const auto names = desktops(in.desktop);

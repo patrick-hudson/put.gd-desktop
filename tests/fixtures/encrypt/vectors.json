@@ -1,0 +1,141 @@
+{
+    "about": "Encrypted link format v1 test vectors (#2079). tests/unit/test_encrypt.cpp checks C++ encrypts each to containerSha256 and opens it; tests/encrypt/browser_vectors.py checks Firefox and Chromium do the same. Pattern bytes: (i*31+7) % 251. Large containers are kept by hash only. The plaintexts and the PGDSEAL1 containers are v1 format data and keep the feature's original name.",
+    "schemaVersion": 1,
+    "vectors": [
+        {
+            "container": "UEdEU0VBTDEBAAAAABAAAAAAAABJwJZuGNlhHq5iEXsut6MxHViQmQdB3JHgIRNgI7kjn29yXeugYIcAAAAAAFl+97NOYuCXBrukXPCqh+4Fgt5tK8TQUnDeX2jin28j/hkirAe5ipC9OygqM4MEzp1ghxnwfeyTQ73+lLftP3mxfTM+0chZeuHQLyseN8EhPpuCXpzLFP6kPJCCrp49EgCmesjV",
+            "containerSha256": "39ba1ba02b1d844cd6e3d3798b3ff929f80d62e28beb3934126bdad4ab44282d",
+            "content": {
+                "text": ""
+            },
+            "id": "empty",
+            "iterations": 0,
+            "link": "ff12b8cd7570bef30c80a5772f5cf3d77ffcecc908ef574ef45681defb8381aa",
+            "name": "empty.txt",
+            "noncePrefix": "6f725deba06087",
+            "passphrase": "",
+            "salt": "49c0966e18d9611eae62117b2eb7a3311d5890990741dc91e021136023b9239f",
+            "type": "text/plain"
+        },
+        {
+            "container": "UEdEU0VBTDEBAAAAABAAAAAAAADVWs+SLE7ak83utP8p3m69JAz4/fYbDtRKQ3JinjmJmnUghDr5l6gAAAAAAKwnx7xS2QQqKJycwSHBhn/hTuF+4LtQ10ncRF4Cvye/o/sM/Drh/8q76l+ZLHzSFNqS0XT2PLmWUx68ubDrIUfXuoDC2K3Dltb1+p5CG30igkS2eDWsMDUbBeO2W5MI4By/oYi9xQkqdOxNMCJTaWHm+SrM/dqa37Mx",
+            "containerSha256": "139abb112e85d06841e0d2003d7bc6a9620a088d7fab4a08f83e73bf73c74e78",
+            "content": {
+                "text": "hello, sealed world\n"
+            },
+            "id": "hello",
+            "iterations": 0,
+            "link": "e275436fa35132c15f8312f46ae97f10f0fc18ce4594268348fc247f3a8b9530",
+            "name": "hello.txt",
+            "noncePrefix": "7520843af997a8",
+            "passphrase": "",
+            "salt": "d55acf922c4eda93cdeeb4ff29de6ebd240cf8fdf61b0ed44a4372629e39899a",
+            "type": "text/plain"
+        },
+        {
+            "container": "UEdEU0VBTDEBAAAAABAAAAAAAACoemtg1gjPyxEtRgDR5uL1M6FIGR26kz/YFt+pu0kp/UmpTlq6LxoAAAAAAPFAYi7o5vJVQQAAUHUryaRZG3w2UQd9RC/y/lhnTkrjVnj18/xxVIu9Qmnjz2le7VtgiU8/bk8tbe6wu5HpoJZ1JkmYyGsxQS2oyITnURANHSvSwOU9cjybxYo/mfk5HjP5DKtScFtaTkMeyJmM6bmywFMSS2izltEaViuqKVBTh85vM0zdkzmtp529mKcHHXvPFOq1M6gz0LtiejCVhQKm0VyFgqwZdts=",
+            "containerSha256": "1024ff282a9ce075a6d43420e75b4d29cb1d39b2803ca09050e507a9756e8b2c",
+            "content": {
+                "hex": "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4890000000d4944415478da63f8cfc0f01f0005000201a0f3a1a50000000049454e44ae426082"
+            },
+            "id": "png",
+            "iterations": 0,
+            "link": "35d853c4a59db1366d4792b8800dcf4450b0a83bc91334f48e4cdf94a8a2d2a2",
+            "name": "dot.png",
+            "noncePrefix": "49a94e5aba2f1a",
+            "passphrase": "",
+            "salt": "a87a6b60d608cfcb112d4600d1e6e2f533a148191dba933fd816dfa9bb4929fd",
+            "type": "image/png"
+        },
+        {
+            "container": "",
+            "containerSha256": "dcdd6d1dce2efc181b60a9ca37a043bdbd128a059a62a60bed463756e501f272",
+            "content": {
+                "pattern": 1048500
+            },
+            "id": "boundary",
+            "iterations": 0,
+            "link": "2d7db535fd7f47b7ab8cdcf15c60d86955065c2daa139e059a56dd2ea6dcf587",
+            "name": "boundary.bin",
+            "noncePrefix": "abc1961a62535a",
+            "passphrase": "",
+            "salt": "7a84c45db7904ee64d27930edf6487c9a67e3c644fe4920f511041b319fe0305",
+            "type": "application/octet-stream"
+        },
+        {
+            "container": "",
+            "containerSha256": "97274bc063489548e0832e042cf545bd07e253a01efc1be493ca45cfdc2624ab",
+            "content": {
+                "pattern": 2098386
+            },
+            "id": "multi",
+            "iterations": 0,
+            "link": "9f0565a0e5cb7d6abd50b1dc526325ccf36fef6ffa434969233984a84f51da5f",
+            "name": "pattern.bin",
+            "noncePrefix": "c59f8385313d8c",
+            "passphrase": "",
+            "salt": "a2a9b4e5ba280cd88a430b381514fed3f8b40b147bcc57252740afa77fc28eb9",
+            "type": "application/octet-stream"
+        },
+        {
+            "container": "UEdEU0VBTDEBAQAAABAAAAAJJ8BTj7cZnUULKvAdbpQUZNDfANkafwftDO+fbDlhr/FTOOl6VBI6iS4AAAAAAM/ds8oTooCJdLTe2/4ah0zXdAJSMIQkdZW5NGAF8o4Oin0AebIIqAoCcUHelUjMwzEimF0CCnlgegiJNJuCMQtgJGBEfLFJgbz7MWIHv19RzFrDHn3sA5rEpnXZK4vTyRt+lHjH69JZX5fnptPvI52H4nbPUoVf3PDEwuH3Eg==",
+            "containerSha256": "458e1106ebe1f9b404f67155be405cee259c35ade587110bc5a4a00863523fbb",
+            "content": {
+                "text": "opened with a passphrase\n"
+            },
+            "id": "passphrase",
+            "iterations": 600000,
+            "link": "ce8ad2bb0d0604b468b31061488f127932c0c2fb845e0af8e95b1caaad31b692",
+            "name": "note.txt",
+            "noncePrefix": "e97a54123a892e",
+            "passphrase": "été ☃ battery",
+            "salt": "538fb7199d450b2af01d6e941464d0df00d91a7f07ed0cef9f6c3961aff15338",
+            "type": "text/plain"
+        },
+        {
+            "container": "UEdEU0VBTDEBAAAAABAAAAAAAAB8KcQZNJWq9f5n96FcjzTXyIEQN2T0RI6wyTeGW5Gaz3zUamVgm4IAAAAAAKvCTVx94WUDp3wrkSfwEuop/o6Ycdg/DfetDcagJOL5fnP62ZN8GW/e9ZfdfnnvtNs+7zp16CONw/jqXsDNLJcxjZ7tKppahCvRtRAUFyr/yDauBpzFgBMoi3QSSjY5GKq+rnUJgA67M4EkXOXEYoB6o4ybnQJB1M1w3CFa1lwKzk5+8dw4SJlGLXH4b35imYR31Ybe6K034VMWtu36XSDlQSDr7PESnyJtKDMFU5mo",
+            "containerSha256": "85f6227f60c28f007b7c2083bbe2b99374e3c83da13379ab27efb2594a17dd4f",
+            "content": {
+                "text": "<!doctype html><img src=\"/leak-html\"><script>fetch('/leak-script')</script>"
+            },
+            "id": "html",
+            "iterations": 0,
+            "link": "e3b39eff90ea8164246c500a9b26aa1f76304841e10d272aaa903529e9ca6897",
+            "name": "page.html",
+            "noncePrefix": "7cd46a65609b82",
+            "passphrase": "",
+            "salt": "7c29c4193495aaf5fe67f7a15c8f34d7c881103764f4448eb0c937865b919acf",
+            "type": "text/html"
+        },
+        {
+            "container": "UEdEU0VBTDEBAAAAABAAAAAAAABTy0c2ZoRdzZijr9YlMLhFPLB6H9sSRSir8HJu89gpODEDTExL3+YAAAAAAJ710DaCqK3CuGY21dpuDH9dfv3aNFTXRr/F8kEOaX7sXkcK+t9tUWDEIMgZwJVDrCZPpAnpDp8UC0vCHXgrxJOPhVmkdceElXQFbesMquH1d6vGFNA3YnXRjlO/MY6B3Z5+7055MG5nh/dHrZJ4SyEFaGGctiuG6BkjmI1/lRewke2xZnpMEYjkBk4/cY0AsPldFKLrIKBeVgnOqck4znuaKV31buDfa0y+zG/Nhj1kSBOQIod5/3a+wOcqE9H+nPj41Z7Qv9gYNstCUfVfpuFvDreY3wO20kEsPc9k8+M/gOobnwTmWqxKXAL2ClrfzIbtKSMmgKZu6ZhZf0F1efpMvlKcqCZxiN6Qbxs=",
+            "containerSha256": "7f05d10ce7f8d516e41147cb65e2edd7ab5b49d797ae9e3a9ed0ed44b2c7a822",
+            "content": {
+                "text": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"10\"><image href=\"/leak-svg\" width=\"10\" height=\"10\"/><rect width=\"10\" height=\"10\" fill=\"#e0b44a\"/></svg>"
+            },
+            "id": "svg",
+            "iterations": 0,
+            "link": "c713b35f3b7fa942abf367c6a3668b07c273682ad4bde4d7ed99d7b22bb432ae",
+            "name": "shape.svg",
+            "noncePrefix": "31034c4c4bdfe6",
+            "passphrase": "",
+            "salt": "53cb473666845dcd98a3afd62530b8453cb07a1fdb124528abf0726ef3d82938",
+            "type": "image/svg+xml"
+        },
+        {
+            "container": "UEdEU0VBTDEBAAAAABAAAAAAAAADa1R8loijOZDLopPqh3yF/iPaaYootZrv7DwsRokmQu+87nchyoEAAAAAAJnbfqrab+ZMLDuTno2a6/GmFds8T4HIhSKB9qlyVw85lZVDKp4CAkBDDzKkU2rir3YgnrQKW6hWxG0DrGZ9Z2AaKJtAHQgAFzvzWsFAoelvXhrP7xA5LHkYoGnN5FskiRVPGe20yQB8oR92ecQiaVO+dEDa9ZBpptDdmrKuPd7g1PzqfA==",
+            "containerSha256": "6365a04e72946c504ad8eb49a3c9e7274795286fc5e7f3693150571fbb18e773",
+            "content": {
+                "text": "put.gd sealed link test\n"
+            },
+            "id": "probe",
+            "iterations": 0,
+            "link": "b88f6e3d577beb7ae6550951a8c4970711c41bc0f48cbc52ada4f44856b24aa9",
+            "name": "put.gd-test.txt",
+            "noncePrefix": "efbcee7721ca81",
+            "passphrase": "",
+            "salt": "036b547c9688a33990cba293ea877c85fe23da698a28b59aefec3c2c46892642",
+            "type": "text/plain"
+        }
+    ]
+}

@@ -112,7 +112,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  std::unique_ptr<editor::EditDocument> document;std::unique_ptr<EditorWindow> window;
  // #1893: the look saved in Settings, and whether this document starts with it (a new capture).
  CaptureStyle savedStyle;bool hasStyle=false,styleStart=false;qint64 styleMaxPixels=0;
- Error submissionError;QString nonce,destination;bool links=false;QStringList recentColors,textLanguages,redactTerms,redactPatterns;bool allCores=false,bootstrapped=false,active=false,terminal=false;qint64 maxPixels=0,outputBytes=0;
+ Error submissionError;QString nonce,destination;bool links=false;QJsonObject encrypt;QStringList recentColors,textLanguages,redactTerms,redactPatterns;bool allCores=false,bootstrapped=false,active=false,terminal=false;qint64 maxPixels=0,outputBytes=0;
  // #1804: check mode. The capture is recognized and matched before any window shows;
  // nothing found ends the session at once, anything else asks (or, for an agent, waits for operation.decide).
  bool checkMode=false,checkPrompt=false,checkRedact=false,checking=false,deciding=false;QStringList checkCategories,checkCover;QString checkFile;
@@ -355,6 +355,9 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    if(action=="cancel")window->fileDialog().cancel();
    return window->fileDialog().state();
   }
+  // #2079: the Encrypt toggle beside Upload, as a click sets it.
+  if(name=="encrypt"){if(params.size()!=1||!params["on"].isBool())return denied("invalid_request","encrypt takes on: true or false");if(!open)return denied("editor_finalizing","The edit was already submitted or discarded");
+   QString refusal;if(!window->setEncryptOn(params["on"].toBool(),&refusal))return denied("encrypt_unavailable",refusal);return window->encryptState();}
   if(name=="submit"){if(!params.isEmpty())return denied("invalid_request","submit has no parameters");if(!open)return denied("editor_finalizing","The edit was already submitted or discarded");if(submissionError){submit();return denied(submissionError.code,submissionError.message);}QTimer::singleShot(0,&app,submit);return {{"submitted",true}};}
   if(name=="cancel"){if(!params.isEmpty())return denied("invalid_request","cancel has no parameters");if(!open)return denied("editor_finalizing","The edit was already submitted or discarded");QTimer::singleShot(0,&app,[&]{if(!terminal&&!finalizing){window->setBusy("Discarding…");refuse("edit_cancelled");}});return {{"cancelled",true}};}
   return denied("invalid_request","Unknown editor command");
@@ -423,6 +426,8 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  QObject::connect(&control,&UiControl::frame,&app,[&](const QString& type,const QString&,const QJsonObject& object){
   if(type=="bootstrap"&&!bootstrapped){
    nonce=object["nonce"].toString();const auto limits=object["limits"].toObject();destination=object["destination"].toString();links=object["links"].toBool(false);
+   // #2079: the Encrypt toggle's start, {available, on, reason?}; absent without an upload route.
+   encrypt=object["encrypt"].toObject();if(object.contains("encrypt")&&(!object["encrypt"].isObject()||!encrypt["available"].isBool()||!encrypt["on"].isBool()||(encrypt.contains("reason")&&!encrypt["reason"].isString())||encrypt.size()>3)){fail();return;}
    const QUuid id(nonce);
    if(!recentColorList(object["recentColors"],recentColors)){fail();return;}
    const auto scheme=object["appearance"].toString();
@@ -460,7 +465,7 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
     }
     checkMode=true;checkPrompt=check["prompt"].toBool();checkRedact=check["redact"].toBool();checkFile=check["file"].toString();
    }
-   if((object.contains("links")&&!object["links"].isBool())||object.size()!=11+(object.contains("links")?1:0)+(object.contains("submissionError")?1:0)+(object.contains("redactTerms")?1:0)+(object.contains("redactPatterns")?1:0)+(object.contains("allCores")?1:0)+(checkMode?1:0)+(hasStyle?1:0)||(scheme!="dark"&&scheme!="light")||nonce.isEmpty()||id.isNull()||id.toString(QUuid::WithoutBraces)!=nonce||!validEnvelope(object,nonce)||object["build"].toObject()!=build
+   if((object.contains("links")&&!object["links"].isBool())||object.size()!=11+(object.contains("links")?1:0)+(object.contains("encrypt")?1:0)+(object.contains("submissionError")?1:0)+(object.contains("redactTerms")?1:0)+(object.contains("redactPatterns")?1:0)+(object.contains("allCores")?1:0)+(checkMode?1:0)+(hasStyle?1:0)||(scheme!="dark"&&scheme!="light")||nonce.isEmpty()||id.isNull()||id.toString(QUuid::WithoutBraces)!=nonce||!validEnvelope(object,nonce)||object["build"].toObject()!=build
       ||limits.size()!=2||!number(limits["imagePixels"],maxPixels)||maxPixels<1||maxPixels>1000000000LL||!number(limits["outputBytes"],outputBytes)||outputBytes<1||outputBytes>maximumBytes
       ||!object["destination"].isString()||destination.isEmpty()||destination.size()>200||!object["input"].isObject()||!object["output"].isObject()
       ||!files.open(object["input"].toObject(),object["output"].toObject(),maxPixels*8+64*1024*1024)){fail();return;}
@@ -512,7 +517,9 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    if(image.isNull()){refuse("source_unsupported");return;}
    // Keep the pinned input descriptor open: final identity checks use it.
    document=std::make_unique<editor::EditDocument>(image);
-   window=std::make_unique<EditorWindow>(*document);window->setRecentColors(recentColors);window->setDestination(destination,links);window->text().setLanguages(textLanguages);window->text().setAllCores(allCores);window->setRedactList(redactTerms,redactPatterns);
+   window=std::make_unique<EditorWindow>(*document);window->setRecentColors(recentColors);window->setDestination(destination,links);window->setEncrypt(encrypt);
+   // #2079: each change of the Encrypt toggle tells the resident, which applies it when the upload starts.
+   QObject::connect(window.get(),&EditorWindow::encryptToggled,&app,[&](bool on){auto frame=envelope(nonce);frame["on"]=on;if(control.send("encrypt",frame).isEmpty())fail();});window->text().setLanguages(textLanguages);window->text().setAllCores(allCores);window->setRedactList(redactTerms,redactPatterns);
    // #1893: a new capture starts with the saved look on; a check's hidden document starts plain, so its own
    // covered export is the capture as it was (the resident styles it), and Redact and upload turns the look on.
    if(hasStyle){document->setStyleLimit(styleMaxPixels);window->setSavedStyle(savedStyle);if(styleStart&&!checkMode){auto style=savedStyle;style.enabled=true;document->setInitialStyle(style);window->documentEdited();}}

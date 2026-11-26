@@ -127,6 +127,30 @@ class ConfigurationSchema(unittest.TestCase):
                            {'theme': 'dark', 'overrides': {'dark': {}}}, {'theme': 'dark', 'colour': 'red'}):
             self.assertFalse(validator.is_valid(legacy | {'appearance': appearance}), appearance)
 
+    def test_encrypted_links_setting(self):
+        # #2079: a destination's Encrypted links default and its passphrase's own entry.
+        schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text(encoding='utf-8'))
+        # The profile rules without each provider's own settings schema, which this test doesn't fill in.
+        items = {key: value for key, value in schema['properties']['profiles']['items'].items() if key != 'allOf'}
+        validator = Draft202012Validator(items | {'$defs': schema['$defs']})
+        profile = {'id': 'bucket', 'label': 'Bucket', 'provider': 's3', 'settings': {},
+                   'credentials': {'mode': 'keychain', 'reference': 'putgd/bucket'}}
+        keychain = {'mode': 'keychain', 'reference': 'putgd/encrypt/bucket'}
+        for encrypt in ({'mode': 'off'}, {'mode': 'on'}, {'mode': 'passphrase', 'passphraseCredentials': keychain},
+                     {'mode': 'passphrase', 'passphraseCredentials': {'mode': 'session', 'reference': None}}):
+            with self.subTest(encrypt=encrypt):
+                self.assertTrue(validator.is_valid(profile | {'encrypt': encrypt}))
+        for encrypt in ({}, {'mode': 'always'}, {'mode': 'passphrase'}, {'mode': 'on', 'extra': True},
+                     {'mode': 'passphrase', 'passphraseCredentials': {'mode': 'keychain', 'reference': ''}},
+                     {'mode': 'passphrase', 'passphraseCredentials': {'mode': 'keychain', 'reference': None}},
+                     {'mode': 'passphrase', 'passphraseCredentials': {'mode': 'session', 'reference': 'putgd/x'}}):
+            with self.subTest(encrypt=encrypt):
+                self.assertFalse(validator.is_valid(profile | {'encrypt': encrypt}))
+        for provider in ('proton-drive', 'nextcloud'):
+            with self.subTest(provider=provider):
+                self.assertTrue(validator.is_valid(profile | {'provider': provider, 'encrypt': {'mode': 'off'}}))
+                self.assertFalse(validator.is_valid(profile | {'provider': provider, 'encrypt': {'mode': 'on'}}))
+
     def test_optional_proton_folder_name_keeps_legacy_settings_valid(self):
         schema = json.loads((Path(__file__).resolve().parents[2] / 'schemas/config.schema.json').read_text(encoding='utf-8'))
         validator = Draft202012Validator(schema['$defs']['protonSettings'])

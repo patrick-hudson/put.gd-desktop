@@ -200,6 +200,12 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  }
  // #1872: the Nextcloud and WebDAV forms in the open Destinations page, edited and signed in as a
  // user does. Settings values and button presses only, never a credential.
+ // #2079: Destinations → Encrypted links as a user drives it: inspect, mode {mode} or unlock.
+ if(method=="ui.encryptedLinks") {
+  if(!fields(p,{"action"},{"profileId","mode"})||!QStringList{"inspect","mode","unlock"}.contains(p["action"].toString())||(p["action"]=="mode")!=p.contains("mode")||(p.contains("mode")&&!QStringList{"off","on","passphrase"}.contains(p["mode"].toString()))||(p.contains("profileId")&&!string(p,"profileId",64))){reply(invalid(),{});return;}
+  if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
+  uiCommand_("encryptedLinks",p,std::move(reply));return;
+ }
  if(method=="ui.davDestination") {
   static const QHash<QString,QStringList> allowed{{"inspect",{"profileId"}},{"set",{"field","value","profileId"}},{"add",{"label","provider"}},{"appPassword",{"value","profileId"}},
    {"signIn",{"profileId"}},{"cancelSignIn",{"profileId"}},{"openBrowser",{"profileId"}},{"signOut",{"profileId"}},{"createFolder",{"profileId"}},{"test",{"profileId"}},{"unlock",{"profileId"}}};
@@ -216,26 +222,29 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   uiCommand_("davDestination",p,std::move(reply));return;
  }
  if(method=="action.invoke") {
-  if(!fields(p,{"action"},{"source","path","mode","delaySeconds","sensitiveText","captureStyle","person"})||(p.contains("person")&&!string(p,"person",128))||(p.contains("captureStyle")&&(p["action"]!="edit"||!p["captureStyle"].isBool()))||!string(p,"action")||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))||(p.contains("mode")&&(p["action"]!="record"||!string(p,"mode",16)))){reply(invalid(),{});return;}
+  if(!fields(p,{"action"},{"source","path","mode","delaySeconds","sensitiveText","captureStyle","person","encrypt"})||(p.contains("encrypt")&&!p["encrypt"].isBool())||(p.contains("person")&&!string(p,"person",128))||(p.contains("captureStyle")&&(p["action"]!="edit"||!p["captureStyle"].isBool()))||!string(p,"action")||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))||(p.contains("mode")&&(p["action"]!="record"||!string(p,"mode",16)))){reply(invalid(),{});return;}
   auto options=p;options.remove("action");options.remove("person");operations_.invoke(p["action"].toString(),reply,options,!fromPerson(p));return;
  }
  // "Upload with put.gd" from a file manager (#1105): absolute paths only; the
  // client resolves URIs first. A menu entry's client names its installation and
  // the resident refuses another's; the CLI and MCP name none.
  if(method=="upload.files") {
-  if(!fields(p,{"paths"},{"installation","profileId","sensitiveText"})||!p["paths"].isArray()||p["paths"].toArray().isEmpty()||p["paths"].toArray().size()>10000
+  // #2079: encrypt {enabled, passphrase?}: this upload's own Encrypt choice, and putgd-cli upload --passphrase-file's passphrase.
+  const auto encrypt=p["encrypt"].toObject();
+  if(p.contains("encrypt")&&(!p["encrypt"].isObject()||!encrypt["enabled"].isBool()||!fields(encrypt,{"enabled"},{"passphrase"})||(encrypt.contains("passphrase")&&(!encrypt["enabled"].toBool()||!string(encrypt,"passphrase",1024)||encrypt["passphrase"].toString().normalized(QString::NormalizationForm_C).toUtf8().size()>1024||encrypt["passphrase"].toString().contains('\n')||encrypt["passphrase"].toString().contains('\r'))))){reply(invalid(),{});return;}
+  if(!fields(p,{"paths"},{"installation","profileId","sensitiveText","encrypt"})||!p["paths"].isArray()||p["paths"].toArray().isEmpty()||p["paths"].toArray().size()>10000
      ||(p.contains("installation")&&!QStringList{"system","appimage"}.contains(p["installation"].toString()))||(p.contains("sensitiveText")&&p["sensitiveText"]!="prompt"&&p["sensitiveText"]!="report")||(p.contains("profileId")&&!string(p,"profileId",64))){reply(invalid(),{});return;}
   QStringList paths;for(const auto& value:p["paths"].toArray()){if(!value.isString()||value.toString().isEmpty()||value.toString().size()>4096||!QDir::isAbsolutePath(value.toString())){reply(invalid(),{});return;}paths.append(value.toString());}
   // #1804: put.gd's own menu entry (it names its installation) asks a person; the CLI and MCP get operation.decide.
   const auto sensitive=p["sensitiveText"].toString(p.contains("installation")?QStringLiteral("prompt"):QStringLiteral("report"));
-  operations_.uploadFiles(paths,p["profileId"].toString(),p["installation"].toString(),std::move(reply),sensitive);return;
+  operations_.uploadFiles(paths,p["profileId"].toString(),p["installation"].toString(),std::move(reply),sensitive,encrypt);return;
  }
  if(method=="editor.open") {
   if(!fields(p,{},{"source","path","captureStyle"})||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))||(p.contains("captureStyle")&&!p["captureStyle"].isBool())){reply(invalid(),{});return;}
   operations_.invoke("edit",reply,p);return;
  }
  // Agent control of the one open editor; the helper validates each command.
- if(QStringList{"editor.inspect","editor.apply","editor.preview","editor.saveCopy","editor.copy","editor.fileDialog","editor.submit","editor.cancel","editor.raise"}.contains(method)) {
+ if(QStringList{"editor.inspect","editor.apply","editor.preview","editor.saveCopy","editor.copy","editor.fileDialog","editor.encrypt","editor.submit","editor.cancel","editor.raise"}.contains(method)) {
   if(!string(p,"id")){reply(invalid(),{});return;}
   auto params=p;params.remove("id");operations_.editorCommand(p["id"].toString(),method.mid(7),params,reply);return;
  }
@@ -332,7 +341,9 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
    // The review window's feel controls (S, N, = / -, a cover bar's slide, the "+n" chip, [ ], Up / Down).
    "setSkimming","setSnapping","zoomIn","zoomOut","retimeCover","moreCovers","markSelection","editPoint",
    // A cut's Set to playhead and the overview track.
-   "setCutEdge","scrollTimeline"};
+   "setCutEdge","scrollTimeline",
+   // #2079: the Encrypt toggle beside Upload.
+   "encrypt"};
   // The numbers are plain JSON numbers (the window checks ranges and whole values); the strings are bounded.
   const auto number=[&](const char* key){return !p.contains(key)||p[key].isDouble();};
   if(!fields(p,{"id","action"},{"time","speed","kind","rect","maskId","strength","format","codec","start","end","cutId","editId","edge","level","mode","dx","dy","delta","open","width","height","on","at"})||!string(p,"id")||!string(p,"action",32)||!actions.contains(p["action"].toString())
@@ -344,7 +355,11 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   operations_.recordingCommand("review",p,reply);return;
  }
  if(method=="recording.saveCopy") {if(!fields(p,{"id","path"},{"overwrite"})||!string(p,"id")||!string(p,"path",4096)||(p.contains("overwrite")&&!p["overwrite"].isBool())){reply(invalid(),{});return;}operations_.recordingCommand("saveCopy",p,reply);return;}
- if(method=="recording.upload") {if(!fields(p,{"id","revision"})||!string(p,"id")||!p["revision"].isDouble()){reply(invalid(),{});return;}operations_.recordingCommand("upload",p,reply);return;}
+ // #2079: encrypt decides this upload alone; the review's Encrypt toggle is left as the user set it.
+ if(method=="recording.upload") {if(!fields(p,{"id","revision"},{"encrypt"})||!string(p,"id")||!p["revision"].isDouble()||(p.contains("encrypt")&&!p["encrypt"].isBool())){reply(invalid(),{});return;}
+  operations_.recordingCommand("upload",p,reply);return;}
+ // #2079: the Encrypt toggle beside Upload in the editor and recording review, for a capture that hasn't started uploading.
+ if(method=="operation.encrypt") {if(!fields(p,{"id","enabled"})||!string(p,"id")||!p["enabled"].isBool()){reply(invalid(),{});return;}operations_.setEncrypt(p["id"].toString(),p["enabled"].toBool(),reply);return;}
  if(method=="operation.recent") {if(!p.isEmpty())reply(invalid(),{});else operations_.recent(reply);return;}
  // #1804, #1898: Redact and upload, Open in editor, Upload anyway or Cancel for a capture waiting in sensitive_text_found.
  if(method=="operation.decide") {
@@ -382,9 +397,9 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   }
   HistoryQuery q;q.search=p["search"].toString();q.category=p["category"].toString();q.mime=p["mime"].toString();q.profileId=p["profileId"].toString();q.uploadStatus=p["uploadStatus"].toString();q.localStatus=p["localStatus"].toString();q.remoteStatus=p["remoteStatus"].toString();q.from=p["from"].toString();q.to=p["to"].toString();history_.counts(q,days,reply);return;
  }
- if(method=="history.detail"||method=="history.preview"||method=="history.copyLink"||method=="history.unlockLinkCredentials"||method=="history.unlockCredentials"||method=="history.copyImage"||(method.startsWith("delete.")&&method!="delete.prepare"&&method!="delete.confirm")) {
+ if(method=="history.detail"||method=="history.preview"||method=="history.copyLink"||method=="history.forgetKey"||method=="history.unlockLinkCredentials"||method=="history.unlockCredentials"||method=="history.copyImage"||(method.startsWith("delete.")&&method!="delete.prepare"&&method!="delete.confirm")) {
   // history.preview alone takes an optional boolean retry (Retry preview).
-  if(!fields(p,{"id"},method=="history.preview"?QStringList{"retry"}:QStringList{})||!string(p,"id")||(p.contains("retry")&&!p["retry"].isBool())) {reply(invalid(),{});return;}const auto id=p["id"].toString();if(method=="history.detail")history_.detail(id,[this,reply](Error e,QJsonObject data){if(!e&&operations_.operationSettling(data.value("operationId").toString()))data["settling"]=true;reply(e,data);});else if(method=="history.preview")history_.preview(id,reply,p["retry"].toBool());else if(method=="history.copyLink")history_.copyLink(id,reply);else if(method=="history.unlockLinkCredentials")history_.unlockLinkCredentials(id,reply);else if(method=="history.unlockCredentials")history_.unlockItemCredentials(id,reply);else if(method=="history.copyImage")history_.copyImage(id,reply);else if(method=="delete.inspect")history_.inspectDelete(id,reply);else if(method=="delete.retry")history_.retryDelete(id,reply);else if(method=="delete.cancel")history_.cancelDelete(id,reply);else reply({"unknown_method","Unknown deletion method",{}},{});return;
+  if(!fields(p,{"id"},method=="history.preview"?QStringList{"retry"}:QStringList{})||!string(p,"id")||(p.contains("retry")&&!p["retry"].isBool())) {reply(invalid(),{});return;}const auto id=p["id"].toString();if(method=="history.detail")history_.detail(id,[this,reply](Error e,QJsonObject data){if(!e&&operations_.operationSettling(data.value("operationId").toString()))data["settling"]=true;reply(e,data);});else if(method=="history.preview")history_.preview(id,reply,p["retry"].toBool());else if(method=="history.copyLink")history_.copyLink(id,reply);else if(method=="history.forgetKey")history_.forgetEncryptKey(id,reply);else if(method=="history.unlockLinkCredentials")history_.unlockLinkCredentials(id,reply);else if(method=="history.unlockCredentials")history_.unlockItemCredentials(id,reply);else if(method=="history.copyImage")history_.copyImage(id,reply);else if(method=="delete.inspect")history_.inspectDelete(id,reply);else if(method=="delete.retry")history_.retryDelete(id,reply);else if(method=="delete.cancel")history_.cancelDelete(id,reply);else reply({"unknown_method","Unknown deletion method",{}},{});return;
  }
  if(method=="history.copyLinks") {
   if(!fields(p,{"ids"})||!p["ids"].isArray()||p["ids"].toArray().isEmpty()||p["ids"].toArray().size()>1000) {reply(invalid(),{});return;}
@@ -402,8 +417,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   QStringList ids;for(const auto& id:p["ids"].toArray()) {if(!id.isString()||id.toString().isEmpty()||id.toString().size()>128) {reply(invalid(),{});return;}ids.append(id.toString());}
   if(method=="delete.prepare")history_.prepareDelete(ids,reply);else history_.deleteConfirmed(ids,p["acknowledgement"].toString(),reply);return;
  }
- if(QStringList{"setup.connectAccount","setup.inspectAccount","setup.createFolder","setup.storeSharePassword","setup.signOut","setup.trustHostKey"}.contains(method)) {
-  const bool hasInput=method=="setup.createFolder"||method=="setup.storeSharePassword"||method=="setup.trustHostKey";
+ if(QStringList{"setup.connectAccount","setup.inspectAccount","setup.createFolder","setup.storeSharePassword","setup.signOut","setup.trustHostKey","setup.storeEncryptPassphrase","setup.unlockEncryptPassphrase"}.contains(method)) {
+  const bool hasInput=method=="setup.createFolder"||method=="setup.storeSharePassword"||method=="setup.trustHostKey"||method=="setup.storeEncryptPassphrase";
   if(!fields(p,hasInput?QStringList{"profileId","expectedRevision","input"}:QStringList{"profileId","expectedRevision"})||!string(p,"profileId")||!p["expectedRevision"].isString()||(hasInput&&!p["input"].isObject())){reply(invalid(),{});return;}
   if(!setup_){reply({"setup_unavailable","This resident has no setup service",{}},{});return;}
   setup_->start(method.mid(6),p["profileId"].toString(),p["expectedRevision"].toString(),p["input"].toObject(),std::move(reply));return;
@@ -446,7 +461,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   history_.detail(p["id"].toString(),[open=openLink_,reply](Error e,QJsonObject data){
    if(e){reply(e,{});return;}
    if(!data["linkAvailable"].toBool()){reply({"link_unavailable","This link is no longer available.",{}},{});return;}
-   open(QUrl(data["receipt"].toObject()["directUrl"].toString()),[reply](const QJsonObject& result){
+   open(QUrl(data["link"].toString()),[reply](const QJsonObject& result){
     if(result["opened"].toBool())reply({},result);else reply({"link_not_opened","Couldn't open the link in your browser.",result},{});
    });
   });
@@ -639,13 +654,13 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
 void LocalServer::noteOutcome(const QString& method,const QJsonObject& p,Error& error) {
  if(!errorLog_)return;
  static const QHash<QString,QString> kinds{
-  {"history.copyLink","copy"},{"history.copyLinks","copy"},{"history.copyImage","copy"},{"history.qr","copy"},{"operation.copy","copy"},
+  {"history.copyLink","copy"},{"history.copyLinks","copy"},{"history.forgetKey","history"},{"history.copyImage","copy"},{"history.qr","copy"},{"operation.copy","copy"},
   {"history.copyText","text_recognition"},{"text.recognize","text_recognition"},
   {"history.share","share_link"},{"history.revokeLink","share_link"},{"history.openLink","share_link"},
-  {"history.unlockLinkCredentials","credentials"},{"history.unlockCredentials","credentials"},{"setup.unlockCredentials","credentials"},{"setup.storeCredentials","credentials"},{"setup.storeSharePassword","credentials"},
+  {"history.unlockLinkCredentials","credentials"},{"history.unlockCredentials","credentials"},{"setup.unlockCredentials","credentials"},{"setup.storeCredentials","credentials"},{"setup.storeSharePassword","credentials"},{"setup.storeEncryptPassphrase","credentials"},{"setup.unlockEncryptPassphrase","credentials"},
   {"setup.testDestination","destination_test"},{"setup.connectAccount","destination_setup"},{"setup.createFolder","destination_setup"},{"setup.signOut","destination_setup"},{"setup.trustHostKey","destination_setup"},
   {"delete.prepare","deletion"},{"delete.confirm","deletion"},{"delete.retry","deletion"},{"delete.cancel","deletion"},
-  {"operation.retry","upload"},{"operation.retryLocalSave","local_save"},{"operation.cancel","upload"},{"upload.files","upload"},
+  {"operation.retry","upload"},{"operation.retryLocalSave","local_save"},{"operation.cancel","upload"},{"operation.encrypt","upload"},{"upload.files","upload"},
   {"recording.start","recording"},{"recording.stop","recording"},{"recording.upload","recording"},{"recording.saveCopy","recording"},
   {"diagnostics.bundle","diagnostics"},{"settings.save","settings_save"},{"settings.patch","settings_save"},{"settings.reorderProfiles","settings_save"},{"settings.importUploader","settings_save"},
   {"history.clear","history"},{"history.forget","history"},{"cache.clear","history"},{"action.invoke",""}};

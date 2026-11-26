@@ -123,7 +123,7 @@ CONTROLS = {
     **LABELS, **{'trayOutputRow%d' % i: row for i, row in enumerate(OUTPUT_ROWS)},
     'trayCancelUpload': 'Cancel upload', 'edit-sources': 'Edit image', 'trayEditClipboard': 'Edit clipboard image',
     'trayEditFile': 'Edit an image file…', 'history': 'Open put.gd', 'preferences': 'Settings',
-    'trayQuit': 'Quit put.gd',
+    'trayQuit': 'Quit put.gd', 'trayRegionEncrypted': 'Capture region (encrypted)',
 }
 
 

@@ -23,6 +23,7 @@ struct State {
  bool hotkeysDelay = false;             // preferences.captureDelayShortcuts
  QString update;                        // "Update available: <version>"; empty hides the row
  QHash<QString, QString> shortcuts;     // action -> the desktop's bound key (portable text)
+ bool encryptedRegion = false;             // #2079: Capture region's destination can encrypt (its check passed)
  bool operator==(const State&) const = default;
 };
 enum class Kind { Command, Separator, Submenu, Info, Choice };

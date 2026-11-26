@@ -100,16 +100,43 @@ public:
  // resolved once and stored with the operation. Never a local-only save. Links
  // are copied as for a capture. Answers with the operation ID once it is durable.
  static constexpr const char* fileManagerAction="files";
- void uploadFiles(const QStringList& paths,const QString& profileId,const QString& installation,JsonReply,const QString& sensitiveMode=QStringLiteral("report"));
+ // encrypt (#2079): {enabled, passphrase?} overrides the destination's Encrypted links setting; absent keeps it.
+ void uploadFiles(const QStringList& paths,const QString& profileId,const QString& installation,JsonReply,const QString& sensitiveMode=QStringLiteral("report"),const QJsonObject& encrypt={});
  // Refuses upload.files with a retryable error (initializing) while it answers one,
  // e.g. while the startup read of saved credentials is still running.
  void setUploadGate(std::function<Error()> gate) {uploadGate_=std::move(gate);}
+ // Encrypted links (#2079): the destination's Test check ({state, reason}, DestinationStatus) and
+ // its Encrypted links passphrase from the credential cache (empty when not loaded). Both may be
+ // called from upload workers. Unset: no destination counts as checked.
+ // Both get the destination's profile as the upload accepted it (op.settings), never today's.
+ void setEncryptHooks(std::function<QJsonObject(const QString& profileId,const QJsonObject& profile)> check,std::function<QString(const QString& profileId,const QJsonObject& profile)> passphrase)
+  {std::lock_guard lock(encryptHooksMutex_);encryptCheck_=std::move(check);encryptPassphrase_=std::move(passphrase);}
+ // #2079: the Encrypt toggle beside Upload in the editor and recording review, and agents:
+ // sets this waiting operation's own Encrypt choice until its upload starts encrypting.
+ void setEncrypt(const QString& id,bool enabled,JsonReply reply);
+ // The choice itself, from the editor's toggle or setEncrypt.
+ void recordEncrypt(const QString& id,bool enabled);
+ // What an upload of this operation would do about encrypting: {on, setting, available,
+ // reason?, passphrase}. `on` is the operation's own choice, else the destination's.
+ QJsonObject encryptOptions(const Operation&) const;
+ // Whether an upload of this action, as Settings routes it now, could be encrypted (the tray's row).
+ bool encryptAvailableFor(const QString& action) const;
+ // Tests may point encrypting at another putgd-cli.
+ void setEncryptHelperForTesting(const QString& path) {encryptHelper_=path;}
+ // Tests may lower the encrypting size limits (64 MiB for one page, 2 GiB in all).
+ void setEncryptLimitsForTesting(qint64 inlineBytes,qint64 totalBytes) {encryptInlineLimit_=inlineBytes;encryptTotalLimit_=totalBytes;}
  // This resident's installation class ("system" or "appimage"); tests may set it.
  void setInstallation(QString installation) {installation_=std::move(installation);}
  QString installation() const {return installation_;}
  void inspect(const QString& id,JsonReply);
  // The operation has finished but still holds its slot; a Retry now is answered operation_settling (#1578).
  bool operationSettling(const QString& id) const {return settling(id);}
+ // Whether this operation still holds its slot (call on the resident's thread).
+ bool operationActive(const QString& id) const {return active_.contains(id);}
+ // #2079: keeps Retry off an operation while History rewrites its record (Forget key).
+ // False when it is running or already held. Call both on the resident's thread.
+ bool holdOperation(const QString& id) {if(active_.contains(id)||held_.contains(id))return false;held_.insert(id);return true;}
+ void releaseOperation(const QString& id) {held_.remove(id);}
  void recent(JsonReply);
  // Session-thread snapshot of bounded live observations; no SQL or provider IO.
  QJsonArray activeObservations() const;
@@ -282,7 +309,9 @@ private:
   // #1893: the capture before its style, stored instead when the store refuses the styled PNG for size or space.
   QByteArray unstyled={};
   // #1893: the style applied to the payload ({applied, pictureMissing?}), recorded once it is stored.
-  QJsonObject style={};};
+  QJsonObject style={};
+  // #2079: a passphrase this upload's request carried (putgd-cli upload --passphrase-file); memory only.
+  QString encryptPassphrase={};};
  // #1893: whether a job's capture goes on its capture style, and doing it (on the worker).
  static bool needsStyle(const Job&);
  // #1893: edits of a new capture (region, window, desktop, scrolling): their editor starts styled.
@@ -381,7 +410,8 @@ private:
  std::shared_ptr<PendingCopy> currentCopy_;
  QSet<QString> clipboardImports_;
  // What a provider readied ahead of an operation's requests (StorageProvider::anticipate), by operation.
- void anticipate(const Operation&);
+ // final: the upload's Encrypt choice can no longer change (enqueue()).
+ void anticipate(const Operation&,bool final=false);
  QHash<QString,std::shared_ptr<void>> anticipated_;
  quint64 uploadCopyEpoch_=0;
  QString root_;
@@ -436,6 +466,26 @@ private:
  std::atomic_bool destinationTestsReady_{false};
  QString installation_;
  std::function<Error()> uploadGate_;
+ mutable std::mutex encryptHooksMutex_;
+ std::function<QJsonObject(const QString&,const QJsonObject&)> encryptCheck_;
+ std::function<QString(const QString&,const QJsonObject&)> encryptPassphrase_;
+ QString encryptHelper_;
+ qint64 encryptInlineLimit_=67108864LL,encryptTotalLimit_=2147483648LL;
+ QHash<QString,bool> encryptChoices_; // guarded by encryptHooksMutex_
+ // Operations whose Encrypt toggle still counts (an open editor, a recording, a check's editor);
+ // enqueue() closes it. Guarded by encryptHooksMutex_.
+ QSet<QString> encryptOpen_;
+ QSet<QString> held_;
+ // A request's passphrase while its sensitive text check runs; enqueue() takes it. Memory only.
+ QHash<QString,QString> checkPassphrases_;
+ // Encrypts the items of an upload that are to be encrypted and not yet (#2079). False when the
+ // journal write failed; items that can't be encrypted fail with their own error.
+ // Whether this upload is to be encrypted: its own choice, else its destination's setting.
+ bool encryptWanted(const Operation& op) const;
+ // The one rule every send obeys, without exceptions: an upload that is to be encrypted sends an
+ // item only once it is encrypted.
+ static bool sendable(const OperationItem& item,bool encryptWanted) {return !encryptWanted||item.encrypted();}
+ bool encryptItems(Operation& op,const ProviderCapabilities&,const QString& publicationMode,const QString& requestPassphrase,const std::shared_ptr<std::atomic_bool>& cancelled,const std::function<bool(const OperationItem&)>& saveItem);
  Error startupError_;
  // Recovers the journal on a worker; a failure (a full disk, an I/O error, a database another tool holds, or a lock that cannot be taken: QLockFile
  // reports a stale lock it failed to remove the same way as a live owner) is retried with a growing pause until it succeeds, so a fault that

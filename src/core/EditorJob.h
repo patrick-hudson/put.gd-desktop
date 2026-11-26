@@ -58,8 +58,12 @@ public:
  using PhaseHandler=std::function<void(const QString& phase,const QJsonObject& findings)>;
  void setPhaseHandler(PhaseHandler);
  PhaseHandler phaseHandler() const;
+ // #2079: the window's Encrypt toggle changed. Called on the editor worker thread.
+ using EncryptHandler=std::function<void(bool on)>;
+ void setEncryptHandler(EncryptHandler);
+ EncryptHandler encryptHandler() const;
 private:
- PhaseHandler phaseHandler_;int prompts_=0;
+ PhaseHandler phaseHandler_;int prompts_=0;EncryptHandler encryptHandler_;
  mutable std::mutex mutex_;
  QList<Pending> queue_;
  CopyHandler copyHandler_;std::optional<Error> copyResult_;
@@ -92,6 +96,8 @@ public:
  // Whether the destination gives a link (commandtext::givesLinks): the upload bar says so, not the
  // label. Unset, the editor promises no link.
  EditorJob& withLinks(bool links){links_=links;return *this;}
+ // #2079: the Encrypt toggle beside Upload, {available, on, reason?}; its changes come back through the session's encrypt handler.
+ EditorJob& withEncrypt(QJsonObject encrypt){encrypt_=std::move(encrypt);return *this;}
  // "dark" or "light": the helper's scheme, the interface's resolved one.
  EditorJob& withAppearance(QString scheme){appearance_=std::move(scheme);return *this;}
  // The saved text recognition languages (#1428) for Copy text and Quick redact.
@@ -133,6 +139,7 @@ private:
  bool allCores_=false;
  Error submissionError_;
  std::optional<bool> links_;
+ QJsonObject encrypt_;
  std::optional<Check> check_;
  int startupTimeoutMs_,finalizeTimeoutMs_,commandTimeoutMs_;
 };

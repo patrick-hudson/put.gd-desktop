@@ -35,6 +35,13 @@ QJsonObject publicRecord(QJsonObject data) {
  data["linkRefreshable"]=!expiry.isEmpty()&&available&&!QStringList{"pending","deleting","unknown","superseded"}.contains(data["remoteStatus"].toString())&&expires.isValid()&&expires<=QDateTime::currentDateTimeUtc()&&
    !data["receipt"].toObject()["objectReference"].toObject()["linkExpiresAt"].toString().isEmpty();
  data["linkAvailable"]=available&&!(expires.isValid()&&expires<=QDateTime::currentDateTimeUtc());
+ // #2079: the link to copy, open and show as a QR code: with an encrypted link's key after #.
+ data["link"]=data["linkAvailable"].toBool()?OperationItem::recordLink(data):QString();
+ if(data.contains("encrypt")) {
+  auto encrypt=data["encrypt"].toObject();auto page=encrypt["page"].toObject();page.remove("path");encrypt["page"]=page;
+  if(encrypt.contains("data")){auto part=encrypt["data"].toObject();auto file=part["artifact"].toObject();file.remove("path");part["artifact"]=file;part.remove("uploadJournal");encrypt["data"]=part;}
+  data["encrypt"]=encrypt;data["encrypted"]=encrypt["status"]=="encrypted";
+ }
  return data;
 }
 // The journal's own layout: <root>/artifacts/<operation>/<item> and
@@ -138,6 +145,12 @@ void HistoryStore::relocate(Operation& op) const {
   auto& artifact=item.artifact;
   artifact.path=relocated(artifact.path,artifactPath(root_,op.id,artifact.id),"/artifacts/"+op.id+"/"+artifact.id);
   artifact.previewPath=relocated(artifact.previewPath,previewPath(root_,artifact.id),"/previews/"+artifact.id+".png");
+  // #2079: an encrypted item's page and data file sit beside its artifact.
+  if(!item.encrypt.isEmpty()) {
+   const auto move=[&](QJsonObject file){const auto id=file.value("id").toString();if(!id.isEmpty())file["path"]=relocated(file.value("path").toString(),artifactPath(root_,op.id,id),"/artifacts/"+op.id+"/"+id);return file;};
+   if(item.encrypt.contains("page"))item.encrypt["page"]=move(item.encrypt.value("page").toObject());
+   if(item.encrypt.contains("data")){auto data=item.encrypt.value("data").toObject();data["artifact"]=move(data.value("artifact").toObject());item.encrypt["data"]=data;}
+  }
  }
 }
 QJsonObject HistoryStore::relocate(QJsonObject record) const {
@@ -152,10 +165,23 @@ Error HistoryStore::saveOperation(const Operation& op,const ProviderRegistry* pr
 Error HistoryStore::checkpointOperation(const Operation& op,const QSet<QString>& changedItems,const ProviderRegistry* providers) {
  return persistOperation(op,providers,&changedItems);
 }
-Error HistoryStore::persistOperation(const Operation& op,const ProviderRegistry* providers,const QSet<QString>* changedItems) {
+Error HistoryStore::persistOperation(const Operation& given,const ProviderRegistry* providers,const QSet<QString>* changedItems) {
  if(error_) return error_;
- if(!db_.transaction()) return sqlError();
+ bool encryptedKeys=false;for(const auto& item:given.items)encryptedKeys|=item.encrypted()&&!item.encrypt.value("key").toString().isEmpty();
+ // #2079: reading before writing takes the write lock first, as saveDeletion does.
+ if(encryptedKeys?!beginWrite():!db_.transaction()) return sqlError();
  QSqlQuery q(db_);
+ // #2079: a key Forget key removed stays removed, whatever copy of the operation a writer
+ // started from (a Retry, a copy or a local-save retry that read it earlier). The mark is read
+ // from the operation's own journal, which outlives its History record, in one query.
+ Operation op=given;
+ if(encryptedKeys) {
+  q.prepare("SELECT json_extract(item.value,'$.artifact.id') FROM operations,json_each(operations.data,'$.items') AS item WHERE operations.id=? AND json_extract(item.value,'$.encrypt.keyForgotten')=1");
+  q.addBindValue(op.id);
+  if(!q.exec()){db_.rollback();return sqlError();}
+  QSet<QString> forgotten;while(q.next())forgotten.insert(q.value(0).toString());q.finish();
+  for(auto& item:op.items)if(forgotten.contains(item.artifact.id)){item.encrypt["key"]=QString();item.encrypt["keyForgotten"]=true;}
+ }
  q.prepare("INSERT INTO operations VALUES(?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data");q.addBindValue(op.id);q.addBindValue(encode(op.toJson()));bool ok=q.exec();
  for(const auto& item:op.items) {
   if(!ok) break;
@@ -260,7 +286,11 @@ QList<Operation> HistoryStore::recover(Error* error) {
   // Text recognition (#1428) is never rerun, and nothing it read was ever stored.
   else if(state==OperationState::Recognizing) {op.error={"text_interrupted","Text recognition was interrupted. Nothing was copied.",{}};}
   if(op.active()) {op.advance(OperationState::Interrupted);changed=true;}
-  for(auto& i:op.items) if(i.uploadStatus=="uploading") {i.uploadStatus="unknown";changed=true;}
+  for(auto& i:op.items) {
+   if(i.uploadStatus=="uploading") {i.uploadStatus="unknown";changed=true;}
+   // #2079: a split encrypted link's data file in flight is reconciled like the page, never resent blindly.
+   if(auto data=i.encrypt.value("data").toObject();data.value("uploadStatus")=="uploading"){data["uploadStatus"]="unknown";i.encrypt["data"]=data;if(i.uploadStatus!="uploaded")i.uploadStatus="unknown";changed=true;}
+  }
   if(op.state()==OperationState::Interrupted&&op.copyStatus=="pending") {op.copyStatus="no_result";changed=true;}
   if(changed){op.phase=op.stateName();for(auto& item:op.items)item.phase=item.uploadStatus;}
   if(changed||(op.state()==OperationState::Interrupted&&op.items.isEmpty())) result.append(op);
@@ -364,7 +394,7 @@ std::optional<Operation> HistoryStore::lastUpload(const QString& profileId,Error
 QStringList HistoryStore::journaledOperations(Error* error) const {
  QStringList result;if(error_) {if(error)*error=error_;return result;}
  auto q=forwardQuery(db_);
- if(!q.exec("SELECT id FROM operations WHERE EXISTS(SELECT 1 FROM json_each(operations.data,'$.items') AS item WHERE json_extract(item.value,'$.uploadJournal.uploadId') IS NOT NULL)")) {if(error)*error=sqlError();return result;}
+ if(!q.exec("SELECT id FROM operations WHERE EXISTS(SELECT 1 FROM json_each(operations.data,'$.items') AS item WHERE json_extract(item.value,'$.uploadJournal.uploadId') IS NOT NULL OR json_extract(item.value,'$.encrypt.data.uploadJournal.uploadId') IS NOT NULL)")) {if(error)*error=sqlError();return result;}
  while(q.next())result.append(q.value(0).toString());
  return result;
 }
@@ -400,7 +430,8 @@ bool HistoryStore::releasable(const QString& historyId,const QSet<QString>& runn
   bool settled=false;
   for(const auto& value:doc["items"].toArray()){const auto item=value.toObject();if(item["historyId"]!=historyId)continue;
    const auto status=item["status"].toString();
-   settled=(QStringList{"failed","unknown","pending"}.contains(status)&&!item["progress"].toObject().contains("phase"))||status=="unsupported_safe_removal"||status=="version_retained";}
+   // #2079: an encrypted page's data file has its own request checkpoint, which holds the record the same way.
+   settled=(QStringList{"failed","unknown","pending"}.contains(status)&&!item["progress"].toObject().contains("phase")&&!item["encryptDataProgress"].toObject().contains("phase"))||status=="unsupported_safe_removal"||status=="version_retained";}
   if(!settled)return false;
  }
  if(release)*release=held;
@@ -579,6 +610,29 @@ Error HistoryStore::updateRemote(const QString& id,const QString& status,const E
  auto remote=remoteFields(data);remote["remoteStatus"]=status;remote["remoteError"]=e.toJson();
  if(!db_.transaction())return sqlError();
  if(!persistRemote(db_,id,remote)||!db_.commit()){db_.rollback();return sqlError();}return {};
+}
+Error HistoryStore::forgetEncryptKey(const QString& id) {
+ if(error_)return error_;
+ // It reads before it writes: the write lock first.
+ if(!beginWrite())return sqlError();
+ const auto fail=[this](Error e){db_.rollback();return e;};
+ QSqlQuery q(db_);q.prepare("SELECT data,operation_id FROM history WHERE id=?");q.addBindValue(id);
+ if(!q.exec())return fail(sqlError());
+ if(!q.next())return fail({"history_not_found","This item is no longer in History.",{}});
+ auto data=decode(q.value(0));const auto operationId=q.value(1).toString();q.finish();
+ const auto forget=[](QJsonObject encrypt){encrypt["key"]=QString();encrypt["keyForgotten"]=true;return encrypt;};
+ if(data["encrypt"].toObject()["status"]!="encrypted")return fail({"history_not_encrypted","This item isn't an encrypted link.",{}});
+ data["encrypt"]=forget(data["encrypt"].toObject());
+ q.prepare("UPDATE history SET data=? WHERE id=?");q.addBindValue(encode(data));q.addBindValue(id);if(!q.exec())return fail(sqlError());
+ q.prepare("SELECT data FROM operations WHERE id=?");q.addBindValue(operationId);if(!q.exec())return fail(sqlError());
+ if(q.next()) {
+  auto op=decode(q.value(0));q.finish();auto items=op["items"].toArray();
+  for(qsizetype i=0;i<items.size();++i){auto item=items[i].toObject();if(item["artifact"].toObject()["id"]==id&&item.contains("encrypt")){item["encrypt"]=forget(item["encrypt"].toObject());items[i]=item;}}
+  op["items"]=items;
+  q.prepare("UPDATE operations SET data=? WHERE id=?");q.addBindValue(encode(op));q.addBindValue(operationId);if(!q.exec())return fail(sqlError());
+ }
+ if(!db_.commit())return fail(sqlError());
+ return {};
 }
 
 // The error log (#1753). Entries are written by one resident queue at a time

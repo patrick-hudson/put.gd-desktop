@@ -39,6 +39,9 @@ ProviderCapabilities DavProvider::capabilities(const Destination&) const {
     caps.remove = true;
     caps.urls = true;
     caps.sharing = id_ == dav::nextcloudId;
+    // Nextcloud's share page serves an uploaded .html file as a download, never as a page.
+    caps.encryptUnavailable = id_ == dav::nextcloudId ? QStringLiteral("Nextcloud share links download HTML files instead of opening them, so an encrypted page can't open there.") : QString();
+    caps.encryptSplit = id_ != dav::nextcloudId;
     caps.maximumNameBytes = dav::maximumNameBytes;
     caps.deletionEffect = id_ == dav::nextcloudId
         ? QStringLiteral("Deletes the uploaded file only if it is unchanged since upload. Its share link stops working, and Nextcloud moves the file to the trash bin until emptied.")

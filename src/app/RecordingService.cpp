@@ -444,6 +444,9 @@ void RecordingService::handleEvent(const QJsonObject& event) {
     }
     else if (kind == "cancelled" && !recording::terminal(s.state)) cancelActive({});
     // A format or sound choice made while an export runs is applied when review resumes.
+    // #2079: the toggle's change is kept whenever the window sends it, an export running included,
+    // so what the resident holds is what the window shows; an export already admitted keeps its choice.
+    else if (kind == "encrypt" && event["on"].isBool() && (s.state == RecordingState::Reviewing || s.state == RecordingState::Exporting)) { if (host_.encrypt) host_.encrypt(s.op.id, event["on"].toBool()); }
     else if (kind == "configChanged" && s.state == RecordingState::Exporting) s.heldConfig = event;
     else if (kind == "configChanged" && (s.state == RecordingState::Ready || s.state == RecordingState::Reviewing)) {
         auto json = event["config"].toObject();
@@ -509,7 +512,8 @@ void RecordingService::handleEvent(const QJsonObject& event) {
         auto refused = [this](Error error, QJsonObject) {
             if (!error || !session_) return;
             pushEdit(*session_);
-            const bool retry = error.code != "recording_stale" && error.code != "recording_state" && error.code != "recording_config";
+            // An Encrypt refusal comes before any export, so there is nothing to try again: Upload is.
+            const bool retry = error.code != "recording_stale" && error.code != "recording_state" && error.code != "recording_config" && !error.code.startsWith(QLatin1String("encrypt_"));
             backend_->control(session_->op.id, "raise", {{"error", error.message}, {"retry", retry}}, [](Error, QJsonObject) {});
         };
         // An upload exports the output the window showed when Upload was pressed.
@@ -1100,8 +1104,19 @@ void RecordingService::exportTo(const QString& command, const QJsonObject& param
         if (!integer(params["revision"], 1, 1LL << 52, &revision)) { reply(invalid("upload takes the edit revision it was reviewed at"), {}); return; }
         // An upload exports exactly the revision it was started at, or nothing.
         if (quint64(revision) != s.edit.revision) { reply({"recording_stale", "Your edits changed, so the upload didn't start. Check your edits, then select Upload again.", {{"currentRevision", double(s.edit.revision)}}}, {}); return; }
+        if (params.contains("encrypt") && !params["encrypt"].isBool()) { reply(invalid("encrypt is true or false"), {}); return; }
+    }
+    // #2079: the upload is admitted with one Encrypt choice, fixed now: the request's own (the
+    // review's toggle is left as the user set it), else the toggle's as the window shows it. It is
+    // kept with the request, so Try again keeps it too; a toggle change during the export applies
+    // to the next upload. Encryption chosen where it can't happen now is refused here, before
+    // anything is exported or sent, whichever way it was chosen.
+    const auto requestedEncrypt = command != "upload" ? QJsonValue() : params["encrypt"].isBool() ? params["encrypt"] : host_.encryptChoice ? QJsonValue(host_.encryptChoice(s.op)) : QJsonValue();
+    if (requestedEncrypt.toBool() && host_.encryptRefusal) {
+        if (auto refusal = host_.encryptRefusal(s.op)) { reply(refusal, {}); return; }
     }
     s.lastExportRequest = params;
+    if (requestedEncrypt.isBool()) s.lastExportRequest["encrypt"] = requestedEncrypt;
     s.lastExportRequest["config"] = s.config.toJson();  // a retry exports exactly this output
     s.lastExport = {{"command", command}, {"status", "exporting"}, {"revision", double(s.edit.revision)}};
     if (command == "saveCopy") s.lastExport["path"] = destination;
@@ -1123,7 +1138,7 @@ void RecordingService::exportTo(const QString& command, const QJsonObject& param
     reply({}, publicJson(s));
     if (!session_ || session_->generation != generation) return;
     s.helperExporting = true;
-    backend_->exportClip(s.op.id, edit, config, output, marshal(generation, [this, command, destination, overwrite, output, edit, config, done](Error error, QJsonObject result) {
+    backend_->exportClip(s.op.id, edit, config, output, marshal(generation, [this, command, destination, overwrite, output, edit, config, done, requestedEncrypt](Error error, QJsonObject result) {
         auto& s = *session_;
         // Past its deadline the helper may still be exporting; its late result says when it stops.
         if (error.code != "recording_helper_timeout") s.helperExporting = false;
@@ -1163,6 +1178,7 @@ void RecordingService::exportTo(const QString& command, const QJsonObject& param
         payload.files = {output};
         payload.mime = config.mime();
         auto op = finished.op;
+        if (requestedEncrypt.isBool()) op.encrypt["requested"] = requestedEncrypt.toBool();
         op.advance(OperationState::Acquiring);
         op.phase = "queued";
         const auto staging = finished.staging;

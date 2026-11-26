@@ -946,6 +946,7 @@ void RecordSession::openReview() {
     options.sharingMode = reviewOptions_["sharingMode"].toString();
     options.links = reviewOptions_["links"].toBool(false);
     options.uploadSummary = reviewOptions_["summary"].toString();
+    options.encrypt = reviewOptions_["encrypt"].toObject();
     options.durationUs = durationUs_;
     options.canvas = resolved_.canvas;
     for (const auto& value : capabilities_["formats"].toArray()) options.formats.append(value.toString());
@@ -965,6 +966,7 @@ void RecordSession::openReview() {
     });
     connect(review_, &ReviewWindow::uploadRequested, this, [guard](quint64 revision, const RecordingConfig& config) { if (guard) emit guard->event({{"event", "uploadRequested"}, {"revision", double(revision)}, {"config", config.toJson()}}); });
     connect(review_, &ReviewWindow::retryExportRequested, this, [guard] { if (guard) emit guard->event({{"event", "retryExportRequested"}}); });
+    connect(review_, &ReviewWindow::encryptToggled, this, [guard](bool on) { if (guard) emit guard->event({{"event", "encrypt"}, {"on", on}}); });
     connect(review_, &ReviewWindow::saveCopyRequested, this, [guard](const QString& path, quint64 revision) { if (guard) emit guard->event({{"event", "saveCopyRequested"}, {"path", path}, {"revision", double(revision)}}); });
     connect(review_, &ReviewWindow::cancelRequested, this, [guard] { if (!guard) return; guard->cancelLocal(); emit guard->event({{"event", "cancelled"}}); });
     review_->show();

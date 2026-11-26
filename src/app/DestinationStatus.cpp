@@ -42,7 +42,7 @@ bool validRecord(const QJsonObject& record,quint64* revision) {
 DestinationStatus::DestinationStatus(QString path,SettingsService& settings,QObject* parent)
  :QObject(parent),path_(std::move(path)),settings_(settings) {}
 void DestinationStatus::load() {
- records_.clear();credentialRevisions_.clear();keychainEntries_.clear();
+ records_.clear();encryptRecords_.clear();credentialRevisions_.clear();keychainEntries_.clear();
  QFile file(path_);
  // A file from before #1890 has no record of saved keychain entries: the entries of a destination
  // that stored credentials (a revision above 0 in that file) then count as saved, so a store of
@@ -71,6 +71,11 @@ void DestinationStatus::load() {
   const auto value=it.value().toObject();quint64 revision=0;if(!validRecord(value,&revision))continue;
   records_.insert(it.key(),{value["state"].toString(),value["source"].toString(),value["errorCode"].toString(),value["fingerprint"].toString(),revision});
  }
+ const auto encrypts=root["encryptChecks"].toObject();
+ for(auto it=encrypts.begin();it!=encrypts.end();++it){const auto value=it.value().toObject();
+  // #2079: a check counts only for the keys it ran with; one from another revision is dropped.
+  quint64 revision=0;if(!revisionValue(value["credentialRevision"],&revision)||revision!=credentialRevisions_.value(it.key()))continue;
+  if(value["passed"].isBool()&&value["fingerprint"].isString()&&value["fingerprint"].toString().size()==64)encryptRecords_.insert(it.key(),{value["passed"].toBool(),value["reason"].toString().left(300),value["fingerprint"].toString(),revision});}
  // After the records are read, so the upgrade's save keeps them.
  if(!root.contains("keychainEntries"))upgrade(true,true);
 }
@@ -93,7 +98,9 @@ void DestinationStatus::save() {
  for(auto it=credentialRevisions_.cbegin();it!=credentialRevisions_.cend();++it)if(!sessionOnly(it.key()))revisions.insert(it.key(),double(it.value()));
  // Always written, even empty: a file without it is one from before #1890.
  auto entries=QStringList(keychainEntries_.cbegin(),keychainEntries_.cend());entries.sort();
- QJsonObject root{{"schemaVersion",1},{"destinations",destinations},{"credentialRevisions",revisions},{"keychainEntries",QJsonArray::fromStringList(entries)}};
+ // A check made with session-only keys ends with the session, as the destination's own does.
+ QJsonObject encrypts;for(auto it=encryptRecords_.cbegin();it!=encryptRecords_.cend();++it)if(!sessionOnly(it.key()))encrypts.insert(it.key(),QJsonObject{{"passed",it->passed},{"reason",it->reason},{"fingerprint",it->fingerprint},{"credentialRevision",double(it->credentialRevision)}});
+ QJsonObject root{{"schemaVersion",1},{"destinations",destinations},{"credentialRevisions",revisions},{"keychainEntries",QJsonArray::fromStringList(entries)},{"encryptChecks",encrypts}};
  const auto bytes=QJsonDocument(root).toJson(QJsonDocument::Compact);
  QDir().mkpath(QFileInfo(path_).absolutePath());
  QSaveFile file(path_);file.setDirectWriteFallback(false);
@@ -118,7 +125,10 @@ void DestinationStatus::credentialsChanged(const QString& profileId) {
  const auto profiles=settings_.snapshot().profiles;
  const auto credentials=profiles.value(profileId)["credentials"].toObject();
  credentialRevisions_[profileId]+=1;
- if(credentials["mode"]=="keychain")for(auto it=profiles.cbegin();it!=profiles.cend();++it)if(it.key()!=profileId&&(*it)["credentials"].toObject()==credentials)credentialRevisions_[it.key()]+=1;
+ QStringList affected{profileId};
+ if(credentials["mode"]=="keychain")for(auto it=profiles.cbegin();it!=profiles.cend();++it)if(it.key()!=profileId&&(*it)["credentials"].toObject()==credentials){credentialRevisions_[it.key()]+=1;affected.append(it.key());}
+ // #2079: new keys are another connection: a passed encrypted-link check no longer vouches for them.
+ {std::lock_guard lock(encryptMutex_);for(const auto& id:std::as_const(affected))encryptRecords_.remove(id);}
  save();emit changed();
 }
 void DestinationStatus::keychainWritten(const QString& reference) {
@@ -159,6 +169,7 @@ void DestinationStatus::prune() {
  const auto profiles=settings_.snapshot().profiles;
  bool removed=false;
  for(auto it=records_.begin();it!=records_.end();)if(!profiles.contains(it.key())){it=records_.erase(it);removed=true;}else ++it;
+ {std::lock_guard lock(encryptMutex_);for(auto it=encryptRecords_.begin();it!=encryptRecords_.end();)if(!profiles.contains(it.key())){it=encryptRecords_.erase(it);removed=true;}else ++it;}
  for(auto it=credentialRevisions_.begin();it!=credentialRevisions_.end();)if(!profiles.contains(it.key())){it=credentialRevisions_.erase(it);removed=true;}else ++it;
  const auto owned=ownedEntries(profiles);
  for(auto it=keychainEntries_.begin();it!=keychainEntries_.end();)if(!owned.contains(*it)){it=keychainEntries_.erase(it);removed=true;}else ++it;
@@ -169,11 +180,27 @@ QJsonObject DestinationStatus::publicJson() const {
  const auto profiles=settings_.snapshot().profiles;
  for(auto it=profiles.cbegin();it!=profiles.cend();++it) {
   const auto record=records_.constFind(it.key());
-  if(record==records_.cend()||record->credentialRevision!=credentialRevision(it.key())||record->fingerprint!=destinationcheck::fingerprint(*it)){out.insert(it.key(),QJsonObject{{"state","untested"}});continue;}
-  QJsonObject value{{"state",record->state},{"source",record->source},{"fingerprint",record->fingerprint}};
+  if(record==records_.cend()||record->credentialRevision!=credentialRevision(it.key())||record->fingerprint!=destinationcheck::fingerprint(*it)){out.insert(it.key(),QJsonObject{{"state","untested"},{"encrypt",encryptCheck(it.key())}});continue;}
+  QJsonObject value{{"state",record->state},{"source",record->source},{"fingerprint",record->fingerprint},{"encrypt",encryptCheck(it.key())}};
   if(!record->errorCode.isEmpty())value["errorCode"]=record->errorCode;
   out.insert(it.key(),value);
  }
  return out;
+}
+void DestinationStatus::encryptChecked(const QString& profileId,const QString& fingerprint,bool passed,const QString& reason) {
+ const auto profiles=settings_.snapshot().profiles;const auto found=profiles.constFind(profileId);
+ if(found==profiles.cend()||destinationcheck::fingerprint(*found)!=fingerprint)return;
+ {std::lock_guard lock(encryptMutex_);encryptRecords_.insert(profileId,{passed,passed?QString():reason,fingerprint,credentialRevision(profileId)});}save();emit changed();
+}
+QJsonObject DestinationStatus::encryptCheckFor(const QString& profileId,const QString& fingerprint) const {
+ std::lock_guard lock(encryptMutex_);const auto record=encryptRecords_.constFind(profileId);
+ if(record==encryptRecords_.cend()||record->fingerprint!=fingerprint)return {{"state","untested"}};
+ QJsonObject out{{"state",record->passed?"passed":"failed"}};if(!record->reason.isEmpty())out["reason"]=record->reason;return out;
+}
+QJsonObject DestinationStatus::encryptCheck(const QString& profileId) const {
+ const auto profiles=settings_.snapshot().profiles;const auto found=profiles.constFind(profileId);const auto record=encryptRecords_.constFind(profileId);
+ if(found==profiles.cend()||record==encryptRecords_.cend()||record->fingerprint!=destinationcheck::fingerprint(*found))return {{"state","untested"}};
+ // The connection it checked, so a window editing the destination can tell it no longer applies.
+ QJsonObject out{{"state",record->passed?"passed":"failed"},{"fingerprint",record->fingerprint}};if(!record->reason.isEmpty())out["reason"]=record->reason;return out;
 }
 }

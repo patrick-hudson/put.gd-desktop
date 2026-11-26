@@ -442,19 +442,28 @@ private slots:
   }
   reply = call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, -1, QStringList{}});
   QCOMPARE(reply.signature(), QString("u(ia{sv}av)")); QCOMPARE(reply.arguments().at(0).toUInt(), uint(1));
-  auto layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QCOMPARE(layout.id, 0); QCOMPARE(layout.children.size(), 28);
+  auto layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QCOMPARE(layout.id, 0); QCOMPARE(layout.children.size(), 29);
   // The live block leads and stays hidden while nothing happens.
   for(int i=0;i<6;++i){const auto item=qdbus_cast<WireLayout>(layout.children[i].variant());QCOMPARE(item.id,QList<int>({42,43,19,20,22,21})[i]);QVERIFY(!item.props["visible"].toBool());}
   layout.children.erase(layout.children.begin(),layout.children.begin()+6);
   QCOMPARE(layout.props["children-display"].toString(), QString("submenu"));
   // The agreed order (2026-11-14), each group closed by a separator; "-" is a separator.
-  const QStringList order{"Capture region","Repeat last region","Capture window","Capture monitor","Capture desktop","Capture scrolling region","-","Capture region & edit","Edit image","Record screen","-","Copy text from region","Upload clipboard","-","Capture delay: none","Capture output","-","Open put.gd","Settings","Update available","-","Quit put.gd"};
-  const QList<int> ids{1,32,2,31,3,39,6,5,13,16,10,41,4,47,33,23,48,8,7,17,49,12};
+  const QStringList order{"Capture region","Capture region (encrypted)","Repeat last region","Capture window","Capture monitor","Capture desktop","Capture scrolling region","-","Capture region & edit","Edit image","Record screen","-","Copy text from region","Upload clipboard","-","Capture delay: none","Capture output","-","Open put.gd","Settings","Update available","-","Quit put.gd"};
+  const QList<int> ids{1,50,32,2,31,3,39,6,5,13,16,10,41,4,47,33,23,48,8,7,17,49,12};
   QCOMPARE(layout.children.size(),order.size());
   for (int i = 0; i < order.size(); ++i) {const auto item=qdbus_cast<WireLayout>(layout.children.at(i).variant());QCOMPARE(item.id,ids[i]);if(order[i]=="-")QCOMPARE(item.props["type"].toString(),QString("separator"));else QCOMPARE(item.props["label"].toString(),order[i]);}
-  QVERIFY(!qdbus_cast<WireLayout>(layout.children.at(19).variant()).props["visible"].toBool());
+  QVERIFY(!qdbus_cast<WireLayout>(layout.children.at(20).variant()).props["visible"].toBool());
+  // #2079: Capture region (encrypted), command 50, shows only once its destination passed the encrypted-link check.
+  const auto encryptedRow=[](const WireLayout& menu){for(const auto& child:menu.children){const auto item=qdbus_cast<WireLayout>(child.variant());if(item.id==50)return item;}return WireLayout{};};
+  QCOMPARE(encryptedRow(layout).id,50);QVERIFY(!encryptedRow(layout).props["visible"].toBool());
+  // Once it passed, the row shows and starts an encrypted region capture.
+  {QSignalSpy encryptedActions(&tray,&NativeTray::actionActivated);traymenu::State encrypted;encrypted.encryptedRegion=true;tray.setMenu(encrypted);
+   const auto shown=qdbus_cast<WireLayout>(call("/Menu","com.canonical.dbusmenu","GetLayout",{0,-1,QStringList{}}).arguments().at(1));
+   const auto row=encryptedRow(shown);QCOMPARE(row.id,50);QVERIFY(row.props["visible"].toBool());
+   QCOMPARE(click(50).type(),QDBusMessage::ReplyMessage);PUTGD_TRY_COMPARE(encryptedActions.size(),1);QCOMPARE(encryptedActions.first().first().toString(),QString("region-encrypted"));
+   tray.setMenu({});}
   // The capture delay is a radio group one level down, None chosen until told otherwise.
-  const auto delay = qdbus_cast<WireLayout>(layout.children.at(14).variant());
+  const auto delay = qdbus_cast<WireLayout>(layout.children.at(15).variant());
   QCOMPARE(delay.id, 33); QCOMPARE(delay.props["children-display"].toString(), QString("submenu")); QCOMPARE(delay.children.size(), 5);
   for (int i = 0; i < 4; ++i) {
    const auto choice = qdbus_cast<WireLayout>(delay.children.at(i).variant());
@@ -466,14 +475,14 @@ private slots:
   {traymenu::State state;state.delay=5;tray.setMenu(state);const auto set=qdbus_cast<WireLayout>(call("/Menu","com.canonical.dbusmenu","GetLayout",{33,-1,QStringList{}}).arguments().at(1));QCOMPARE(set.props["label"].toString(),QString("Capture delay: 5 seconds"));QCOMPARE(qdbus_cast<WireLayout>(set.children.at(2).variant()).props["toggle-state"].toInt(),1);const auto row=qdbus_cast<WireLayout>(set.children.at(4).variant());QCOMPARE(row.props["label"].toString(),QString("Hotkeys capture at once"));QVERIFY(row.props["visible"].toBool());QVERIFY(!row.props["enabled"].toBool());
    state.hotkeysDelay=true;tray.setMenu(state);QVERIFY(!qdbus_cast<QDBusVariant>(call("/Menu","com.canonical.dbusmenu","GetProperty",{44,QString("visible")}).arguments().first()).variant().toBool());tray.setMenu({});}
   // Other editor sources sit in one submenu.
-  const auto editImage = qdbus_cast<WireLayout>(layout.children.at(8).variant());
+  const auto editImage = qdbus_cast<WireLayout>(layout.children.at(9).variant());
   QCOMPARE(editImage.id, 13); QCOMPARE(editImage.props["children-display"].toString(), QString("submenu"));
   QCOMPARE(editImage.children.size(), 2);
   QCOMPARE(qdbus_cast<WireLayout>(editImage.children.at(0).variant()).props["label"].toString(), QString("Edit clipboard image"));
   QCOMPARE(qdbus_cast<WireLayout>(editImage.children.at(1).variant()).props["label"].toString(), QString("Edit an image file…"));
   // Depth 1 lists the submenu header without expanding it.
   layout = qdbus_cast<WireLayout>(call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, 1, QStringList{}}).arguments().at(1));
-  QVERIFY(qdbus_cast<WireLayout>(layout.children.at(6+8).variant()).children.isEmpty());
+  QVERIFY(qdbus_cast<WireLayout>(layout.children.at(6+9).variant()).children.isEmpty());
   reply = call("/Menu", "com.canonical.dbusmenu", "GetLayout", {0, 0, QStringList{"label"}});
   layout = qdbus_cast<WireLayout>(reply.arguments().at(1)); QVERIFY(layout.children.isEmpty()); QVERIFY(layout.props.isEmpty());
   QCOMPARE(call("/Menu", "com.canonical.dbusmenu", "AboutToShow", {0}).arguments().at(0).toBool(), false);

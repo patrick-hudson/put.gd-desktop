@@ -72,6 +72,11 @@ public:
  Error refreshLink(const QString& historyId,const StorageReceipt& before,const StorageReceipt& after);
  Error recordCopiedLink(const QString& historyId,QString& operationId);
  Error updateRemote(const QString& historyId,const QString& status,const Error& = {});
+ // Forget key (#2079): removes an encrypted link's key from the record and its operation's
+ // journal in one transaction, on this computer only: History can't open or copy the link
+ // again, but the file stays at the destination and anyone who already has the full link can
+ // still open it. history_not_encrypted for a record that isn't an encrypted upload.
+ Error forgetEncryptKey(const QString& historyId);
  // The error log (#1753), a table beside the journal: entries are already redacted
  // JSON objects with id, time, kind and subject. saveError inserts or replaces one by
  // ID, and then keeps

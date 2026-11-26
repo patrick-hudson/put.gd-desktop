@@ -18,6 +18,7 @@
 #include <malloc.h>
 #endif
 #include "core/UploadNaming.h"
+#include "core/EncryptJob.h"
 #include "core/HostEnvironment.h"
 #include "FileUploads.h"
 #include "core/ImageJob.h"
@@ -66,6 +67,8 @@ QString uuid() {return QUuid::createUuid().toString(QUuid::WithoutBraces);}
 Error unsupported() {return {"source_unsupported","Screen capture and clipboard access aren't available on this desktop.",{}};}
 bool terminalUpload(const QString& s) {return s=="uploaded"||s=="skipped"||s=="conflict"||s=="local_only";}
 const QLoggingCategory& providerLog(const QString& provider) {return provider=="s3"||provider=="cloudflare-r2"?logS3():provider=="proton-drive"?logProton():logOperation();}
+// #2079: an encrypted file opens only from its link, which a private upload doesn't get.
+QString encryptNeedsLink() {return QStringLiteral("Encrypted files open only from their link, and Sharing is set to Private upload. Change Sharing in Settings → Capture, or turn off Encrypt to upload it privately.");}
 qint64 artifactBytes(const Operation& op) {qint64 total=0;for(const auto& item:op.items)total+=item.artifact.bytes;return total;}
 QJsonObject itemFields(const Operation& op,const OperationItem& item) {return {{"operationId",op.id},{"itemId",item.artifact.id},{"provider",op.destination.providerId}};}
 // A diagnostics upload (#123) has no action route: it goes to the destination
@@ -127,13 +130,31 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  source_.setRegionScreenshotFirst(settings_.snapshot().regionSelectionMode=="screenshot_first");
  connect(&settings_,&SettingsService::accepted,this,[this]{uploadSlots_.setCapacity(settings_.snapshot().limits.concurrentUploads);source_.setRegionScreenshotFirst(settings_.snapshot().regionSelectionMode=="screenshot_first");pump();});
  RecordingService::Host host;
- host.reviewOptions=[this](const Operation& op){return uploadReviewOptions(op,providers_);};
+ host.reviewOptions=[this](const Operation& op){
+  auto options=uploadReviewOptions(op,providers_);
+  // #2079: the review's Encrypt toggle starts from the destination's setting.
+  // Shown for an upload route, whatever the destination is called.
+  if(routeOf(op).destination=="upload"&&!op.destination.profileId.isEmpty()){const auto encrypt=encryptOptions(op);QJsonObject start{{"available",encrypt["available"]},{"on",encrypt["on"]}};if(encrypt.contains("reason"))start["reason"]=encrypt["reason"];options["encrypt"]=start;}
+  return options;
+ };
+ host.encrypt=[this](const QString& id,bool on){recordEncrypt(id,on);};
+ host.encryptRefusal=[this](const Operation& op)->Error{
+  const auto options=encryptOptions(op);
+  if(!options["available"].toBool())return {"encrypt_unavailable",options["reason"].toString(QStringLiteral("Encrypted links aren't available for this upload."))+" Upload it without encryption.",{}};
+  // A saved passphrase that isn't loaded is said now, as the upload would say it after the export.
+  if(options["passphrase"].toBool()){QString loaded;{std::lock_guard lock(encryptHooksMutex_);if(encryptPassphrase_)loaded=encryptPassphrase_(op.destination.profileId,op.settings.profiles.value(op.destination.profileId));}
+   if(loaded.isEmpty())return {"encrypt_passphrase_locked","The Encrypted links passphrase isn't loaded. Unlock it in Destinations, then upload again.",{}};}
+  return {};
+ };
+ host.encryptChoice=[this](const Operation& op){return encryptOptions(op)["on"].toBool();};
  host.settings=[this]{return settings_.snapshot();};
  host.accept=[this](Operation& op){return acceptRecording(op);};
  host.persist=[this](const Operation& op,std::function<void(Error)> done){const auto path=databasePath();background([path,op](Error& e){HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[done](Error e,QJsonObject){done(e);});};
  host.observe=[this](const Operation& op){observe(op.publicJson());emit changed(op.id);emit observationsChanged();};
  host.admit=[this](Operation op,ClipboardPayload payload,std::function<void()> released){
   auto flag=active_.value(op.id);if(!flag){released();return;}
+  // #2079: an upload request that said encrypt decides; the review toggle's choice doesn't override it.
+  if(op.encrypt.contains("requested")){std::lock_guard lock(encryptHooksMutex_);encryptChoices_.remove(op.id);}
   Job job{op,std::move(payload),true,flag,{}};
   // The staged export stays until the artifact store has streamed it.
   job.payloadLease=std::shared_ptr<qint64>(new qint64(0),[released](qint64* value){released();delete value;});
@@ -369,6 +390,8 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
  auto stripped=requested;const auto delayValue=stripped.take("delaySeconds");
  // #1893: captureStyle true opens a file's edit with the capture style on (Edit again of a styled capture's original).
  const auto styleValue=stripped.take("captureStyle");
+ // #2079: encrypt true or false overrides the destination's Encrypted links setting for this upload.
+ const auto encryptValue=stripped.take("encrypt");
  const QJsonObject options=stripped; // const: operator[] must not insert
  const int delay=delayValue.toInt();
  if(!delayValue.isUndefined()&&(!Settings::delayableAction(requestedAction)||!delayValue.isDouble()||delayValue.toDouble()!=delay||!Settings::captureDelayChoices().contains(delay))){reply({"invalid_request","delaySeconds is 0, 3, 5 or 10, for region, window, monitor, desktop, repeat and edit captures",{}},{});return;}
@@ -379,6 +402,7 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
  if((action!="edit"&&!options.isEmpty())||(action=="edit"&&(!QStringList{"region","window","desktop","clipboard","file"}.contains(source)||(source=="file")!=options.contains("path")||(source=="file"&&!QDir::isAbsolutePath(sourcePath))))){reply({"invalid_request","Edit sources are region, window, desktop, clipboard, or file with an absolute path",{}},{});return;}
  // An edit of the clipboard or a file reads no screen, so it has nothing to delay.
  if(!styleValue.isUndefined()&&(action!="edit"||source!="file"||!styleValue.isBool())){reply({"invalid_request","captureStyle is true or false, for an edit of a file",{}},{});return;}
+ if(!encryptValue.isUndefined()&&!encryptValue.isBool()){reply({"invalid_request","encrypt is true or false",{}},{});return;}
  if(action=="edit"&&delay>0&&!Settings::delayableEditSource(source)){reply({"invalid_request","delaySeconds applies to an edit of a region, window or desktop capture",{}},{});return;}
  if(action=="edit"&&editor_){editor_->request("raise",activationToken.isEmpty()?QJsonObject{}:QJsonObject{{"activationToken",activationToken}},[](Error,QJsonObject){});reply({"editor_active","An image edit is already open. Finish or cancel it first.",{{"operationId",editingId_}}},{});return;}
  if(action=="edit"&&recording_->active()){reply({"recording_active","A recording is already running. Stop or cancel it before editing.",{{"operationId",recording_->activeId()}}},{});return;}
@@ -390,7 +414,8 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
  if(!upload&&!snapshot.archive.keepUploads&&!(action=="edit"&&(source=="clipboard"||source=="file"))){reply({"output_required","No output is enabled. Choose a destination or turn on Keep a local copy in Settings → Capture.",{}},{});return;}
  Operation op;op.id=uuid();op.action=action;op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=upload?++invocation_:invalidateCopyEligibility();op.clipboardRevision=source_.clipboardRevision();
  if(upload) {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
- auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);sensitiveModes_.insert(op.id,sensitiveMode);if(upload)beginUploadCopies(op,source=="clipboard");if(interactive)selectingId_=op.id;if(action=="edit"){editingId_=op.id;editor_=std::make_shared<EditorSession>();if((interactive&&snapshot.captureStyle.enabled)||styleValue.toBool())styledEdits_.insert(op.id);}
+ if(encryptValue.isBool())op.encrypt={{"requested",encryptValue.toBool()}};
+ auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);sensitiveModes_.insert(op.id,sensitiveMode);if(upload)beginUploadCopies(op,source=="clipboard");if(interactive)selectingId_=op.id;if(action=="edit"){editingId_=op.id;editor_=std::make_shared<EditorSession>();{std::lock_guard lock(encryptHooksMutex_);encryptOpen_.insert(op.id);}if((interactive&&snapshot.captureStyle.enabled)||styleValue.toBool())styledEdits_.insert(op.id);}
  // An edit uploads only when its editor is done; every other upload follows its capture at once.
  if(upload&&action!="edit")anticipate(op);
 #ifdef __GLIBC__
@@ -523,7 +548,7 @@ void OperationService::uploadDiagnostics(const QString& path,const QString& prof
   op.advance(OperationState::Acquiring);enqueue({op,std::move(payload),true,flag,{}});
  });
 }
-void OperationService::uploadFiles(const QStringList& paths,const QString& profileId,const QString& installation,JsonReply reply,const QString& sensitiveMode) {
+void OperationService::uploadFiles(const QStringList& paths,const QString& profileId,const QString& installation,JsonReply reply,const QString& sensitiveMode,const QJsonObject& encrypt) {
  // The installation identity comes first: one install's menu entry never
  // uploads through another install's resident, whatever it asks for.
  if(!installation.isEmpty())if(auto error=FileUploads::matchInstallation(installation,installation_)){logging::warning(logOperation(),"File upload refused",{{"action",fileManagerAction},{"error",logging::errorFields(error)}});reply(error,{});return;}
@@ -542,7 +567,7 @@ void OperationService::uploadFiles(const QStringList& paths,const QString& profi
   if(!destination.providerId.isEmpty())if(auto provider=providers_.find(destination.providerId))objectLimit=provider->capabilities(destination).maximumObjectBytes;
   *selected=FileUploads::select(paths,snapshot,fileManagerAction,objectLimit,ArtifactStore::diskBudget(artifactsRoot));
   e=selected->error;return QJsonObject{};
- },[this,snapshot,revision,route,destination,selected,reply,sensitiveMode](Error e,QJsonObject) mutable {
+ },[this,snapshot,revision,route,destination,selected,reply,sensitiveMode,encrypt](Error e,QJsonObject) mutable {
   if(!e)e=route.error;
   if(e){
    logging::warning(logOperation(),"File upload refused",{{"action",fileManagerAction},{"error",logging::errorFields(e)},{"requested",selected->files.size()}});
@@ -552,14 +577,18 @@ void OperationService::uploadFiles(const QStringList& paths,const QString& profi
   if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued actions in Settings → Advanced → Resource limits.",{}},{});return;}
   Operation op;op.id=uuid();op.action=fileManagerAction;op.settings=Settings::fromValidated(FileUploads::routedDocument(snapshot,route));op.settingsRevision=revision;
   op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=++invocation_;op.clipboardRevision=source_.clipboardRevision();op.destination=destination;
+  if(encrypt.contains("enabled"))op.encrypt={{"requested",encrypt["enabled"].toBool()}};
+  const auto encryptPassphrase=encrypt["passphrase"].toString();
+  // The passphrase itself is never kept; a Retry that still has to encrypt refuses without it.
+  if(!encryptPassphrase.isEmpty())op.encrypt["passphraseFrom"]="request";
   auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);sensitiveModes_.insert(op.id,sensitiveMode);beginUploadCopies(op,false);anticipate(op);
   ClipboardPayload payload;payload.kind="files";payload.files=selected->files;payload.zipFolders=selected->zipFolders;
   const auto origins=selected->origins;const auto database=databasePath();
-  background([database,op](Error& e) {HistoryStore store(database);e=store.saveOperation(op);return op.publicJson();},[this,op,flag,payload,origins,reply](Error e,QJsonObject result) mutable {
+  background([database,op](Error& e) {HistoryStore store(database);e=store.saveOperation(op);return op.publicJson();},[this,op,flag,payload,origins,reply,encryptPassphrase](Error e,QJsonObject result) mutable {
    if(e) {abandonUploadCopies(op.id);releaseActive(op.id);reply(e,{});return;}
    observe(op.publicJson());reply({},{{"operationId",op.id},{"operation",result}});emit changed(op.id);emit observationsChanged();
-   logging::info(logOperation(),"Operation accepted",{{"operationId",op.id},{"action",op.action},{"output","upload"},{"provider",op.destination.providerId},{"profileId",op.destination.profileId},{"items",payload.files.size()},{"zipFolders",payload.zipFolders}});
-   op.advance(OperationState::Acquiring);op.phase="acquiring";admitUpload({op,std::move(payload),true,flag,{},origins});
+   logging::info(logOperation(),"Operation accepted",{{"operationId",op.id},{"action",op.action},{"output","upload"},{"provider",op.destination.providerId},{"profileId",op.destination.profileId},{"items",payload.files.size()},{"zipFolders",payload.zipFolders},{"encrypt",op.encrypt}});
+   op.advance(OperationState::Acquiring);op.phase="acquiring";Job job{op,std::move(payload),true,flag,{},origins};job.encryptPassphrase=encryptPassphrase;admitUpload(std::move(job));
   });
  });
 }
@@ -600,6 +629,8 @@ bool OperationService::needsSensitiveCheck(const Job& job) const {
 }
 void OperationService::admitUpload(Job job) {
  if(!needsSensitiveCheck(job)){enqueue(std::move(job));return;}
+ // #2079: the jobs a check rebuilds carry the request's passphrase on to enqueue().
+ if(!job.encryptPassphrase.isEmpty())checkPassphrases_.insert(job.op.id,job.encryptPassphrase);
  if(job.cancelled->load()){job.payload={};job.op.cancelled=true;job.op.advance(OperationState::Cancelled);finish(job.op);return;}
  job.op.phase="checking";observe(job.op.publicJson());emit changed(job.op.id);emit observationsChanged();
  checkQueue_.enqueue(std::move(job));pumpChecks();
@@ -614,6 +645,8 @@ void OperationService::pumpChecks() {
 }
 void OperationService::runCheck(Job job) {
  const auto id=job.op.id;checkingId_=id;checkOperations_.insert(id,job.op);
+ // #2079: Open in editor offers the Encrypt toggle too, until the checked image uploads.
+ {std::lock_guard lock(encryptHooksMutex_);encryptOpen_.insert(id);}
  auto session=std::make_shared<EditorSession>();checkSessions_.insert(id,session);
  const bool prompt=sensitiveModes_.value(id)=="prompt";
  QPointer<OperationService> owner(this);
@@ -641,6 +674,12 @@ void OperationService::runCheck(Job job) {
  const auto terms=op.settings.quickRedactTerms,patterns=op.settings.quickRedactPatterns,categories=op.settings.sensitiveTextCategories,cover=op.settings.sensitiveTextCover;
  const auto captureStyle=op.settings.captureStyle;const auto styleLimit=std::min(op.settings.limits.imagePixels,op.settings.limits.imageBytes/4);
  const auto coveredRoot=root_+"/covered/"+id;
+ // #2079: Open in editor offers the Encrypt toggle beside Upload, as Capture region & edit does.
+ const auto encryptNow=encryptOptions(op);
+ const QJsonObject encryptStart=routeOf(op).destination=="upload"&&!op.destination.profileId.isEmpty()?QJsonObject{{"available",encryptNow["available"]},{"on",encryptNow["on"]},{"reason",encryptNow["reason"]}}:QJsonObject{};
+ session->setEncryptHandler([owner=QPointer<OperationService>(this),id](bool on){
+  QMetaObject::invokeMethod(QCoreApplication::instance(),[owner,id,on]{if(owner&&!owner->stopping_)owner->recordEncrypt(id,on);},Qt::QueuedConnection);
+ });
  const auto outputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,qint64(512)*1024*1024);
  const auto inputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,256*1024*1024);
  logging::info(logOperation(),"Sensitive text check started",{{"operationId",id},{"action",op.action},{"mode",prompt?"prompt":"report"}});
@@ -648,7 +687,7 @@ void OperationService::runCheck(Job job) {
  auto clock=std::make_shared<QElapsedTimer>();clock->start();
  background([=](Error&){
   // #1893: Open in editor (the sensitive prompt) of a capture opens with its capture style on; a selected file's starts plain.
-  const auto make=[&](EditorJob::Check check){return EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(languages).withAllCores(allCores).withRedactList(terms,patterns).withLinks(links).withStyle(captureStyle,captureStyle.enabled&&QStringList{"region","window","monitor","desktop","scroll"}.contains(shared->op.action),styleLimit).withCheck(std::move(check));};
+  const auto make=[&](EditorJob::Check check){return EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(languages).withAllCores(allCores).withRedactList(terms,patterns).withLinks(links).withEncrypt(encryptStart).withStyle(captureStyle,captureStyle.enabled&&QStringList{"region","window","monitor","desktop","scroll"}.contains(shared->op.action),styleLimit).withCheck(std::move(check));};
   if(shared->payload.kind=="image"){
    // The original stays here for Upload anyway; the helper reads a staged copy.
    QImage copy=shared->payload.image;*outcome=make({categories,prompt,true,{},cover}).run(copy,destination,outputBytes,session);
@@ -935,6 +974,12 @@ void OperationService::decideSensitive(const QString& id,const QString& choice,J
  });
 }
 void OperationService::enqueue(Job job) {
+ // #2079: the Encrypt toggle's choice joins the operation before anything of it is stored, and the
+ // toggle closes: from here on the upload has decided, and a later choice is refused.
+ {std::lock_guard lock(encryptHooksMutex_);if(const auto choice=encryptChoices_.constFind(job.op.id);choice!=encryptChoices_.cend())job.op.encrypt["requested"]=*choice;encryptChoices_.remove(job.op.id);encryptOpen_.remove(job.op.id);}
+ if(const auto passphrase=checkPassphrases_.take(job.op.id);job.encryptPassphrase.isEmpty())job.encryptPassphrase=passphrase;
+ // The Encrypt choice is final now: an upload that waited for it gets its destination warm-up.
+ if(job.acquire&&!job.localOnly&&!anticipated_.contains(job.op.id)&&!job.op.destination.providerId.isEmpty())anticipate(job.op,true);
 #ifdef __GLIBC__
  if(job.acquire)heapReclamationPending_=true;
 #endif
@@ -979,6 +1024,12 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
    owner->copyEditedImage(id,std::move(png),std::move(done));
   },Qt::QueuedConnection);
  });
+ // #2079: the Encrypt toggle beside Upload, starting from the destination's setting; each change is this upload's choice.
+ const auto encryptOptionsNow=encryptOptions(op);
+ const QJsonObject encryptStart=routeOf(op).destination=="upload"&&!op.destination.profileId.isEmpty()?QJsonObject{{"available",encryptOptionsNow["available"]},{"on",encryptOptionsNow["on"]},{"reason",encryptOptionsNow["reason"]}}:QJsonObject{};
+ session->setEncryptHandler([owner=QPointer<OperationService>(this),id=op.id](bool on){
+  QMetaObject::invokeMethod(QCoreApplication::instance(),[owner,id,on]{if(owner&&!owner->stopping_)owner->recordEncrypt(id,on);},Qt::QueuedConnection);
+ });
  session->setTextCopyHandler([owner=QPointer<OperationService>(this),id=op.id](QString text,std::function<void(Error)> done){
   QMetaObject::invokeMethod(QCoreApplication::instance(),[owner,id,text=std::move(text),done=std::move(done)]() mutable {
    if(!owner||owner->stopping_){done({"editor_closed","The editor closed before the text was copied",{}});return;}
@@ -1000,11 +1051,11 @@ void OperationService::startEditing(Operation op,std::shared_ptr<std::atomic_boo
     const bool png=imageFormatHint(header)=="png",jpeg=header.startsWith(QByteArray::fromHex("ffd8ff"));
     const auto frames=header.indexOf("acTL"),data=header.indexOf("IDAT");
     if((!png&&!jpeg)||(png&&frames>=0&&(data<0||frames<data))){edited->error={"edit_source_unsupported","The editor opens static PNG or JPEG files",{}};return QJsonObject{};}
-    *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withAllCores(allCores).withRedactList(redactTerms,redactPatterns).withSubmissionError(submissionError).withLinks(links).withStyle(style,styleStart,styleLimit).runFile(file,maximum,destination,outputBytes,session);
+    *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withAllCores(allCores).withRedactList(redactTerms,redactPatterns).withSubmissionError(submissionError).withLinks(links).withEncrypt(encryptStart).withStyle(style,styleStart,styleLimit).runFile(file,maximum,destination,outputBytes,session);
     if(edited->error.code=="source_unsupported")edited->error={"edit_source_unsupported","The editor opens static PNG or JPEG files",{}};
     return QJsonObject{};
    }
-   *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withAllCores(allCores).withRedactList(redactTerms,redactPatterns).withSubmissionError(submissionError).withLinks(links).withStyle(style,styleStart,styleLimit).run(*image,destination,outputBytes,session);
+   *edited=EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(textLanguages).withAllCores(allCores).withRedactList(redactTerms,redactPatterns).withSubmissionError(submissionError).withLinks(links).withEncrypt(encryptStart).withStyle(style,styleStart,styleLimit).run(*image,destination,outputBytes,session);
    return QJsonObject{};
   },[=,this](Error,QJsonObject) mutable {
    if(editingId_==op.id){editor_.reset();editingId_.clear();}
@@ -1287,6 +1338,7 @@ Error OperationService::acceptRecording(Operation& op) {
  op.id=uuid();op.action=acceptedAction;op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=upload?++invocation_:invalidateCopyEligibility();op.clipboardRevision=source_.clipboardRevision();
  if(upload) {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
  auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);if(upload)beginUploadCopies(op,false);
+ if(upload){std::lock_guard lock(encryptHooksMutex_);encryptOpen_.insert(op.id);}
 #ifdef __GLIBC__
  heapReclamationPending_=true;
 #endif
@@ -1317,6 +1369,112 @@ void OperationService::editorCommand(const QString& id,const QString& command,co
 void OperationService::pump() {
  while(!queue_.isEmpty()&&running_<queue_.head().op.settings.limits.concurrentUploads&&!stopping_) {auto job=queue_.dequeue();++running_;if(!job.op.destination.profileId.isEmpty())emit uploadStarting(job.op);background([this,job=std::move(job)](Error&) mutable {return run(std::move(job)).toJson();},[this](Error,QJsonObject doc) {--running_;auto op=Operation::fromJson(doc);finish(op);pump();});}
 }
+bool OperationService::encryptAvailableFor(const QString& action) const {
+ Operation op;op.action=action;op.settings=settings_.snapshot();
+ const auto route=op.settings.actions.value(action);
+ if(route.destination!="upload"||route.profileId.isEmpty())return false;
+ const auto profile=op.settings.profiles.value(route.profileId);
+ op.destination={profile["provider"].toString(),route.profileId,{},profile["settings"].toObject(),profile["credentials"].toObject()};
+ return encryptOptions(op)["available"].toBool();
+}
+bool OperationService::encryptWanted(const Operation& op) const {
+ if(op.action==diagnosticsAction)return false;
+ if(op.encrypt.contains("requested"))return op.encrypt.value("requested").toBool();
+ return op.settings.profiles.value(op.destination.profileId).value("encrypt").toObject().value("mode").toString(QStringLiteral("off"))!="off";
+}
+QJsonObject OperationService::encryptOptions(const Operation& op) const {
+ const auto route=routeOf(op);
+ const auto setting=op.settings.profiles.value(op.destination.profileId).value("encrypt").toObject().value("mode").toString(QStringLiteral("off"));
+ QJsonObject out{{"setting",setting},{"passphrase",setting=="passphrase"},{"available",false}};
+ bool on=op.encrypt.contains("requested")?op.encrypt.value("requested").toBool():setting!="off";
+ {std::lock_guard lock(encryptHooksMutex_);if(const auto choice=encryptChoices_.constFind(op.id);choice!=encryptChoices_.cend())on=*choice;
+  if(route.destination!="upload"||op.destination.profileId.isEmpty()){out["on"]=false;out["reason"]="Encrypted links need an upload destination.";return out;}
+  const auto provider=providers_.find(op.destination.providerId);
+  const auto unavailable=provider?provider->capabilities(op.destination).encryptUnavailable:QStringLiteral("This destination is unavailable.");
+  const auto check=encryptCheck_?encryptCheck_(op.destination.profileId,op.settings.profiles.value(op.destination.profileId)):QJsonObject{{"state","untested"}};
+  auto mode=route.publicationMode;if(mode=="default"&&provider)mode=provider->defaultPublicationMode(op.destination);
+  if(!unavailable.isEmpty())out["reason"]=unavailable;
+  else if(mode=="private")out["reason"]=encryptNeedsLink();
+  else if(check.value("state")=="failed")out["reason"]="This destination didn't pass the encrypted-link check: "+check.value("reason").toString();
+  else if(check.value("state")!="passed")out["reason"]=QStringLiteral("Select Test upload and link for this destination first.");
+  else out["available"]=true;}
+ out["on"]=on;return out;
+}
+void OperationService::setEncrypt(const QString& id,bool enabled,JsonReply reply) {
+ const auto found=active_.constFind(id);
+ if(found==active_.cend()){reply({"operation_not_found","That operation has finished, or there is none with this ID.",{}},{});return;}
+ {std::lock_guard lock(encryptHooksMutex_);if(!encryptOpen_.contains(id)){reply({"encrypt_too_late","This upload has already started, so Encrypt can't change now.",{{"operationId",id}}},{});return;}}
+ // A change counts only while the window that shows the toggle is open and editing: a sensitive
+ // text check's editor not yet opened, a recording not yet in review and an edit already
+ // submitted all show (or showed) another state.
+ if(checkSessions_.contains(id)&&checkSessions_.value(id)->phase()!="editing"){reply({"encrypt_unavailable","Encrypt can change once the editor is open. Select Open in editor, or start the capture with Encrypt on.",{{"operationId",id}}},{});return;}
+ if(recording_&&recording_->active()&&recording_->activeId()==id&&!recording_->reviewing()&&!recording_->exporting()){reply({"recording_state","Encrypt can change once the recording is in review.",{{"operationId",id}}},{});return;}
+ const bool editorOpen=editor_&&editingId_==id&&editor_->phase()=="editing";
+ const bool checkOpen=checkSessions_.contains(id)&&checkSessions_.value(id)->phase()=="editing";
+ const bool reviewOpen=recording_&&recording_->active()&&recording_->activeId()==id;
+ if(!editorOpen&&!checkOpen&&!reviewOpen){reply({"encrypt_too_late","This upload has already started, so Encrypt can't change now.",{{"operationId",id}}},{});return;}
+ // The open editor's own toggle, as a click sets it: its change comes back through recordEncrypt.
+ if(editorOpen||checkOpen){editorCommand(id,"encrypt",{{"on",enabled}},[reply,id,enabled](Error e,QJsonObject state){if(e){reply(e,{});return;}reply({},{{"operationId",id},{"encrypt",enabled},{"editor",state}});});return;}
+ // The recording review's own toggle, likewise; its change comes back as the review's encrypt event.
+ // While an export runs nothing changes; before review the choice is kept and the window starts from it.
+ if(recording_&&recording_->active()&&recording_->activeId()==id) {
+  if(recording_->exporting()){reply({"recording_state","Encrypt can't change while an export runs.",{{"operationId",id}}},{});return;}
+  if(recording_->reviewing()){recordingCommand("review",{{"id",id},{"action","encrypt"},{"on",enabled}},[reply,id,enabled](Error e,QJsonObject state){if(e){reply(e,{});return;}reply({},{{"operationId",id},{"encrypt",enabled},{"review",state}});});return;}
+ }
+ recordEncrypt(id,enabled);
+ reply({},{{"operationId",id},{"encrypt",enabled}});
+}
+void OperationService::recordEncrypt(const QString& id,bool enabled) {
+ if(!active_.contains(id))return;
+ {std::lock_guard lock(encryptHooksMutex_);if(!encryptOpen_.contains(id))return;encryptChoices_.insert(id,enabled);}
+ logging::info(logOperation(),"Encrypt choice set",{{"operationId",id},{"enabled",enabled}});
+}
+// Encrypted links (#2079). An upload is encrypted when it asked to be (op.encrypt.requested), else when its
+// destination's Encrypted links setting is on. An encrypted item uploads an encrypted page under a random name
+// in place of its file; the file itself stays the item's artifact for previews and local copies.
+bool OperationService::encryptItems(Operation& op,const ProviderCapabilities& capabilities,const QString& publicationMode,const QString& requestPassphrase,const std::shared_ptr<std::atomic_bool>& cancelled,const std::function<bool(const OperationItem&)>& saveItem) {
+ const auto profile=op.settings.profiles.value(op.destination.profileId);
+ const auto setting=profile.value("encrypt").toObject().value("mode").toString(QStringLiteral("off"));
+ if(!encryptWanted(op))return true;
+ QJsonObject check;QString passphrase=requestPassphrase;
+ {std::lock_guard lock(encryptHooksMutex_);if(encryptCheck_)check=encryptCheck_(op.destination.profileId,profile);if(passphrase.isEmpty()&&setting=="passphrase"&&encryptPassphrase_)passphrase=encryptPassphrase_(op.destination.profileId,profile);}
+ for(auto& item:op.items) {
+  // A file a Retry sends again (stored, failed or cancelled) and never encrypted is encrypted now.
+  if(!item.encrypt.isEmpty()||terminalUpload(item.uploadStatus)||item.uploadStatus=="unknown"||item.uploadStatus=="uploading"||!item.receipt.directUrl.isEmpty())continue;
+  if(cancelled->load())return true;
+  // Encrypting asked for and impossible here: the file doesn't go out unencrypted.
+  Error refusal;
+  if(!capabilities.encryptUnavailable.isEmpty())refusal={"encrypt_unavailable",capabilities.encryptUnavailable+" Turn off Encrypt to upload it.",{}};
+  // An encrypted file opens only from its link, and a private upload gets none.
+  else if(publicationMode=="private")refusal={"encrypt_needs_link",encryptNeedsLink(),{}};
+  else if(check.value("state")!="passed")refusal={"encrypt_check_required",check.value("state")=="failed"?"This destination didn't pass the encrypted-link check: "+check.value("reason").toString()+" Turn off Encrypt to upload it.":QStringLiteral("Select Test upload and link for this destination before uploading encrypted links."),{}};
+  else if(op.encrypt.value("passphraseFrom")=="request"&&requestPassphrase.isEmpty())refusal={"encrypt_passphrase_missing","This upload's passphrase came with the request and isn't kept, so it can't be encrypted now. Upload the file again with its passphrase.",{}};
+  else if(setting=="passphrase"&&passphrase.isEmpty())refusal={"encrypt_passphrase_locked","The Encrypted links passphrase isn't loaded. Unlock it in Destinations, then select Retry upload.",{}};
+  // The format's limits: a file encrypting can't take fails before anything is sent. It is never
+  // uploaded unencrypted; the user turns off Encrypt and uploads again for an ordinary link.
+  const bool split=item.artifact.bytes>encryptInlineLimit_;
+  if(!refusal&&item.artifact.bytes>encryptTotalLimit_)refusal={"encrypt_too_large","This file is too large to encrypt (2 GB limit). Turn off Encrypt to upload it as an ordinary link.",{}};
+  else if(!refusal&&split&&(!capabilities.encryptSplit||capabilities.serverNamesObjects))refusal={"encrypt_split_unavailable","Files over 64 MB are encrypted as a page and a data file beside it, which this destination's links can't serve. Turn off Encrypt to upload it as an ordinary link.",{}};
+  if(refusal) {item.uploadStatus="failed";item.phase="failed";item.error=refusal;logging::info(logOperation(),"Upload not encrypted, so not sent",{{"operationId",op.id},{"itemId",item.artifact.id},{"code",refusal.code},{"bytes",double(item.artifact.bytes)}});if(!saveItem(item))return false;continue;}
+  item.phase="encrypting";observe(op.publicJson());
+  // The page and its data file share one random stem, as the design shows (k3Xq….html, k3Xq….bin).
+  const auto pageName=EncryptJob::randomName("html"),binName=split?pageName.chopped(5)+".bin":QString();
+  const EncryptJob encrypter(encryptHelper_);
+  auto result=encrypter.run(item.artifact,QFileInfo(item.artifact.path).absolutePath(),split?"split":"inline",pageName,binName,passphrase,cancelled);
+  if(result.error) {
+   if(result.error.code=="cancelled"){item.uploadStatus="cancelled";item.phase="cancelled";item.error={"cancelled","Upload cancelled before it started. Select Retry upload to try again.",{}};}
+   else {item.uploadStatus="failed";item.phase="failed";item.error=result.error;}
+   logging::warning(logOperation(),"Encryption failed",{{"operationId",op.id},{"itemId",item.artifact.id},{"error",logging::errorFields(result.error)}});
+   if(!saveItem(item))return false;continue;
+  }
+  QJsonObject encrypt{{"status","encrypted"},{"form",split?"split":"inline"},{"key",result.key},{"passphrase",!passphrase.isEmpty()},{"page",result.page.toJson()}};
+  if(split)encrypt["data"]=QJsonObject{{"artifact",result.data.toJson()},{"candidate",binName},{"uploadStatus","stored"},{"publicationId",uuid()}};
+  item.encrypt=encrypt;item.candidate=pageName;item.phase="stored";
+  logging::info(logOperation(),"Upload encrypted",{{"operationId",op.id},{"itemId",item.artifact.id},{"form",split?"split":"inline"},{"passphrase",!passphrase.isEmpty()},{"pageBytes",double(result.page.bytes)}});
+  if(!saveItem(item))return false;
+ }
+ return true;
+}
 Operation OperationService::run(Job job) {
  auto op=job.op;HistoryStore store(databasePath());ArtifactStore artifacts(root_+"/artifacts");
  // Any History write of this run that fails with history_io marks the operation, even if a later write succeeds:
@@ -1330,7 +1488,7 @@ Operation OperationService::run(Job job) {
   if(item.linkAvailable()) {
    int index=0;while(index<op.items.size()&&op.items[index].artifact.id!=item.artifact.id)++index;
    QPointer<OperationService> owner(this);
-   QMetaObject::invokeMethod(this,[owner,id=op.id,itemId=item.artifact.id,index,url=item.receipt.directUrl]{if(owner&&!owner->stopping_)owner->uploadLinkReady(id,itemId,index,url);},Qt::QueuedConnection);
+   QMetaObject::invokeMethod(this,[owner,id=op.id,itemId=item.artifact.id,index,url=item.link()]{if(owner&&!owner->stopping_)owner->uploadLinkReady(id,itemId,index,url);},Qt::QueuedConnection);
   }
   return true;
  };
@@ -1405,10 +1563,15 @@ Operation OperationService::run(Job job) {
  if(publicationMode=="private"&&!capabilities.privateUploads){op.error={"unsupported_capability","This destination doesn't support private uploads. Change Sharing or Destination in Settings → Capture.",{}};op.advance(OperationState::Failed);save();return op;}
  // A server that names its own objects has no name to collide with: the policy does not apply (#1361).
  if(!capabilities.serverNamesObjects&&(!capabilities.conditionalCreate||(op.settings.collisionPolicy=="overwrite"&&!capabilities.conditionalReplace))) {op.error={"unsupported_capability","This destination doesn't support the selected When a name exists setting. Change it in Settings → Capture.",{}};op.advance(OperationState::Failed);save();return op;}
+ // #2079: encrypted items get their page and random name before naming; a retry keeps both.
+ if(!job.sharingOnly&&!encryptItems(op,capabilities,publicationMode,job.encryptPassphrase,job.cancelled,saveItem))return op;
+ const bool encrypting=encryptWanted(op);
  bool needsNames=job.acquire;for(const auto& item:std::as_const(op.items))if(!terminalUpload(item.uploadStatus)&&item.candidate.isEmpty())needsNames=true;
  if(needsNames) {QList<Artifact> list;for(const auto& item:std::as_const(op.items))list.append(item.artifact);auto names=UploadNaming::batch(list,op.settings.namingMode,capabilities.serverNamesObjects?QStringLiteral("keep"):op.settings.collisionPolicy,capabilities.maximumNameBytes,op.settings.randomName);QJsonArray chosen;
   for(int i=0;i<op.items.size();++i) {
    if(!op.items[i].candidate.isEmpty())continue;
+   // #2079: an encrypted request's item that encrypting refused keeps its failure; it is never named or sent.
+   if(!sendable(op.items[i],encrypting))continue;
    // A diagnostics package ignores naming templates: an unguessable name.
    if(op.action==diagnosticsAction)names[i]={"putgd-diagnostics-"+uuid()+".zip","pending"};
    op.items[i].candidate=names[i].name;if(names[i].status!="pending")op.items[i].uploadStatus=names[i].status;chosen.append(QJsonObject{{"itemId",op.items[i].artifact.id},{"name",names[i].name},{"status",names[i].status}});
@@ -1432,9 +1595,10 @@ Operation OperationService::run(Job job) {
  QHash<QByteArray,QList<int>> targets;
  for(int index=0;index<op.items.size();++index) {
   auto& item=op.items[index];if(terminalUpload(item.uploadStatus)||item.uploadStatus=="unknown")continue;
+  if(!sendable(item,encrypting))continue;
   if(job.cancelled->load())break;
   item.phase="preflight";observe(op.publicJson());
-  if(auto e=artifacts.verify(item.artifact)) {item.error=e;item.uploadStatus="failed";if(!saveItem(item))return op;continue;}
+  if(auto e=artifacts.verify(item.uploadArtifact())) {item.error=e;item.uploadStatus="failed";if(!saveItem(item))return op;continue;}
   if(!item.objectReference.isEmpty()&&!item.condition.isEmpty()&&item.uploadStatus!="failed") {targets[QJsonDocument(item.objectReference).toJson(QJsonDocument::Compact)].append(index);continue;}
   bool checked=false;
   for(int attempts=0;attempts<32&&!job.cancelled->load();++attempts) {
@@ -1468,7 +1632,7 @@ Operation OperationService::run(Job job) {
   {std::lock_guard lock(itemsMutex);observe(op.publicJson());}
   if(item.linkAvailable()) {
    QPointer<OperationService> owner(this);
-   QMetaObject::invokeMethod(this,[owner,id=op.id,itemId=item.artifact.id,index,url=item.receipt.directUrl]{if(owner&&!owner->stopping_)owner->uploadLinkReady(id,itemId,index,url);},Qt::QueuedConnection);
+   QMetaObject::invokeMethod(this,[owner,id=op.id,itemId=item.artifact.id,index,url=item.link()]{if(owner&&!owner->stopping_)owner->uploadLinkReady(id,itemId,index,url);},Qt::QueuedConnection);
   }
   return true;
  };
@@ -1478,8 +1642,70 @@ Operation OperationService::run(Job job) {
  // for its link instead of passing it and stranding the link (#478).
  auto linkFollows=[&](const OperationItem& item){return capabilities.sharing&&item.uploadStatus=="uploaded"&&item.receipt.directUrl.isEmpty();};
  auto settleTransfer=[&](int index){OperationItem item;{std::lock_guard lock(itemsMutex);item=op.items[index];}if(!linkFollows(item))settled(index);};
+ // #2079: a split encrypted item's data file goes first, under its own random name and
+ // conditional create, with the same unknown-outcome rules: it is reconciled before it is
+ // ever sent again. Its record lives in item.encrypt.data. False when the item settled here.
+ auto sendData=[&](OperationItem& item,int index,const std::shared_ptr<std::atomic_bool>& cancel)->bool {
+  auto encrypt=item.encrypt;auto data=encrypt["data"].toObject();
+  OperationItem part;part.artifact=Artifact::fromJson(data["artifact"].toObject());part.candidate=data["candidate"].toString();part.publicationId=data["publicationId"].toString();
+  part.uploadStatus=data["uploadStatus"].toString("stored");part.objectReference=data["objectReference"].toObject();part.condition=data["condition"].toString();
+  part.concurrencyToken=data["concurrencyToken"].toString();part.receipt=StorageReceipt::fromJson(data["receipt"].toObject());part.uploadJournal=data["uploadJournal"].toObject();
+  const auto keep=[&]()->bool{
+   data["uploadStatus"]=part.uploadStatus;data["objectReference"]=part.objectReference;data["condition"]=part.condition;data["concurrencyToken"]=part.concurrencyToken;
+   data["receipt"]=part.receipt.toJson();data["uploadJournal"]=part.uploadJournal;data["error"]=part.error.toJson();encrypt["data"]=data;item.encrypt=encrypt;return commit(item,index);
+  };
+  const auto settle=[&](const QString& status,const Error& error){item.uploadStatus=status;item.phase=status;item.error=error;keep();return false;};
+  const auto own=[&](const StatResult& stat){return stat.status=="own"&&!stat.receipt.validate()&&stat.receipt.publicationId==part.publicationId&&stat.receipt.destination.toJson()==op.destination.toJson();};
+  if(part.uploadStatus=="uploaded")return true;
+  ArtifactStore artifacts(root_+"/artifacts");
+  if(part.uploadStatus=="unknown") {
+   item.phase="reconciling";show(item,index);
+   auto stat=storageRequest<StatResult>([&](auto cb){auto request=part.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=cancel;provider->reconcile(request,cb);});
+   if(own(stat)){part.receipt=stat.receipt;part.uploadStatus="uploaded";part.uploadJournal={};part.error={};return keep();}
+   if(stat.status!="missing")return settle("unknown",stat.error?stat.error:Error{"publication_unknown","Couldn't confirm whether the encrypted link's data file was uploaded. Check the destination before selecting Retry upload.",{}});
+   part.uploadStatus="stored";
+  }
+  if(auto e=artifacts.verify(part.artifact))return settle("failed",e);
+  if(part.objectReference.isEmpty()||part.condition.isEmpty()) {
+   item.phase="preflight";show(item,index);
+   auto check=storageRequest<NameCheck>([&](auto cb){provider->checkName(op.destination,part.candidate,cb,cancel);});
+   if(cancel->load())return settle("cancelled",{"cancelled","Upload cancelled before it started. Select Retry upload to try again.",{}});
+   if(check.error||check.objectReference.isEmpty()||check.status=="inconclusive")return settle("failed",check.error?check.error:Error{"existence_unknown","Couldn't check whether the encrypted link's data file name is free at the destination. Try again.",{}});
+   // Its name is in the page already: a taken one is never replaced or renamed.
+   if(check.status=="present")return settle("failed",{"encrypt_name_taken","The encrypted link's random data file name is already taken at the destination, so the upload didn't finish.",{}});
+   part.objectReference=check.objectReference;part.concurrencyToken=check.concurrencyToken;part.condition="absent";if(!keep())return false;
+  }
+  part.uploadStatus="uploading";item.phase="uploading";if(!keep())return false;
+  auto activity=std::make_shared<StorageActivity>(*this,!provider->reportsUploadProgress());
+  auto uploaded=awaitProvider<UploadResult>([&](auto cb){
+   auto request=part.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=cancel;
+   request.checkpoint=[&](const QJsonObject& journal,std::function<void(Error)> ack){part.uploadJournal=journal;data["uploadJournal"]=journal;encrypt["data"]=data;item.encrypt=encrypt;ack(persist(item,index));};
+   request.progress=[&,activity](const UploadProgress& value){if(!value.valid())return;activity->set(value.phase!="preparing");std::lock_guard lock(itemsMutex);op.items[index].phase=value.phase;op.items[index].uploadProgress=value;observe(op.publicJson());};
+   provider->upload(request,cb);
+  });
+  activity->set(false);
+  logging::write(providerLog(op.destination.providerId),uploaded.status=="uploaded"?QtInfoMsg:QtWarningMsg,"Encrypted data file upload",{{"operationId",op.id},{"itemId",item.artifact.id},{"status",uploaded.status},{"byteCount",double(part.artifact.bytes)}});
+  if(uploaded.status=="uploaded") {
+   const bool matches=!uploaded.receipt.validate()&&uploaded.receipt.publicationId==part.publicationId&&uploaded.receipt.destination.toJson()==op.destination.toJson();
+   if(!matches){part.uploadStatus="unknown";return settle("unknown",{"receipt_invalid","The destination's reply didn't match this upload. Check the destination before retrying.",{}});}
+   part.receipt=uploaded.receipt;part.uploadStatus="uploaded";part.uploadJournal={};part.error={};return keep();
+  }
+  if(uploaded.status=="unknown"){part.uploadStatus="unknown";part.error=uploaded.error;return settle("unknown",uploaded.error);}
+  if(uploaded.status=="collision") {
+   // Ours from an earlier attempt whose reply was lost, or someone else's.
+   auto stat=storageRequest<StatResult>([&](auto cb){auto request=part.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=cancel;provider->reconcile(request,cb);});
+   if(own(stat)){part.receipt=stat.receipt;part.uploadStatus="uploaded";part.uploadJournal={};part.error={};return keep();}
+   if(stat.status!="foreign"){part.uploadStatus="unknown";return settle("unknown",stat.error?stat.error:Error{"publication_unknown","Couldn't confirm whether the encrypted link's data file was uploaded. Check the destination before selecting Retry upload.",{}});}
+   return settle("failed",{"encrypt_name_taken","The encrypted link's random data file name is already taken at the destination, so the upload didn't finish.",{}});
+  }
+  // A failure before the provider settled a journaled (multipart) upload leaves it unknown, as for the page.
+  if(uploaded.status=="failed"&&!part.uploadJournal.isEmpty()&&!cancel->load()){part.uploadStatus="unknown";part.error=uploaded.error;return settle("unknown",uploaded.error);}
+  part.uploadStatus=cancel->load()?QStringLiteral("cancelled"):QStringLiteral("failed");part.error=uploaded.error;
+  return settle(part.uploadStatus,cancel->load()?Error{"cancelled","Upload cancelled. Select Retry upload to upload this file.",{}}:uploaded.error);
+ };
  auto transfer=[&](int index,const std::shared_ptr<std::atomic_bool>& cancel) {
   OperationItem item;{std::lock_guard lock(itemsMutex);item=op.items[index];}
+  if(!sendable(item,encrypting))return;
   ArtifactStore artifacts(root_+"/artifacts");
   auto lock=objectLock(op.destination,item.objectReference,item.candidate);std::unique_lock guard(*lock);
   // What a failed or cancelled attempt leaves the item as.
@@ -1494,7 +1720,7 @@ Operation OperationService::run(Job job) {
    // Retry stays the same. Only an upload confirmed here clears it. Nothing is
    // journaled before the attempt itself (uploading reads back as unknown).
    undone=QStringLiteral("unknown");
-   item.uploadStatus="stored";item.error={};if(auto error=artifacts.verify(item.artifact)) {item.uploadStatus=undone;item.error=error;commit(item,index);return;}
+   item.uploadStatus="stored";item.error={};if(auto error=artifacts.verify(item.uploadArtifact())) {item.uploadStatus=undone;item.error=error;commit(item,index);return;}
   }
   // A provider that settles its own uploads checks the key itself when it resumes a journaled
   // upload; checking it here as well could only overrule its answer (#1627).
@@ -1511,7 +1737,7 @@ Operation OperationService::run(Job job) {
    auto stat=storageRequest<StatResult>([&](auto cb) {auto request=item.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=cancel;provider->reconcile(request,cb);});
    if(stat.status=="own"&&!stat.receipt.validate()&&stat.receipt.publicationId==item.publicationId&&stat.receipt.destination.toJson()==op.destination.toJson()) {item.receipt=stat.receipt;item.uploadStatus="uploaded";item.error={};item.uploadJournal={};if(!commit(item,index))return;return;}
    if(stat.status!="missing"&&stat.status!="foreign") {item.phase="unknown";item.error=stat.error?stat.error:Error{"publication_unknown","Couldn't confirm whether the earlier upload succeeded. Check the destination before selecting Retry upload.",{}};commit(item,index);return;}
-   if(auto error=artifacts.verify(item.artifact)) {item.phase="unknown";item.error=error;commit(item,index);return;}
+   if(auto error=artifacts.verify(item.uploadArtifact())) {item.phase="unknown";item.error=error;commit(item,index);return;}
   }
   if(item.uploadStatus=="unknown"&&!settling) {
    item.phase="reconciling";show(item,index);
@@ -1519,8 +1745,9 @@ Operation OperationService::run(Job job) {
    if(stat.status=="own"&&!stat.receipt.validate()&&stat.receipt.publicationId==item.publicationId&&stat.receipt.destination.toJson()==op.destination.toJson()) {item.receipt=stat.receipt;item.uploadStatus="uploaded";item.error={};item.uploadJournal={};if(!commit(item,index))return;return;}
    {auto fields=itemFields(op,item);fields["status"]=stat.status;if(stat.error)fields["error"]=logging::errorFields(stat.error);logging::write(providerLog(op.destination.providerId),stat.status=="own"||stat.status=="missing"?QtInfoMsg:QtWarningMsg,"Uncertain upload reconciled",fields);}
    if(stat.status!="missing") {item.phase="unknown";item.error=stat.error?stat.error:Error{"publication_unknown","Couldn't confirm whether the earlier upload succeeded. Check the destination before selecting Retry upload.",{}};if(!commit(item,index))return;return;}
-   item.uploadStatus="stored";if(auto error=artifacts.verify(item.artifact)) {item.uploadStatus="failed";item.error=error;commit(item,index);return;}if(!commit(item,index))return;
+   item.uploadStatus="stored";if(auto error=artifacts.verify(item.uploadArtifact())) {item.uploadStatus="failed";item.error=error;commit(item,index);return;}if(!commit(item,index))return;
   }
+  if(item.encrypted()&&item.encrypt.value("form")=="split"&&!sendData(item,index,cancel))return;
   for(int attempts=0;attempts<32;++attempts) {
    item.uploadStatus="uploading";item.phase="uploading";item.uploadProgress.reset();if(!commit(item,index))return;
    struct ProgressState{std::mutex mutex;bool closed=false;std::optional<UploadProgress> latest;};
@@ -1605,7 +1832,7 @@ Operation OperationService::run(Job job) {
  std::vector<std::thread> workers;
  for(int index=0;index<op.items.size()&&persisted;++index) {
   OperationItem item;{std::lock_guard lock(itemsMutex);item=op.items[index];}
-  if(terminalUpload(item.uploadStatus)||item.uploadStatus=="failed") {settleTransfer(index);continue;}
+  if(terminalUpload(item.uploadStatus)||item.uploadStatus=="failed"||!sendable(item,encrypting)) {settleTransfer(index);continue;}
   if(job.cancelled->load()) {op.cancelled=true;break;}
   const auto cancel=itemCancellation(op.id,item.artifact.id);
   // Waiting for a slot: the operation reads as queued until one of its files transfers.
@@ -1688,13 +1915,20 @@ Operation OperationService::run(Job job) {
 }
 // Lets the destination's provider get ready while the operation's content is still being
 // chosen, captured or copied. What it readied and the operation never used ends with it.
-void OperationService::anticipate(const Operation& op) {
+void OperationService::anticipate(const Operation& op,bool final) {
+ // #2079: an encrypted request contacts its destination only once it is encrypted, so one that can't
+ // be encrypted reaches nothing at all; it gives up the warm-up. Where Encrypt can still be turned on
+ // later (a sensitive text check's editor), the warm-up waits for enqueue(), when the choice is final.
+ if(encryptWanted(op))return;
+ if(!final&&op.settings.sensitiveTextCheck)return;
  if(const auto provider=providers_.find(op.destination.providerId))if(auto ready=provider->anticipate(op.destination))anticipated_.insert(op.id,std::move(ready));
 }
 namespace {
 Error settlingError() {return {"operation_settling","Previous attempt is still finishing. Wait a moment and try again.",{}};}
 }
 void OperationService::releaseActive(const QString& id) {
+ {std::lock_guard lock(encryptHooksMutex_);encryptChoices_.remove(id);encryptOpen_.remove(id);}
+ checkPassphrases_.remove(id);
  anticipated_.remove(id);
  // Durable completion and source drain can arrive in either order. Retain the
  // bounded operation slot until both have happened; never unlock a live helper.
@@ -1883,6 +2117,8 @@ void OperationService::retry(const QString& id,JsonReply reply,bool sharingOnly)
  // This operation's own state answers first: a Retry refused as settling or busy is never queued behind cleanup or
  // turned into queue_full (#1578).
  if(active_.contains(id)) {reply(settling(id)?settlingError():Error{"operation_busy","This upload is already running.",{}},{});return;}
+ // #2079: Forget key is writing this operation's record; a Retry now could put the key back.
+ if(held_.contains(id)){reply({"operation_busy","History is changing this upload. Try again in a moment.",{}},{});return;}
  if(cleanupInProgress_&&automaticCleanup_){cleanupStop_->store(true);afterCleanup_.append([this,id,reply,sharingOnly]{retry(id,reply,sharingOnly);});return;}
  if(cleanupInProgress_){reply({"cleanup_busy","Temporary files are being cleared. Wait a moment and try again.",{}},{});return;}
  if(!ready_) {reply(notReadyError(),{});return;}
@@ -1907,6 +2143,7 @@ void OperationService::retry(const QString& id,JsonReply reply,bool sharingOnly)
 void OperationService::retryLocalSave(const QString& id,JsonReply reply) {
  if(unsavedHistory_.contains(id)){reply(unsavedHistoryError(),{});return;}
  if(active_.contains(id)){reply(settling(id)?settlingError():Error{"operation_busy","This file is already being saved or uploaded.",{}},{});return;}
+ if(held_.contains(id)){reply({"operation_busy","History is changing this upload. Try again in a moment.",{}},{});return;}
  if(cleanupInProgress_&&automaticCleanup_){cleanupStop_->store(true);afterCleanup_.append([this,id,reply]{retryLocalSave(id,reply);});return;}
  if(cleanupInProgress_){reply({"cleanup_busy","Temporary files are being cleared. Wait a moment and try again.",{}},{});return;}
  if(!ready_){reply(notReadyError(),{});return;}
@@ -1938,6 +2175,8 @@ void OperationService::retryLocalSave(const QString& id,JsonReply reply) {
  });
 }
 void OperationService::copyResult(const QString& id,JsonReply reply) {
+ // #2079: it rewrites the operation's record, which Forget key may be writing.
+ if(held_.contains(id)){reply({"operation_busy","History is changing this upload. Try again in a moment.",{}},{});return;}
  JsonReply pendingReply;
  if(active_.contains(id)&&!detachCompletedUploadCopies(id,pendingReply)) {reply({"operation_busy","Wait for this action to finish before copying its result.",{}},{});return;}
  auto completed=[reply,pendingReply](Error error,QJsonObject result){if(pendingReply)pendingReply(error,result);reply(error,result);};
@@ -1960,7 +2199,7 @@ void OperationService::performCopy(Operation op,bool explicitCopy,JsonReply repl
   record(op,{{"suppression",explicitCopy?copyGuard(false,false,"superseded",ticket,invocation_,0,0):copyGuard(false,false,"newer_action",op.invocation,invocation_,op.clipboardRevision,source_.clipboardRevision())}});return;
  }
  QStringList urls,files;QString localKind;
- for(const auto& item:std::as_const(op.items)) {if(item.linkAvailable())urls.append(item.receipt.directUrl);if(item.uploadStatus=="local_only"&&item.local.status=="saved") {files.append(item.local.path);localKind=item.artifact.category;}}
+ for(const auto& item:std::as_const(op.items)) {if(item.linkAvailable())urls.append(item.link());if(item.uploadStatus=="local_only"&&item.local.status=="saved") {files.append(item.local.path);localKind=item.artifact.category;}}
  if(urls.isEmpty()&&files.isEmpty()) {op.copyStatus="no_result";record(op);return;}
  CopyPayload payload;
  if(!urls.isEmpty()) {payload.kind="text";payload.text=urls.join('\n');}
@@ -2063,7 +2302,7 @@ QJsonObject OperationService::capabilities() const {
   {"editor",QJsonObject{{"available",editor},{"admissionPixels",double(EditorJob::admissionPixels)},{"open",!editingId_.isEmpty()},
    {"sources",QJsonArray{"region","window","desktop","clipboard","file","scroll"}},{"fileFormats",QJsonArray{"png","jpeg"}},{"output","png"},
    {"shapes",QJsonArray{"redact","blur","arrow","rectangle","text","highlight","step","pen","ellipse","line"}},{"blurStyles",QJsonArray{"blur","pixelate"}},
-   {"commands",QJsonArray{"inspect","apply","preview","saveCopy","copy","fileDialog","view","submit","cancel","raise"}}}},
+   {"commands",QJsonArray{"inspect","apply","preview","saveCopy","copy","fileDialog","view","encrypt","submit","cancel","raise"}}}},
   {"scroll",scroll_->capabilities()},{"recording",recording_->capabilities()},{"text",text_->capabilities(textSourceErrors())}};
 }
 QJsonObject OperationService::diagnostics() const {
@@ -2080,7 +2319,31 @@ QJsonObject OperationService::diagnostics() const {
 }
 void OperationService::abandonUploads(HistoryStore& store,Operation& op,QJsonObject& outcome) {
  QSet<QString> changed;
+ // The user hears of each kept upload once (#226), with at most `bytes` stored in its parts.
+ const auto notify=[&](const Error& error,double bytes){
+  auto notice=outcome["incompleteUploadNotice"].toObject();
+  const auto add=[&](const char* key,const QString& value){auto values=notice[key].toArray();if(!value.isEmpty()&&!values.contains(value))values.append(value);notice[key]=values;};
+  notice["count"]=notice["count"].toInt()+1;notice["bytes"]=notice["bytes"].toDouble()+bytes;
+  add("providers",op.destination.providerId);add("profiles",op.destination.profileId);add("buckets",op.destination.settings.value("bucket").toString());
+  if(!notice.contains("error"))notice["error"]=error.toJson();
+  outcome["incompleteUploadNotice"]=notice;
+ };
  for(auto& item:op.items) {
+  // #2079: a split encrypted link's data file may hold an unfinished multipart upload of its own.
+  if(auto data=item.encrypt.value("data").toObject();!data.value("uploadJournal").toObject().value("uploadId").toString().isEmpty()&&data.value("uploadStatus")!="uploaded") {
+   auto provider=providers_.find(op.destination.providerId);
+   Error error=provider?Error{}:Error{"provider_unavailable","Destination is unavailable. Restore access to it in Destinations.",{}};
+   if(provider){auto lock=objectLock(op.destination,data.value("objectReference").toObject(),data.value("candidate").toString());std::unique_lock guard(*lock);
+    error=storageRequest<Error>([&](auto cb){provider->abandonUpload(op.destination,data.value("uploadJournal").toObject(),cb);});}
+   if(!error){data["uploadJournal"]=QJsonObject{};data.remove("incompleteUploadReported");item.encrypt["data"]=data;changed.insert(item.artifact.id);outcome["abortedUploads"]=outcome["abortedUploads"].toInt()+1;}
+   else{
+    // Its own once-only mark, beside the data file's journal: the page's upload has its own.
+    const bool reported=data.value("incompleteUploadReported").toBool();data["incompleteUploadReported"]=true;item.encrypt["data"]=data;
+    item.error.details["incompleteUpload"]=true;item.error.details["abortError"]=error.toJson();changed.insert(item.artifact.id);
+    auto kept=outcome["incompleteUploads"].toArray();if(kept.size()<100)kept.append(QJsonObject{{"operationId",op.id},{"itemId",item.artifact.id},{"error",error.toJson()},{"reported",reported}});outcome["incompleteUploads"]=kept;
+    if(!reported)notify(error,data.value("uploadJournal").toObject().value("bytes").toDouble(data.value("artifact").toObject().value("bytes").toDouble()));
+   }
+  }
   if(item.uploadJournal["uploadId"].toString().isEmpty()||item.uploadStatus=="uploaded")continue;
   auto provider=providers_.find(op.destination.providerId);
   Error error=provider?Error{}:Error{"provider_unavailable","Destination is unavailable. Restore access to it in Destinations.",{}};
@@ -2102,16 +2365,8 @@ void OperationService::abandonUploads(HistoryStore& store,Operation& op,QJsonObj
    auto kept=outcome["incompleteUploads"].toArray();
    if(kept.size()<100)kept.append(QJsonObject{{"operationId",op.id},{"itemId",item.artifact.id},{"error",error.toJson()},{"reported",reported}});
    outcome["incompleteUploads"]=kept;
-   if(!reported) {
-    auto notice=outcome["incompleteUploadNotice"].toObject();
-    const auto add=[&](const char* key,const QString& value){auto values=notice[key].toArray();if(!value.isEmpty()&&!values.contains(value))values.append(value);notice[key]=values;};
-    notice["count"]=notice["count"].toInt()+1;
-    // The upload's whole size: at most this much is stored in its parts.
-    notice["bytes"]=notice["bytes"].toDouble()+item.uploadJournal.value("bytes").toDouble(double(item.artifact.bytes));
-    add("providers",op.destination.providerId);add("profiles",op.destination.profileId);add("buckets",op.destination.settings.value("bucket").toString());
-    if(!notice.contains("error"))notice["error"]=error.toJson();
-    outcome["incompleteUploadNotice"]=notice;
-   }
+   // The upload's whole size: at most this much is stored in its parts.
+   if(!reported)notify(error,item.uploadJournal.value("bytes").toDouble(double(item.artifact.bytes)));
    fields["error"]=logging::errorFields(error);
    logging::warning(providerLog(op.destination.providerId),"Incomplete upload kept",fields);
   }

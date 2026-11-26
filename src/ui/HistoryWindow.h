@@ -88,7 +88,7 @@ private:
  void updateFilterSummary();QStringList activeFilters()const;void clearFilters(bool all);
  void updateMultiSummary();void prepareCancelAll();void confirmCancelAll();
  QJsonObject selectionSummaryState_;QPointer<QDialog> cancelAllConfirmation_;QStringList cancelAllIds_;QWidget *singleInspector_=nullptr,*selectionInspector_=nullptr,*selectionSummary_=nullptr;
- void updateSelectionBar();void updateFooterLayout();void openBrowser(const QString& url);
+ void updateSelectionBar();void updateFooterLayout();void openBrowser(const QString& url);void forgetEncryptKey(const QString& id);
  // Below the width both panes need at this text size, the inspector opens
  // over the list on request (Enter, Show details) instead of squeezing it.
  bool compact()const{return compact_;}void setDetailsOpen(bool);void openSelectedDetails();

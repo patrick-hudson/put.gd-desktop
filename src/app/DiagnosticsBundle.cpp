@@ -61,6 +61,9 @@ QJsonObject itemSummary(const OperationItem& item,int attempts) {
  if(item.error)result["error"]=item.error.toJson();
  if(!item.receipt.directUrl.isEmpty())result["directUrl"]=item.receipt.directUrl;
  if(item.objectReference.contains("key"))result["objectKey"]=item.objectReference["key"];
+ // #2079: how it was encrypted, never its key.
+ if(!item.encrypt.isEmpty()){QJsonObject encrypt{{"status",item.encrypt.value("status")},{"form",item.encrypt.value("form")},{"passphrase",item.encrypt.value("passphrase")},{"keyForgotten",item.encrypt.value("keyForgotten")}};
+  if(item.encrypt.contains("reason"))encrypt["reason"]=item.encrypt.value("reason");if(item.encrypt.contains("data"))encrypt["dataStatus"]=item.encrypt.value("data").toObject().value("uploadStatus");result["encrypt"]=encrypt;}
  return result;
 }
 }
