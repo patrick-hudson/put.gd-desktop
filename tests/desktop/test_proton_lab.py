@@ -267,6 +267,15 @@ class LendFailures(LendTest):
         self.assertEqual(state['state'], 'blocked')
         self.assertIn('run proton_lab.py recover', state['blocked'])
 
+    def test_a_first_try_import_is_recorded_too(self):
+        self.lend()
+        self.assertEqual([(t['attempt'], t.get('imported')) for t in self.lent()['provisionTries']], [(1, True)])
+
+    def test_a_failed_cleanup_is_recorded_as_pending_on_its_try(self):
+        with self.assertRaises(proton.bridge.ProvisionError):
+            self.lend(Chain(self.calls, fail={'provision': 1, 'abandon': 1}))
+        self.assertEqual([t['cleanup'] for t in self.lent()['provisionTries']], ['pending'])
+
     def test_a_refused_export_names_its_step_and_lends_nothing(self):
         with self.assertRaises(proton.LabFailure) as failed:
             self.lend(Chain(self.calls, fail={'export': 1}))
@@ -363,6 +372,35 @@ class Recovery(LendTest):
             proton.recover(self.layout, folder, 'local_lender', 'lender', chain_factory=Chain(self.calls),
                            guest_factory=lambda run: Guest(self.calls, run), clock=self.clock)
         self.assertEqual(self.lock().status()['state'], 'held')
+
+    def test_an_import_left_unfinished_by_a_killed_lend_is_found_from_its_receipt(self):
+        folder = self.interrupted()
+        lent = json.loads((folder / 'lend.json').read_text())
+        lent.update(reference=None, step='exported')  # killed during the import: lend.json has no name yet
+        (folder / 'lend.json').write_text(json.dumps(lent))
+        (folder / 'provision.json').write_text(json.dumps({'state': 'import_pending', 'cleanupAllowed': True,
+                                                           'credentialReference': {'reference': BORROWED}}))
+        loaded = lambda path: (str(path), json.loads(Path(path).read_text()))
+        cleaned = []
+        with mock.patch.object(proton.bridge, '_load_receipt', loaded), \
+                mock.patch.object(proton.bridge, 'cleanup', cleaned.append):
+            proton.recover(self.layout, folder, 'local_lender', 'lender', chain_factory=Chain(self.calls),
+                           guest_factory=lambda run: Guest(self.calls, run), clock=self.clock)
+        self.assertEqual([request['reference'] for request in cleaned], [BORROWED])
+        self.assertEqual(json.loads((folder / 'lend.json').read_text())['step'], 'recovered')
+
+    def test_a_cleaned_up_import_with_no_name_in_lend_json_is_nothing_lent(self):
+        folder = self.interrupted()
+        lent = json.loads((folder / 'lend.json').read_text())
+        lent.update(reference=None)
+        (folder / 'lend.json').write_text(json.dumps(lent))
+        (folder / 'provision.json').write_text(json.dumps({'state': 'cleanup_confirmed', 'cleanupAllowed': True}))
+        loaded = lambda path: (str(path), json.loads(Path(path).read_text()))
+        with mock.patch.object(proton.bridge, '_load_receipt', loaded):
+            result = proton.recover(self.layout, folder, 'local_lender', 'lender', chain_factory=Chain(self.calls),
+                                    guest_factory=lambda run: Guest(self.calls, run), clock=self.clock)
+        self.assertFalse(result['recovered'])
+        self.assertEqual(self.lock().status()['state'], 'free')
 
     def test_a_pending_import_is_only_cleaned_up(self):
         folder = self.interrupted()

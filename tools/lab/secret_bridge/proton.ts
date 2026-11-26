@@ -65,6 +65,12 @@ async function run(): Promise<ObjectValue> {
     if ((op === 'import' || op === 'delete') && !LAB_REFERENCE.test(reference)) fail();
     const value = op === 'import' || op === 'replace' ? snapshot(request.snapshot) : undefined;
     const expected = op === 'replace' ? snapshot(request.expectedSnapshot) : undefined;
+    if (op === 'delete') {
+        // Deleted without a read first: a new process's read can come back empty although the
+        // entry is there (#1418), and cleanup must not trust it. An absent entry is no error.
+        await keychain(() => Bun.secrets.delete({ service: SERVICE, name: reference })); // Local only; no remote logout.
+        return { ok: true };
+    }
     const existing = await keychain(() => Bun.secrets.get({ service: SERVICE, name: reference }));
     if (op === 'export') {
         return { ok: true, snapshot: snapshot(existing) }; // Raw reply goes only to the private Qt pipe.
@@ -72,11 +78,9 @@ async function run(): Promise<ObjectValue> {
     if (op === 'import') {
         if (existing !== null) fail(); // Never replace an unrelated or previous entry.
         await keychain(() => Bun.secrets.set({ service: SERVICE, name: reference, value: value! }));
-    } else if (op === 'replace') {
+    } else {
         if (existing !== expected) fail(); // Exact in-memory baseline under the shared production lock.
         await keychain(() => Bun.secrets.set({ service: SERVICE, name: reference, value: value! }));
-    } else if (existing !== null) {
-        await keychain(() => Bun.secrets.delete({ service: SERVICE, name: reference })); // Local only; no remote logout.
     }
     return { ok: true };
 }

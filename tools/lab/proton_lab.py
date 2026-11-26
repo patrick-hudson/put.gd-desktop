@@ -735,14 +735,16 @@ def provision_guest(chain, guest, guest_broker, folder, progress, guest_referenc
         except bridge.ProvisionError:
             tried = {'attempt': attempt, 'at': now_text(), 'failedStep': 'import',
                      'keyringAfter': guest_keyring(guest)}
+            tries.append(tried)
             if chain.active is not None:
-                note(folder, reference=chain.active)  # an ambiguous import keeps its exact cleanup name
+                # An ambiguous import keeps its exact cleanup name until the cleanup is confirmed.
+                tried['cleanup'] = 'pending'
+                note(folder, reference=chain.active, provisionTries=tries)
                 chain.abandon(str(guest.run), guest_broker, chain.active)  # raises unless cleanup is confirmed
                 tried['cleanup'] = 'confirmed'
             else:
                 tried['cleanup'] = 'nothing_imported'
             progress['outstanding'] = False
-            tries.append(tried)
             note(folder, reference=None, provisionTries=tries)
             if attempt == PROVISION_TRIES or tried['cleanup'] != 'confirmed':
                 failure = (f'Provisioning the guest failed at its keychain import ({attempt} '
@@ -754,8 +756,7 @@ def provision_guest(chain, guest, guest_broker, folder, progress, guest_referenc
             restart_dead_keyring(guest, folder)
             time.sleep(PROVISION_RETRY_PAUSE)
             continue
-        if tries:
-            note(folder, provisionTries=tries + [{'attempt': attempt, 'at': now_text(), 'imported': True}])
+        note(folder, provisionTries=tries + [{'attempt': attempt, 'at': now_text(), 'imported': True}])
         return borrowed
 
 
@@ -897,10 +898,19 @@ def recover(layout, folder, session, owner, chain_factory=None, guest_factory=Gu
 
     with holding(proton_lock(layout, registry['host'], clock), session, owner, 'proton_lab.py recover',
                  finishing=True) as progress:
-        if not reference:
-            note(folder, step='recovered_nothing_lent')
-            return {'recovered': False}
         progress['outstanding'] = True
+        if not reference:
+            # lend.json names a guest entry only once its import has returned. An import that a
+            # killed lend left unfinished is named by its durable receipt instead.
+            unfinished = None
+            if (folder / 'provision.json').exists():
+                _, unfinished = bridge._load_receipt(folder / 'provision.json')
+            if unfinished is None or unfinished['state'] == 'cleanup_confirmed':
+                progress['outstanding'] = False
+                note(folder, step='recovered_nothing_lent')
+                return {'recovered': False}
+            reference = unfinished['credentialReference']['reference']
+            note(folder, reference=reference)
         restarted = None
         try:
             carried = give_back()

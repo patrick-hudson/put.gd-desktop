@@ -477,9 +477,9 @@ class NightlyTests(unittest.TestCase):
             self.reset = reset
             return records[0], cells, retire, (root/'putgd-lab/locks/tier1-guest.lock.d').exists()
 
-    def proton_lend_row(self, lends, provision_state='cleanup_confirmed'):
+    def proton_lend_row(self, lends, provision_state='cleanup_confirmed', provider='ksecretd'):
         """Run a live Proton-only row whose lends play LENDS in turn: 'clean' stops before the test with
-        its import cleaned up, 'green' completes (#2105)."""
+        its import cleaned up, 'green' and 'red' carry back after a passed or failed test (#2105)."""
         from tools.lab import lab, nightly_desktop_guest as guest, provision_live_credentials as credentials
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -496,7 +496,7 @@ class NightlyTests(unittest.TestCase):
             row = dict(name='Test', profile='test', knownHosts=str(pins), bootstrapKey='unused', live=True,
                        package='deb', asset='test.deb', desktop='test', golden='/unused/golden')
             plays = list(lends)
-            attempts = []
+            attempts, results = [], []
             def private(path, value):
                 path.write_text(json.dumps(value))
                 path.chmod(0o600)
@@ -512,21 +512,25 @@ class NightlyTests(unittest.TestCase):
                     attempts.append(Path(argv[argv.index('--out')+1]).name)
                     folder = root/f'putgd-lab/proton/receipts/2026-11-26T12-59-0{len(attempts)}Z-run'
                     folder.mkdir(parents=True)
-                    if plays.pop(0) == 'green':
+                    play = plays.pop(0)
+                    results.append(play)
+                    if play in ('green', 'red'):
                         private(folder/'lend.json', dict(run=run, step='cleaned', reference='putgd-lab-x'))
                         (locks/'proton-registry.json').write_text(json.dumps(dict(lastLend=dict(
-                            run=run, carriedBack='carry-back-1.json'))))
+                            run=run, carriedBack='carry-back-1.json', receipts=str(folder)))))
                         return
                     for name in ('provision-1.json', 'provision.json'):
                         private(folder/name, dict(state=provision_state))
                     private(folder/'lend.json', dict(
                         run=run, step='provision_failed_abandoned', failedStep='import', reference=None,
-                        failure='synthetic private text', guestKeyring=dict(provider='ksecretd', restarted=True),
+                        failure='synthetic private text', guestKeyring=dict(provider=provider, restarted=True),
                         provisionTries=[dict(attempt=1), dict(attempt=2)]))
                     raise RuntimeError('lend failed (exit 1); private log retained')
             verdict = nightly.verdict
-            observed = lambda target, recipe: (nightly.cell('green') if (Path(target).name.endswith('-2') and
-                                                                         'green' in lends) else verdict(target, recipe))
+            def observed(target, recipe):
+                last = results[-1] if results else None
+                return (nightly.cell('green') if last == 'green' else
+                        nightly.cell('red', 'synthetic functional failure') if last == 'red' else verdict(target, recipe))
             loaded = lambda path: (path, json.loads(Path(path).read_text()))
             with patch.object(nightly, 'ROOT', root), patch.object(nightly.Path, 'home', return_value=root), \
                     patch.object(nightly, 'await_host', return_value=0), patch.object(nightly, 'preflight', return_value={}), \
@@ -565,6 +569,19 @@ class NightlyTests(unittest.TestCase):
         self.assertTrue(upload['assertion'].startswith('Proton lend stopped before the test: guest keychain import'))
         self.assertNotIn('receipt missing', upload['assertion'])
         self.assertNotIn('synthetic private text', json.dumps(record))
+
+    def test_a_clean_lend_failure_after_an_earlier_attempts_carry_back_still_names_the_lend(self):
+        record, attempts = self.proton_lend_row(['red', 'clean'])
+        upload = record['cells']['proton_region_upload']
+        self.assertEqual([a['status'] for a in upload['attempts']], ['red', 'not_run'])
+        self.assertTrue(upload['attempts'][1]['assertion'].startswith('Proton lend stopped before the test'))
+        self.assertEqual(upload['status'], 'not_run')
+
+    def test_an_unknown_keyring_provider_is_left_out_of_the_assertion(self):
+        record, _ = self.proton_lend_row(['clean', 'clean'], provider='synthetic-secret')
+        assertion = record['cells']['proton_region_upload']['assertion']
+        self.assertNotIn('synthetic-secret', json.dumps(record))
+        self.assertNotIn('guest keyring', assertion)
 
     def test_a_proton_lend_whose_import_is_not_proven_clean_still_stops_the_row(self):
         record, attempts = self.proton_lend_row(['clean', 'green'], provision_state='import_pending')

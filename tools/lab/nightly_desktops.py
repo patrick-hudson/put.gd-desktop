@@ -1431,12 +1431,16 @@ def retire(run, out, rows):
     finish_retirement(run, out)
 
 
-def baton_returned(run):
+def baton_returned(run, before=None):
+    """Whether the lend for RUN carried its copy back; with BEFORE (lend_receipts() taken ahead of
+    this attempt), only a lend started since counts, not an earlier attempt's."""
     locks = Path.home()/'putgd-lab/locks'
     proton = locks/'proton.lock'
     if proton.exists() and 'lent copy outstanding' in proton.read_text():
         raise RuntimeError('Proton carry-back unresolved; overlay retained')
     last = json.loads((locks/'proton-registry.json').read_text()).get('lastLend', {})
+    if before is not None and Path(str(last.get('receipts')))/'lend.json' in before:
+        return False
     if last.get('run') == str(run) and last.get('carriedBack'):
         return True
     # lend may stop while preparing the guest, before exporting any session.
@@ -1447,6 +1451,10 @@ def lend_receipts():
     return set((Path.home()/'putgd-lab/proton/receipts').glob('*/lend.json'))
 
 
+# A guest keyring's provider as the receipts record it (a process name, truncated to 15 bytes),
+# and the fixed name a public assertion uses; any other value is left out.
+KEYRING_PROVIDERS = {'ksecretd': 'ksecretd', 'kwalletd6': 'kwalletd6', 'kwalletd5': 'kwalletd5',
+                     'gnome-keyring-d': 'gnome-keyring', 'oo7-daemon': 'oo7-daemon'}
 LEND_STEPS = {'import': 'guest keychain import refused', 'export': "builder's session export refused",
               'prepare_keyring': 'guest keyring preparation failed', 'place_brokers': 'guest broker placement failed'}
 
@@ -1481,8 +1489,8 @@ def clean_lend_failure(run, before):
     if tries > 1:
         reason += f' on {tries} tries'
     keyring = lent.get('guestKeyring') or {}
-    provider = keyring.get('provider')
-    if isinstance(provider, str) and re.fullmatch(r'[A-Za-z0-9._-]{1,32}', provider):
+    provider = KEYRING_PROVIDERS.get(keyring.get('provider')) if isinstance(keyring.get('provider'), str) else None
+    if provider:
         reason += f'; guest keyring {provider}'+(' (just restarted)' if keyring.get('restarted') is True else '')
     return reason+'; nothing left in the guest'
 
@@ -1639,15 +1647,17 @@ def worker_run(config, tag, identity, artifacts, out, deadline):
                             cells[flow].update(observed)
                             if destination == 'proton':
                                 # lend must have returned the baton even when assertions failed.
-                                returned = baton_returned(run)
+                                returned = baton_returned(run, lends_before)
                                 command(check, log=rowout/(name+'-check-after.json'), env=env)
                                 if not returned:
                                     failure = clean_lend_failure(run, lends_before)
                                     if failure is None:
                                         raise NotRun('Proton guest provisioning did not complete; source check passed')
                                     # Nothing reached the guest's keychain, or it was removed: the
-                                    # cell's next attempt may lend again (#2105).
-                                    observed['assertion'] = cells[flow]['assertion'] = failure
+                                    # cell's next attempt may lend again (#2105). The attempt's own
+                                    # lend failed, so whatever verdict found is not its result.
+                                    observed.update(cell(assertion=failure), attempt=attempt)
+                                    cells[flow].update(observed)
                                     continue
                             marker_left = (run/lab.LIVE_CLEANUP_MARKER).exists()
                             if marker_left or lost_guest_session(target):
