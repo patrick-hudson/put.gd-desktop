@@ -589,6 +589,11 @@ private slots:
         QTest::newRow("deleted") << QString("deleted") << QString("removed") << 0;
         QTest::newRow("refused") << QString("refused") << QString("failed") << 1;
         QTest::newRow("link-missing-before") << QString("missing-before") << QString("unknown") << 0;
+        QTest::newRow("gone-410") << QString("gone-410") << QString("removed") << 0;
+        // A redirect with no address, a cut check, or a link whose final address moved show nothing.
+        QTest::newRow("no-location") << QString("no-location") << QString("unknown") << 0;
+        QTest::newRow("cut-after") << QString("cut-after") << QString("unknown") << 0;
+        QTest::newRow("link-moved") << QString("link-moved") << QString("unknown") << 0;
     }
     void aRedirectedConfirmationNeedsTheLinkGone() {
         QFETCH(QString, shape);
@@ -601,7 +606,12 @@ private slots:
         const QJsonObject form{{"call", "delete"}, {"form", true}};
         if (shape == "deleted") f.rules({form, {{"call", "confirm"}, {"status", 302}, {"location", f.base + "/"}}});
         else if (shape == "refused") f.rules({form, {{"call", "confirm"}, {"status", 302}, {"location", uploaded.receipt.directUrl}, {"store", false}}});
-        else f.rules({{{"call", "file"}, {"status", 404}, {"body", "not found"}}, form, {{"call", "confirm"}, {"status", 302}, {"location", f.base + "/"}}});
+        else if (shape == "missing-before") f.rules({{{"call", "file"}, {"status", 404}, {"body", "not found"}}, form, {{"call", "confirm"}, {"status", 302}, {"location", f.base + "/"}}});
+        else if (shape == "gone-410") f.rules({{{"call", "file"}}, form, {{"call", "confirm"}, {"status", 302}, {"location", f.base + "/"}}, {{"call", "file"}, {"status", 410}, {"body", "gone"}}});
+        else if (shape == "no-location") f.rules({form, {{"call", "confirm"}, {"status", 302}}});
+        else if (shape == "cut-after") f.rules({{{"call", "file"}}, form, {{"call", "confirm"}, {"status", 302}, {"location", f.base + "/"}}, {{"call", "file"}, {"status", 404}, {"body", "not found"}, {"cut", "length"}}});
+        else f.rules({{{"call", "file"}, {"phased", QJsonObject{{"before", QJsonObject{}}, {"after", QJsonObject{{"status", 404}, {"body", "not found"}}}}}}, form,
+                      {{"call", "confirm"}, {"status", 302}, {"location", f.base + "/"}}});
         const auto result = f.remove(uploaded.receipt);
         QVERIFY2(result.status == expected, qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
         QCOMPARE(f.events("confirm").size(), 1);
@@ -609,7 +619,7 @@ private slots:
         if (expected == "unknown") {
             QCOMPARE(result.error.code, QString("http_outcome_unknown"));
             QCOMPARE(result.error.details["httpStatus"].toInt(), 302);
-            QCOMPARE(result.error.details["checkBeforeStatus"].toInt(), 404);
+            if (shape == "missing-before") QCOMPARE(result.error.details["checkBeforeStatus"].toInt(), 404);
             QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
         }
         QCOMPARE(f.stored(), stored);
