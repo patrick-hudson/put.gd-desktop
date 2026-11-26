@@ -2280,6 +2280,14 @@ with n.controller_shutdown(workers):
                 before = nightly.lend_receipts()  # read through the alias, as the worker does
                 self.assertFalse(nightly.baton_returned('/current', before))
                 self.assertTrue(nightly.baton_returned('/current', set()))
+            # A linked lend.json keeps its own name, so private_file still sees and refuses the link.
+            linked = real/'putgd-lab/proton/receipts/2026-11-26T13-00-00Z-run'
+            linked.mkdir()
+            (linked/'lend.json').symlink_to(folder/'lend.json')
+            with patch.object(nightly.Path, 'home', return_value=alias):
+                self.assertIn(linked/'lend.json', nightly.lend_receipts())
+                with self.assertRaises(RuntimeError):
+                    nightly.private_file(linked/'lend.json')
 
     def test_stable_draft_requires_explicit_named_opt_in_and_timer_ignores_it(self):
         draft = dict(tag_name='v26.1104.3870', draft=True, published_at=None)

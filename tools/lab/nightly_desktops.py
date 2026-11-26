@@ -1439,7 +1439,7 @@ def baton_returned(run, before=None):
     if proton.exists() and 'lent copy outstanding' in proton.read_text():
         raise RuntimeError('Proton carry-back unresolved; overlay retained')
     last = json.loads((locks/'proton-registry.json').read_text()).get('lastLend', {})
-    if before is not None and (Path(str(last.get('receipts')))/'lend.json').resolve() in before:
+    if before is not None and Path(str(last.get('receipts'))).resolve()/'lend.json' in before:
         return False
     if last.get('run') == str(run) and last.get('carriedBack'):
         return True
@@ -1448,8 +1448,9 @@ def baton_returned(run, before=None):
 
 
 def lend_receipts():
-    # Resolved: on Atomic /home is a link to /var/home, and the lend runs with the resolved HOME.
-    return {path.resolve() for path in (Path.home()/'putgd-lab/proton/receipts').glob('*/lend.json')}
+    # The folder is resolved (on Atomic /home is a link to /var/home, and the lend runs with the
+    # resolved HOME); lend.json itself is not, so private_file still refuses a link there.
+    return {path.parent.resolve()/path.name for path in (Path.home()/'putgd-lab/proton/receipts').glob('*/lend.json')}
 
 
 # A guest keyring's provider as the receipts record it (a process name, truncated to 15 bytes),
