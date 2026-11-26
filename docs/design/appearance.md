@@ -250,15 +250,18 @@ accessibility tools.
 which not every host sends), `clicked` (the last eight rows a host reported clicked, each
 `{id, name, label}`) and `rows` (the top-level rows served now, in order, separators left out,
 each `{id, name, label, visible, enabled, submenu}`); `{"native": false}` for the Qt fallback
-tray. Both carry `settle`, the last wait of a screen-reading row chosen in the menu (#2081):
-`{command, awaitedClose, closeWaitMs, fadeMs, fadeSource, waitMs}`, plus `rebasedOnClose` when a
-late close restarted the fade. Such a row waits for the host's close when the host reports
-events (a close seen before, or an `opened` event for this menu), at most 250 ms, then for the
-rest of the compositor's fade of the closed menu: KWin's fadingpopups time scaled by
-kdeglobals `AnimationDurationFactor` (`kwin-fadingpopups`, about 456 ms by default; none when
-the effect is off or animations are instant), GNOME's 150 ms popup animation unless
-`enable-animations` is off, Cinnamon's 150 ms menu effect unless `desktop-effects-on-menus` is
-off, and 250 ms on desktops not measured. Hotkeys, the main window and session methods never wait. It is read-only: the counters only grow over the resident's life, `rows` includes
+tray. Both carry `settle`, the last wait of a screen-reading row chosen in the menu (#2081),
+empty until the first such row: `{command, awaitedClose, closeWaitMs, fadeMs, fadeSource,
+waitMs}`, plus `rebasedOnClose` when a late close restarted the fade. `waitMs` is the wait put.gd
+scheduled from the click, not a measured start time. Such a row first waits for the host's close
+when the host reports events (a close seen before, or an `opened` event for this menu), at most
+250 ms. It then waits out the rest of the compositor's fade of the closed menu, counted from the
+close, or from the click when no close came (a later close restarts it). The fade allowance is
+one 34 ms frame plus the desktop's animation: 456 ms on KDE by default (`kwin-fadingpopups`, KWin's
+fadingpopups time scaled by kdeglobals `AnimationDurationFactor`), 184 ms on GNOME and Cinnamon,
+34 ms when the fadingpopups effect, GNOME's `enable-animations` or Cinnamon's
+`desktop-effects-on-menus` is off or KWin animations are instant, and 250 ms on desktops not
+measured. Hotkeys, the main window and session methods never take this wait. It is read-only: the counters only grow over the resident's life, `rows` includes
 hidden rows (`visible: false`), and the same object goes into diagnostics packages. It records
 the dbusmenu calls and events hosts send, whatever caused them; it never opens the menu. The lab uses it to check the menu
 on trays that export nothing to AT-SPI.
