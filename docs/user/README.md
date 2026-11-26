@@ -22,7 +22,8 @@ Everyday use of the app, its failures and its storage destinations.
 - [S3 adapter](s3.md): S3 and S3-compatible destinations, addressing, transfers and version safeguards.
 - [Backblaze B2 destination](b2.md): setting up and using B2 through its native API.
 - [Cloudflare R2 destination](r2.md): setting up R2 from its account ID or S3 API address, its links, and moving an S3 destination on R2 to it.
-- [Nextcloud and WebDAV destinations](nextcloud.md): signing in to Nextcloud through the browser, share links, chunked uploads, plain WebDAV folders and their links.
-- [SFTP destination](sftp.md): your own server over SFTP with your OpenSSH client, host keys, uploads without links and deletion.
-- [Custom uploader (HTTP) destination](custom-uploader.md): your own server or any service with a ShareX `.sxcu` file, its placeholders, secrets, deletion and limits.
+- [Nextcloud destination](nextcloud.md#nextcloud): signing in to Nextcloud through the browser, share links and chunked uploads.
 - [Proton Drive](proton-drive.md): the provider, its build checks, release gates and lab sessions.
+- [SFTP destination](sftp.md): your own server over SFTP with your OpenSSH client, host keys, uploads without links and deletion.
+- [WebDAV destination](nextcloud.md#webdav): plain WebDAV folders, links and deletion.
+- [Custom uploader (HTTP) destination](custom-uploader.md): your own server or any service with a ShareX `.sxcu` file, its placeholders, secrets, deletion and limits.

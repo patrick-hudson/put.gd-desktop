@@ -24,8 +24,8 @@ Press a hotkey, drag over what you want to show, and a link is on your clipboard
 to paste into a chat, a ticket or a pull request. put.gd takes screenshots, scrolling
 pages and screen recordings. You can mark up and redact an image, trim, cut and cover
 parts of a clip, or copy text and QR codes straight off your screen. Uploads go to
-storage you control: Amazon S3 or an S3-compatible server, Cloudflare R2, Backblaze B2,
-Nextcloud, WebDAV, SFTP, Proton Drive or a custom HTTP uploader. There is no put.gd
+storage you control: Amazon S3 or an S3-compatible server, Backblaze B2, Cloudflare R2,
+Nextcloud, Proton Drive, SFTP, WebDAV or a custom HTTP uploader. There is no put.gd
 account and no put.gd cloud.
 
 If you've used ShareX on Windows or CleanShot X on a Mac, it's that idea, built for Linux.
@@ -87,11 +87,14 @@ A few desktops need one more thing:
 
 ## Your first link
 
-1. Open put.gd, go to **Destinations** and select **Add destination**. Choose
-   [Amazon S3 (or S3-compatible)](https://app.put.gd/userguide/destinations-s3.html),
-   [Cloudflare R2](https://app.put.gd/userguide/destinations-r2.html), [Backblaze B2](https://app.put.gd/userguide/destinations-b2.html),
-   [Nextcloud or WebDAV](https://app.put.gd/userguide/destinations-nextcloud.html), [SFTP](https://app.put.gd/userguide/destinations-sftp.html),
-   [Proton Drive](https://app.put.gd/userguide/destinations-proton.html) or a [custom uploader (HTTP)](https://app.put.gd/userguide/destinations-custom.html)
+1. Open put.gd, go to **Destinations** and select **Add destination**. Choose from
+   **Object storage** ([Amazon S3 / S3-compatible](https://app.put.gd/userguide/destinations-s3.html),
+   [Backblaze B2](https://app.put.gd/userguide/destinations-b2.html), [Cloudflare R2](https://app.put.gd/userguide/destinations-r2.html)),
+   **Cloud drives** ([Nextcloud](https://app.put.gd/userguide/destinations-nextcloud.html#nextcloud),
+   [Proton Drive](https://app.put.gd/userguide/destinations-proton.html)),
+   **File servers** ([SFTP](https://app.put.gd/userguide/destinations-sftp.html),
+   [WebDAV](https://app.put.gd/userguide/destinations-nextcloud.html#webdav)) or
+   [Custom uploader (HTTP)](https://app.put.gd/userguide/destinations-custom.html)
    (import a ShareX `.sxcu` file or fill in the request), then enter its details.
 2. Save credentials with **Save to keychain** (for Nextcloud select **Sign in…**, for
    Proton Drive select **Connect account…** and pick a folder, and for SFTP you can rely
@@ -179,7 +182,7 @@ gives AI agents the same controls.
 | --- | --- |
 | **Desktops** | [Cinnamon](https://app.put.gd/userguide/desktops.html#cinnamon), [GNOME 50](https://app.put.gd/userguide/desktops.html#gnome), [KDE Plasma](https://app.put.gd/userguide/desktops.html#kde-plasma), [Budgie](https://app.put.gd/userguide/desktops.html#budgie), [Hyprland](https://app.put.gd/userguide/desktops.html#hyprland) (tested on Omarchy) |
 | **Packages** | Signed `apt` repos for Ubuntu 24.04 and 26.04, Linux Mint 22 and Debian 13 (DEB). Signed `dnf` repos for Fedora 44 and 45 (RPM). Signed `pacman` repo for Arch and Arch-based distributions. Self-updating AppImage for any other distribution with glibc 2.39 or newer and FUSE. x86_64 only. |
-| **Storage** | [Amazon S3 and S3-compatible servers](https://app.put.gd/userguide/destinations-s3.html#s3-compatible-services) (such as Garage), [Cloudflare R2](https://app.put.gd/userguide/destinations-r2.html), [Backblaze B2](https://app.put.gd/userguide/destinations-b2.html), [Nextcloud](https://app.put.gd/userguide/destinations-nextcloud.html#nextcloud), [WebDAV](https://app.put.gd/userguide/destinations-nextcloud.html#webdav), [SFTP](https://app.put.gd/userguide/destinations-sftp.html) (using your OpenSSH client), [Proton Drive](https://app.put.gd/userguide/destinations-proton.html) (experimental, links open a share page), and [custom HTTP uploaders](https://app.put.gd/userguide/destinations-custom.html) (ShareX `.sxcu`, tested with Zipline, Chibisafe and XBackBone) |
+| **Storage** | [Amazon S3 and S3-compatible servers](https://app.put.gd/userguide/destinations-s3.html#s3-compatible-services) (such as Garage), [Backblaze B2](https://app.put.gd/userguide/destinations-b2.html), [Cloudflare R2](https://app.put.gd/userguide/destinations-r2.html), [Nextcloud](https://app.put.gd/userguide/destinations-nextcloud.html#nextcloud), [Proton Drive](https://app.put.gd/userguide/destinations-proton.html) (experimental, links open a share page), [SFTP](https://app.put.gd/userguide/destinations-sftp.html) (using your OpenSSH client), [WebDAV](https://app.put.gd/userguide/destinations-nextcloud.html#webdav), and [custom HTTP uploaders](https://app.put.gd/userguide/destinations-custom.html) (ShareX `.sxcu`, tested with Zipline, Chibisafe and XBackBone) |
 
 [Your desktop](https://app.put.gd/userguide/desktops.html) says what put.gd can and can't do on each one.
 
