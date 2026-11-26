@@ -404,8 +404,12 @@ An item's `seal` record:
   Select Retry deletion." An `unknown` data file isn't reported as left, because put.gd only
   doesn't know yet: "The sealed page was deleted, but put.gd couldn't confirm whether its
   data file was deleted. Select Retry deletion to check again." A quit after the page went
-  and before the data file's delete began leaves it `unknown` with "The sealed page was
-  deleted, but put.gd quit before deleting its data file. Select Retry deletion." Once Quit
+  and before the data file's turn leaves the target `unknown`, with `dataStatus` the data
+  file's recorded status. When that status is already `unknown`, an earlier attempt may have
+  deleted it without hearing back, so the message is "The sealed page was deleted, but put.gd
+  quit before confirming whether its data file was deleted. Select Retry deletion to check
+  again." Otherwise it is "The sealed page was deleted, but put.gd quit before it could delete
+  its data file. Select Retry deletion." Once Quit
   has begun, the data file's delete intent isn't acknowledged (the journal goes back to
   before it), so no further delete is sent during shutdown. A failed or unknown result read
   after Quit began proves nothing about the server. When a delete checkpoint of the data file
