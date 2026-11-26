@@ -597,10 +597,13 @@ What updates the record:
   fingerprint or credential revision differs from the ones it started with.
 
 The sealed-link Test check (#2079) is kept in the same file under `sealChecks`, keyed by
-profile ID: `passed`, the failure `reason` (at most 300 characters) and the connection
-fingerprint it checked. Only a Test writes it ([the Test check](sealed-links.md#the-test-check)).
-It counts while the fingerprint matches the destination as saved, and is removed with the
-destination. New credentials stored for the destination, or for another destination that
+profile ID: `passed`, the failure `reason` (at most 300 characters), the connection
+fingerprint it checked and the `credentialRevision` it ran with. Only a Test writes it
+([the Test check](sealed-links.md#the-test-check)). It counts while the fingerprint matches
+the destination as saved, and is removed with the destination. Loading drops an entry whose
+`credentialRevision` is missing or isn't the destination's current revision. An entry for a
+destination with session-only keys is never written, so it ends with the resident like that
+destination's own record. New credentials stored for the destination, or for another destination that
 shares its keychain entry, remove it too, and a check that ran while the keys changed, or was
 cancelled, records nothing. Each `destinationStatus` entry
 carries it as `seal`, `{state: passed|failed|untested, reason?}`, also when the destination's

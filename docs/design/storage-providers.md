@@ -132,7 +132,8 @@ Backblaze B2 sets `sealSplit` only for public links; WebDAV clears it and sets `
 Nextcloud keeps a reason; SFTP clears it only with a Link address; the custom uploader clears
 it without `sealSplit`; Proton Drive keeps a reason. A sealed upload is an ordinary upload to
 the provider: an HTML artifact under a random name and, in the two-file form, a second ordinary
-upload before it.
+upload before it. It gets no `anticipate` warm-up, so a file sealing refuses never reaches the
+provider ([the pipeline](sealed-links.md#the-pipeline)).
 
 `diagnosticSettings` is what a diagnostics package may show of a profile's settings;
 the custom uploader reduces rows to names and addresses to scheme and host.

@@ -265,10 +265,18 @@ Sealing sits in the shared pipeline between the immutable artifact and naming, i
      a Link address can't seal any file, so it answers `seal_unavailable`.
    - `seal_failed` (or `seal_viewer_changed`): the sealing helper is missing, failed, timed out
      or wrote files that didn't match its answer.
+
+   A sealed request reaches its destination only once its file is sealed. It skips the
+   warm-up connection that other uploads open when the action starts
+   (`StorageProvider::anticipate`), so a file sealing refuses contacts no destination at all.
+   With the sensitive text check on, **Seal** can still be turned on in the editor the prompt
+   opens, so the warm-up of every upload waits until the upload starts (`enqueue`) and its
+   Seal choice is final.
 3. **No exceptions.** `OperationService::sendable` sends an item of an upload that is to be
    sealed only once it is sealed. A Retry keeps the upload sealed, so a file sealing can't
    take fails the same way again. To send it as an ordinary link, the user turns off **Seal**
-   and uploads it again.
+   and uploads it again. Batch naming skips a refused item, so it keeps its failure and the
+   upload never ends `completed` with it.
 4. **Sealing.** The item's phase is `sealing` while the helper runs. The item keeps its own
    file as its artifact, for previews and local copies; what uploads under the item's
    candidate name is the sealed page (`OperationItem::uploadArtifact`).
@@ -331,6 +339,16 @@ An item's `seal` record:
   **Retry deletion** finds the page gone and tries the data file again. A quit between the two
   leaves it `unknown`. A data file that changed at the destination isn't put.gd's to delete:
   the deletion reports `seal_data_left` with `dataStatus` `changed` and leaves it.
+- A data file the destination can't delete safely stays, and the deletion says so before it
+  starts. `HistoryService::prepare` asks the provider about the data file's own receipt. When
+  its `safeRemoval()` is false (a WebDAV data file over 256 MB on a server that returns no
+  strong ETag, such as Apache's mod_dav), the target gets `sealDataKept` and its confirmation
+  adds "The sealed link's data file beside it stays at the destination, because put.gd can't
+  delete it safely there." with the provider's `removeUnavailable` reason, then "It holds only
+  encrypted data. Someone who saved the page and has the full link can still open it until
+  you delete the file there yourself." The deletion removes the page and ends `removed`, with
+  `sealDataStatus` `kept`, not with `seal_data_left`. `seal_data_left` is only for a data file
+  put.gd could have deleted and didn't.
 - Keys are kept in History's database and the operation journal, the same places and the same
   protection as other bearer links such as presigned URLs. They are never in `config.json`,
   the keychain or the logs; log redaction already drops link fragments.
@@ -364,9 +382,12 @@ The result is `seal` in the Test's result: `{state, reason?, cleanup}` with `sta
 `failed`, `untested`, `unsupported` or `cancelled` and `cleanup` `removed`, `left`, `failed` or `unknown`. While it runs,
 `setup.inspect` shows the event `{step: "seal", status: "running"}`. The resident keeps it in
 `destination-status.json` under `sealChecks`, keyed by destination, with `passed`, a `reason`
-of at most 300 characters and the connection fingerprint
+of at most 300 characters, the connection fingerprint and the credential revision it ran with
 ([destination checks](configuration.md#destination-checks)). It counts only while the
-fingerprint matches the destination as saved, and it is forgotten with the destination. New
+fingerprint matches the destination as saved, and it is forgotten with the destination. At
+load a record whose revision isn't the destination's current one is dropped, so a check never
+outlives the keys it ran with across a restart. A check made with session-only credentials is
+never written, so like the destination's own Test it ends with the session. New
 credentials stored for the destination, or for one that shares its keychain entry, clear it
 (`DestinationStatus::credentialsChanged`). A check that ran while new keys were stored
 records nothing and is reported `untested` with "New credentials were stored during the
@@ -427,6 +448,12 @@ has a passphrase and the page size, and the Test check's HTTP status, content ty
 
 - **The Test check isn't journaled.** If put.gd stops in the middle of a check, its test page,
   about 10 KB under a random `.html` name, may stay at the destination.
+- **A large data file on some WebDAV servers can't be deleted.** WebDAV confirms a file's
+  identity only up to 256 MB when the server returns no strong ETag, and Apache's mod_dav
+  returns none. put.gd can't delete such a file safely, which is the same limit as for an ordinary
+  WebDAV upload of that size. For a sealed link in the two-file form, **Delete from
+  destination** deletes the page and leaves the data file, and its confirmation says so
+  ([History](#history)). The user deletes the data file at the destination if it matters.
 - **The two-file form holds the whole file in the browser.** The viewer keeps every decrypted
   chunk in memory until the last one opens, so a 2 GB file needs that much memory in the
   recipient's browser.
