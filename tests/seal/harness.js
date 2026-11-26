@@ -13,8 +13,12 @@
  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
  const frame=document.getElementById("frame");
  async function load(url){
-  frame.src="about:blank";await sleep(50);frame.src=url;
-  for(let i=0;i<1200;i++){await sleep(100);const d=frame.contentDocument;if(!d||d.URL==="about:blank")continue;
+  // Only the page asked for counts: on a slow machine the previous page can still be in the frame.
+  const want=new URL(url,location.href).pathname;
+  frame.src="about:blank";
+  for(let i=0;i<100;i++){await sleep(20);const d=frame.contentDocument;if(d&&d.URL==="about:blank")break}
+  frame.src=url;
+  for(let i=0;i<1200;i++){await sleep(100);const d=frame.contentDocument;if(!d||d.URL==="about:blank"||new URL(d.URL).pathname!==want||d.readyState==="loading")continue;
    const st=d.documentElement.dataset.state,ask=d.getElementById("ask");
    if(st||(ask&&!ask.hidden))return d}
   return frame.contentDocument;

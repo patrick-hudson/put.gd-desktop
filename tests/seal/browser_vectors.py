@@ -113,8 +113,10 @@ def browser_command(name: str, url: str, profile: str) -> list[str] | None:
     for candidate in ("chromium", "chromium-browser", "google-chrome", "google-chrome-stable"):
         exe = shutil.which(candidate)
         if exe:
+            # Ubuntu 24.04's AppArmor refuses Chrome's sandbox to an unprivileged CI user (and root needs it off too).
+            sandbox = "--no-sandbox" if os.geteuid() == 0 or os.environ.get("CI") else "--disable-sync"
             return [exe, "--headless=new", f"--user-data-dir={profile}", "--no-first-run", "--no-default-browser-check",
-                    "--disable-gpu", "--disable-extensions", "--no-sandbox" if os.geteuid() == 0 else "--disable-sync", url]
+                    "--disable-gpu", "--disable-extensions", "--disable-dev-shm-usage", sandbox, url]
     return None
 
 
@@ -133,10 +135,14 @@ def run_browser(name: str, timeout: float) -> list[str]:
         if not command:
             server.shutdown()
             return [f"{name}: not installed"]
-        process = subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        log = open(os.path.join(profile, "browser.log"), "w+b")
+        process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)
         try:
             if not run.done.wait(timeout):
                 problems.append(f"{name}: no result within {timeout:.0f} s")
+                log.flush(); log.seek(0)
+                print(f"{name} output (last lines):", *log.read().decode(errors="replace").splitlines()[-20:], sep="\n  ")
+                print(f"{name} requests: {run.requests[-10:]}")
         finally:
             process.terminate()
             try:
@@ -145,6 +151,7 @@ def run_browser(name: str, timeout: float) -> list[str]:
                 process.kill()
                 process.wait()
             server.shutdown()
+            log.close()
     result = run.result or {"results": [], "userAgent": "?"}
     print(f"{name}: {result['userAgent']}")
     for entry in result["results"]:
