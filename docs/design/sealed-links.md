@@ -183,8 +183,8 @@ sets `referrer` to `no-referrer` and `robots` to `noindex, nofollow`.
   **Download** is offered for every type.
 - **Too large for the browser.** Before showing anything, the viewer reads back the first, middle
   and last byte of the file it put together, before the player or **Download** gets it. A
-  browser can refuse to read back a large file a page builds: headless Chrome does from about
-  512 MB. And a desktop Chrome player handed a 1 GB file without that read stayed blank, but
+  browser can refuse to read back a large file a page builds: Chrome in a private window does
+  for a 1 GB file, and headless Chrome from about 512 MB. And a desktop Chrome player handed a 1 GB file without that read stayed blank, but
   played it once the viewer had read it. When the read fails, the viewer
   says "This file is too large for this browser to show. Select Save to file to save it." and
   offers **Save to file**, which writes the decrypted file straight into the file the person
