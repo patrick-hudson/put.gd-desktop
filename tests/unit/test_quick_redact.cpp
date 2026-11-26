@@ -7,6 +7,7 @@
 #include <QElapsedTimer>
 #include <QPainter>
 #include <QtTest>
+#include <ctime>
 #include <tuple>
 using namespace putgd::editor;
 namespace {
@@ -1813,21 +1814,21 @@ private slots:
   QVERIFY(result.matches.isEmpty());
  }
  // #1897: lines built to make the key rules work hard stay fast with every kind asked for: long runs of
- // token heads, assignments, URL schemes and token-shaped pieces, as one word and as many.
+ // token heads, assignments, URL schemes and token-shaped pieces, as one word and as many. A page is its
+ // lead, then each unit repeated count times.
  void pathologicalLinesStayFast_data() {
-  QTest::addColumn<QString>("page");
-  const auto repeat=[](const QString& unit,int count){QString out;for(int i=0;i<count;++i)out+=unit;return out;};
-  QTest::newRow("JWT heads in one word")<<repeat("eyJ.",4000);
-  QTest::newRow("token heads in one word")<<repeat(QString("gh")+"p_",3000)+repeat("sk-",3000)+repeat("AK"+QString("IA"),3000);
-  QTest::newRow("token heads as words")<<repeat(QString("gh")+"p_a1B2 ",3000);
-  QTest::newRow("assignments in one word")<<repeat(",TOKEN=a1B2c3D4",2000);
-  QTest::newRow("URL schemes in one word")<<repeat("postgres://u:",2000);
-  QTest::newRow("a long base64 word")<<repeat("aB3dE5fG7hJ9kL1mN3pQ+/",1000);
-  QTest::newRow("many token-shaped words")<<repeat("aB3dE5fG7h ",4000);
+  QTest::addColumn<QString>("lead");QTest::addColumn<QStringList>("units");QTest::addColumn<int>("count");
+  QTest::newRow("JWT heads in one word")<<QString()<<QStringList{"eyJ."}<<4000;
+  QTest::newRow("token heads in one word")<<QString()<<QStringList{QString("gh")+"p_","sk-","AK"+QString("IA")}<<3000;
+  QTest::newRow("token heads as words")<<QString()<<QStringList{QString("gh")+"p_a1B2 "}<<3000;
+  QTest::newRow("assignments in one word")<<QString()<<QStringList{",TOKEN=a1B2c3D4"}<<2000;
+  QTest::newRow("URL schemes in one word")<<QString()<<QStringList{"postgres://u:"}<<2000;
+  QTest::newRow("a long base64 word")<<QString()<<QStringList{"aB3dE5fG7hJ9kL1mN3pQ+/"}<<1000;
+  QTest::newRow("many token-shaped words")<<QString()<<QStringList{"aB3dE5fG7h "}<<4000;
   // #1940 (Sol on #1954): many short segments on one row, each with a run, beside hash words.
-  QTest::newRow("many separated runs beside hash words")<<repeat("sha256 ~~ 9f86d081884c7d659a2feaa0c55ad015 ~~ ",1500);
-  QTest::newRow("many token-shaped lines")<<repeat("aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3 | ",300);
-  QTest::newRow("a PEM begin and many lines")<<QString("-----BEGIN RSA PRIV")+"ATE KEY----- | "+repeat("aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3 | ",400);
+  QTest::newRow("many separated runs beside hash words")<<QString()<<QStringList{"sha256 ~~ 9f86d081884c7d659a2feaa0c55ad015 ~~ "}<<1500;
+  QTest::newRow("many token-shaped lines")<<QString()<<QStringList{"aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3 | "}<<300;
+  QTest::newRow("a PEM begin and many lines")<<QString("-----BEGIN RSA PRIV")+"ATE KEY----- | "<<QStringList{"aB3dE5fG7hJ9kL1mN3pQ5rS7tU9vW1xY3 | "}<<400;
  }
  // Sol on #1902: the faster search finds what the plain one did.
  void theFastSearchFindsWhatThePlainOneDid() {
@@ -1843,13 +1844,23 @@ private slots:
    QStringList all;for(const auto& m:found(words(page),QStringList{"key"}))all.append(m);
    QVERIFY2(all.join(' ').contains("z7Kq2Lm9Vb4Nqr7mvs1fg2py6nwj3zr4t51"),qPrintable(all.join(" / ")));}
  }
+ // #2112: judged by the thread's CPU time against the same page an eighth as long, not by wall time
+ // against a fixed limit, which a busy runner stretched past it. A matcher that costs a page's length
+ // takes about 8 times as long on 8 times the page, one that costs its square about 64; the wrap chains
+ // of "many token-shaped lines" take about 16.
  void pathologicalLinesStayFast() {
-  QFETCH(QString,page);
-  const auto candidates=words(page);
-  QElapsedTimer clock;clock.start();
-  const auto result=quickRedact::find(candidates,{"email","phone","ip","card","key"});
-  qInfo("%s: %lld ms, %lld words, %lld matches",QTest::currentDataTag(),clock.elapsed(),qint64(candidates.size()),qint64(result.size()));
-  QVERIFY2(clock.elapsed()<putgd::test::scaled(1000),qPrintable(QString::number(clock.elapsed())));
+  QFETCH(QString,lead);QFETCH(QStringList,units);QFETCH(int,count);
+  const auto page=[&](int repeats){QString out=lead;for(const auto& unit:units)for(int i=0;i<repeats;++i)out+=unit;return words(out);};
+  const auto cpuMs=[](const QList<RecognizedWord>& candidates){
+   timespec from{},to{};clock_gettime(CLOCK_THREAD_CPUTIME_ID,&from);
+   quickRedact::find(candidates,{"email","phone","ip","card","key"});
+   clock_gettime(CLOCK_THREAD_CPUTIME_ID,&to);return double(to.tv_sec-from.tv_sec)*1e3+double(to.tv_nsec-from.tv_nsec)/1e6;
+  };
+  const auto whole=page(count),eighth=page(count/8);
+  const double wholeMs=cpuMs(whole),eighthMs=cpuMs(eighth);
+  const auto report=QString("%1 words: %2 ms, %3 words: %4 ms").arg(whole.size()).arg(wholeMs,0,'f',1).arg(eighth.size()).arg(eighthMs,0,'f',1);
+  qInfo("%s: %s",QTest::currentDataTag(),qPrintable(report));
+  QVERIFY2(wholeMs<24*eighthMs,qPrintable(report));
  }
  // M2: progress after the terms and after the patterns, the rest skipped, so a
  // caller that stops waiting keeps what was found.
