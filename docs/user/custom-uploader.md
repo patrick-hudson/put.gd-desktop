@@ -360,8 +360,12 @@ Confirming it journals the intent, then sends one GET of the recorded deletion U
   the file is removed. While the link still answers, the deletion is unknown
   (`http_delete_pending`), and **Retry** checks again (#1690).
 - A lost reply leaves the deletion unknown; **Retry** asks the server again and finds
-  the file gone. A redirect that put.gd does not follow is unknown too: the server
-  received the request. A deletion URL that names a stored value follows no redirect
+  the file gone. A redirect that put.gd does not follow is unknown too, since the server
+  received the request. The one exception is the confirmation form's reply: when that
+  POST answers with a redirect, the link served the whole file just before, and the same
+  address answers a whole 404 or 410 just after, the file is removed. XBackBone answers
+  its confirmation form with a redirect both when it deletes the file and when it refuses
+  to, and only the link tells the two apart (#2100). A deletion URL that names a stored value follows no redirect
   to another host, since the server could have written the value into the address it
   redirects to.
 - Zipline and Chibisafe return no deletion URL, so their uploads are deleted on the
