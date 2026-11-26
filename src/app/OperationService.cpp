@@ -964,6 +964,8 @@ void OperationService::enqueue(Job job) {
  // toggle closes: from here on the upload has decided, and a later choice is refused.
  {std::lock_guard lock(sealHooksMutex_);if(const auto choice=sealChoices_.constFind(job.op.id);choice!=sealChoices_.cend())job.op.seal["requested"]=*choice;sealChoices_.remove(job.op.id);sealOpen_.remove(job.op.id);}
  if(const auto passphrase=checkPassphrases_.take(job.op.id);job.sealPassphrase.isEmpty())job.sealPassphrase=passphrase;
+ // The Seal choice is final now: an upload that waited for it gets its destination warm-up.
+ if(job.acquire&&!job.localOnly&&!anticipated_.contains(job.op.id)&&!job.op.destination.providerId.isEmpty())anticipate(job.op,true);
 #ifdef __GLIBC__
  if(job.acquire)heapReclamationPending_=true;
 #endif
@@ -1895,10 +1897,12 @@ Operation OperationService::run(Job job) {
 }
 // Lets the destination's provider get ready while the operation's content is still being
 // chosen, captured or copied. What it readied and the operation never used ends with it.
-void OperationService::anticipate(const Operation& op) {
+void OperationService::anticipate(const Operation& op,bool final) {
  // #2079: a sealed request contacts its destination only once it is sealed, so one that can't
- // be sealed reaches nothing at all; it gives up the warm-up.
+ // be sealed reaches nothing at all; it gives up the warm-up. Where Seal can still be turned on
+ // later (a sensitive text check's editor), the warm-up waits for enqueue(), when the choice is final.
  if(sealWanted(op))return;
+ if(!final&&op.settings.sensitiveTextCheck)return;
  if(const auto provider=providers_.find(op.destination.providerId))if(auto ready=provider->anticipate(op.destination))anticipated_.insert(op.id,std::move(ready));
 }
 namespace {

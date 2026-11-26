@@ -41,6 +41,8 @@ struct Base64Sink {
 bool isSealJob(int argc,char** argv) {return argc==2&&std::strcmp(argv[1],"--seal-job")==0;}
 int runSealJob() {
  QByteArray input;char chunk[4096];
+ // The request carries the passphrase: both buffers are wiped on every way out.
+ const auto wipeInput=qScopeGuard([&]{OPENSSL_cleanse(chunk,sizeof(chunk));if(input.capacity()>0){input.resize(input.capacity());OPENSSL_cleanse(input.data(),size_t(input.size()));}});
  while(const auto count=std::fread(chunk,1,sizeof(chunk),stdin)){input.append(chunk,qsizetype(count));if(input.size()>65536)return refuse({"seal_failed","The sealing request is too large.",{}});}
  auto request=QJsonDocument::fromJson(input).object();OPENSSL_cleanse(input.data(),size_t(input.size()));
  // A passphrase that is there but not text is refused, never read as none.

@@ -410,7 +410,8 @@ private:
  std::shared_ptr<PendingCopy> currentCopy_;
  QSet<QString> clipboardImports_;
  // What a provider readied ahead of an operation's requests (StorageProvider::anticipate), by operation.
- void anticipate(const Operation&);
+ // final: the upload's Seal choice can no longer change (enqueue()).
+ void anticipate(const Operation&,bool final=false);
  QHash<QString,std::shared_ptr<void>> anticipated_;
  quint64 uploadCopyEpoch_=0;
  QString root_;

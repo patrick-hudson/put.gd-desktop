@@ -73,7 +73,9 @@ void DestinationStatus::load() {
  }
  const auto seals=root["sealChecks"].toObject();
  for(auto it=seals.begin();it!=seals.end();++it){const auto value=it.value().toObject();
-  if(value["passed"].isBool()&&value["fingerprint"].isString()&&value["fingerprint"].toString().size()==64)sealRecords_.insert(it.key(),{value["passed"].toBool(),value["reason"].toString().left(300),value["fingerprint"].toString()});}
+  // #2079: a check counts only for the keys it ran with; one from another revision is dropped.
+  quint64 revision=0;if(!revisionValue(value["credentialRevision"],&revision)||revision!=credentialRevisions_.value(it.key()))continue;
+  if(value["passed"].isBool()&&value["fingerprint"].isString()&&value["fingerprint"].toString().size()==64)sealRecords_.insert(it.key(),{value["passed"].toBool(),value["reason"].toString().left(300),value["fingerprint"].toString(),revision});}
  // After the records are read, so the upgrade's save keeps them.
  if(!root.contains("keychainEntries"))upgrade(true,true);
 }
@@ -96,7 +98,8 @@ void DestinationStatus::save() {
  for(auto it=credentialRevisions_.cbegin();it!=credentialRevisions_.cend();++it)if(!sessionOnly(it.key()))revisions.insert(it.key(),double(it.value()));
  // Always written, even empty: a file without it is one from before #1890.
  auto entries=QStringList(keychainEntries_.cbegin(),keychainEntries_.cend());entries.sort();
- QJsonObject seals;for(auto it=sealRecords_.cbegin();it!=sealRecords_.cend();++it)seals.insert(it.key(),QJsonObject{{"passed",it->passed},{"reason",it->reason},{"fingerprint",it->fingerprint}});
+ // A check made with session-only keys ends with the session, as the destination's own does.
+ QJsonObject seals;for(auto it=sealRecords_.cbegin();it!=sealRecords_.cend();++it)if(!sessionOnly(it.key()))seals.insert(it.key(),QJsonObject{{"passed",it->passed},{"reason",it->reason},{"fingerprint",it->fingerprint},{"credentialRevision",double(it->credentialRevision)}});
  QJsonObject root{{"schemaVersion",1},{"destinations",destinations},{"credentialRevisions",revisions},{"keychainEntries",QJsonArray::fromStringList(entries)},{"sealChecks",seals}};
  const auto bytes=QJsonDocument(root).toJson(QJsonDocument::Compact);
  QDir().mkpath(QFileInfo(path_).absolutePath());
@@ -187,7 +190,7 @@ QJsonObject DestinationStatus::publicJson() const {
 void DestinationStatus::sealChecked(const QString& profileId,const QString& fingerprint,bool passed,const QString& reason) {
  const auto profiles=settings_.snapshot().profiles;const auto found=profiles.constFind(profileId);
  if(found==profiles.cend()||destinationcheck::fingerprint(*found)!=fingerprint)return;
- {std::lock_guard lock(sealMutex_);sealRecords_.insert(profileId,{passed,passed?QString():reason,fingerprint});}save();emit changed();
+ {std::lock_guard lock(sealMutex_);sealRecords_.insert(profileId,{passed,passed?QString():reason,fingerprint,credentialRevision(profileId)});}save();emit changed();
 }
 QJsonObject DestinationStatus::sealCheckFor(const QString& profileId,const QString& fingerprint) const {
  std::lock_guard lock(sealMutex_);const auto record=sealRecords_.constFind(profileId);

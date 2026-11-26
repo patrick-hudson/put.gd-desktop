@@ -75,7 +75,7 @@ private:
  QString path_;
  SettingsService& settings_;
  QHash<QString,Record> records_;
- struct SealRecord {bool passed=false;QString reason,fingerprint;};
+ struct SealRecord {bool passed=false;QString reason,fingerprint;quint64 credentialRevision=0;};
  QHash<QString,SealRecord> sealRecords_; // written on the owning thread, under sealMutex_
  mutable std::mutex sealMutex_;
  QHash<QString,quint64> credentialRevisions_;
