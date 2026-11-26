@@ -558,7 +558,8 @@ Settings closes. Saving a destination whose **Encrypted links** mode didn't chan
 `encrypt` object exactly as saved, `passphraseCredentials` included. Agents drive it with
 `ui.encryptedLinks` (MCP `drive_encrypted_links`): `inspect`, `mode` and `unlock`. Its `available` says
 whether encryption can be turned on there, `modeEnabled` whether the choice can change and
-`saved` whether the file has the mode shown. `mode` answers only once the file has the new
+`saved` whether the file has the mode shown, with nothing for this
+destination still waiting to save. `mode` answers only once the file has the new
 mode, or with `settings_not_saved` when it isn't saved (#2103): until then an agent's next
 `setup.storeEncryptPassphrase` could read the old mode. A passphrase is typed in the window only.
 
