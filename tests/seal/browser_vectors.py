@@ -5,8 +5,9 @@ Serves the pinned viewer (src/seal/viewer.html) on 127.0.0.1 and opens
 tests/seal/harness.html in headless Firefox and Chromium. The harness seals every
 vector with WebCrypto and checks the bytes equal the C++ containers in
 tests/fixtures/seal/vectors.json, then opens each sealed page as a recipient would:
-inline and split forms, passphrase, wrong key, missing key, changed data and a missing
-data file. The server records every request; a page that asks for anything but itself
+inline and split forms, passphrase, wrong key, missing key, changed data, a missing
+data file, and a file too large for the browser to read back (saved through the save picker,
+or a plain message without one). The server records every request; a page that asks for anything but itself
 and, in the split form, its one ./NAME.bin fails the run (the CSP check). Needs only
 the Python standard library and the browsers.
 
@@ -37,8 +38,21 @@ STATIC = {"/harness.html": ("text/html", HERE / "harness.html"), "/harness.js": 
           "/reference_seal.js": ("text/javascript", HERE / "reference_seal.js")}
 
 
-def page(container: bytes | None, split: bool = False, vid: str = "") -> bytes:
+# Test only, placed before the page's CSP: the browser can't read back the file the page puts
+# together (as Chrome above about 256 MB), and a save picker records what the page writes.
+LARGE = b"""<script>
+Blob.prototype.arrayBuffer=function(){return Promise.reject(new DOMException("unreadable","NotReadableError"))};
+window.showSaveFilePicker=async o=>{const parts=[];window.savedName=o&&o.suggestedName;
+ return {createWritable:async()=>({write:async p=>{parts.push(new Uint8Array(p))},abort:async()=>{},
+  close:async()=>{let n=0;for(const x of parts)n+=x.length;const all=new Uint8Array(n);n=0;for(const x of parts){all.set(x,n);n+=x.length}window.saved=all}})}};
+</script>"""
+NO_PICKER = LARGE.replace(b"window.showSaveFilePicker=async", b"window.showSaveFilePicker=undefined;window.unusedPicker=async")
+
+
+def page(container: bytes | None, split: bool = False, vid: str = "", before: bytes = b"") -> bytes:
     prefix, suffix = VIEWER.split(MARKER)
+    if before:
+        prefix = prefix.replace(b"<head>\n", b"<head>\n" + before + b"\n", 1)
     if split:
         prefix = prefix.replace(b"connect-src 'none'", b"connect-src 'self'")
         element = b'<script id="putgd-sealed" type="application/octet-stream" data-form="split" data-bin="' + vid.encode() + b'.bin"></script>'
@@ -76,6 +90,13 @@ def handler(run: Run):
                 return self.send(200, file.read_bytes(), kind)
             if path == "/vectors.json":
                 return self.send(200, json.dumps(VECTORS).encode(), "application/json")
+            match = re.fullmatch(r"/(large|large-nosave)/(\w+)\.html", path)
+            if match and match.group(2) in run.containers:
+                form, vid = match.groups()
+                return self.send(200, page(None, True, vid, LARGE if form == "large" else NO_PICKER), "text/html")
+            match = re.fullmatch(r"/(large|large-nosave)/(\w+)\.bin", path)
+            if match and match.group(2) in run.containers:
+                return self.send(200, run.containers[match.group(2)], "application/octet-stream")
             match = re.fullmatch(r"/(page|split|tampered|split-missing)/(\w+)\.html", path)
             if match and match.group(2) in run.containers:
                 form, vid = match.groups()
@@ -121,7 +142,7 @@ def browser_command(name: str, url: str, profile: str) -> list[str] | None:
 
 
 ALLOWED = re.compile(r"^/(harness\.html|harness\.js|reference_seal\.js|vectors\.json|result|container/\w+|"
-                     r"(page|split|tampered|split-missing)/\w+\.html|(split|split-missing)/\w+\.bin)$")
+                     r"(page|split|tampered|split-missing|large|large-nosave)/\w+\.html|(split|split-missing|large|large-nosave)/\w+\.bin)$")
 
 
 def run_browser(name: str, timeout: float) -> list[str]:

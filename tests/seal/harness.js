@@ -60,6 +60,18 @@
   let d=await load("/page/hello.html#"+frag(k));await waitState(d);note("hello","wrong key",status(d)==="This link is incomplete or damaged.",status(d));
   d=await load("/page/hello.html");await waitState(d);note("hello","missing key",status(d).startsWith("This link is missing its key."),status(d));
   d=await load("/tampered/hello.html#"+frag(unhex(h.link)));await waitState(d);note("hello","changed data",status(d)==="This link is incomplete or damaged.",status(d));
+  // Too large for the browser to read back: Save to file writes the file, or a plain message without a save picker.
+  const m=doc.vectors.find(v=>v.id==="multi"),mf=frag(unhex(m.link)),mwant=await sha(content(m.content));
+  d=await load("/large/multi.html#"+mf);let st=await waitState(d);const sf=d.getElementById("savefile");
+  note("multi","too large: offers Save to file",st==="open"&&!sf.hidden&&d.getElementById("save").hidden&&!d.getElementById("view").children.length
+   &&status(d)==="This file is too large for this browser to show. Select Save to file to save it.",st+" "+status(d));
+  sf.click();for(let i=0;i<100&&status(d)!=="Saved.";i++)await sleep(100);
+  const w=frame.contentWindow;
+  note("multi","too large: saved file is the file",status(d)==="Saved."&&w.saved&&await sha(w.saved)===mwant,status(d));
+  note("multi","too large: saved name",w.savedName===m.name,w.savedName);
+  d=await load("/large-nosave/multi.html#"+mf);st=await waitState(d);
+  note("multi","too large without a save picker",st==="open"&&d.getElementById("savefile").hidden&&d.getElementById("save").hidden
+   &&status(d)==="This file is too large for this browser. Open the link in Firefox, or use putgd-cli open.",st+" "+status(d));
   d=await load("/split-missing/multi.html#"+frag(unhex(doc.vectors.find(v=>v.id==="multi").link)));await waitState(d);note("multi","split without its data",status(d)==="The sealed file isn't at this address any more.",status(d));
  }catch(e){note("harness","ran",false,e&&e.stack||e)}
  await fetch("/result",{method:"POST",body:JSON.stringify({userAgent:navigator.userAgent,results})});
