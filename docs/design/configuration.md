@@ -130,6 +130,7 @@ the last accepted in-memory settings and the bad file so it can be corrected.
 | Each profile's `id`, `label`, `provider` | Unique stable ID, display label, registered adapter ID |
 | Each profile's `settings` | Non-secret settings validated by its provider adapter |
 | Each profile's `credentials` | `keychain` plus a nonempty `reference`, or `session` plus `null` reference |
+| Each profile's `encrypt` | Optional [encrypted links](#encrypted-links-setting) default for new uploads: `mode` `off` (also when absent), `on` or `passphrase`, and `passphraseCredentials` for the passphrase |
 | `archive.keepUploads` | `false`; enables local saving for every new action, independently of its upload destination |
 | `archive.root` | User Documents folder plus `put.gd`; must be absolute |
 | `archive.folders` | `images`, `videos`, `text`, `other`; each absolute or `null` |
@@ -479,6 +480,35 @@ Encoding workspace, native frozen monitor frames and the current clipboard resul
 are separate transient/ownership costs. Retry artifacts and previews live on disk;
 previewCacheBytes bounds disk bytes rather than a preloaded image heap.
 
+## Encrypted links setting
+
+A profile's optional `encrypt` key (#2079) is the destination's default for new uploads to it.
+It is the **Encrypted links** setting in Settings → Destinations; [encrypted links](encrypted-links.md)
+has the design.
+
+```json
+"encrypt": {"mode": "passphrase", "passphraseCredentials": {"mode": "keychain", "reference": "putgd/encrypt/s3-1"}}
+```
+
+- `mode` is `off`, `on` or `passphrase`. A profile without `encrypt` is `off`.
+- `passphraseCredentials` is required with `passphrase` and optional otherwise. It is
+  `{"mode": "keychain", "reference": …}` with a reference of 1 to 256 characters, or
+  `{"mode": "session", "reference": null}`. It names the passphrase's own entry, so a
+  keychain reference that any destination's `credentials.reference` or another destination's
+  passphrase also uses is refused. Saving one would replace the other.
+- `mode` `on` or `passphrase` is refused on Proton Drive, which already encrypts end to end,
+  and on Nextcloud, whose share links download HTML files.
+- An invalid `encrypt` fails at `/profiles/encrypt` with "Choose Off, On or On with a passphrase
+  for Encrypted links.", "This destination type can't encrypt links. Set Encrypted links to Off.", "The
+  Encrypted links passphrase needs its own keychain reference, not the destination's." or "The
+  Encrypted links passphrase needs its own keychain reference, not another destination's."
+
+The passphrase itself is never in this file ([credentials](credentials.md)). The setting
+affects uploads accepted after it changes; one upload can turn encryption on or off for itself.
+Other destinations that can't encrypt, such as SFTP without a Link address, keep the setting,
+and their encrypted uploads fail with `encrypt_unavailable`. `encrypt` is not part of the connection
+fingerprint below, so changing it keeps the destination's check records.
+
 ## Destination checks
 
 The resident keeps each destination's last check in `destination-status.json` in the
@@ -565,6 +595,22 @@ What updates the record:
   record.
 - A Test or upload records nothing when, at the moment it finishes, the destination's
   fingerprint or credential revision differs from the ones it started with.
+
+The encrypted-link Test check (#2079) is kept in the same file under `encryptChecks`, keyed by
+profile ID: `passed`, the failure `reason` (at most 300 characters), the connection
+fingerprint it checked and the `credentialRevision` it ran with. Only a Test writes it
+([the Test check](encrypted-links.md#the-test-check)). It counts while the fingerprint matches
+the destination as saved, and is removed with the destination. Loading drops an entry whose
+`credentialRevision` is missing or isn't the destination's current revision. An entry for a
+destination with session-only keys is never written, so it ends with the resident like that
+destination's own record. New credentials stored for the destination, or for another destination that
+shares its keychain entry, remove it too, and a check that ran while the keys changed, or was
+cancelled, records nothing. A Test whose destination was saved with another fingerprint or
+credential revision before it finished runs no check and reports it `untested`. Each
+`destinationStatus` entry carries it as `encrypt`, `{state: passed|failed|untested, reason?,
+fingerprint?}`, also when the destination's own check is untested. `fingerprint` is the one
+the check ran on, so Settings can show an edited, unsaved connection as untested. An upload decides with the fingerprint of the settings it was
+accepted with.
 
 A file that cannot be read whole starts empty. On reading, a revision must be an exact
 integer from 0 to 2^53, and a record's `errorCode` must be one of the refusals above;

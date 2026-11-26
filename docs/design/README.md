@@ -16,6 +16,7 @@ the [overview](overview.md) and [architecture](architecture.md).
 - The idle target is 40 MiB RSS for the resident and any surviving product helpers after work drains.
 - The synthetic UI catalog and widget tests establish design and widget behavior only.
 - Windows and Flatpak are out of scope.
+- A file meant to be encrypted never uploads unencrypted, with no exceptions. A file put.gd can't encrypt fails before anything is sent, and the user turns off Encrypt to upload it as an ordinary link. The resident never maps libcrypto: `putgd-cli` encrypts every file, and it is the only put.gd component that verifies the page before decrypting (the pinned viewer decrypts in the browser), and the key leaves the computer only in the link's fragment.
 - Text is recognized only on an explicit action, and nothing recognized is stored. Recognition runs only in the temporary `putgd-ocr` helper, so the resident and `putgd-ui` never link or load Tesseract, Leptonica or ZXing-cpp.
 
 ## Documents
@@ -30,6 +31,7 @@ the [overview](overview.md) and [architecture](architecture.md).
 - [Screen recording](recording.md): the recording contract, helper, review, export and packages.
 - [Scrolling capture](scroll-capture.md): a region scrolled with injected wheel events and stitched into one tall image: the helper session, frames and injectors per desktop, the control loop, proof rules, limits and end reasons.
 - [Image editor](image-editor.md): the Capture region & edit workflow, privacy boundaries and agent control.
+- [Encrypted links](encrypted-links.md): end-to-end encrypted uploads in a self-decrypting page: the threat table, format version 1, keys, the pinned viewer and its CSP, the one-page and two-file forms, the `putgd-cli` encryption helper, pipeline rules, History and Forget key, the Test check, per-destination support and testing.
 - [Capture style](capture-style.md): padding, a backdrop, rounded corners and a shadow around still captures, off by default; presets, geometry, the image-job `style` task, the editor's Style tool and originals.
 - [Text recognition and QR codes](text-recognition.md): Copy text from a capture, the editor's text tools and Quick redact (its five kinds, the account's name and the user's saved list), History's Copy text and Show QR code, the confined `putgd-ocr` helper, untrusted content, languages, the clipboard rules and the agent contract.
 - [Capture monitor, delay and repeat](capture-delay.md): the monitor under the pointer, the capture countdown and Repeat last region.
