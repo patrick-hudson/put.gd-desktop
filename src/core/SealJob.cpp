@@ -8,9 +8,12 @@
 #include <QProcess>
 #include <QRandomGenerator>
 #include <QUuid>
-#ifdef Q_OS_UNIX
+#include <QScopeGuard>
+#include <fcntl.h>
 #include <sys/resource.h>
-#endif
+#include <sys/stat.h>
+#include <unistd.h>
+#include <vector>
 namespace putgd {
 namespace {
 Error failure(const QString& message) {return {"seal_failed",message,{}};}
@@ -28,24 +31,30 @@ SealJob::Result SealJob::run(const Artifact& file,const QString& directory,const
  const QFileInfo helper(helperPath_);
  if(!helper.isFile()||!helper.isExecutable()){result.error=failure("Couldn't seal the file because putgd-cli is missing from this installation.");return result;}
  const bool split=form=="split";
- const auto pageId=QUuid::createUuid().toString(QUuid::WithoutBraces),dataId=QUuid::createUuid().toString(QUuid::WithoutBraces);
+ const auto pageId=pageIdForTesting_.isEmpty()?QUuid::createUuid().toString(QUuid::WithoutBraces):pageIdForTesting_;
+ const auto dataId=dataIdForTesting_.isEmpty()?QUuid::createUuid().toString(QUuid::WithoutBraces):dataIdForTesting_;
  const auto pagePath=directory+"/"+pageId,dataPath=directory+"/"+dataId;
- // Only files this job made go again. A path already there (the helper's exclusive create
- // refuses it) is never touched, and a helper that answers removes what it made itself.
- const auto present=[](const QString& path){const QFileInfo info(path);return info.exists()||info.isSymLink();};
- if(present(pagePath)||(split&&present(dataPath))){result.error=failure("Couldn't seal the file because its working file name is already taken.");return result;}
+ // The resident makes both outputs itself, each with an exclusive create, and keeps each one's
+ // descriptor; the helper only writes into them. A path is removed only while it is still the
+ // file made here (same device and inode), so nothing put.gd didn't create is ever deleted.
+ struct Owned {QString path;int fd=-1;};
+ std::vector<Owned> owned;
+ const auto closeAll=qScopeGuard([&owned]{for(const auto& file:owned)::close(file.fd);});
+ const auto make=[&owned](const QString& path){const int fd=::open(QFile::encodeName(path).constData(),O_RDONLY|O_CREAT|O_EXCL|O_NOFOLLOW|O_CLOEXEC,0600);if(fd<0)return false;owned.push_back({path,fd});return true;};
+ const auto discard=[&owned]{for(const auto& file:owned){struct stat mine{},there{};
+  if(::fstat(file.fd,&mine)==0&&::lstat(QFile::encodeName(file.path).constData(),&there)==0&&mine.st_dev==there.st_dev&&mine.st_ino==there.st_ino)QFile::remove(file.path);}};
+ if(!make(pagePath)||(split&&!make(dataPath))){discard();result.error=failure("Couldn't create the sealed file's working copy.");return result;}
  QJsonObject request{{"input",file.path},{"bytes",double(file.bytes)},{"name",file.name},{"type",file.mime},{"form",split?"split":"inline"},{"page",pagePath}};
  if(split){request["data"]=dataPath;request["bin"]=binName;}
  if(!passphrase.isEmpty())request["passphrase"]=passphrase;
  auto input=QJsonDocument(request).toJson(QJsonDocument::Compact);
- const auto discard=[&]{QFile::remove(pagePath);if(split)QFile::remove(dataPath);};
  QProcess process;process.setStandardErrorFile(QProcess::nullDevice());
 #ifdef Q_OS_UNIX
  process.setChildProcessModifier([]{const rlimit none{0,0};::setrlimit(RLIMIT_CORE,&none);::setpriority(PRIO_PROCESS,0,5);});
 #endif
  QElapsedTimer clock;clock.start();
  process.start(helperPath_,{"--seal-job"});
- if(!process.waitForStarted(10000)){result.error=failure("Couldn't start putgd-cli to seal the file.");return result;}
+ if(!process.waitForStarted(10000)){discard();result.error=failure("Couldn't start putgd-cli to seal the file.");return result;}
  process.write(input);input.fill('\0');process.closeWriteChannel();
  QByteArray output;
  while(process.state()!=QProcess::NotRunning) {
@@ -57,14 +66,17 @@ SealJob::Result SealJob::run(const Artifact& file,const QString& directory,const
  output+=process.readAllStandardOutput();
  const auto answer=QJsonDocument::fromJson(output.trimmed()).object();
  if(process.exitStatus()!=QProcess::NormalExit||!answer["ok"].toBool()) {
-  if(process.exitStatus()!=QProcess::NormalExit||!answer["error"].isObject())discard();
-  const auto e=answer["error"].toObject();
+  discard();const auto e=answer["error"].toObject();
   result.error=e["code"].isString()?Error{e["code"].toString(),e["message"].toString(),{}}:failure("Couldn't seal the file because putgd-cli stopped unexpectedly.");
   return result;
  }
- // The files the helper wrote, as the resident checks them itself.
+ // Cancel that came as the helper finished: nothing is checked or kept.
+ if(cancelled&&cancelled->load()){discard();result.error={"cancelled","Sealing was cancelled, so the upload didn't start.",{}};return result;}
+ // The files the helper wrote, as the resident checks them itself, read through the descriptors
+ // made above, so what is checked is the file put.gd created.
  const auto artifact=[&](const QString& id,const QString& path,const QString& name,const QString& mime,const QJsonObject& reported,Artifact& out)->bool {
-  QFile written(path);if(!written.open(QIODevice::ReadOnly))return false;
+  int fd=-1;for(const auto& file:owned)if(file.path==path)fd=file.fd;
+  QFile written;if(fd<0||::lseek(fd,0,SEEK_SET)!=0||!written.open(fd,QIODevice::ReadOnly,QFileDevice::DontCloseHandle))return false;
   const auto sha=helperfiles::digest(written,written.size(),[&]{return cancelled&&cancelled->load();});
   if(sha.isEmpty()||written.size()!=qint64(reported["bytes"].toDouble(-1))||sha!=reported["sha256"].toString())return false;
   out.id=id;out.path=path;out.name=name;out.mime=mime;out.category="other";out.sha256=sha;out.bytes=written.size();out.namingPrepared=true;

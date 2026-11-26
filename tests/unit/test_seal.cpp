@@ -3,6 +3,7 @@
 #include <QBuffer>
 #include <QCryptographicHash>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -173,6 +174,12 @@ private slots:
    QJsonObject request{{"input",in.fileName()},{"bytes",double(v.plain.size())},{"name","pattern.bin"},{"type","application/octet-stream"},{"form",split?"split":"inline"},
     {"page",dir.filePath(split?"split.html":"inline.html")},{"passphrase","hunter2"}};
    if(split){request["data"]=dir.filePath("split.bin");request["bin"]="Abc123.bin";}
+   // The resident makes the outputs, empty and private; the helper only writes into them.
+   for(const auto* key:{"page","data"})if(request.contains(key)){QFile out(request[key].toString());QVERIFY(out.open(QIODevice::WriteOnly|QIODevice::NewOnly));QVERIFY(out.setPermissions(QFile::ReadOwner|QFile::WriteOwner));}
+   // An output that isn't the resident's empty private file is refused and left as it is.
+   {QFile shared(dir.filePath("shared.html"));QVERIFY(shared.open(QIODevice::WriteOnly));shared.close();QVERIFY(QFile::setPermissions(shared.fileName(),QFile::ReadOwner|QFile::WriteOwner|QFile::ReadOther));auto loose=request;loose["page"]=shared.fileName();
+    QProcess job;job.start(cli,{"--seal-job"});QVERIFY(job.waitForStarted());job.write(QJsonDocument(loose).toJson());job.closeWriteChannel();QVERIFY(job.waitForFinished(60000));
+    QCOMPARE(QJsonDocument::fromJson(job.readAllStandardOutput()).object()["ok"],QJsonValue(false));QVERIFY(QFileInfo::exists(shared.fileName()));QCOMPARE(QFileInfo(shared.fileName()).size(),0);}
    QProcess job;job.start(cli,{"--seal-job"});QVERIFY(job.waitForStarted());job.write(QJsonDocument(request).toJson());job.closeWriteChannel();QVERIFY(job.waitForFinished(60000));
    const auto answer=QJsonDocument::fromJson(job.readAllStandardOutput()).object();QVERIFY2(answer["ok"].toBool(),job.readAllStandardError().constData());
    const auto key=seal::keyFromFragment(answer["key"].toString());QCOMPARE(key.size(),32);
@@ -187,7 +194,7 @@ private slots:
     QCOMPARE(QString::fromLatin1(QCryptographicHash::hash(container,QCryptographicHash::Sha256).toHex()),answer["data"].toObject()["sha256"].toString());}
    else container=QByteArray::fromBase64(parsed.base64);
    QByteArray plain;QVERIFY(!opened(container,key,"hunter2",&plain));QCOMPARE(plain,v.plain);
-   // An existing output is never overwritten.
+   // A written output is never overwritten.
    QProcess again;again.start(cli,{"--seal-job"});QVERIFY(again.waitForStarted());again.write(QJsonDocument(request).toJson());again.closeWriteChannel();QVERIFY(again.waitForFinished(60000));
    QCOMPARE(again.exitStatus(),QProcess::NormalExit);QVERIFY(again.exitCode()!=0);
    const auto refused=QJsonDocument::fromJson(again.readAllStandardOutput()).object();

@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstring>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <openssl/crypto.h>
 #include <unistd.h>
 namespace putgd::seal {
@@ -19,10 +20,14 @@ int reply(const QJsonObject& object) {
  return object["ok"].toBool()?0:1;
 }
 int refuse(const Error& error) {return reply({{"ok",false},{"error",error.toJson()}});}
-// A new private file; never one that already exists or a link.
+// The output the resident made for this job: an empty private regular file of this user, never
+// a link. The helper creates and deletes nothing; what it wrote goes with the resident's file.
 bool create(QFile& file,const QString& path) {
- const int fd=::open(QFile::encodeName(path).constData(),O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW|O_CLOEXEC,0600);
- return fd>=0&&file.open(fd,QIODevice::WriteOnly,QFileDevice::AutoCloseHandle);
+ const int fd=::open(QFile::encodeName(path).constData(),O_WRONLY|O_NOFOLLOW|O_CLOEXEC);
+ if(fd<0)return false;
+ struct stat info{};
+ if(::fstat(fd,&info)!=0||!S_ISREG(info.st_mode)||info.st_size!=0||info.st_uid!=::geteuid()||(info.st_mode&077)!=0){::close(fd);return false;}
+ return file.open(fd,QIODevice::WriteOnly,QFileDevice::AutoCloseHandle);
 }
 // Writes to a file and hashes what it wrote.
 struct Output {
@@ -62,16 +67,12 @@ int runSealJob() {
  auto key=randomKey();if(key.isEmpty())return refuse({"seal_failed","Couldn't make a key.",{}});
  const auto wipeKey=qScopeGuard([&key]{OPENSSL_cleanse(key.data(),size_t(key.size()));});
  const Meta meta{request["name"].toString(),request["type"].toString(),bytes};
- Output page;if(!create(page.file,request["page"].toString()))return refuse({"seal_failed","Couldn't create the sealed page.",{}});
- // What this job created goes again unless it answers ok; an existing file was never ours.
- bool done=false;QStringList created{request["page"].toString()};
- const auto discard=qScopeGuard([&]{if(!done)for(const auto& path:std::as_const(created))QFile::remove(path);});
+ Output page;if(!create(page.file,request["page"].toString()))return refuse({"seal_failed","Couldn't open the file for the sealed page.",{}});
  const auto prefix=pagePrefix(split),suffix=pageSuffix(),open=dataOpen(split,request["bin"].toString());
  page.write(prefix.constData(),prefix.size());page.write(open.constData(),open.size());
  QJsonObject result{{"ok",true}};
  if(split) {
-  Output data;if(!create(data.file,request["data"].toString()))return refuse({"seal_failed","Couldn't create the sealed data file.",{}});
-  created.append(request["data"].toString());
+  Output data;if(!create(data.file,request["data"].toString()))return refuse({"seal_failed","Couldn't open the file for the sealed data file.",{}});
   if(auto e=seal(source,meta,key,passphrase,[&data](const char* d,qint64 n){return data.write(d,n);}))return refuse(e);
   if(!data.ok||!data.file.flush()||::fsync(data.file.handle())!=0)return refuse({"seal_failed","Couldn't write the sealed data file.",{}});
   result["data"]=data.result();
@@ -83,7 +84,6 @@ int runSealJob() {
  const auto close=dataClose();page.write(close.constData(),close.size());page.write(suffix.constData(),suffix.size());
  if(!page.ok||!page.file.flush()||::fsync(page.file.handle())!=0)return refuse({"seal_failed","Couldn't write the sealed page.",{}});
  result["page"]=page.result();result["key"]=fragment(key);
- done=true;
  return reply(result);
 }
 }

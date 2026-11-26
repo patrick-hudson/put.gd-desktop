@@ -23,7 +23,9 @@ public:
  Result run(const Artifact& file,const QString& directory,const QString& form,const QString& pageName,const QString& binName,const QString& passphrase,Cancel={}) const;
  // A random name for a sealed object: 12 letters and digits, then the extension.
  static QString randomName(const QString& extension);
+ // Tests: the output files' names in `directory`, in place of new UUIDs.
+ void setOutputIdsForTesting(QString page,QString data){pageIdForTesting_=std::move(page);dataIdForTesting_=std::move(data);}
 private:
- QString helperPath_;int timeoutMs_;
+ QString helperPath_;int timeoutMs_;QString pageIdForTesting_,dataIdForTesting_;
 };
 }
