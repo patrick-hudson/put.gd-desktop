@@ -55,6 +55,7 @@ class Chain:
 
     def collect(self, run, broker, reference):
         self.calls.append(('collect', reference))
+        self.step('collect')
         self.current = ROTATED
 
     def carry_back(self, receipt):
@@ -282,6 +283,27 @@ class LendFailures(LendTest):
         with self.assertRaises(proton.bridge.ProvisionError):
             self.lend(Chain(self.calls, fail={'provision': 1, 'abandon': 1}))
         self.assertEqual([t['cleanup'] for t in self.lent()['provisionTries']], ['pending'])
+
+    def test_a_collect_refused_once_is_made_again_and_the_lend_completes(self):
+        result = self.lend(Chain(self.calls, fail={'collect': 1}))
+        self.assertEqual([call[0] for call in self.calls].count('collect'), 2)
+        self.assertIn(('cleanup', BORROWED), self.calls)
+        self.assertEqual(result['carriedBack'].rsplit('/', 1)[-1], 'carry-back-1.json')
+        tries = self.lent()['collectTries']
+        self.assertEqual([(t['attempt'], t.get('failedStep'), t.get('collected')) for t in tries],
+                         [(1, 'collect', None), (2, None, True)])
+        self.assertEqual(tries[0]['keyringAfter']['provider'], 'ksecretd')
+        self.assertEqual(self.lock().status()['state'], 'free')
+
+    def test_a_collect_refused_twice_keeps_the_copy_outstanding_and_the_lock_blocked(self):
+        with self.assertRaises(proton.bridge.ProvisionError):
+            self.lend(Chain(self.calls, fail={'collect': 2}))
+        self.assertNotIn('carry_back', [call[0] for call in self.calls])
+        self.assertNotIn('cleanup', [call[0] for call in self.calls])
+        self.assertEqual(self.lent()['step'], 'tested')
+        state = self.lock().status()
+        self.assertEqual(state['state'], 'blocked')
+        self.assertIn('run proton_lab.py recover', state['blocked'])
 
     def test_a_refused_export_names_its_step_and_lends_nothing(self):
         with self.assertRaises(proton.LabFailure) as failed:
