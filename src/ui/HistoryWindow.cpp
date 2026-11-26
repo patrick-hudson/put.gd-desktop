@@ -1325,7 +1325,7 @@ QList<HistoryWindow::FilterEntry> HistoryWindow::filterEntries()const{
  if(!q.localStatus.isEmpty())entries.append({"localStatus","Local copy",choice("historyChoicelocalStatus",q.localStatus)});
  if(!q.remoteStatus.isEmpty()){if(QStringList{"available","deleted","needs_attention"}.contains(q.remoteStatus))entries.append({"remoteStatus","Remote file state",choice("historyRemoteState",q.remoteStatus)});else entries.append({"exactRemoteStatus","Exact remote state",choice("historyChoiceremoteStatus",q.remoteStatus)});}
  if(!q.mime.isEmpty())entries.append({"mime","File type",q.mime});
- if(showCancelled_->isChecked())entries.append({"includeCanceled","Include cancelled",{}});
+ if(showCancelled_->isChecked())entries.append(FilterEntry{"includeCanceled","Include cancelled",{}});
  return entries;
 }
 // An agent's or a chip's change to one filter, applied as its control would.
