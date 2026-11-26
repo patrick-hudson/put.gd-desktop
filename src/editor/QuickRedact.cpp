@@ -2530,6 +2530,15 @@ bool compactTimestamp(const QString& text) {
  const auto m=shape.match(text);
  return m.hasMatch()&&QDate(m.captured(1).toInt(),m.captured(2).toInt(),m.captured(3).toInt()).isValid();
 }
+// #2076: a word or setting name that names a phone: each part of it split at ".", "_" or "-" (phone.pid,
+// tlf, ph.pid, Tel=), as a calling word or with a phone word inside it (mobileNo, userPhone).
+bool namesPhone(const QString& name) {
+ static const QRegularExpression word(QStringLiteral("^(?:tel|tele|telefon|telefone|telephone|telefono|tlf|phone|ph|mobile|mobil|mob|movil|cell|cel|celular|handy|fax|msisdn|whatsapp|call|contact|kontakt|number|num|no|nr)$"),QRegularExpression::CaseInsensitiveOption),
+  inside(QStringLiteral("tel|phone|mobil|msisdn|whatsapp|handy"),QRegularExpression::CaseInsensitiveOption);
+ static const QRegularExpression parts(QStringLiteral("[._=:#-]+"));
+ for(const auto& part:name.split(parts,Qt::SkipEmptyParts))if(word.match(part).hasMatch()||inside.match(part).hasMatch())return true;
+ return false;
+}
 // A card number as the earlier rule read it: 13 to 19 digits, Luhn-valid, no ISBN-13, and (#1939) not
 // all zeros (0000 0000 0000 0000 passes Luhn).
 bool cardNumber(const QString& m) {QString d;for(const auto c:m)if(c.isDigit())d+=c;return d.size()>=13&&d.size()<=19&&d.count('0')<d.size()&&luhn(d)&&!isbn13(d);}
@@ -3216,23 +3225,23 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
     // (pid=123456 2025550143). A "+" dialling form is never one, a qualified setting that names a phone
     // keeps its number (phone.pid=), and any other setting does too (ph=, handy=, port=, code=).
     if(rule.category=="phone"&&!found.captured().startsWith('+')){
-     static const QRegularExpression phoneWord(QStringLiteral("tel|phone|mobil|mob\\b|cell|fax|msisdn|whatsapp|call|contact|kontakt|handy|^ph$|^no$|^nr$|number"),QRegularExpression::CaseInsensitiveOption);
      const auto& t=joined.text;const auto end=found.capturedEnd();
      // The word or setting name right before start, back to a space or a bracket: letters, digits, _ - .
      const auto nameBefore=[&](qsizetype at){qsizetype k=at;while(k>0&&(t.at(k-1).isLetterOrNumber()||t.at(k-1)=='_'||t.at(k-1)=='-'||t.at(k-1)=='.'))--k;return t.mid(k,at-k);};
      static const QRegularExpression digitsOnly(QStringLiteral("^\\d+$"));
      if(start>=2&&t.at(start-1)=='['&&end+1<t.size()&&t.at(end)==']'&&t.at(end+1)==':'&&digitsOnly.match(found.captured()).hasMatch()){
       const auto name=nameBefore(start-1);
-      if(!name.isEmpty()&&!phoneWord.match(name).hasMatch()){offset=end;continue;}
+      if(!name.isEmpty()&&!namesPhone(name)){offset=end;continue;}
      }
      if(start>=2&&t.at(start-1)=='='){
       const auto name=nameBefore(start-1);
       static const QSet<QString> counts{"pid","ppid","tid","tgid","pgid","uid","gid","euid","egid","auid","ses","inode","ino","seq","size","bytes","len","length","count","max-age","maxage","ttl","expires","timeout","offset","timestamp","epoch","nonce","rss","vsz"};
       const auto last=name.section(QLatin1Char('.'),-1).toLower();
-      if(counts.contains(last)&&!phoneWord.match(name).hasMatch()){
+      if(counts.contains(last)&&!namesPhone(name)){
        qsizetype valueEnd=start;while(valueEnd<end&&t.at(valueEnd).isDigit())++valueEnd;
-       // A value that doesn't start with a digit ("(") is no count; matching goes on as usual.
-       if(valueEnd>start){offset=valueEnd;continue;}
+       // A value that doesn't start with a digit ("(") is no count, nor is one that runs on with a
+       // separator (count=202-555-0143: a phone's first group); matching goes on as usual.
+       if(valueEnd>start&&(valueEnd==end||t.at(valueEnd)==' ')){offset=valueEnd;continue;}
       }
      }
     }
@@ -3403,10 +3412,14 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
      // keeps it.
      {static const QRegularExpression version(R"((?:^|[^\d.])\d{1,2}(?:\.\d+){2,}(?![\d.]))"),groups(R"(\.\d{4,})"),
        label(QStringLiteral("^(?:tel|tele|telefon|telefone|telephone|telefono|tlf|phone|ph|mobile|mobil|mob|cell|cel|celular|handy|fax|whatsapp|call|contact|kontakt)[.:]*$"),QRegularExpression::CaseInsensitiveOption);
+      // ...and only when the version is all but a few digits of it: 5550123 26.10.7058 is a phone,
+      // then a version.
       bool versioned=false;
-      if(!number.startsWith('+'))for(auto it=version.globalMatch(number);it.hasNext();)if(groups.match(it.next().captured()).hasMatch())versioned=true;
+      if(!number.startsWith('+'))for(auto it=version.globalMatch(number);it.hasNext();){const auto v=it.next().captured();if(groups.match(v).hasMatch()&&digits(number)-digits(v)<7)versioned=true;}
       bool labelled=false;
-      for(int k=first-1;k>=0&&k>=first-2&&candidates.at(k).line==line;--k)if(label.match(candidates.at(k).text).hasMatch())labelled=true;
+      for(int k=first-1;k>=0&&k>=first-2&&candidates.at(k).line==line;--k)if(label.match(candidates.at(k).text).hasMatch()||namesPhone(candidates.at(k).text))labelled=true;
+      // A label stuck to the number's own word (Tel=44, Tel:44).
+      {const auto& w=candidates.at(first).text;qsizetype d=0;while(d<w.size()&&!w.at(d).isDigit()&&w.at(d)!='+'&&w.at(d)!='(')++d;if(d>0&&namesPhone(w.left(d)))labelled=true;}
       if(versioned&&!labelled)continue;}
      // Inside an ISBN's own number ("ISBN 978 4 579 64374 5", "ISBN-13: 978-…"): the words after an
      // ISBN word made of digits and hyphens, up to 13 digits.
