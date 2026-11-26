@@ -4,6 +4,7 @@
 #include "seal/SealPage.h"
 #include "app/SealCheck.h"
 #include <QBuffer>
+#include <future>
 #include <QRegularExpression>
 #include <QTemporaryDir>
 #include <QUuid>
@@ -14,12 +15,20 @@ namespace {
 class KeepingProvider final:public StorageProvider {
 public:
  OpaqueProvider storage;mutable QMutex mutex;QHash<QString,QByteArray> files;QString sealUnavailable;bool sealSplit=true;int failNext=0;
+ // Like SFTP: an upload journals its temporary file through the checkpoint first, and refuses without one.
+ bool requireCheckpoint=false;std::atomic_bool checkpointAnswered{false};QStringList revisionsSeen;
  ProviderCapabilities capabilities(const Destination& d) const override {auto c=storage.capabilities(d);c.sealUnavailable=sealUnavailable;c.sealSplit=sealSplit;return c;}
  QString serializationKey(const Destination& d,const QJsonObject& o,const QString& n) const override {return storage.serializationKey(d,o,n);}
  Error validateSettings(const QJsonObject& s) const override {return storage.validateSettings(s);}
  void checkName(const Destination& d,const QString& n,std::function<void(NameCheck)> cb,std::shared_ptr<std::atomic_bool> c={}) override {storage.checkName(d,n,cb,c);}
  void upload(const UploadRequest& r,std::function<void(UploadResult)> cb) override {
-  {QMutexLocker lock(&mutex);if(failNext>0){--failNext;cb({"failed",{},{"fixture_failed","Synthetic failure",{}}});return;}}
+  {QMutexLocker lock(&mutex);revisionsSeen.append(r.destination.profileRevision);if(failNext>0){--failNext;cb({"failed",{},{"fixture_failed","Synthetic failure",{}}});return;}}
+  if(requireCheckpoint) {
+   if(!r.checkpoint){cb({"failed",{},{"checkpoint_failed","This request keeps no journal",{}}});return;}
+   std::promise<Error> acked;r.checkpoint({{"schemaVersion",1},{"temporary","synthetic"}},[&acked](Error e){acked.set_value(e);});
+   if(acked.get_future().get()){cb({"failed",{},{"checkpoint_failed","Checkpoint refused",{}}});return;}
+   checkpointAnswered=true;
+  }
   QFile file(r.artifact.path);QByteArray bytes;if(file.open(QIODevice::ReadOnly))bytes=file.readAll();
   storage.upload(r,[this,r,bytes,cb](UploadResult result){
    if(result.status=="uploaded"){QMutexLocker lock(&mutex);files.insert(r.candidate,bytes);result.receipt.directUrl="https://files.example.invalid/f/"+r.candidate;}
@@ -154,6 +163,16 @@ private slots:
  }
  // The Test check's requests carry the destination's settings revision like any other: a worker
  // refuses one without it, so the check never sends such a request (#2079, lab d69).
+ // The destination the production check builds carries the accepted revision, and the provider
+ // sees it on every request; an upload that journals (SFTP) gets its checkpoints answered.
+ void sealCheckSendsTheRevisionAndAnswersCheckpoints() {
+  KeepingProvider provider;provider.requireCheckpoint=true;QTemporaryDir dir;
+  const QJsonObject profile{{"provider","opaque"},{"settings",QJsonObject{{"workspace","w"}}},{"credentials",QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}}};
+  const auto destination=sealCheckDestination("test",profile,"revision-7");
+  QCOMPARE(destination.profileRevision,QString("revision-7"));QCOMPARE(destination.profileId,QString("test"));QCOMPARE(destination.providerId,QString("opaque"));
+  runSealCheck(provider,destination,dir.filePath("seal-check"),QStringLiteral(PUTGD_CLI_PATH),{});
+  QCOMPARE(provider.storage.uploads.load(),1);QCOMPARE(provider.revisionsSeen,QStringList({"revision-7"}));QVERIFY(provider.checkpointAnswered);
+ }
  void sealCheckNeedsTheSettingsRevision() {
   KeepingProvider provider;QTemporaryDir dir;
   const Destination destination{"opaque","test",{},QJsonObject{{"workspace","w"}},QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}};

@@ -14,6 +14,9 @@ namespace {
 QJsonObject failed(const QString& reason,const QString& cleanup={}) {QJsonObject out{{"state","failed"},{"reason",reason}};if(!cleanup.isEmpty())out["cleanup"]=cleanup;return out;}
 QString uuid() {return QUuid::createUuid().toString(QUuid::WithoutBraces);}
 }
+Destination sealCheckDestination(const QString& profileId,const QJsonObject& profile,const QString& revision) {
+ return {profile.value("provider").toString(),profileId,revision,profile.value("settings").toObject(),profile.value("credentials").toObject()};
+}
 QJsonObject runSealCheck(StorageProvider& provider,const Destination& destination,const QString& staging,const QString& cli,std::shared_ptr<std::atomic_bool> cancelled) {
  if(!cancelled)cancelled=std::make_shared<std::atomic_bool>(false);
  if(destination.profileRevision.isEmpty())return failed(QStringLiteral("The destination's settings revision is missing."));

@@ -9,6 +9,9 @@ namespace putgd {
 // bytes: a browser then opens it as a page. Synchronous: call it from a worker thread.
 // Returns {state: passed|failed, reason?, cleanup: removed|left|failed, link?}; link is the
 // test page's address with the probe's public key, so a person can open it before it goes.
+// The destination the check talks to, as every other request names it: the saved profile at the
+// settings revision the Test was accepted at (workers refuse a request without one).
+Destination sealCheckDestination(const QString& profileId,const QJsonObject& profile,const QString& revision);
 QJsonObject runSealCheck(StorageProvider& provider,const Destination& destination,const QString& stagingDirectory,
                          const QString& cliPath,std::shared_ptr<std::atomic_bool> cancelled);
 }

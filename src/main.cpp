@@ -561,7 +561,7 @@ int main(int argc,char* argv[]) {
  setup.setSealChecker([&operations,&providers,&destinationStatus,&settings,stateRoot](const QString& profileId,const QJsonObject& profile,std::shared_ptr<std::atomic_bool> cancelled,std::function<void(QJsonObject)> done){
   auto provider=providers.find(profile["provider"].toString());
   // The revision the request carries, as every other request does: workers refuse one without it.
-  const putgd::Destination destination{profile["provider"].toString(),profileId,settings.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};
+  const auto destination=putgd::sealCheckDestination(profileId,profile,settings.revision());
   if(!provider||!provider->capabilities(destination).sealUnavailable.isEmpty()){
    const auto reason=provider?provider->capabilities(destination).sealUnavailable:QStringLiteral("This destination is unavailable.");
    destinationStatus.sealChecked(profileId,putgd::destinationcheck::fingerprint(profile),false,reason);
