@@ -12,6 +12,7 @@
 #include <QTemporaryDir>
 #include <QScopeGuard>
 #include <QTest>
+#include "fixtures/Waits.h"
 #include <thread>
 #include <mutex>
 #include <atomic>
@@ -136,6 +137,30 @@ private slots:
   QCOMPARE(QSize(result.width,result.height),expected);QCOMPARE(QImage::fromData(result.png,"PNG").size(),expected);
  }
 
+ // #2079: the Seal toggle rides the bootstrap frame; the window shows it, the seal command flips
+ // it as a click does, and each change reaches the resident's seal handler.
+ void sealToggleStartsShownAndReportsChanges(){
+  QTemporaryDir root;const auto staging=root.filePath("editing");
+  auto session=std::make_shared<EditorSession>();EditorResult result;std::atomic_int changes{0};std::atomic_bool last{false};
+  session->setSealHandler([&](bool on){last=on;++changes;});
+  std::thread worker([&]{auto image=noise({160,90},7);result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).withLinks(true).withSeal({{"available",true},{"on",false}}).run(image,"Upload to synthetic destination",64*1024*1024,session);});
+  auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
+  QVERIFY(waitPhase(*session,"editing"));
+  auto state=ask(*session,"inspect").result;QVERIFY2(state["view"].toObject()["seal"].toObject()["shown"].toBool()||state["seal"].toObject()["shown"].toBool(),qPrintable(QJsonDocument(state).toJson()));
+  const auto turned=ask(*session,"seal",{{"on",true}});QVERIFY2(!turned.error,qPrintable(turned.error.message));QVERIFY(turned.result["on"].toBool());
+  PUTGD_TRY_COMPARE(changes.load(),1);QVERIFY(last.load());
+  QVERIFY(!ask(*session,"submit").error);worker.join();QVERIFY2(!result.error,qPrintable(result.error.code+": "+result.error.message));
+ }
+ // A destination that can't seal: the toggle shows its reason and refuses On.
+ void sealToggleRefusesOnWhereUnavailable(){
+  QTemporaryDir root;const auto staging=root.filePath("editing");
+  auto session=std::make_shared<EditorSession>();EditorResult result;
+  std::thread worker([&]{auto image=noise({160,90},8);result=EditorJob(staging,PUTGD_PRODUCT_UI_PATH).withSeal({{"available",false},{"on",false},{"reason","Select Test upload and link for this destination first."}}).run(image,"Upload to synthetic destination",64*1024*1024,session);});
+  auto joined=qScopeGuard([&]{session->cancel();if(worker.joinable())worker.join();});
+  QVERIFY(waitPhase(*session,"editing"));
+  QCOMPARE(ask(*session,"seal",{{"on",true}}).error.code,QString("seal_unavailable"));
+  QVERIFY(!ask(*session,"cancel").error);
+ }
  // #1618: the saved Quick redact words and patterns ride the bootstrap frame, only when
  // not empty, and the editor accepts them (its exact key count allows both). redactText's own
  // checks answer at once, before any recognition: terms and patterns need the list category.
