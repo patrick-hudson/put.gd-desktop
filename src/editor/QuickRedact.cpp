@@ -2376,6 +2376,15 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
   for(int s=0;s<lineSegments.size();++s){
    const auto& segment=lineSegments.at(s);
    QList<Found> found;segmentMatches(segment,0,int(segment.words.size())-1,found);
+   // Where each "data:" starts in the segment and how far a data: URI from it can end (its media type's
+   // characters, then ";base64,"), found once for the publishable check below (#2112). A character past
+   // ASCII counts as the media type's, since a caseless match can take one for a letter.
+   QList<QPair<int,int>> dataAt;
+   for(auto i=segment.text.indexOf(QLatin1String("data:"),0,Qt::CaseInsensitive);i>=0;i=segment.text.indexOf(QLatin1String("data:"),i+1,Qt::CaseInsensitive)){
+    auto e=i+5;
+    while(e<segment.text.size()){const auto c=segment.text.at(e);if(!(c.unicode()>0x7f||(c>='a'&&c<='z')||(c>='A'&&c<='Z')||c=='/'||c=='+'||c=='.'||c=='-'))break;++e;}
+    dataAt.append({int(i),int(e)+8});
+   }
    // #1895: a hex run with a hash word on its line (a "Git SHA" or "SHA-256" label cell, "commit",
    // "sha256:") is a digest, not a key, unless a secret word is on the line too. With no word either
    // way it stays covered: a hash and a hex secret look the same.
@@ -2403,10 +2412,14 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
       const auto rest=segment.text.mid(segment.starts.at(p+1),qMax(0,runEnd-segment.starts.at(p+1)));
       shown=publicRun(rest);
      }
-     // A prefix ends where the run starts, so only the 512 characters before it are searched (#2112: the
-     // whole line before each run cost a long line's square). No prefix is that long, so the cut can't
-     // pass for the line's start.
-     return publishable.match(segment.text.mid(qMax(0,at-512),at-qMax(0,at-512))).hasMatch()||publishableIn.match(segment.text.mid(at,qMax(0,firstEnd-at))).hasMatch()||(sshPublic&&f.length==0&&blob.match(run).hasMatch())||shown||(f.dotted&&unsignedJwt(segment.text.mid(f.prefix,runEnd-f.prefix)));
+     // A publishable prefix ends where the run starts: a few characters, or a data: URI from its "data:"
+     // on. Only that much of the text before the run is searched (#2112: the whole line before each run
+     // cost a long line's square), never from inside a surrogate pair. A cut that starts later than the
+     // line can't pass for its start: no prefix is 32 characters, and a data: URI doesn't start with pk.
+     qsizetype from=qMax(0,at-32);
+     {const auto d=std::lower_bound(dataAt.cbegin(),dataAt.cend(),QPair<int,int>{at,0});if(d!=dataAt.cbegin()&&at<=std::prev(d)->second)from=qMin<qsizetype>(from,std::prev(d)->first);}
+     if(from>0&&segment.text.at(from).isLowSurrogate())--from;
+     return publishable.match(segment.text.mid(from,at-from)).hasMatch()||publishableIn.match(segment.text.mid(at,qMax(0,firstEnd-at))).hasMatch()||(sshPublic&&f.length==0&&blob.match(run).hasMatch())||shown||(f.dotted&&unsignedJwt(segment.text.mid(f.prefix,runEnd-f.prefix)));
     }),found.end());}
    // #1940: a hash word names a digest in the run's own segment or in the label beside it: up to three
    // words and 32 characters either side ("SHA-256", "Git SHA", "checksum":, ENV['hash'] ||=), none
