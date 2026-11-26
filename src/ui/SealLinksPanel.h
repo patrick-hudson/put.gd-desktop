@@ -18,6 +18,8 @@ public:
  // whether the passphrase is loaded (setup.credentialHint's sealPassphraseLoaded).
  void load(const QJsonObject& profile,const QJsonObject& status,bool passphraseLoaded,bool edited);
  void setPassphraseLoaded(bool loaded);
+ // Clears the typed passphrase once a store of it is accepted; a refused one keeps it.
+ void clearPassphrase();
  // The profile with this panel's choice written into `seal`.
  QJsonObject apply(QJsonObject profile) const;
  QJsonObject viewState() const;

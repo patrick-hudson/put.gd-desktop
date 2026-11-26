@@ -36,7 +36,7 @@ void SealLinksPanel::build(QFormLayout* form,const Setting& setting) {
  passphraseRow_=setting(form,"Passphrase",holder,passHint);
  stored_=new QLabel(parent);stored_->setObjectName("sealLinksPassphraseState");Ui::role(stored_,"muted");passphraseRow_->layout()->addWidget(stored_);
  connect(mode_,&QComboBox::activated,this,[this]{refresh();emit edited();});
- connect(store_,&QPushButton::clicked,this,[this]{const auto text=passphrase_->text();if(text.isEmpty())return;passphrase_->clear();emit storePassphrase(text);});
+ connect(store_,&QPushButton::clicked,this,[this]{const auto text=passphrase_->text();if(text.isEmpty())return;emit storePassphrase(text);});
  connect(passphrase_,&QLineEdit::returnPressed,store_,&QPushButton::click);
  connect(passphrase_,&QLineEdit::textChanged,this,[this]{refresh();});
  connect(unlock_,&QPushButton::clicked,this,[this]{emit unlockPassphrase();});
@@ -53,6 +53,7 @@ void SealLinksPanel::load(const QJsonObject& profile,const QJsonObject& status,b
  if(!edited){const auto mode=profile.value("seal").toObject().value("mode").toString("off");mode_->setCurrentIndex(qMax(0,mode_->findData(mode)));passphrase_->clear();}
  refresh();
 }
+void SealLinksPanel::clearPassphrase() {if(passphrase_)passphrase_->clear();}
 void SealLinksPanel::setPassphraseLoaded(bool loaded) {loaded_=loaded;hintFor_=profileId_;refresh();}
 QWidget* SealLinksPanel::control() const {return mode_;}
 QString SealLinksPanel::mode() const {return mode_?mode_->currentData().toString():QStringLiteral("off");}

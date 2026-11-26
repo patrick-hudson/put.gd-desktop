@@ -7,8 +7,7 @@ namespace putgd {
 // with `putgd-cli --seal-probe`, and removes it again. It passes only when the link answers
 // 200 with Content-Type text/html, no Content-Disposition attachment and exactly the page's
 // bytes: a browser then opens it as a page. Synchronous: call it from a worker thread.
-// Returns {state: passed|failed, reason?, cleanup: removed|left|failed, link?}; link is the
-// test page's address with the probe's public key, so a person can open it before it goes.
+// Returns {state: passed|failed|cancelled, reason?, cleanup: removed|left|failed|unknown}.
 // The destination the check talks to, as every other request names it: the saved profile at the
 // settings revision the Test was accepted at (workers refuse a request without one).
 Destination sealCheckDestination(const QString& profileId,const QJsonObject& profile,const QString& revision);

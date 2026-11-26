@@ -61,6 +61,8 @@ signals:
  void changed(const QString& setupId);
 private:
  bool startupUnlockDone_=false;
+ // True only while the startup read starts its jobs: one per saved entry, so the 32-job cap doesn't skip any.
+ bool startupUnlocking_=false;
  quint64 credentialGeneration_=0;
  QSet<QString> startupUnlocks_;
  struct CompletionContext {std::mutex mutex;SetupService* owner=nullptr;};

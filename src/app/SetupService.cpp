@@ -82,7 +82,7 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
  // #2079: a Seal links passphrase's keychain entry takes the same one-at-a-time slot as any entry.
  const auto entry=sealKind?(sealReference["mode"]=="keychain"&&!sealReference["reference"].toString().isEmpty()?"keychain:"+sealReference["reference"].toString():QString())
   :(kind=="storeCredentials"||kind=="unlockCredentials")&&reference["mode"]=="keychain"&&!reference["reference"].toString().isEmpty()?"keychain:"+reference["reference"].toString():QString();
- if(active_.contains(key)||(!entry.isEmpty()&&active_.contains(entry))||active_.size()-entrySlots_.size()>=32) {reply({"setup_busy","Another setup step is already running. Wait for it to finish.",{}},{});return;}
+ if(active_.contains(key)||(!entry.isEmpty()&&active_.contains(entry))||(!startupUnlocking_&&active_.size()-entrySlots_.size()>=32)) {reply({"setup_busy","Another setup step is already running. Wait for it to finish.",{}},{});return;}
  // Whether put.gd ever saved to this keychain entry: only such a save marks it (#1890).
  const bool storedBefore=kind=="storeCredentials"&&!entry.isEmpty()&&status_&&status_->keychainSaved(reference["reference"].toString());
  const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);
@@ -180,6 +180,7 @@ QStringList SetupService::unlockSavedCredentials() {
  if(std::exchange(startupUnlockDone_,true))return started;
  const auto snapshot=settings_.snapshot();
  if(!snapshot.unlockCredentialsAtStartup||!settings_.metadata()["validation"].toObject()["ok"].toBool())return started;
+ startupUnlocking_=true;
  for(auto it=snapshot.profiles.cbegin();it!=snapshot.profiles.cend();++it){
   // #2079: a Seal links passphrase saved to the keychain is read once at startup too.
   const auto seal=it.value()["seal"].toObject();const auto sealReference=seal["passphraseCredentials"].toObject();
@@ -189,6 +190,7 @@ QStringList SetupService::unlockSavedCredentials() {
   if(!usesCredentialStore(it.value())||reference["mode"]!="keychain"||credentials_.cached(it.key(),reference))continue;
   start("unlockCredentials",it.key(),settings_.revision(),{},[&](Error error,QJsonObject result){if(!error)started.append(result["setupId"].toString());});
  }
+ startupUnlocking_=false;
  for(const auto& id:std::as_const(started))if(jobs_.value(id)["state"]=="running")startupUnlocks_.insert(id);
  // An unlock someone already started for a profile holds the gate as well.
  for(auto job=jobs_.cbegin();job!=jobs_.cend();++job)
@@ -255,14 +257,19 @@ void SetupService::finish(const QString& id,Error error,QJsonObject result) {
  // #2079: a passed Test goes on to the sealed-page check before it reports, unless cancelled.
  if((*found)["kind"]=="testDestination"&&!error&&sealChecker_&&!sealChecking_.contains(id)&&!(cancellations_.value(id)&&cancellations_.value(id)->load())) {
   const auto profileId=(*found)["profileId"].toString();const auto profiles=settings_.snapshot().profiles;
-  if(profiles.contains(profileId)) {
+  // The check runs only on the connection this Test checked: one saved since it began is untested.
+  const auto started=testStarts_.constFind(id);
+  if(status_&&profiles.contains(profileId)&&started!=testStarts_.cend()&&(destinationcheck::fingerprint(profiles.value(profileId))!=started->fingerprint||status_->credentialRevision(profileId)!=started->credentialRevision))
+   result["seal"]=QJsonObject{{"state","untested"},{"reason",QStringLiteral("The destination changed during the test. Test again.")}};
+  else if(profiles.contains(profileId)) {
    sealChecking_.insert(id);
    auto event=*found;event["event"]=QJsonObject{{"step","seal"},{"status","running"}};*found=event;emit changed(id);
    QPointer<SetupService> guarded(this);
    sealChecker_(profileId,profiles.value(profileId),cancellations_.value(id),[guarded,id,result](QJsonObject seal) mutable {
     if(!guarded)return;
     if(!seal.isEmpty())result["seal"]=seal;
-    guarded->finish(id,{},result);
+    // A Test cancelled during the check ends cancelled; the connection it already checked stays passed.
+    guarded->finish(id,seal.value("state")=="cancelled"?Error{"cancelled","The connection test passed, but the sealed-link check was cancelled. Test again to check sealed links.",{{"connectionPassed",true}}}:Error{},result);
     guarded->sealChecking_.remove(id);
    });
    return;
@@ -281,7 +288,7 @@ void SetupService::finish(const QString& id,Error error,QJsonObject result) {
  const auto started=testStarts_.take(id);
  if(status_) {
   const auto profileId=record["profileId"].toString();
-  if(record["kind"]=="testDestination")status_->testFinished(profileId,started.fingerprint,started.credentialRevision,error);
+  if(record["kind"]=="testDestination")status_->testFinished(profileId,started.fingerprint,started.credentialRevision,error.details.value("connectionPassed").toBool()?Error{}:error);
   // New keys, or a Proton sign-in, are another connection than the one checked before.
   else if(!error&&(record["kind"]=="storeCredentials"||record["kind"]=="connectAccount"||record["kind"]=="signOut"))status_->credentialsChanged(profileId);
  }

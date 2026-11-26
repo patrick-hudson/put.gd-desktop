@@ -96,11 +96,17 @@ bool uploaderSettings(const QJsonValue& value){
  return scalars(settings,uploaderScalars());
 }
 bool providerSettings(const QString& provider,const QJsonValue& settings){return provider=="custom-http"?uploaderSettings(settings):scalars(settings,providerKeys(provider));}
+// #2079: Seal links' choice, shaped as settings keep it: a mode and, for a passphrase, its credential reference.
+bool sealDraft(const QJsonValue& value){
+ if(!fields(value,{"mode","passphraseCredentials"}))return false;
+ const auto seal=value.toObject();
+ return QStringList{"off","on","passphrase"}.contains(seal["mode"].toString())&&(!seal.contains("passphraseCredentials")||scalars(seal["passphraseCredentials"],{"mode","reference"}));
+}
 bool safeProfile(const QJsonValue& value){
- if(!fields(value,{"id","label","provider","settings","credentials"}))return false;
+ if(!fields(value,{"id","label","provider","settings","credentials","seal"}))return false;
  const auto profile=value.toObject();const auto provider=profile["provider"].toString();
  return profile["id"].isString()&&profile["label"].isString()&&QStringList{"s3","proton-drive","backblaze-b2","cloudflare-r2","custom-http","nextcloud","webdav","sftp"}.contains(provider)
-  &&providerSettings(provider,profile["settings"])&&scalars(profile["credentials"],{"mode","reference"});
+  &&providerSettings(provider,profile["settings"])&&scalars(profile["credentials"],{"mode","reference"})&&(!profile.contains("seal")||sealDraft(profile["seal"]));
 }
 bool safeDocument(const QJsonValue& value){
  if(!fields(value,{"schemaVersion","actions","profiles","archive","naming","limits","retention","preferences","captureDefaults"}))return false;

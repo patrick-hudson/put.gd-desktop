@@ -2695,6 +2695,8 @@ void SettingsWindow::queueDestinationEdit(QWidget* control,const QString& edited
  if(profileIndex_<0)return;
  if(providerType_->currentData()=="proton-drive")updateProtonAccountDisplay();
  const auto profile=editedProfile();const auto id=profile["id"].toString();if(id.isEmpty())return;
+ // #2079: an edited connection is untested for Seal links until its own Test passes.
+ if(edited!="seal")loadSealPanel(true);
  // A destination switched to another service here isn't saved field by field: until its new service
  // is saved, each edit sends all of it, so a field never lands in the old service's settings.
  // Only a service changed in this window counts: one another writer changed is never undone from here.
@@ -3468,10 +3470,10 @@ void SettingsWindow::refreshCredentialHint(){
  const auto savedAs=[this](const QString& profileId){for(const auto& value:settings_.document()["profiles"].toArray())if(value.toObject()["id"]==profileId)return value.toObject()["provider"].toString();return QString();};
  if(savedAs(id)!=providerType_->currentData().toString())return;
  settings_.request("setup.credentialHint",{{"profileId",id},{"expectedRevision",revision}},this,[g=QPointer<SettingsWindow>(this),id,revision,savedAs](Error error,QJsonObject hint){
-  // #2079: whether this destination's Seal links passphrase is loaded, never the passphrase.
-  if(g&&!error&&g->sealPanel_&&g->profileId_->text()==id)g->sealPanel_->setPassphraseLoaded(hint["sealPassphraseLoaded"].toBool());
   if(!g||g->profileId_->text()!=id||g->settings_.revision()!=revision||!QStringList{"s3","backblaze-b2",r2::providerId,dav::nextcloudId,dav::webdavId,CustomUploaderPanel::provider(),SftpPanel::provider()}.contains(g->providerType_->currentData().toString())||savedAs(id)!=g->providerType_->currentData().toString())return;
   if(error)return;
+  // #2079: whether this destination's Seal links passphrase is loaded, never the passphrase; only a current answer counts.
+  if(g->sealPanel_)g->sealPanel_->setPassphraseLoaded(hint["sealPassphraseLoaded"].toBool());
   // #1871: an SFTP destination's password and key passphrase, each optional: which are stored, never a value.
   if(g->providerType_->currentData()==SftpPanel::provider()){
    QStringList stored;for(const auto& value:hint["storedValues"].toArray())stored.append(value.toString());
@@ -3821,6 +3823,7 @@ void SettingsWindow::beginSetup(const QString& kind,const QJsonObject& input){
    // A custom uploader's values often come from an imported file: they are kept until the store has succeeded.
    if(kind=="storeCredentials"&&providerType_->currentData()!=CustomUploaderPanel::provider()&&!sftpClear)clearCurrentCredentialInputs();
    else if(kind=="storeSharePassword"){protonPassword_->clear();rememberCredentialInputs();}
+   else if(kind=="storeSealPassphrase"&&sealPanel_)sealPanel_->clearPassphrase();
   }
   for(int i=setupJobs_.size()-1;i>=0;--i){const auto old=setupJobs_[i].toObject();if(old["kind"]==kind&&old["profileId"]==profileId)setupJobs_.removeAt(i);}
   // #1871: a Clear is marked on its own job record; its completion keeps the other typed secret.
@@ -4192,7 +4195,10 @@ void SettingsWindow::loadSealPanel(bool edited){
  const auto profiles=draft_["profiles"].toArray();if(profileIndex_>=profiles.size())return;
  const auto profile=edited?editedProfile():profiles[profileIndex_].toObject();
  const bool previous=loading_;loading_=true;
- sealPanel_->load(profile,settings_.destinationStatus().value(profile["id"].toString()).toObject(),false,edited);
+ auto status=settings_.destinationStatus().value(profile["id"].toString()).toObject();
+ // A check of the saved connection says nothing about an edited one: until it is tested, On isn't offered.
+ if(status["seal"].toObject()["fingerprint"].toString()!=destinationcheck::fingerprint(profile))status["seal"]=QJsonObject{{"state","untested"}};
+ sealPanel_->load(profile,status,false,edited);
  loading_=previous;
 }
 // ui.sealLinks (#2079): inspect the Sealed links card, change its mode or unlock its passphrase.

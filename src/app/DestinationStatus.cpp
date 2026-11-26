@@ -200,6 +200,7 @@ QJsonObject DestinationStatus::sealCheckFor(const QString& profileId,const QStri
 QJsonObject DestinationStatus::sealCheck(const QString& profileId) const {
  const auto profiles=settings_.snapshot().profiles;const auto found=profiles.constFind(profileId);const auto record=sealRecords_.constFind(profileId);
  if(found==profiles.cend()||record==sealRecords_.cend()||record->fingerprint!=destinationcheck::fingerprint(*found))return {{"state","untested"}};
- QJsonObject out{{"state",record->passed?"passed":"failed"}};if(!record->reason.isEmpty())out["reason"]=record->reason;return out;
+ // The connection it checked, so a window editing the destination can tell it no longer applies.
+ QJsonObject out{{"state",record->passed?"passed":"failed"},{"fingerprint",record->fingerprint}};if(!record->reason.isEmpty())out["reason"]=record->reason;return out;
 }
 }

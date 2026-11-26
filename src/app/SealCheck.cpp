@@ -27,8 +27,11 @@ QJsonObject runSealCheck(StorageProvider& provider,const Destination& destinatio
  if(!QDir().mkpath(staging))return failed(QStringLiteral("Couldn't write the test page."));
  Artifact artifact;artifact.id=uuid();artifact.path=staging+"/"+artifact.id;artifact.name=SealJob::randomName("html");artifact.mime="text/html";artifact.category="other";
  artifact.bytes=page.size();artifact.sha256=QString::fromLatin1(QCryptographicHash::hash(page,QCryptographicHash::Sha256).toHex());artifact.namingPrepared=true;
- {QFile file(artifact.path);if(!file.open(QIODevice::WriteOnly|QIODevice::NewOnly)||!file.setPermissions(QFile::ReadOwner|QFile::WriteOwner)||file.write(page)!=page.size())return failed(QStringLiteral("Couldn't write the test page."));}
- const auto removeFile=qScopeGuard([&]{QFile::remove(artifact.path);});
+ // The test page goes again on every way out once this check made it, a failed write included.
+ QFile file(artifact.path);if(!file.open(QIODevice::WriteOnly|QIODevice::NewOnly))return failed(QStringLiteral("Couldn't write the test page."));
+ const auto removeFile=qScopeGuard([&]{file.close();QFile::remove(artifact.path);});
+ if(!file.setPermissions(QFile::ReadOwner|QFile::WriteOwner)||file.write(page)!=page.size()||!file.flush())return failed(QStringLiteral("Couldn't write the test page."));
+ file.close();
  auto check=awaitProvider<NameCheck>([&](auto cb){provider.checkName(destination,artifact.name,cb,cancelled);});
  if(cancelled->load())return {{"state","cancelled"}};
  if(check.error||check.status!="absent")return failed(check.error?check.error.message:QStringLiteral("Couldn't find a free name for the test page."));
@@ -70,7 +73,7 @@ QJsonObject runSealCheck(StorageProvider& provider,const Destination& destinatio
  else if(got["contentType"].toString()!="text/html")reason=QStringLiteral("The destination serves .html files as %1, so browsers won't open a sealed page.").arg(got["contentType"].toString().isEmpty()?QStringLiteral("no type"):got["contentType"].toString());
  else if(got["attachment"].toBool())reason=QStringLiteral("The destination makes browsers download .html files instead of opening them.");
  else if(got["finalScheme"]!="https"&&!QStringList{"localhost","127.0.0.1","::1"}.contains(got["finalHost"].toString()))reason=QStringLiteral("The link address isn't https, and browsers decrypt sealed pages only on https pages.");
- else if(got["sha256"].toString()!=artifact.sha256)reason=QStringLiteral("The destination changed the test page's bytes, so a sealed page can't be checked.");
+ else if(got["tooLarge"].toBool()||qint64(got["bytes"].toDouble(-1))!=artifact.bytes||got["sha256"].toString()!=artifact.sha256)reason=QStringLiteral("The destination changed the test page's bytes, so a sealed page can't be checked.");
  const auto left=cleanup();
  logging::info(logSettings(),"Sealed-link check",{{"provider",destination.providerId},{"profileId",destination.profileId},{"passed",reason.isEmpty()},{"httpStatus",got["httpStatus"]},{"contentType",got["contentType"]},{"cleanup",left}});
  if(!reason.isEmpty())return failed(reason,left);
