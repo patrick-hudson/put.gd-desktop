@@ -75,7 +75,7 @@ The source of truth is the header comment in `src/encrypt/EncryptCrypto.h`. An e
 a 96-byte header followed by AES-256-GCM chunks in the STREAM construction. OpenSSL does every
 primitive on put.gd's side and WebCrypto in the browser. Nothing is hand-written crypto.
 
-The feature was first called sealed links, and four version 1 format identifiers keep that
+The feature was first called sealed links, and five version 1 format identifiers keep that
 name: the magic `PGDSEAL1`, the HKDF labels "put.gd sealed v1 check" and "put.gd sealed v1
 payload", the page marker `<!--putgd-sealed-->` and the data element's id `putgd-sealed`. They
 are part of the format, so changing them would break the test vectors and every link already

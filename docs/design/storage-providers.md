@@ -139,8 +139,9 @@ Per provider:
 | Custom uploader | Empty | False |
 | Proton Drive | "Proton Drive already encrypts files end to end." | False |
 
-So a presigned or authorized link still takes one-page encrypted uploads up to 64 MB; only a
-larger file fails, with `encrypt_split_unavailable`. `ProviderCapabilities::toJson` gives the
+So a presigned or authorized link still takes one-page encrypted uploads up to 64 MB. A file
+over 64 MB and up to 2 GB fails there with `encrypt_split_unavailable`, because it needs the
+two-file form; a file over 2 GB fails with `encrypt_too_large` on every destination. `ProviderCapabilities::toJson` gives the
 pair as `encryptedLinks` (true when `encryptUnavailable` is empty), `encryptSplit`, and
 `encryptUnavailable` only when it isn't empty, in the `capabilities` method's `providers` and in
 `history.detail`'s `capabilities`. An encrypted upload is an ordinary upload to

@@ -16,7 +16,7 @@ the [overview](overview.md) and [architecture](architecture.md).
 - The idle target is 40 MiB RSS for the resident and any surviving product helpers after work drains.
 - The synthetic UI catalog and widget tests establish design and widget behavior only.
 - Windows and Flatpak are out of scope.
-- A file meant to be encrypted never uploads unencrypted, with no exceptions. A file put.gd can't encrypt fails before anything is sent, and the user turns off Encrypt to upload it as an ordinary link. The resident never maps libcrypto: only `putgd-cli` encrypts and opens encrypted links, and the key leaves the computer only in the link's fragment.
+- A file meant to be encrypted never uploads unencrypted, with no exceptions. A file put.gd can't encrypt fails before anything is sent, and the user turns off Encrypt to upload it as an ordinary link. The resident never maps libcrypto: `putgd-cli` encrypts every file, and it is the only put.gd component that verifies the page before decrypting (the pinned viewer decrypts in the browser), and the key leaves the computer only in the link's fragment.
 - Text is recognized only on an explicit action, and nothing recognized is stored. Recognition runs only in the temporary `putgd-ocr` helper, so the resident and `putgd-ui` never link or load Tesseract, Leptonica or ZXing-cpp.
 
 ## Documents
