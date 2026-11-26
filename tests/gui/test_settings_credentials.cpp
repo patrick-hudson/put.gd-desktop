@@ -85,7 +85,8 @@ private slots:
   const auto saved=[&]{return service.document()["profiles"].toArray().first().toObject();};
   checks.encryptChecked(saved()["id"].toString(),destinationcheck::fingerprint(saved()),true,{});fixture.session.invalidate();
   MainWindow window(fixture.session);window.navigate("destinations");window.show();auto* settings=window.settings();
-  const auto drive=[&](const QJsonObject& command,Error* error,QJsonObject* state){bool done=false;settings->encryptedLinksCommand(command,[&](Error e,QJsonObject s){*error=e;*state=s;done=true;});return waitFor([&]{return done;});};
+  // The reply may come up to 8 s later; the shared state outlives a wait that times out.
+  const auto drive=[&](const QJsonObject& command,Error* error,QJsonObject* state){struct Answer{bool done=false;Error error;QJsonObject state;};auto answer=std::make_shared<Answer>();settings->encryptedLinksCommand(command,[answer](Error e,QJsonObject s){answer->error=e;answer->state=s;answer->done=true;});if(!waitFor([&]{return answer->done;},10000))return false;*error=answer->error;*state=answer->state;return true;};
   const auto fileMode=[&]{return saved()["encrypt"].toObject()["mode"].toString("off");};
   const auto patch=[&](const QString& publication){bool done=false;Error error;fixture.server.dispatch({{"schemaVersion",1},{"requestId","outside-"+publication},{"session",fixture.server.socketPath()},{"method","settings.patch"},{"params",QJsonObject{{"patch",QJsonObject{{"captureDefaults",QJsonObject{{"publicationMode",publication}}}}},{"expectedRevision",service.revision()}}}},[&](Error e,QJsonObject){error=e;done=true;});return waitFor([&]{return done;})&&!error;};
   Error error;QJsonObject state;
@@ -99,6 +100,30 @@ private slots:
   if(conflict){QCOMPARE(error.code,QStringLiteral("settings_not_saved"));QCOMPARE(fileMode(),QStringLiteral("on"));}
   else{QVERIFY2(!error,qPrintable(error.message));QCOMPARE(fileMode(),QStringLiteral("passphrase"));QVERIFY(state["saved"].toBool());}
   QCOMPARE(service.document()["captureDefaults"].toObject()["publicationMode"].toString(),QStringLiteral("default"));
+ }
+ // #2103: a window that hasn't yet read a change made elsewhere never answers from its stale copy:
+ // with Off saved by another client, choosing the passphrase mode the window still shows isn't ok
+ // until the resident confirms it.
+ void encryptedLinksModeIsConfirmedByTheResident(){
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
+  UiSessionFixture fixture(service,secrets);DestinationStatus checks(dir.filePath("destination-status.json"),service);fixture.server.setDestinationStatus(&checks);
+  const auto saved=[&]{return service.document()["profiles"].toArray().first().toObject();};
+  checks.encryptChecked(saved()["id"].toString(),destinationcheck::fingerprint(saved()),true,{});fixture.session.invalidate();
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();auto* settings=window.settings();
+  struct Answer{bool done=false;Error error;};
+  const auto drive=[&](const QString& mode){auto answer=std::make_shared<Answer>();settings->encryptedLinksCommand({{"action","mode"},{"mode",mode}},[answer](Error e,QJsonObject){answer->error=e;answer->done=true;});return answer;};
+  const auto fileMode=[&]{return saved()["encrypt"].toObject()["mode"].toString("off");};
+  QVERIFY(waitFor([&]{auto inspect=std::make_shared<QJsonObject>();settings->encryptedLinksCommand({{"action","inspect"}},[inspect](Error,QJsonObject s){*inspect=s;});return waitFor([&]{return !inspect->isEmpty();})&&(*inspect)["available"].toBool();}));
+  {auto answer=drive("passphrase");QVERIFY(waitFor([&]{return answer->done;},10000));QVERIFY2(!answer->error,qPrintable(answer->error.message));QCOMPARE(fileMode(),QStringLiteral("passphrase"));}
+  // Another client turns it off; the window doesn't read that until the held snapshots go.
+  fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="ui.snapshot";};
+  auto off=service.document();auto profiles=off["profiles"].toArray();auto profile=profiles.first().toObject();profile["encrypt"]=QJsonObject{{"mode","off"}};profiles[0]=profile;off["profiles"]=profiles;
+  bool done=false;fixture.server.dispatch({{"schemaVersion",1},{"requestId","outside-off"},{"session",fixture.server.socketPath()},{"method","settings.save"},{"params",QJsonObject{{"document",off},{"expectedRevision",service.revision()}}}},[&](Error e,QJsonObject){QVERIFY(!e);done=true;});QVERIFY(waitFor([&]{return done;}));QCOMPARE(fileMode(),QStringLiteral("off"));
+  auto answer=drive("passphrase");
+  PUTGD_VERIFY_STEADY(!answer->done||answer->error,100);
+  fixture.client.hold={};while(fixture.client.release()){}
+  QVERIFY(waitFor([&]{return answer->done;},10000));
+  if(!answer->error)QCOMPARE(fileMode(),QStringLiteral("passphrase"));else QCOMPARE(answer->error.code,QStringLiteral("settings_not_saved"));
  }
  void encryptedLinksModeAnswersOnlyOnceSaved_data(){
   QTest::addColumn<bool>("settle");QTest::addColumn<bool>("conflict");

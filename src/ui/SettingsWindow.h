@@ -137,7 +137,9 @@ private:
  };
  QList<SaveOperation> saveQueue_;SaveOperation sending_;
  // #2103: ui.encryptedLinks mode changes waiting for their save, each answered by settleEncryptWaits.
- struct EncryptWait {quint64 serial=0;QString profileId,mode;std::function<void(Error,QJsonObject)> reply;};
+ // confirmed: a snapshot read after the call, or a failure to read one (confirmError), so a window
+ // that hasn't heard of a change made elsewhere never answers from its stale copy.
+ struct EncryptWait {quint64 serial=0;QString profileId,mode;std::function<void(Error,QJsonObject)> reply;bool confirmed=false;Error confirmError;};
  QList<EncryptWait> encryptWaits_;quint64 encryptWaitSerial_=0;void settleEncryptWaits(quint64 expired=0);
  QString savedEncryptMode(const QString& profileId)const;QJsonObject encryptState()const;
  // Unsaved destination groups and settings, "<id>|<group>" or "|<path>", with the reason.
