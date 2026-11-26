@@ -504,7 +504,11 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
    // Quit before the data file's turn: the item stays unfinished, so Retry deletion still takes it.
    // A data file the confirmation said stays is left as said.
    if((outcome=="removed"||outcome=="already_missing")&&items[index].toObject().contains("sealData")&&items[index].toObject()["sealDataKept"].toBool()){auto target=items[index].toObject();target["sealDataStatus"]="kept";items[index]=target;doc["items"]=items;}
-   else if((outcome=="removed"||outcome=="already_missing")&&items[index].toObject().contains("sealData")&&items[index].toObject()["sealDataStatus"]!="removed"&&quitting->load()){outcome="unknown";e={"seal_data_left","The sealed page was deleted, but put.gd quit before deleting its data file. Select Retry deletion.",{}};}
+   // An earlier attempt may already have deleted it without hearing back (status unknown): then put.gd doesn't know.
+   else if((outcome=="removed"||outcome=="already_missing")&&items[index].toObject().contains("sealData")&&items[index].toObject()["sealDataStatus"]!="removed"&&quitting->load()){outcome="unknown";
+    e={"seal_data_left",items[index].toObject()["sealDataStatus"]=="unknown"
+     ?QStringLiteral("The sealed page was deleted, but put.gd quit before confirming whether its data file was deleted. Select Retry deletion to check again.")
+     :QStringLiteral("The sealed page was deleted, but put.gd quit before it could delete its data file. Select Retry deletion."),{{"dataStatus",items[index].toObject()["sealDataStatus"].toString()}}};}
    else if((outcome=="removed"||outcome=="already_missing")&&items[index].toObject().contains("sealData")&&!quitting->load()) {
     auto part=StorageReceipt::fromJson(items[index].toObject()["sealData"].toObject());
     part.destination.profileId=receipt.destination.profileId;part.destination.credentialReference=receipt.destination.credentialReference;

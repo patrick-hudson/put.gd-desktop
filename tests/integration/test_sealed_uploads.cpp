@@ -375,7 +375,9 @@ private slots:
   QCOMPARE(result.error.code,QString("cancelled"));QVERIFY(result.page.path.isEmpty());QVERIFY(!QFileInfo::exists(dir.filePath(id)));
   // Without the Cancel the same answer is a mismatch.
   SealJob plain(helper);plain.setOutputIdsForTesting(QUuid::createUuid().toString(QUuid::WithoutBraces),{});
-  QCOMPARE(plain.run(input(dir),dir.path(),"inline","a.html",{},{},std::make_shared<std::atomic_bool>(false)).error.code,QString("seal_failed"));
+  // The mismatch itself, not a later check such as the key, is what refuses it.
+  const auto mismatch=plain.run(input(dir),dir.path(),"inline","a.html",{},{},std::make_shared<std::atomic_bool>(false)).error;
+  QCOMPARE(mismatch.code,QString("seal_failed"));QCOMPARE(mismatch.message,QString("The sealed file didn't match what putgd-cli reported, so the upload didn't start."));
  }
  // Forget key: History keeps no way to open it, and offers no link.
  void forgetKeyLeavesNoLink() {
