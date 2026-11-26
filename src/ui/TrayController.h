@@ -3,6 +3,7 @@
 #include "app/ErrorLog.h"
 #include "PanelTone.h"
 #include "TrayCalendar.h"
+#include "TrayMenuSettle.h"
 #include <QObject>
 #include <QPointer>
 #include <QElapsedTimer>
@@ -103,6 +104,7 @@ public:
  // The glyph the calendar picked, its local date, and whether a lab override set it.
  QJsonObject trayIconState()const;
  // The StatusNotifier menu's host activity and rows (NativeTray::menuActivity()); {"native": false} for the Qt fallback tray.
+ // Both carry "settle": the last wait of a capture chosen from the menu (TrayMenuSettle::state()).
  QJsonObject trayMenuState()const;
  // Opens the file manager with a saved package selected (FileManager1.ShowItems),
  // or its folder when no file manager answers. Only put.gd's own package names,
@@ -202,6 +204,10 @@ private:
  QHash<int,QAction*> menuRows_;
  // A tray row's command, from either tray: an action ID or a TrayMenu command.
  void runCommand(const QString& action);
+ // A row chosen in either tray's menu, with the host's activation token: work
+ // that reads the screen waits for menuSettle_ first (#2081).
+ void runMenuCommand(const QString& action,const QString& token);
+ TrayMenuSettle menuSettle_;
  void showView(const QString&);
  OperationService& operations_;
  ViewOpener openView_;

@@ -56,6 +56,11 @@ public:
  static int notificationTimeoutMs(const QString& server, bool actions);
 signals:
  void menuAboutToShow();
+ // The host is showing the root menu (AboutToShow, AboutToShowGroup or an
+ // "opened" event), and the host says it closed it (a "closed" event; not every
+ // host sends one). #2081: a capture chosen from the menu waits for it to go.
+ void menuShown();
+ void menuClosed();
  void notificationActivated(const QUrl& link);
  // `token`: the notification server's xdg-activation token for the click, when it sent one.
  void notificationAction(const QString& key, const QString& value, const QString& token);

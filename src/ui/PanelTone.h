@@ -24,6 +24,8 @@ public:
  struct Inputs {QString desktop,plasmarc,kdeglobals,cinnamonTheme,styleColors;};
  // The Plasma style named by the configuration cascade ("default" when none is).
  static QString plasmaStyle();
+ // One KDE setting: `key` in [group] of the first file in the cascade above that sets it, or empty.
+ static QString kdeSetting(const QString& file,const QString& group,const QString& key);
  // The rules alone: light or not, and which input decided it.
  static std::pair<bool,QString> decide(const Inputs&);
  // Whether a dconf change notice (ca.desrt.dconf.Writer Notify: a key or

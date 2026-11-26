@@ -304,10 +304,10 @@ TrayController::TrayController(OperationService& operations,
   connect(native_.get(), &NativeTray::availabilityResolved, this, &TrayController::availabilityResolved);
   connect(native_.get(), &NativeTray::actionActivated, this, [this](const QString& action, const QString& token) {
    // Views opened for this click carry the host's token, so Wayland activates them.
-   activationToken_ = token;
-   const auto clear = qScopeGuard([guard = QPointer<TrayController>(this)] { if (guard) guard->activationToken_.clear(); });
-   runCommand(action);
+   runMenuCommand(action, token);
   });
+  connect(native_.get(), &NativeTray::menuShown, &menuSettle_, &TrayMenuSettle::menuShown);
+  connect(native_.get(), &NativeTray::menuClosed, &menuSettle_, &TrayMenuSettle::menuClosed);
  } else
 #endif
  {
@@ -326,12 +326,14 @@ TrayController::TrayController(OperationService& operations,
    entry->setObjectName(traymenu::name(child));entry->setData(traymenu::name(child));
    if(kind==traymenu::Kind::Info)entry->setProperty("visualRole","information");
    if(kind==traymenu::Kind::Choice){if(!choices)choices=new QActionGroup(into);entry->setCheckable(true);choices->addAction(entry);}
-   if(const auto command=traymenu::action(child);!command.isEmpty())connect(entry,&QAction::triggered,this,[this,command]{runCommand(command);});
+   if(const auto command=traymenu::action(child);!command.isEmpty())connect(entry,&QAction::triggered,this,[this,command]{runMenuCommand(command,{});});
    menuRows_.insert(child,entry);
   }
  };
  build(menu_.get(),0);
  connect(menu_.get(),&QMenu::aboutToShow,this,&TrayController::refreshMenu);
+ connect(menu_.get(),&QMenu::aboutToShow,&menuSettle_,&TrayMenuSettle::menuShown);
+ connect(menu_.get(),&QMenu::aboutToHide,&menuSettle_,&TrayMenuSettle::menuClosed);
  retintMenu();
  tray_->setContextMenu(menu_.get());
  connect(tray_, &QSystemTrayIcon::activated, this, [this](auto reason) {
@@ -549,7 +551,9 @@ QJsonObject TrayController::trayTint()const {
  return {{"panel",panel_.light()?"light":"dark"},{"source",panel_.source()},{"color",Theme::trayTints(panel_.light()).idle.name()}};
 }
 QJsonObject TrayController::trayMenuState()const {
- return native_?native_->menuActivity():QJsonObject{{"native",false}};
+ auto state=native_?native_->menuActivity():QJsonObject{{"native",false}};
+ state["settle"]=menuSettle_.state();
+ return state;
 }
 QJsonObject TrayController::trayIconState()const {
  const QHash<IconArt::TrayGlyph,QString> names{{IconArt::TrayGlyph::Mark,"mark"},{IconArt::TrayGlyph::Turkey,"turkey"},{IconArt::TrayGlyph::Tree,"tree"}};
@@ -724,6 +728,18 @@ void TrayController::showStage(Activity stage) {
 void TrayController::activate() { showSettings(); }
 void TrayController::showSettings() { showView("settings"); }
 void TrayController::showHistory() { showView("history"); }
+void TrayController::runMenuCommand(const QString& action,const QString& token) {
+ // #2081: work that reads the screen waits until the menu it was chosen from is gone.
+ const auto run=[guard=QPointer<TrayController>(this),action,token]{
+  if(!guard)return;
+  // Views opened for this click carry the host's token, so Wayland activates them.
+  guard->activationToken_=token;
+  const auto clear=qScopeGuard([guard]{if(guard)guard->activationToken_.clear();});
+  guard->runCommand(action);
+ };
+ if(traysettle::readsScreen(action))menuSettle_.afterMenu(action,run);
+ else run();
+}
 void TrayController::runCommand(const QString& action) {
  if (Settings::invocableActionNames().contains(action)) invokeAction(action);
  else if (action.startsWith("delay-")) operations_.setCaptureDelayPreference(action.mid(6).toInt());

@@ -202,6 +202,7 @@ public:
  void provideActivationToken(const QString& token);
  QString takeActivationToken();
  void aboutToShow(){emit q_->menuAboutToShow();}
+ void menuShowing(){emit q_->menuShown();}
  void setActivity(const QColor& color,const QString& description,int percent,int recording,const QString& title,IconArt::TrayGlyph glyph,bool done);
  void notify(const QString& title, const QString& message, bool warning, const QUrl& link, const QList<NotificationAction>& actions);
  // The update entry's label, empty while it is hidden, and the layout revision
@@ -216,8 +217,8 @@ public:
  int menuShows = 0, menuOpened = 0, menuClosed = 0;
  QJsonArray menuClicks;
  void menuEvent(int id, const QString& event) {
-  if (id == 0 && event == "opened") ++menuOpened;
-  if (id == 0 && event == "closed") ++menuClosed;
+  if (id == 0 && event == "opened") {++menuOpened;emit q_->menuShown();}
+  if (id == 0 && event == "closed") {++menuClosed;emit q_->menuClosed();}
   if (event != "clicked" || id == 0) return;
   menuClicks.append(QJsonObject{{"id", id}, {"name", traymenu::name(id)}, {"label", traymenu::shown(id, menuState_).label}});
   while (menuClicks.size() > 8) menuClicks.removeFirst();
@@ -770,7 +771,7 @@ bool TrayExport::handleMessage(const QDBusMessage& m, const QDBusConnection& bus
  }
  if (member == "AboutToShow" && sig == "i") {
   if (!knownId(args.at(0).toInt())) return error();
-  if (args.at(0).toInt() == 0) ++owner_->menuShows;
+  if (args.at(0).toInt() == 0) {++owner_->menuShows;owner_->menuShowing();}
   const auto revision=owner_->menuRevision();owner_->aboutToShow();return reply({revision!=owner_->menuRevision()});
  }
  if (member == "AboutToShowGroup" && sig == "ai") {
@@ -778,7 +779,7 @@ bool TrayExport::handleMessage(const QDBusMessage& m, const QDBusConnection& bus
   QList<int> missing; bool found = false;
   for (int id : ids) { if (knownId(id)) found = true; else missing.append(id); }
   if (!ids.isEmpty() && !found) return error();
-  if (ids.contains(0)) ++owner_->menuShows;
+  if (ids.contains(0)) {++owner_->menuShows;owner_->menuShowing();}
   return reply({QVariant::fromValue(QList<int>{}), QVariant::fromValue(missing)});
  }
  return error("org.freedesktop.DBus.Error.UnknownMethod");
