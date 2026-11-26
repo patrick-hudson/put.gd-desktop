@@ -2531,10 +2531,13 @@ bool compactTimestamp(const QString& text) {
  return m.hasMatch()&&QDate(m.captured(1).toInt(),m.captured(2).toInt(),m.captured(3).toInt()).isValid();
 }
 // A card number as the earlier rule read it: 13 to 19 digits, Luhn-valid, no ISBN-13, and (#1939) not
-// all zeros (0000 0000 0000 0000 passes Luhn). #2076: a number that starts with 1 is a card only with
-// 15 digits (UATP, the one network numbered from 1); a UPS tracking number read with its "1Z" as "12"
-// (128505239413052898) is none.
-bool cardNumber(const QString& m) {QString d;for(const auto c:m)if(c.isDigit())d+=c;return d.size()>=13&&d.size()<=19&&d.count('0')<d.size()&&(d.front()!='1'||d.size()==15)&&luhn(d)&&!isbn13(d);}
+// all zeros (0000 0000 0000 0000 passes Luhn).
+bool cardNumber(const QString& m) {QString d;for(const auto c:m)if(c.isDigit())d+=c;return d.size()>=13&&d.size()<=19&&d.count('0')<d.size()&&luhn(d)&&!isbn13(d);}
+// #2076: a UPS tracking number is 1Z and 16 characters; recognition reads its "1Z" as "12", and one in ten
+// of those 18-digit runs passes Luhn (128505239413052898). No card is numbered 12 with 18 digits. Only
+// the card kind's own check leaves it out: a card label still takes it (cardValid), and the key rule's
+// card check (otherMatch) keeps the plain test.
+bool upsTracking(const QString& m) {QString d;for(const auto c:m)if(c.isDigit())d+=c;return d.size()==18&&d.startsWith(QLatin1String("12"));}
 // 0: as read; 1: digits; 2: hex; 3: email.
 const QList<Rule>& rules() {
  static const QList<Rule> list{
@@ -2547,7 +2550,7 @@ const QList<Rule>& rules() {
   // #1939: a card number is grouped as a card is printed and is no counted row, except after a card
   // label (findOrdered). A diff's sign may start its word before three digits or more
   // (-5493-9997-9808-2174, -411 11111 1111 1111, {+4111...); a country code (+82 10-...) starts none.
-  {"card",QRegularExpression(R"((?:(?<![\d-])|(?<=(?<![^\s{])[-+])(?=\d{3}))(?<!\d\.)\d(?:[ -]?\d){12,18}(?!\d))"),[](const QString& m){return cardNumber(m)&&cardGrouping(m)&&!countedRow(m)&&!timestamp(m)&&!compactTimestamp(m);},1},
+  {"card",QRegularExpression(R"((?:(?<![\d-])|(?<=(?<![^\s{])[-+])(?=\d{3}))(?<!\d\.)\d(?:[ -]?\d){12,18}(?!\d))"),[](const QString& m){return cardNumber(m)&&cardGrouping(m)&&!countedRow(m)&&!timestamp(m)&&!compactTimestamp(m)&&!upsTracking(m);},1},
   // #1939: a package version shaped as an address is none: after an epoch (1:8.17.4.28) or before a
   // release (8.17.4.28-3.fc45, 2.11.7.54-1ubuntu2). A range (10.0.0.1-10.0.0.255) stays. Each
   // lookbehind has a fixed length: Qt 6.4's PCRE2 rejects variable-length ones.

@@ -146,10 +146,11 @@ private slots:
   QTest::newRow("a card after an editor line number")<<"17 4111 1111 1111 1111"<<QStringList{"card"}<<QStringList{"card: 4111 1111 1111 1111"};
   QTest::newRow("a card after two short numbers")<<"12 34 4111 1111 1111 1111"<<QStringList{"card"}<<QStringList{"card: 4111 1111 1111 1111"};
   QTest::newRow("a card after a phone number")<<"Ada 202-555-0143 5555 5555 5555 4444"<<all<<QStringList{"phone: 202-555-0143","card: 5555 5555 5555 4444"};
-  // #2076: a UPS tracking number whose "1Z" recognition read as "12" is no card; a 15-digit UATP card,
-  // the one network numbered from 1, still is.
+  // #2076: a UPS tracking number whose "1Z" recognition read as "12" is no card; cards numbered from 1
+  // (UATP's 15 digits, Indonesia's GPN 1946… with 16) still are, and a card label still takes the 18 digits.
   QTest::newRow("a UPS tracking number read as digits is no card")<<"Tracking 128505239413052898 | 124720166656432305"<<QStringList{"card"}<<QStringList{};
-  QTest::newRow("a UATP card is a card")<<"Airline 1234 567890 12347"<<QStringList{"card"}<<QStringList{"card: 1234 567890 12347"};
+  QTest::newRow("cards numbered from 1 are cards")<<"Airline 1234 567890 12347 | Debit 1946 3400 0000 0005"<<QStringList{"card"}<<QStringList{"card: 1234 567890 12347","card: 1946 3400 0000 0005"};
+  QTest::newRow("a labelled 18-digit number is a card")<<"Card: 128505239413052898"<<QStringList{"card"}<<QStringList{"card: 128505239413052898"};
   QTest::newRow("a tracking number holds no card")<<"Tracking 5744 7621 6827 5217 60 and 9400 1527 3806 7569 1933 50"<<QStringList{"card"}<<QStringList{};
   QTest::newRow("a tracking number after an order number holds no card")<<"13 43358981 5762 9815 7175 3077 6995 30"<<QStringList{"card"}<<QStringList{};
   QTest::newRow("an EAN after a date holds no card")<<"2026-11-22 1043533606843 12"<<QStringList{"card"}<<QStringList{};
