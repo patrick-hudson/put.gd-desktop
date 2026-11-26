@@ -2531,8 +2531,10 @@ bool compactTimestamp(const QString& text) {
  return m.hasMatch()&&QDate(m.captured(1).toInt(),m.captured(2).toInt(),m.captured(3).toInt()).isValid();
 }
 // A card number as the earlier rule read it: 13 to 19 digits, Luhn-valid, no ISBN-13, and (#1939) not
-// all zeros (0000 0000 0000 0000 passes Luhn).
-bool cardNumber(const QString& m) {QString d;for(const auto c:m)if(c.isDigit())d+=c;return d.size()>=13&&d.size()<=19&&d.count('0')<d.size()&&luhn(d)&&!isbn13(d);}
+// all zeros (0000 0000 0000 0000 passes Luhn). #2076: a number that starts with 1 is a card only with
+// 15 digits (UATP, the one network numbered from 1); a UPS tracking number read with its "1Z" as "12"
+// (128505239413052898) is none.
+bool cardNumber(const QString& m) {QString d;for(const auto c:m)if(c.isDigit())d+=c;return d.size()>=13&&d.size()<=19&&d.count('0')<d.size()&&(d.front()!='1'||d.size()==15)&&luhn(d)&&!isbn13(d);}
 // 0: as read; 1: digits; 2: hex; 3: email.
 const QList<Rule>& rules() {
  static const QList<Rule> list{
