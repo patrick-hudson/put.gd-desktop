@@ -202,7 +202,7 @@ public:
  void provideActivationToken(const QString& token);
  QString takeActivationToken();
  void aboutToShow(){emit q_->menuAboutToShow();}
- void menuShowing(){emit q_->menuShown();}
+ void menuShowing(){emit q_->menuShown(false);}
  void setActivity(const QColor& color,const QString& description,int percent,int recording,const QString& title,IconArt::TrayGlyph glyph,bool done);
  void notify(const QString& title, const QString& message, bool warning, const QUrl& link, const QList<NotificationAction>& actions);
  // The update entry's label, empty while it is hidden, and the layout revision
@@ -217,7 +217,7 @@ public:
  int menuShows = 0, menuOpened = 0, menuClosed = 0;
  QJsonArray menuClicks;
  void menuEvent(int id, const QString& event) {
-  if (id == 0 && event == "opened") {++menuOpened;emit q_->menuShown();}
+  if (id == 0 && event == "opened") {++menuOpened;emit q_->menuShown(true);}
   if (id == 0 && event == "closed") {++menuClosed;emit q_->menuClosed();}
   if (event != "clicked" || id == 0) return;
   menuClicks.append(QJsonObject{{"id", id}, {"name", traymenu::name(id)}, {"label", traymenu::shown(id, menuState_).label}});

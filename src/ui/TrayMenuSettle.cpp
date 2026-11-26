@@ -108,9 +108,9 @@ void TrayMenuSettle::refreshFade() {
  }
 #endif
 }
-void TrayMenuSettle::menuShown() { open_ = true; refreshFade(); }
+void TrayMenuSettle::menuShown(bool reportsEvents) { open_ = true; eventShowing_ = eventShowing_ || reportsEvents; refreshFade(); }
 void TrayMenuSettle::menuClosed() {
- open_ = false; ++closes_; sinceClose_.start();
+ open_ = false; eventShowing_ = false; ++closes_; sinceClose_.start();
  // A fade timed from the click (no close reported yet, e.g. a host's first menu)
  // runs again from this close, so a late close still gets the whole fade.
  for (auto& fading : fading_)
@@ -122,8 +122,10 @@ void TrayMenuSettle::menuClosed() {
 }
 void TrayMenuSettle::afterMenu(const QString& command, std::function<void()> run) {
  Waiting waiting{++waits_, command, std::move(run), {}, false}; waiting.clock.start();
- // Only a host that has reported a close before is waited for: some send "opened" and never "closed".
- if (open_ && closes_ > 0) {
+ // Only a host that has reported a close before, or an "opened" event for this menu, is
+ // waited for: Cinnamon sends neither, Budgie sends "opened" and never "closed" (its
+ // unmeasured 250 ms fade already covers the bounded wait).
+ if (open_ && (closes_ > 0 || eventShowing_)) {
   waiting.awaitedClose = true;
   const auto id = waiting.id;
   awaitingClose_.append(std::move(waiting));

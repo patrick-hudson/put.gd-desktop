@@ -49,7 +49,9 @@ class TrayMenuSettle final : public QObject {
 public:
  explicit TrayMenuSettle(QObject* parent = nullptr);
  // The host is showing the menu: read the desktop's fade settings now, before a row is chosen.
- void menuShown();
+ // `reportsEvents`: the host sent an "opened" event for it, so it reports events and its
+ // close is waited for even before put.gd has seen one (AboutToShow alone says nothing).
+ void menuShown(bool reportsEvents = false);
  // The host closed the menu.
  void menuClosed();
  // Runs `run` once the menu is gone (see the class comment). `command` names it in state().
@@ -69,7 +71,7 @@ private:
  void refreshFade();
  traysettle::Fade fade_;
  traysettle::FadeInputs inputs_;
- bool fixedFade_ = false, open_ = false;
+ bool fixedFade_ = false, open_ = false, eventShowing_ = false;
  int closes_ = 0;
  quint64 waits_ = 0;
  QElapsedTimer sinceClose_;

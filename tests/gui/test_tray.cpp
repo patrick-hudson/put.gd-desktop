@@ -237,6 +237,16 @@ private slots:
    QCOMPARE(settle.state()["rebasedOnClose"].toBool(),true);
   }
   {
+   // A host that sends "opened" reports its close: on its first menu, with animations off,
+   // a close 80 ms after the click is still waited for (bounded by closeWaitMs).
+   TrayMenuSettle settle;settle.setFade({traysettle::frameMarginMs,"test"});
+   settle.menuShown(true);started(settle,"desktop",clock,at);
+   PUTGD_COMPARE_STEADY(at,qint64(-1),80);
+   const auto closedAt=clock.elapsed();settle.menuClosed();
+   PUTGD_TRY_VERIFY_WITH_TIMEOUT(at>=0,3000);QVERIFY2(at>=closedAt+traysettle::frameMarginMs-5,qPrintable(QString("%1 %2").arg(at).arg(closedAt)));
+   QCOMPARE(settle.state()["awaitedClose"].toBool(),true);
+  }
+  {
    // Cinnamon and Budgie report the menu showing but never its close: the fade runs from the click.
    TrayMenuSettle settle;settle.setFade({fadeMs,"test"});
    settle.menuShown();started(settle,"monitor",clock,at);

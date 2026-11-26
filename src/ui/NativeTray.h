@@ -59,7 +59,8 @@ signals:
  // The host is showing the root menu (AboutToShow, AboutToShowGroup or an
  // "opened" event), and the host says it closed it (a "closed" event; not every
  // host sends one). #2081: a capture chosen from the menu waits for it to go.
- void menuShown();
+ // `opened` is true for the host's "opened" event: a host that sends it reports events.
+ void menuShown(bool opened);
  void menuClosed();
  void notificationActivated(const QUrl& link);
  // `token`: the notification server's xdg-activation token for the click, when it sent one.

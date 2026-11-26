@@ -332,7 +332,8 @@ TrayController::TrayController(OperationService& operations,
  };
  build(menu_.get(),0);
  connect(menu_.get(),&QMenu::aboutToShow,this,&TrayController::refreshMenu);
- connect(menu_.get(),&QMenu::aboutToShow,&menuSettle_,&TrayMenuSettle::menuShown);
+ // Qt's own menu always reports its hiding.
+ connect(menu_.get(),&QMenu::aboutToShow,&menuSettle_,[this]{menuSettle_.menuShown(true);});
  connect(menu_.get(),&QMenu::aboutToHide,&menuSettle_,&TrayMenuSettle::menuClosed);
  retintMenu();
  tray_->setContextMenu(menu_.get());
