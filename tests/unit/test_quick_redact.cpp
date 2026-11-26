@@ -1040,6 +1040,98 @@ private slots:
                                {secret,QRect(0,30,512,20),90,1},{"API_KEY=prod",QRect(900,30,96,20),90,1}};
   QVERIFY(found(tabbed,QStringList{"key"}).join(' ').contains(secret));
  }
+ // #2084: hashes in sha256sum and git log output as recognition misreads them, on real screens (#2076's
+ // sweep). Each row is laid out by its characters, 8 px each, so two spaces are a gap of two. A digest
+ // stays visible however recognition split or misread it and its file name; a hex run that only looks
+ // like one stays covered.
+ void misreadHashListings_data() {
+  QTest::addColumn<QStringList>("rows");
+  QTest::addColumn<QStringList>("expected");
+  const auto h64=hexOf("s",64),g64=hexOf("t",64),k64=hexOf("k",64),h40=hexOf("c",40),k40=hexOf("q",40);
+  // A misread digest: £ for f, l for 1, a doubled "Ff", as #2084's examples show. A "^" splits a word
+  // where recognition did, with less than a space between the pieces.
+  auto misread=[](QString hex){hex.replace(0,1,"£");hex.replace(QChar('1'),QChar('l'));return hex.left(30)+"Ff"+hex.mid(31);};
+  QTest::newRow("a SHA-256 split after 42 characters before its file name")<<QStringList{h64.left(42)+"^"+h64.mid(42)+"  Screen-Capture-2026-10-26-00-49-08.png"}<<QStringList{};
+  QTest::newRow("a SHA-256 split after 32 characters")<<QStringList{h64.left(32)+"^"+h64.mid(32)+"  backup-2026-10-27-0402.tar.gz"}<<QStringList{};
+  QTest::newRow("a misread SHA-256 split in three")<<QStringList{misread(h64).left(18)+"^"+misread(h64).mid(18,2)+"^"+misread(h64).mid(20)+"  dump_09-11-2026_06-37.sql.gz"}<<QStringList{};
+  QTest::newRow("a file name with spaces")<<QStringList{h64+"  Screenshot From 2026-11-10 01-21-08.png"}<<QStringList{};
+  QTest::newRow("a file name read without its underscores")<<QStringList{h64+"  IMG 20261019 074707.jpg"}<<QStringList{};
+  QTest::newRow("an extension split off at its dot")<<QStringList{h64+"  IMG_20261117_082356. jpg"}<<QStringList{};
+  QTest::newRow("an extension split in two")<<QStringList{h64+"  IMG_20261102_071115. j pg"}<<QStringList{};
+  QTest::newRow("sha256sum's binary mark read as a word")<<QStringList{h64+" = backup-2026-11-07-1512.tar.gz",g64+" | invoice-INV-2026-75511.pdf"}<<QStringList{};
+  QTest::newRow("sha256sum's binary mark read stuck to the name")<<QStringList{h64+" ~=dump_09-11-2026_06-37.sql.gz"}<<QStringList{};
+  QTest::newRow("a listing row with a name recognition broke, between two others")<<QStringList{h64+"  Capture-2026-10-17-07-34-31.png",g64+"  Sc reen-Capture-2026-10-26-00-49-08 -png",hexOf("u",64)+"  Text-2026-10-24-17-03-03.txt"}<<QStringList{};
+  QTest::newRow("a listing row above one whose digest is garbled")<<QStringList{h64+"  scan_20261121205104.pdf","ececn eee "+g64.mid(28)+"  scan_20261124162004.pdf"}<<QStringList{"key: eee "+g64.mid(28)+" scan_20261124162004.pdf"};
+  // A git log row next to another of its form.
+  const auto logRow=[&](const char* seed){const auto h=hexOf(seed,40);return h.left(7)+" "+h+" 2026-10-02 13:00:00 -0500 release";};
+  QTest::newRow("git log's abbreviated and full hashes")<<QStringList{h40.left(7)+" "+h40+" 2026-10-10 18:00:00 -0500 release 26.1010.6999",logRow("g1")}<<QStringList{};
+  QTest::newRow("git log's full hash misread and split")<<QStringList{logRow("g1"),h40.left(7)+" "+misread(h40).left(29)+"^"+misread(h40).mid(29)+" 2026-10-08 00:00:00 -0500 release"}<<QStringList{};
+  QTest::newRow("git log's hashes with c read as a copyright sign and a cent sign")<<QStringList{logRow("g1"),"©"+h40.mid(1,6)+" ¢"+h40+" 2026-10-18 01:00:00 -0500 release"}<<QStringList{};
+  QTest::newRow("git log's abbreviated hash with its first character lost")<<QStringList{logRow("g1"),h40.mid(1,6)+" "+h40+" 2026-10-01 21:00:00 -0500 release"}<<QStringList{};
+  QTest::newRow("a lockfile's sha256 label read stuck to its value")<<QStringList{"openssl 6.14.38 sha256lJ"+h64,"zstd 2.2.31 sha25elf"+g64}<<QStringList{};
+  QTest::newRow("ps start times are no hex")<<QStringList{"625799 625287 Sat Oct 24 01:26:36 2026 32-17:53:36 75044 /usr/bin/nemo-desktop","625806 625287 Sat Oct 24 01:26:36 2026 32-17:53:36 5912 /usr/libexec/geoclue-2.0/demos/agent"}<<QStringList{};
+  // Fails closed: a hex run that only looks like a listing's row stays covered.
+  QTest::newRow("a hex run before words with no digit stays covered")<<QStringList{k64+"  copied for deploy.sh"}<<QStringList{"key: "+k64+" copied for"};
+  QTest::newRow("a hex run before a name that names a token stays covered")<<QStringList{k64+"  token 2026 deploy.sh"}<<QStringList{"key: "+k64+" token 2026"};
+  QTest::newRow("a hex run a single space before a spaced name stays covered")<<QStringList{k64+" copied 2026 notes.txt"}<<QStringList{"key: "+k64+" copied 2026 notes.txt"};
+  QTest::newRow("a hex run before a token-like word in a name stays covered")<<QStringList{k64+"  backup a1b2c3d4e5 f.txt"}<<QStringList{"key: "+k64+" backup a1b2c3d4e5 f.txt"};
+  QTest::newRow("a hex row with an assignment below a listing row stays covered")<<QStringList{h64+"  Capture-2026-10-17-07-34-31.png",k64+"  API_KEY=prod"}<<QStringList{"key: "+k64+" API_KEY=prod"};
+  QTest::newRow("a hex row naming a secret below a listing row stays covered")<<QStringList{h64+"  Capture-2026-10-17-07-34-31.png",k64+"  my secret"}<<QStringList{"key: "+k64+" my secret"};
+  QTest::newRow("a hex row before a plain word below a listing row stays covered")<<QStringList{h64+"  Capture-2026-10-17-07-34-31.png",k64+"  production"}<<QStringList{"key: "+k64+" production"};
+  QTest::newRow("git log's hashes on a row naming a token stay covered")<<QStringList{k40.left(7)+" "+k40+" rotate token"}<<QStringList{"key: "+k40.left(7)+" "+k40+" rotate token"};
+  QTest::newRow("a bare hex row below a listing row stays covered")<<QStringList{h64+"  Capture-2026-10-17-07-34-31.png",k64}<<QStringList{"key: "+k64};
+  QTest::newRow("a hex run after a short hex word that is not its start stays covered")<<QStringList{"abc1234 "+k40+" 2026-10-10 18:00:00"}<<QStringList{"key: abc1234 "+k40+" 2026-10-10 18:00:00"};
+  QTest::newRow("a 32-character hex run after its own start stays covered")<<QStringList{k64.left(7)+" "+k64.left(32)+" 2026-10-10"}<<QStringList{"key: "+k64.left(7)+" "+k64.left(32)+" 2026-10-10"};
+  QTest::newRow("a hex run beside a clock time stays covered")<<QStringList{"12:00:01 "+k40}<<QStringList{"key: 12:00:01 "+k40};
+  // Sol on #2090.
+  QTest::newRow("a hex row with a date below a listing row stays covered")<<QStringList{h64+"  Capture-2026-10-17-07-34-31.png",k64+"  CREATED 2026-01-01"}<<QStringList{"key: "+k64+" CREATED 2026-01-01"};
+  QTest::newRow("a hex row with a dated sentence below a listing row stays covered")<<QStringList{h64+"  Capture-2026-10-17-07-34-31.png",k64+"  CREATED 2026-01-01."}<<QStringList{"key: "+k64+" CREATED 2026-01-01."};
+  QTest::newRow("a hex row with a date and a short word below a listing row stays covered")<<QStringList{h64+"  Capture-2026-10-17-07-34-31.png",k64+"  rotated 2026-01-01-utc"}<<QStringList{"key: "+k64+" rotated 2026-01-01-utc"};
+  QTest::newRow("a hex row with a date, a dash and an extension word below a listing row stays covered")<<QStringList{h64+"  Capture-2026-10-17-07-34-31.png",k64+"  rotated 2026-01-01 - log"}<<QStringList{"key: "+k64+" rotated 2026-01-01 - log"};
+  QTest::newRow("a hex row with a dated log message and a time zone below a listing row stays covered")<<QStringList{h64+"  Capture-2026-10-17-07-34-31.png",k64+"  rotated 2026-01-01-utc - log"}<<QStringList{"key: "+k64+" rotated 2026-01-01-utc - log"};
+  QTest::newRow("a hex secret split around Feb and a clock-shaped piece stays covered")<<QStringList{k64.left(20)+" Feb 12:34:56 "+k64.mid(20,20)}<<QStringList{"key: "+k64.left(20)+" Feb 12:34:56 "+k64.mid(20,20)};
+  QTest::newRow("a hex secret split around Dec and a clock-shaped piece stays covered")<<QStringList{k64.left(20)+" Dec 12:34:56 "+k64.mid(20,20)}<<QStringList{"key: "+k64.left(20)+" Dec 12:34:56 "+k64.mid(20,20)};
+  QTest::newRow("a hex secret split around year- and clock-shaped pieces stays covered")<<QStringList{k64.left(20)+" 2026 12:34:56 "+k64.mid(20,20)}<<QStringList{"key: "+k64.left(20)+" 2026 12:34:56 "+k64.mid(20,20)};
+  QTest::newRow("a misread sha256 label after an acronym's secret word stays covered")<<QStringList{"APISecret copied from sha256l"+k64}<<QStringList{"key: APISecret copied from sha256l"+k64};
+  QTest::newRow("a hex secret split around a clock-shaped piece stays covered")<<QStringList{k64.left(28)+" 12:34:56 "+k64.mid(28,28)}<<QStringList{"key: "+k64.left(28)+" 12:34:56 "+k64.mid(28,28)};
+  QTest::newRow("a hex secret a space before a digest stays covered")<<QStringList{k64.left(32)+" "+h64.left(32)+"  ubuntu.iso"}<<QStringList{"key: "+k64.left(32)+" "+h64.left(32)+" ubuntu.iso"};
+  QTest::newRow("a hex secret after a glued sha256 label's digest stays covered")<<QStringList{"sha256lJ"+h64+" "+k64}<<QStringList{"key: sha256lJ"+h64+" "+k64};
+  QTest::newRow("a hex secret with a clock-shaped misread inside stays covered")<<QStringList{k40.left(10)+"12:34"+k40.mid(15)}<<QStringList{"key: "+k40.left(10)+"12:34"+k40.mid(15)};
+  QTest::newRow("a lone abbreviated and full hash stays covered")<<QStringList{k40.left(7)+" "+k40+" 2026-10-10"}<<QStringList{"key: "+k40.left(7)+" "+k40+" 2026-10-10"};
+  QTest::newRow("a hex value after a bearer scheme and a misread sha256 label stays covered")<<QStringList{"Authorization: Bearer sha256l"+k64}<<QStringList{"key: Authorization: Bearer sha256l"+k64};
+  QTest::newRow("a misread sha256 label after a key word stays covered")<<QStringList{"Your key is sha256l"+k64}<<QStringList{"key: key is sha256l"+k64};
+  QTest::newRow("a misread sha256 label beside a secret's name stays covered")<<QStringList{"SECRET=sha2S6l"+k64}<<QStringList{"key: SECRET=sha2S6l"+k64};
+ }
+ void misreadHashListings() {
+  QFETCH(QStringList,rows);QFETCH(QStringList,expected);
+  QList<RecognizedWord> page;
+  for(int r=0;r<rows.size();++r){
+   const auto& row=rows.at(r);int splits=0;
+   for(qsizetype at=0;at<row.size();){
+    if(row.at(at)==' '){++at;continue;}
+    if(row.at(at)=='^'){++at;++splits;continue;}
+    qsizetype end=at;while(end<row.size()&&row.at(end)!=' '&&row.at(end)!='^')++end;
+    page.append({row.mid(at,end-at),QRect(int(at-splits)*8,r*18,int(end-at)*8,14),90,r});at=end;
+   }
+  }
+  QCOMPARE(found(page,QStringList{"key","card"}),expected);
+ }
+ // #2084: a stray piece boxed inside the one before it ("fF" read over a digest's middle) breaks no digest.
+ void aStrayPieceBreaksNoDigest() {
+  const auto h64=hexOf("s",64);
+  QList<RecognizedWord> stray{{h64.left(27),QRect(3,0,253,14),90,0},{"fF",QRect(219,0,7,14),90,0},{h64.mid(29),QRect(259,0,255,14),90,0},{"VID_20261026_201759.mp4",QRect(529,0,185,14),90,0}};
+  QCOMPARE(found(stray,QStringList{"key"}),QStringList{});
+ }
+ // #2084 (Sol on #2090): hiding a public digest from the key rule hides no card: a card glued to a hex
+ // field is still a card when cards alone are asked for, at a digest's length too.
+ void cardsInsideHexWords() {
+  const auto glued=QStringLiteral("4111111111111111")+hexOf("z",30);
+  QList<RecognizedWord> card{{glued,QRect(0,0,int(glued.size())*8,14),90,0}};
+  QCOMPARE(found(card,QStringList{"card"}),QStringList{"card: "+glued});
+  const auto sized=QStringLiteral("4111111111111111")+hexOf("z",16);
+  QList<RecognizedWord> listed{{sized,QRect(0,0,int(sized.size())*8,14),90,0},{"refs/tags/v1.4.2",QRect(int(sized.size())*8+16,0,128,14),90,0}};
+  QCOMPARE(found(listed,QStringList{"card"}),QStringList{"card: "+sized});
+ }
  // #1940: a value of no fixed length (a DKIM signature, a kubeconfig certificate) runs on only over rows
  // a wrap leaves, each reaching the right edge: a key's row after the certificate's short last row is
  // not the certificate's.
