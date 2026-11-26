@@ -412,7 +412,7 @@ Under the builder's Proton lock, `lend`:
 Receipts go in `~/putgd-lab/proton/receipts/<time>-<run>/` and hold names and states,
 never session material. `lend.json` also records the guest keyring's provider, default
 collection and whether it was just restarted, each import try (`provisionTries`), and for a
-lend that stopped before COMMAND the step that failed (`failedStep`: `place_brokers`,
+lend that stopped before COMMAND the step that failed (`failedStep`: `host_brokers`, `place_brokers`,
 `prepare_keyring`, `export` or `import`). A failed import's receipt is kept as
 `provision-1.json`. `lend` also records its outcome in the registry as
 `lastLend`. The smoke test creates a new folder, runs **Check account and folder**
