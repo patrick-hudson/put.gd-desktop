@@ -252,7 +252,16 @@ QJsonObject HistoryService::prepare(const QStringList& ids,const QJsonArray& pro
   auto caps=provider->receiptCapabilities(receipt);if(!caps.safeRemoval()) {e={"unsupported_capability",caps.removeUnavailable.isEmpty()?QStringLiteral("This destination can't safely delete this file."):caps.removeUnavailable,{{"historyId",id}}};return {};}
   target["receipt"]=receipt.toJson();target["effect"]=caps.deletionEffect;
   // #2079: a split sealed link's data file goes too, once its page is gone.
-  if(const auto part=data["seal"].toObject()["data"].toObject();part["uploadStatus"]=="uploaded"&&!part["receipt"].toObject().isEmpty())target["sealData"]=part["receipt"];
+  if(const auto part=data["seal"].toObject()["data"].toObject();part["uploadStatus"]=="uploaded"&&!part["receipt"].toObject().isEmpty()) {
+   target["sealData"]=part["receipt"];
+   // A data file this destination can't delete safely (a WebDAV file over 256 MB whose identity
+   // couldn't be confirmed, for one) stays; the page goes, and the confirmation says so.
+   const auto partCaps=provider->receiptCapabilities(StorageReceipt::fromJson(part["receipt"].toObject()));
+   if(!partCaps.safeRemoval()) {
+    target["sealDataKept"]=true;
+    target["effect"]=caps.deletionEffect+" The sealed link's data file beside it stays at the destination, because put.gd can't delete it safely there."+(partCaps.removeUnavailable.isEmpty()?QString():" "+partCaps.removeUnavailable)+" It holds only encrypted data, and nobody can open it once the page is gone.";
+   }
+  }
   targets.append(target);
  }
  const auto digest=QString::fromLatin1(QCryptographicHash::hash(QJsonDocument(targets).toJson(QJsonDocument::Compact),QCryptographicHash::Sha256).toHex());
@@ -493,7 +502,9 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
    // deleted like the page, with its own durable checkpoint; one left behind holds only
    // ciphertext nobody has a page for, and the deletion says so.
    // Quit before the data file's turn: the item stays unfinished, so Retry deletion still takes it.
-   if((outcome=="removed"||outcome=="already_missing")&&items[index].toObject().contains("sealData")&&items[index].toObject()["sealDataStatus"]!="removed"&&quitting->load()){outcome="unknown";e={"seal_data_left","The sealed page was deleted, but put.gd quit before deleting its data file. Select Retry deletion.",{}};}
+   // A data file the confirmation said stays is left as said.
+   if((outcome=="removed"||outcome=="already_missing")&&items[index].toObject().contains("sealData")&&items[index].toObject()["sealDataKept"].toBool()){auto target=items[index].toObject();target["sealDataStatus"]="kept";items[index]=target;doc["items"]=items;}
+   else if((outcome=="removed"||outcome=="already_missing")&&items[index].toObject().contains("sealData")&&items[index].toObject()["sealDataStatus"]!="removed"&&quitting->load()){outcome="unknown";e={"seal_data_left","The sealed page was deleted, but put.gd quit before deleting its data file. Select Retry deletion.",{}};}
    else if((outcome=="removed"||outcome=="already_missing")&&items[index].toObject().contains("sealData")&&!quitting->load()) {
     auto part=StorageReceipt::fromJson(items[index].toObject()["sealData"].toObject());
     part.destination.profileId=receipt.destination.profileId;part.destination.credentialReference=receipt.destination.credentialReference;
