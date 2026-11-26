@@ -3,6 +3,7 @@
 #include "Error.h"
 #include <QJsonObject>
 #include <atomic>
+#include <functional>
 #include <memory>
 namespace putgd {
 // Sealed links (#2079): seals one stored file in a short-lived `putgd-cli --seal-job` child,
@@ -25,7 +26,9 @@ public:
  static QString randomName(const QString& extension);
  // Tests: the output files' names in `directory`, in place of new UUIDs.
  void setOutputIdsForTesting(QString page,QString data){pageIdForTesting_=std::move(page);dataIdForTesting_=std::move(data);}
+ // Tests: runs as the resident starts checking the helper's output.
+ void setVerifyingForTesting(std::function<void()> hook){verifyingForTesting_=std::move(hook);}
 private:
- QString helperPath_;int timeoutMs_;QString pageIdForTesting_,dataIdForTesting_;
+ QString helperPath_;int timeoutMs_;QString pageIdForTesting_,dataIdForTesting_;std::function<void()> verifyingForTesting_;
 };
 }

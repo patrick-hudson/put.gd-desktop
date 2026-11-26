@@ -546,7 +546,12 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
     if(partOutcome=="changed")e={"seal_data_left","The sealed page was deleted. The file beside it changed at the destination, so put.gd left it.",{{"dataStatus",partOutcome}}};
     else if(partOutcome!="removed"&&partOutcome!="already_missing"){
      outcome=partOutcome=="unknown"?QStringLiteral("unknown"):QStringLiteral("failed");
-     e={"seal_data_left","The sealed page was deleted, but its data file beside it wasn't. It holds only encrypted data. Select Retry deletion.",{{"dataStatus",partOutcome},{"dataError",partError.toJson()}}};
+     // Unknown isn't "not deleted": put.gd only doesn't know yet.
+     const auto message=partOutcome=="unknown"
+      ?(quitting->load()?QStringLiteral("The sealed page was deleted, but put.gd quit before confirming whether its data file was deleted. Select Retry deletion to check again.")
+        :QStringLiteral("The sealed page was deleted, but put.gd couldn't confirm whether its data file was deleted. Select Retry deletion to check again."))
+      :QStringLiteral("The sealed page was deleted, but its data file beside it wasn't. It holds only encrypted data. Select Retry deletion.");
+     e={"seal_data_left",message,{{"dataStatus",partOutcome},{"dataError",partError.toJson()}}};
     }
    }
    item=items[index].toObject();item["status"]=outcome;item["progress"]=progress;item["error"]=e.toJson();items[index]=item;doc["items"]=items;if((error=store.saveDeletion(doc)))return doc;committed();

@@ -37,6 +37,9 @@ SealJob::Result SealJob::run(const Artifact& file,const QString& directory,const
  // The resident makes both outputs itself, each with an exclusive create, and keeps each one's
  // descriptor; the helper only writes into them. A path is removed only while it is still the
  // file made here (same device and inode), so nothing put.gd didn't create is ever deleted.
+ // Same-user processes are trusted: the operation folder is put.gd's own private data; the guard
+ // here is against collisions with files put.gd did not create, not against another process of
+ // this user racing it.
  struct Owned {QString path;int fd=-1;};
  std::vector<Owned> owned;
  const auto closeAll=qScopeGuard([&owned]{for(const auto& file:owned)::close(file.fd);});
@@ -82,6 +85,7 @@ SealJob::Result SealJob::run(const Artifact& file,const QString& directory,const
   out.id=id;out.path=path;out.name=name;out.mime=mime;out.category="other";out.sha256=sha;out.bytes=written.size();out.namingPrepared=true;
   return true;
  };
+ if(verifyingForTesting_)verifyingForTesting_();
  if(!artifact(pageId,pagePath,pageName,"text/html",answer["page"].toObject(),result.page)||(split&&!artifact(dataId,dataPath,binName,"application/octet-stream",answer["data"].toObject(),result.data))) {
   discard();result.page={};result.data={};
   // A check cut short by Cancel is a cancelled upload, not a mismatch.

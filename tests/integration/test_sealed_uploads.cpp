@@ -365,17 +365,17 @@ private slots:
   QCOMPARE(result.error.code,QString("cancelled"));
   if(swapped)QCOMPARE(read(dir.filePath(id)),QByteArray("not ours"));else QVERIFY(!QFileInfo::exists(dir.filePath(id)));
  }
- // A Cancel as the helper finishes, while or just before its output is checked, is a cancel, and
- // what it wrote goes.
+ // A Cancel while the helper's output is checked is a cancel, not a mismatch, and what it wrote goes.
  void cancelWhileTheOutputIsCheckedIsACancel() {
-  QTemporaryDir dir;const auto marker=dir.filePath("written");
-  const auto helper=sealHelper(dir,"head -c 67108864 /dev/zero >> \"$page\"\ntouch '"+marker+"'\n"
-   "echo '{\"ok\":true,\"page\":{\"bytes\":67108864,\"sha256\":\"mismatch\"}}'\n");
+  QTemporaryDir dir;
+  const auto helper=sealHelper(dir,"printf 'sealed' >> \"$page\"\necho '{\"ok\":true,\"page\":{\"bytes\":6,\"sha256\":\"mismatch\"}}'\n");
   const auto id=QUuid::createUuid().toString(QUuid::WithoutBraces);SealJob job(helper);job.setOutputIdsForTesting(id,{});
-  auto cancelled=std::make_shared<std::atomic_bool>(false);
-  std::thread canceller([&]{for(int i=0;i<12000&&!QFileInfo::exists(marker);++i)std::this_thread::sleep_for(std::chrono::milliseconds(1));cancelled->store(true);});
-  const auto result=job.run(input(dir),dir.path(),"inline","a.html",{},{},cancelled);canceller.join();
+  auto cancelled=std::make_shared<std::atomic_bool>(false);job.setVerifyingForTesting([cancelled]{cancelled->store(true);});
+  const auto result=job.run(input(dir),dir.path(),"inline","a.html",{},{},cancelled);
   QCOMPARE(result.error.code,QString("cancelled"));QVERIFY(result.page.path.isEmpty());QVERIFY(!QFileInfo::exists(dir.filePath(id)));
+  // Without the Cancel the same answer is a mismatch.
+  SealJob plain(helper);plain.setOutputIdsForTesting(QUuid::createUuid().toString(QUuid::WithoutBraces),{});
+  QCOMPARE(plain.run(input(dir),dir.path(),"inline","a.html",{},{},std::make_shared<std::atomic_bool>(false)).error.code,QString("seal_failed"));
  }
  // Forget key: History keeps no way to open it, and offers no link.
  void forgetKeyLeavesNoLink() {
