@@ -557,8 +557,10 @@ store, stays typed when it is refused, and is cleared with the other typed secre
 Settings closes. Saving a destination whose **Encrypted links** mode didn't change leaves its
 `encrypt` object exactly as saved, `passphraseCredentials` included. Agents drive it with
 `ui.encryptedLinks` (MCP `drive_encrypted_links`): `inspect`, `mode` and `unlock`. Its `available` says
-whether encryption can be turned on there, and `modeEnabled` whether the choice can change. A
-passphrase is typed in the window only.
+whether encryption can be turned on there, `modeEnabled` whether the choice can change and
+`saved` whether the file has the mode shown. `mode` answers only once the file has the new
+mode, or with `settings_not_saved` when it isn't saved (#2103): until then an agent's next
+`setup.storeEncryptPassphrase` could read the old mode. A passphrase is typed in the window only.
 
 The passphrase is kept like any other secret, in its own keychain entry or for this session
 only, never in `config.json` ([credentials](credentials.md)). `setup.storeEncryptPassphrase`
