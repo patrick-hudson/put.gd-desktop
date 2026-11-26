@@ -444,7 +444,9 @@ void RecordingService::handleEvent(const QJsonObject& event) {
     }
     else if (kind == "cancelled" && !recording::terminal(s.state)) cancelActive({});
     // A format or sound choice made while an export runs is applied when review resumes.
-    else if (kind == "encrypt" && event["on"].isBool() && s.state == RecordingState::Reviewing) { if (host_.encrypt) host_.encrypt(s.op.id, event["on"].toBool()); }
+    // #2079: the toggle's change is kept whenever the window sends it, an export running included,
+    // so what the resident holds is what the window shows; an export already admitted keeps its choice.
+    else if (kind == "encrypt" && event["on"].isBool() && (s.state == RecordingState::Reviewing || s.state == RecordingState::Exporting)) { if (host_.encrypt) host_.encrypt(s.op.id, event["on"].toBool()); }
     else if (kind == "configChanged" && s.state == RecordingState::Exporting) s.heldConfig = event;
     else if (kind == "configChanged" && (s.state == RecordingState::Ready || s.state == RecordingState::Reviewing)) {
         auto json = event["config"].toObject();
@@ -1106,7 +1108,7 @@ void RecordingService::exportTo(const QString& command, const QJsonObject& param
         // anything is exported or sent.
         if (params.contains("encrypt") && !params["encrypt"].isBool()) { reply(invalid("encrypt is true or false"), {}); return; }
         if (params["encrypt"].toBool() && host_.encryptRefusal) {
-            if (const auto reason = host_.encryptRefusal(s.op); !reason.isEmpty()) { reply({"encrypt_unavailable", reason + " Upload it without encryption.", {}}, {}); return; }
+            if (auto refusal = host_.encryptRefusal(s.op)) { reply(refusal, {}); return; }
         }
     }
     s.lastExportRequest = params;
@@ -1131,7 +1133,9 @@ void RecordingService::exportTo(const QString& command, const QJsonObject& param
     reply({}, publicJson(s));
     if (!session_ || session_->generation != generation) return;
     s.helperExporting = true;
-    const auto requestedEncrypt = command == "upload" ? params.value("encrypt") : QJsonValue();
+    // #2079: the upload is admitted with one Encrypt choice, fixed now: the request's own, else the
+    // toggle's as the window shows it. A toggle change during the export applies to the next upload.
+    const auto requestedEncrypt = command != "upload" ? QJsonValue() : params["encrypt"].isBool() ? params["encrypt"] : host_.encryptChoice ? QJsonValue(host_.encryptChoice(s.op)) : QJsonValue();
     backend_->exportClip(s.op.id, edit, config, output, marshal(generation, [this, command, destination, overwrite, output, edit, config, done, requestedEncrypt](Error error, QJsonObject result) {
         auto& s = *session_;
         // Past its deadline the helper may still be exporting; its late result says when it stops.

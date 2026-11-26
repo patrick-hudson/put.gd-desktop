@@ -38,9 +38,13 @@ public:
         std::function<void(const QJsonObject& preferences)> remember;
         // #2079: the review's Encrypt toggle changed for this operation; optional.
         std::function<void(const QString& operationId, bool on)> encrypt;
-        // #2079: why this operation can't be encrypted, or empty when it can; an upload request
-        // that asks for encryption is refused with it before anything is exported. Optional.
-        std::function<QString(const Operation&)> encryptRefusal;
+        // #2079: why this operation can't be encrypted now (encrypt_unavailable, or
+        // encrypt_passphrase_locked), or no error when it can; an upload request that asks for
+        // encryption is refused with it before anything is exported. Optional.
+        std::function<Error(const Operation&)> encryptRefusal;
+        // #2079: the Encrypt choice the review's toggle holds now (as the window shows it); an
+        // upload started without its own encrypt is admitted with it. Optional.
+        std::function<bool(const Operation&)> encryptChoice;
     };
     RecordingService(QString stagingRoot, Host, QObject* parent = nullptr);
     ~RecordingService() override;

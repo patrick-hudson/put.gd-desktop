@@ -138,7 +138,15 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
   return options;
  };
  host.encrypt=[this](const QString& id,bool on){recordEncrypt(id,on);};
- host.encryptRefusal=[this](const Operation& op){const auto options=encryptOptions(op);return options["available"].toBool()?QString():options["reason"].toString(QStringLiteral("Encrypted links aren't available for this upload."));};
+ host.encryptRefusal=[this](const Operation& op)->Error{
+  const auto options=encryptOptions(op);
+  if(!options["available"].toBool())return {"encrypt_unavailable",options["reason"].toString(QStringLiteral("Encrypted links aren't available for this upload."))+" Upload it without encryption.",{}};
+  // A saved passphrase that isn't loaded is said now, as the upload would say it after the export.
+  if(options["passphrase"].toBool()){QString loaded;{std::lock_guard lock(encryptHooksMutex_);if(encryptPassphrase_)loaded=encryptPassphrase_(op.destination.profileId,op.settings.profiles.value(op.destination.profileId));}
+   if(loaded.isEmpty())return {"encrypt_passphrase_locked","The Encrypted links passphrase isn't loaded. Unlock it in Destinations, then upload again.",{}};}
+  return {};
+ };
+ host.encryptChoice=[this](const Operation& op){return encryptOptions(op)["on"].toBool();};
  host.settings=[this]{return settings_.snapshot();};
  host.accept=[this](Operation& op){return acceptRecording(op);};
  host.persist=[this](const Operation& op,std::function<void(Error)> done){const auto path=databasePath();background([path,op](Error& e){HistoryStore store(path);e=store.saveOperation(op);return QJsonObject{};},[done](Error e,QJsonObject){done(e);});};
