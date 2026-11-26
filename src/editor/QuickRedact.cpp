@@ -2376,13 +2376,14 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
   for(int s=0;s<lineSegments.size();++s){
    const auto& segment=lineSegments.at(s);
    QList<Found> found;segmentMatches(segment,0,int(segment.words.size())-1,found);
-   // Where each "data:" starts in the segment and how far a data: URI from it can end (its media type's
-   // characters, then ";base64,"), found once for the publishable check below (#2112). A character past
-   // ASCII counts as the media type's, since a caseless match can take one for a letter.
+   // Where each "data:" starts in the segment and the one place a data: URI from it can end: past its
+   // media type, which runs to the first character outside [a-z/+.-] as the publishable pattern reads it
+   // caselessly (ASCII letters, and the long s and Kelvin sign that fold to s and k), then ";base64,".
+   // Found once for the publishable check below (#2112).
    QList<QPair<int,int>> dataAt;
    for(auto i=segment.text.indexOf(QLatin1String("data:"),0,Qt::CaseInsensitive);i>=0;i=segment.text.indexOf(QLatin1String("data:"),i+1,Qt::CaseInsensitive)){
     auto e=i+5;
-    while(e<segment.text.size()){const auto c=segment.text.at(e);if(!(c.unicode()>0x7f||(c>='a'&&c<='z')||(c>='A'&&c<='Z')||c=='/'||c=='+'||c=='.'||c=='-'))break;++e;}
+    while(e<segment.text.size()){const auto c=segment.text.at(e);if(!((c>='a'&&c<='z')||(c>='A'&&c<='Z')||c=='/'||c=='+'||c=='.'||c=='-'||c==QChar(0x17f)||c==QChar(0x212a)))break;++e;}
     dataAt.append({int(i),int(e)+8});
    }
    // #1895: a hex run with a hash word on its line (a "Git SHA" or "SHA-256" label cell, "commit",
@@ -2413,11 +2414,13 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
       shown=publicRun(rest);
      }
      // A publishable prefix ends where the run starts: a few characters, or a data: URI from its "data:"
-     // on. Only that much of the text before the run is searched (#2112: the whole line before each run
-     // cost a long line's square), never from inside a surrogate pair. A cut that starts later than the
-     // line can't pass for its start: no prefix is 32 characters, and a data: URI doesn't start with pk.
+     // on when the run starts where that URI can end. Only that much of the text before the run is
+     // searched (#2112: the whole line before each run cost a long line's square), never from inside a
+     // surrogate pair. A cut that starts later than the line can't pass for its start: no prefix is 32
+     // characters, and a data: URI doesn't start with pk. Only the last "data:" before the run can end
+     // there: an earlier one's media type stops at the later one's colon.
      qsizetype from=qMax(0,at-32);
-     {const auto d=std::lower_bound(dataAt.cbegin(),dataAt.cend(),QPair<int,int>{at,0});if(d!=dataAt.cbegin()&&at<=std::prev(d)->second)from=qMin<qsizetype>(from,std::prev(d)->first);}
+     {const auto d=std::lower_bound(dataAt.cbegin(),dataAt.cend(),QPair<int,int>{at,0});if(d!=dataAt.cbegin()&&at==std::prev(d)->second)from=qMin<qsizetype>(from,std::prev(d)->first);}
      if(from>0&&segment.text.at(from).isLowSurrogate())--from;
      return publishable.match(segment.text.mid(from,at-from)).hasMatch()||publishableIn.match(segment.text.mid(at,qMax(0,firstEnd-at))).hasMatch()||(sshPublic&&f.length==0&&blob.match(run).hasMatch())||shown||(f.dotted&&unsignedJwt(segment.text.mid(f.prefix,runEnd-f.prefix)));
     }),found.end());}
