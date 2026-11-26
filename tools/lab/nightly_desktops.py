@@ -1458,7 +1458,8 @@ def lend_receipts():
 KEYRING_PROVIDERS = {'ksecretd': 'ksecretd', 'kwalletd6': 'kwalletd6', 'kwalletd5': 'kwalletd5',
                      'gnome-keyring-d': 'gnome-keyring', 'oo7-daemon': 'oo7-daemon'}
 LEND_STEPS = {'import': 'guest keychain import refused', 'export': "builder's session export refused",
-              'prepare_keyring': 'guest keyring preparation failed', 'place_brokers': 'guest broker placement failed'}
+              'prepare_keyring': 'guest keyring preparation failed', 'place_brokers': 'guest broker placement failed',
+              'host_brokers': "builder's lab brokers missing or unsafe"}
 
 
 def clean_lend_failure(run, before):

@@ -228,7 +228,7 @@ class LendFailures(LendTest):
     def test_an_import_refused_once_is_cleaned_up_then_tried_again_and_the_lend_completes(self):
         result = self.lend(Chain(self.calls, fail={'provision': 1}))
         self.assertEqual([call[0] for call in self.calls], [
-            'place_brokers', 'prepare_keyring', 'export', 'provision', 'keyring_status', 'abandon', 'provision',
+            'place_brokers', 'prepare_keyring', 'export', 'provision', 'abandon', 'keyring_status', 'provision',
             'test', 'stop_app', 'collect', 'carry_back', 'cleanup', 'remove_brokers'])
         self.assertEqual(self.calls.count(('export', 'putgd/proton/lab-d69')), 1)  # one baseline, kept in memory
         folder = Path(result['receipts'])
@@ -266,6 +266,13 @@ class LendFailures(LendTest):
         state = self.lock().status()
         self.assertEqual(state['state'], 'blocked')
         self.assertIn('run proton_lab.py recover', state['blocked'])
+
+    def test_a_missing_host_broker_is_named_as_the_builders_step(self):
+        (self.layout.host_bridge / proton.BROKERS[1]).unlink()
+        with self.assertRaises(proton.LabFailure):
+            self.lend()
+        self.assertEqual(self.lent()['failedStep'], 'host_brokers')
+        self.assertNotIn('place_brokers', [call[0] for call in self.calls])
 
     def test_a_first_try_import_is_recorded_too(self):
         self.lend()

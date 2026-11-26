@@ -733,8 +733,7 @@ def provision_guest(chain, guest, guest_broker, folder, progress, guest_referenc
             borrowed = chain.provision(str(guest.run), guest_broker, folder / 'provision.json',
                                        **({'reference': guest_reference} if guest_reference else {}))
         except bridge.ProvisionError:
-            tried = {'attempt': attempt, 'at': now_text(), 'failedStep': 'import',
-                     'keyringAfter': guest_keyring(guest)}
+            tried = {'attempt': attempt, 'at': now_text(), 'failedStep': 'import'}
             tries.append(tried)
             if chain.active is not None:
                 # An ambiguous import keeps its exact cleanup name until the cleanup is confirmed.
@@ -745,6 +744,7 @@ def provision_guest(chain, guest, guest_broker, folder, progress, guest_referenc
             else:
                 tried['cleanup'] = 'nothing_imported'
             progress['outstanding'] = False
+            tried['keyringAfter'] = guest_keyring(guest)  # a diagnostic only, so after the cleanup
             note(folder, reference=None, provisionTries=tries)
             if attempt == PROVISION_TRIES or tried['cleanup'] != 'confirmed':
                 failure = (f'Provisioning the guest failed at its keychain import ({attempt} '
@@ -776,11 +776,12 @@ def lend(layout, run, session, owner, purpose, command, chain_factory=None, gues
     result = {'receipts': str(folder)}
     with holding(proton_lock(layout, registry['host'], clock), session, owner, purpose,
                  heartbeat=heartbeat) as progress:
-        stage = 'place_brokers'
+        stage = 'host_brokers'
         try:
             # Nothing reaches the guest's keychain before the import, so a failure here leaves nothing
             # to collect: lend.json names the step, and the lock is released.
             host_broker = brokers(layout.host_bridge)
+            stage = 'place_brokers'
             guest_broker = guest.place_brokers(layout.guest_bridge)
             stage = 'prepare_keyring'
             result['guestKeyring'] = guest.prepare_keyring()
