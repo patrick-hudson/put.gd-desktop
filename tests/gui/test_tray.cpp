@@ -183,7 +183,7 @@ private slots:
    // Plasma: "closed" arrives just before "clicked"; the fade runs from the close.
    TrayMenuSettle settle;settle.setFade({fadeMs,"test"});
    settle.menuShown();settle.menuClosed();started(settle,"repeat",clock,at);
-   QTRY_VERIFY_WITH_TIMEOUT(at>=0,3000);QVERIFY2(at>=fadeMs-5,qPrintable(QString::number(at)));
+   PUTGD_TRY_VERIFY_WITH_TIMEOUT(at>=0,3000);QVERIFY2(at>=fadeMs-5,qPrintable(QString::number(at)));
    QCOMPARE(settle.state()["awaitedClose"].toBool(),false);QCOMPARE(settle.state()["fadeMs"].toInt(),fadeMs);QCOMPARE(settle.state()["command"].toString(),QString("repeat"));
   }
   {
@@ -191,16 +191,16 @@ private slots:
    // even past the fade, and the fade counts from its close.
    TrayMenuSettle settle;settle.setFade({fadeMs,"test"});
    settle.menuShown();settle.menuClosed();settle.menuShown();started(settle,"desktop",clock,at);
-   QTest::qWait(fadeMs+60);QCOMPARE(at,qint64(-1));
+   PUTGD_COMPARE_STEADY(at,qint64(-1),fadeMs+60);
    const auto closedAt=clock.elapsed();settle.menuClosed();
-   QTRY_VERIFY_WITH_TIMEOUT(at>=0,3000);QVERIFY2(at>=closedAt+fadeMs-5,qPrintable(QString("%1 %2").arg(at).arg(closedAt)));
+   PUTGD_TRY_VERIFY_WITH_TIMEOUT(at>=0,3000);QVERIFY2(at>=closedAt+fadeMs-5,qPrintable(QString("%1 %2").arg(at).arg(closedAt)));
    QCOMPARE(settle.state()["awaitedClose"].toBool(),true);
   }
   {
    // Cinnamon and Budgie report the menu showing but never its close: the fade runs from the click.
    TrayMenuSettle settle;settle.setFade({fadeMs,"test"});
    settle.menuShown();started(settle,"monitor",clock,at);
-   QTRY_VERIFY_WITH_TIMEOUT(at>=0,3000);QVERIFY2(at>=fadeMs-5&&at<traysettle::closeWaitMs+fadeMs,qPrintable(QString::number(at)));
+   PUTGD_TRY_VERIFY_WITH_TIMEOUT(at>=0,3000);QVERIFY2(at>=fadeMs-5&&at<traysettle::closeWaitMs+fadeMs,qPrintable(QString::number(at)));
    QCOMPARE(settle.state()["awaitedClose"].toBool(),false);
   }
   {
@@ -208,7 +208,7 @@ private slots:
    for(const int fade:{fadeMs,traysettle::closeWaitMs+150}){
     TrayMenuSettle settle;settle.setFade({fade,"test"});
     settle.menuShown();settle.menuClosed();settle.menuShown();started(settle,"region",clock,at);
-    QTRY_VERIFY_WITH_TIMEOUT(at>=0,3000);
+    PUTGD_TRY_VERIFY_WITH_TIMEOUT(at>=0,3000);
     QVERIFY2(at>=qMax(fade,traysettle::closeWaitMs)-5,qPrintable(QString("%1 %2").arg(at).arg(fade)));
    }
   }
