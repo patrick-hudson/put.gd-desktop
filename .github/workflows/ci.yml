@@ -102,9 +102,11 @@ jobs:
         timeout-minutes: 3
         run: python3 -m pytest -v tests/desktop/test_surface*.py tests/desktop/test_review_adversarial.py --junitxml=build/contracts/surface-tests.xml
       - name: Encrypted-link viewer in Firefox and Chromium
-        # #2079: the pinned viewer's hash and CSP hashes, the format vectors encrypted and opened in
-        # both browsers, and the request log that shows the page fetches nothing else. Two
-        # browsers at 240 s each leave the harness time to report a hang inside the step limit.
+        # #2079: pin_viewer.py checks the viewer's hash, its CSP hashes and that it names no
+        # outside address. The browser vectors encrypt and open the format vectors in both
+        # browsers; their request log allows only the harness, the page and, for the two-file
+        # form, its same-origin ./NAME.bin. Two browsers at 240 s each leave the harness time to
+        # report a hang inside the step limit.
         if: always()
         timeout-minutes: 10
         run: |
