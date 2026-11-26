@@ -204,6 +204,19 @@ private slots:
   QTest::newRow("axis ticks are no phone")<<"0 20 40 60 80 100"<<all<<QStringList{};
   QTest::newRow("all zeros is no card")<<"0000 0000 0000 0000"<<QStringList{"card"}<<QStringList{};
   QTest::newRow("a screenshot name is no card or phone")<<"Screenshot From 2026-11-22 14-03-57.png"<<all<<QStringList{};
+  // #2076: put.gd's own capture names, as its History window and QR dialog show them, and a date with
+  // its time in the other ways files and logs print one.
+  QTest::newRow("put.gd's capture names are no phone")<<"QR code: Text-2026-11-24-21-54-26.txt | Text- 2026-11-24-21-54-26 | Capture 2026-11-24-21-54-26.png | 2026-11-24-21-54"<<all<<QStringList{};
+  QTest::newRow("a date and time in any separator style is no phone")
+   <<"2026-11-24 21.54.26 | 2026-11-24 21 54 26 | 2026.11.24-21.54.26 | 2026/11/24 21-54-26 | 2026 11 24 21 54 26 | 20261124-215426 | IMG 20261124 215426.jpg | 24/11/2026 21-54-26 | 24.11.2026 21.54 | 24-11-2026 21 54 | 11-24-2026 21-54-26 | 11.24.2026 21.54 | 2026-11-24-215426 | 2026-11-24 2154 | 24.11.2026 21-54-26-123"
+   <<all<<QStringList{};
+  QTest::newRow("a timestamp with milliseconds is no card")<<"Screenshot 2026-11-24-21-54-26-123.png"<<QStringList{"card","phone"}<<QStringList{};
+  // A phone whose digits only could be a date stays one: a compact date, a spaced date without its
+  // spaced minutes, no real month, day or hour. A phone after a date is found whole.
+  QTest::newRow("a phone shaped almost as a date and time is a phone")
+   <<"Tel 20261124 | Tel 1960 11 24 21 | Tel 2026 11 24 2154 | Tel 2026-13-24-21-54-26 | Tel 2026-11-24-24-54-26 | Updated 2026-11-24 202 555 0143 | Tel 06-12-34-56-78"
+   <<QStringList{"phone"}<<QStringList{"phone: 20261124","phone: 1960 11 24 21","phone: 2026 11 24 2154","phone: 2026-13-24-21-54-26","phone: 2026-11-24-24-54-26","phone: 202 555 0143","phone: 06-12-34-56-78"};
+  QTest::newRow("a phone after a slashed date is a phone")<<"Updated 2026/11/24 0612345678"<<QStringList{"phone"}<<QStringList{"phone: 2026/11/24 0612345678"};
   QTest::newRow("a browser build date is no phone")<<"Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0"<<all<<QStringList{};
   QTest::newRow("an order number is no phone")<<"Order #10234567 shipped"<<all<<QStringList{};
   // CodeRabbit on #1957: an order number with its "#" read apart; phones an exemption must not take.
