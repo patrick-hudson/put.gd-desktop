@@ -400,8 +400,9 @@ Under the builder's Proton lock, `lend`:
    and imports it under a new `putgd-lab-UUID` name. If the import fails, `lend` removes
    the guest entry, and once the removal is confirmed it imports again, once, with new
    broker processes: under a fresh name, or under the `--guest-reference` name when one was
-   given. If the removal is not confirmed, there is no second import and the Proton lock
-   stays blocked for `recover`. KDE's keyring refuses about one new process in a hundred
+   given. There is no second import when the removal is not confirmed: the Proton lock then
+   stays blocked for `recover`. There is also none when the import never reached the guest
+   (`nothing_imported`): `lend` then stops and releases the lock. KDE's keyring refuses about one new process in a hundred
    ([#1418](https://github.com/patrick-hudson/put.gd-desktop/issues/1418)), so the bridge also
    repeats a refused keychain call once in the same process.
 3. Runs COMMAND with `PUTGD_LAB_RUN`, `PUTGD_LAB_PROTON_REFERENCE` and
@@ -415,8 +416,10 @@ Receipts go in `~/putgd-lab/proton/receipts/<time>-<run>/` and hold names and st
 never session material. `lend.json` also records:
 - `guestKeyring`: the guest keyring's provider, default collection and whether it was just
   restarted.
-- `provisionTries`: one entry per import try. A try is either `imported`, or failed with its
-  cleanup `pending`, `confirmed` or `nothing_imported`, plus the keyring state after it.
+- `provisionTries`: one entry per import try. A try that worked has `imported: true`. A failed
+  try has `failedStep: import` and its cleanup: `pending` until the removal is confirmed, then
+  `confirmed`, or `nothing_imported`. Once its cleanup is settled it also has `keyringAfter`,
+  the guest keyring's state after the failure.
 - `failedStep` and `failure`: when the lend stopped before COMMAND with nothing left in the
   guest (step `lend_failed` or `provision_failed_abandoned`). The step is `host_brokers`,
   `place_brokers`, `prepare_keyring`, `export` or `import`.
