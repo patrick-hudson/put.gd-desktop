@@ -258,10 +258,10 @@ when the host reports events (a close seen before, or an `opened` event for this
 250 ms. It then waits out the rest of the compositor's fade of the closed menu, counted from the
 close, or from the click when no close came (a later close restarts it). The fade allowance is
 one 34 ms frame plus the visible part of the desktop's animation: 456 ms on KDE by default (`kwin-fadingpopups`, KWin's
-fadingpopups time scaled by kdeglobals `AnimationDurationFactor`), 184 ms on GNOME and Cinnamon,
-34 ms when the fadingpopups effect, GNOME's `enable-animations` or Cinnamon's
-`desktop-effects-on-menus` is off or KWin animations are instant, and 250 ms on desktops not
-measured. Hotkeys, the main window and session methods never take this wait. It is read-only: the counters only grow over the resident's life, `rows` includes
+fadingpopups time scaled by kdeglobals `AnimationDurationFactor`), 184 ms on GNOME
+(`gnome-popup-animation`), 34 ms on Cinnamon (`cinnamon-menu`: its menu is gone within 30 ms of
+the click, with or without menu effects), 34 ms when the fadingpopups effect or GNOME's
+`enable-animations` is off or KWin animations are instant, and 250 ms on desktops not measured. Hotkeys, the main window and session methods never take this wait. It is read-only: the counters only grow over the resident's life, `rows` includes
 hidden rows (`visible: false`), and the same object goes into diagnostics packages. It records
 the dbusmenu calls and events hosts send, whatever caused them; it never opens the menu. The lab uses it to check the menu
 on trays that export nothing to AT-SPI.
