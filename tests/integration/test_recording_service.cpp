@@ -70,7 +70,7 @@ void windowUpload(Harness& h,const QString& id,const char* event="uploadRequeste
 bool refusedBeforeExport(Harness& h,const QString& id,const QString& reason){
  if(!putgd::test::waitFor([&]{return h.backend->log.contains("raise");}))return false;
  const auto raised=h.backend->lastControlParams;
- return raised["error"].toString().contains(reason)&&!raised["retry"].toBool()&&h.backend->exports==0&&h.provider->uploads.load()==0&&h.state(id)=="reviewing";
+ return raised["error"].toString().contains(reason)&&!raised["retry"].toBool(true)&&h.backend->exports==0&&h.provider->uploads.load()==0&&h.state(id)=="reviewing";
 }
 // No review command set the window's Encrypt toggle.
 bool noToggleCommands(const Harness& h){for(const auto& call:h.backend->reviewCalls)if(call["action"]=="encrypt")return false;return true;}
