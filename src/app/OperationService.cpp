@@ -1384,7 +1384,7 @@ QJsonObject OperationService::sealOptions(const Operation& op) const {
 }
 void OperationService::setSeal(const QString& id,bool enabled,JsonReply reply) {
  const auto found=active_.constFind(id);
- if(found==active_.cend()){reply({"operation_not_found","That operation isn't waiting to upload.",{}},{});return;}
+ if(found==active_.cend()){reply({"operation_not_found","That operation has finished, or there is none with this ID.",{}},{});return;}
  {std::lock_guard lock(sealHooksMutex_);if(!sealOpen_.contains(id)){reply({"seal_too_late","This upload has already started, so Seal can't change now.",{{"operationId",id}}},{});return;}}
  // A sensitive text check's editor isn't open yet: its toggle starts from the setting, so a choice
  // now would disagree with it. Before review a recording likewise shows the setting.

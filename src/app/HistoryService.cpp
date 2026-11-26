@@ -130,7 +130,7 @@ void HistoryService::forgetSealKey(const QString& id,JsonReply reply) {
  operations_.background([path,id](Error& e){HistoryStore store(path);const auto data=store.detail(id,&e);return QJsonObject{{"operationId",data["operationId"]}};},[this,path,id,reply](Error e,QJsonObject found){
   if(e){reply(e,{});return;}
   const auto operationId=found["operationId"].toString();
-  if(!operations_.holdOperation(operationId)){reply({"history_busy","This upload is still running. Wait for it to finish, then select Forget key.",{}},{});return;}
+  if(!operations_.holdOperation(operationId)){reply({"history_busy","This upload is running, or History is already changing it. Wait a moment, then select Forget key again.",{}},{});return;}
   operations_.background([path,id](Error& e){HistoryStore store(path);e=store.forgetSealKey(id);return QJsonObject{{"historyId",id},{"keyForgotten",!e}};},[this,id,operationId,reply](Error e,QJsonObject result){
    operations_.releaseOperation(operationId);
    if(!e){notifyChanged();logging::info(logHistory(),"Sealed link key forgotten",{{"historyId",id}});}

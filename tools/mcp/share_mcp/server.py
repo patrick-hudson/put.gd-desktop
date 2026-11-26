@@ -964,7 +964,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
 
     @server.tool(annotations=effect)
     async def drive_seal_links(action: str, mode: str | None = None, profile_id: str | None = None) -> Json:
-        """Work Destinations → Sealed links for the shown (or profile_id) destination, as a user does (#2079): inspect (mode, check passed|failed|untested, reason, available, passphraseLoaded, unlockOffered), mode {off|on|passphrase} (refused with seal_unavailable until Test upload and link passed the sealed-link check; off always works), unlock (reads the saved passphrase from the keychain; may prompt). A passphrase is typed in the window only, never passed here. Destinations must be open (ui_view_closed otherwise)."""
+        """Work Destinations → Sealed links for the shown (or profile_id) destination, as a user does (#2079): inspect (mode, check passed|failed|untested, reason, available: sealing can be turned on here, modeEnabled: the choice can change (Off always can), passphraseLoaded, passphraseTyped, unlockOffered), mode {off|on|passphrase} (refused with seal_unavailable until Test upload and link passed the sealed-link check; off always works), unlock (reads the saved passphrase from the keychain; may prompt). A passphrase is typed in the window only, never passed here. Destinations must be open (ui_view_closed otherwise)."""
         if action not in {'inspect', 'mode', 'unlock'} or (action == 'mode') != (mode is not None):
             return invalid()
         if mode is not None and mode not in {'off', 'on', 'passphrase'}:
@@ -980,7 +980,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True, open_world_hint=False))
     async def forget_history_key(id: str) -> Json:
-        """Forget key (#2079): remove a sealed link's key from History, so put.gd can't open the file or show its link again (Copy link and QR code stop being offered). The file stays at the destination, and anyone who already has the full link can still open it until the file is deleted there. history_not_sealed for an item that isn't a sealed link; history_busy while its upload runs."""
+        """Forget key (#2079): remove a sealed link's key from History, so put.gd can't open the file or show its link again (Copy link and QR code stop being offered). The file stays at the destination, and anyone who already has the full link can still open it until the file is deleted there. history_not_sealed for an item that isn't a sealed link; history_busy while its upload runs or another History change of it is being written."""
         return await adapter.call('history.forgetKey', {'id': id}) if identifier(id) else invalid()
 
     @server.tool(annotations=effect)
