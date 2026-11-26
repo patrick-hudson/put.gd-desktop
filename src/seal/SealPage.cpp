@@ -2,7 +2,7 @@
 #include <QCryptographicHash>
 namespace putgd::seal {
 // Written by tools/seal/pin_viewer.py; a change to viewer.html changes it deliberately.
-const char viewerSha256[]="6b40c0703f12529cbb7e43a2c67469b451ac54abaccb87a672aaa781d521aa2b";
+const char viewerSha256[]="1074b3e648dd82fda2f186e8ac61e1d4bfcc2b993b1766e88eba1503e4680f82";
 extern const unsigned char sealViewerBytes[];
 extern const unsigned long long sealViewerSize;
 namespace {

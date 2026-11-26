@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-uqMBuI3kuhXgoUIFGlUlDHOsAc8eIXGPJkqNqwwq9J8='; style-src 'sha256-MYtx15lOvZWkh7YAlUVEHZ+x3tveNgkDhh6EC+CTOdM='; img-src blob:; media-src blob:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-kO/GQb5F/oY3MZo9szOk3XjqUyL7PouvZQX5RHxsNPg='; style-src 'sha256-MYtx15lOvZWkh7YAlUVEHZ+x3tveNgkDhh6EC+CTOdM='; img-src blob:; media-src blob:; connect-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex, nofollow">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -111,16 +111,16 @@ function show(meta){
 const IMG=["image/png","image/jpeg","image/gif","image/webp","image/avif","image/bmp","image/svg+xml"];
 const VID=["video/mp4","video/webm","video/ogg","video/quicktime"],AUD=["audio/mpeg","audio/ogg","audio/wav","audio/webm","audio/mp4","audio/flac"];
 // Chrome can't read back a large file a page puts together (from about 256 MB): check first.
-const readable=async b=>{try{if(b.size){await b.slice(0,1).arrayBuffer();await b.slice(b.size-1).arrayBuffer()}return true}catch(e){return false}};
+const readable=async b=>{try{for(const at of b.size?[0,Math.floor(b.size/2),b.size-1]:[])await b.slice(at,at+1).arrayBuffer();return true}catch(e){return false}};
 function large(d,name){
  document.documentElement.dataset.state="open";
  if(typeof window.showSaveFilePicker!=="function")return say("This file is too large for this browser. Open the link in Firefox, or use putgd-cli open.");
  say("This file is too large for this browser to show. Select Save to file to save it.");
  const b=$("savefile");b.hidden=false;
  // The decrypted file is written straight into the file the person picks; nothing else keeps it.
- b.onclick=async()=>{let w=null;
+ b.onclick=async()=>{let w=null;if(b.disabled)return;b.disabled=true;
   try{const h=await window.showSaveFilePicker({suggestedName:name});w=await h.createWritable();
-   b.disabled=true;say("Saving…");for(const p of d.parts)await w.write(p);await w.close();say("Saved.")}
+   say("Saving…");for(const p of d.parts)await w.write(p);await w.close();say("Saved.")}
   catch(e){if(w)try{await w.abort()}catch(x){}
    if(!w&&e&&e.name==="AbortError")return;say("Couldn't save the file. Select Save to file to try again.",true)}
   finally{b.disabled=false}};
