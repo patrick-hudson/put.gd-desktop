@@ -230,7 +230,11 @@ private slots:
   // #2076: process IDs, setting counts, versions and file sizes on real screens are no phone numbers;
   // a phone in the same places still is.
   QTest::newRow("a process ID and setting counts are no phone")<<"kwin_wayland_wrapper[1445660]: | audit: pid=3945093 auid=4294967295 ses=4294967295"<<QStringList{"phone"}<<QStringList{};
-  QTest::newRow("a phone setting or bracket stays a phone")<<"tel=2025550143 | msisdn=2125550100 | Call [202-555-0143]"<<QStringList{"phone"}<<QStringList{"phone: tel=2025550143","phone: msisdn=2125550100","phone: [202-555-0143]"};
+  QTest::newRow("a phone setting or bracket stays a phone")<<"tel=2025550143 | msisdn=2125550100 | Call [202-555-0143] | Call[202-555-0143] | ph=2025550143 | phone-work=2025550143 | mobileNo=2025550143"<<QStringList{"phone"}
+   <<QStringList{"phone: tel=2025550143","phone: msisdn=2125550100","phone: [202-555-0143]","phone: Call[202-555-0143]","phone: ph=2025550143","phone: phone-work=2025550143","phone: mobileNo=2025550143"};
+  QTest::newRow("a phone after a setting's count is a phone")<<"pid=1234 2025550143"<<QStringList{"phone"}<<QStringList{"phone: 2025550143"};
+  QTest::newRow("a dotted international phone is a phone")<<"Tel +44.20.7946.0958"<<QStringList{"phone"}<<QStringList{"phone: +44.20.7946.0958"};
+  QTest::newRow("a phone before a date outside ls -l is a phone")<<"Tel 5550123 2026-10-27"<<QStringList{"phone"}<<QStringList{"phone: 5550123 2026-10-27"};
   QTest::newRow("a ZIP code beside a build number is no phone")<<"67598 26.0909.7058 | 29885 26.1022.6582"<<QStringList{"phone"}<<QStringList{};
   QTest::newRow("a phone with dots is still a phone")<<"Tel 202.555.0143 | Tel 06.12.34.56.78"<<QStringList{"phone"}<<QStringList{"phone: 202.555.0143","phone: 06.12.34.56.78"};
   QTest::newRow("a file size before an ISO date is no phone")<<"-rw-r--r-- 1 lab lab 2461343 2026-10-27 04:02 backup.tar.gz"<<all<<QStringList{};

@@ -2563,12 +2563,10 @@ const QList<Rule>& rules() {
     static const QRegularExpression dots(R"(^\d+(?:\.\d+)+$)"),grouped(R"(^(?:\d{3}\.\d{3}\.\d{4}|\d{2}(?:\.\d{2}){3,})$)");
     if(dots.match(m).hasMatch()&&!grouped.match(m).hasMatch())return false;
     // #2076: nor a number with a version in it (67598 26.0909.7058: a ZIP code beside a build number):
-    // two dots or more, a first group of one or two digits and a later group of four or more. Nor one
-    // number before an ISO date (2461343 2026-10-27, a file's size in ls -l --time-style=long-iso).
-    {static const QRegularExpression version(R"((?:^|[^\d.])\d{1,2}(?:\.\d+){2,}(?![\d.]))"),groups(R"(\.\d{4,})"),
-      sized(R"(^\d{1,12} ((?:19|20)\d\d)-(\d\d)-(\d\d)$)");
-     for(auto it=version.globalMatch(m);it.hasNext();)if(groups.match(it.next().captured()).hasMatch())return false;
-     if(const auto d=sized.match(m);d.hasMatch()&&QDate(d.captured(1).toInt(),d.captured(2).toInt(),d.captured(3).toInt()).isValid())return false;}
+    // two dots or more, a first group of one or two digits and a later group of four or more. A "+"
+    // dialling form is never one (+44.20.7946.0958).
+    if(!m.startsWith('+')){static const QRegularExpression version(R"((?:^|[^\d.])\d{1,2}(?:\.\d+){2,}(?![\d.]))"),groups(R"(\.\d{4,})");
+     for(auto it=version.globalMatch(m);it.hasNext();)if(groups.match(it.next().captured()).hasMatch())return false;}
     // #1975: a span of years is no number to call (1995-2026, (1952-2001)).
     // Years 1900 to 2099 only: Korea's eight-digit service numbers start 15xx to 18xx (1899-1995; Sol S9 on #1976).
     {static const QRegularExpression years(R"(^\(?((?:19|20)\d\d) ?[-–] ?((?:19|20)\d\d)\)?$)");
@@ -3360,16 +3358,20 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
      static const QSet<QString> states{"AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC","PR"};
      const int first=words.first();const int line=candidates.at(first).line;
      const auto number=joined.text.mid(start,length);
-     // #2076: a process's ID in a log line (kwin_wayland_wrapper[1445660]:) and a count after a lowercase
-     // setting name (pid=3945093, auid=4294967295, ses=…) are no numbers to call. A setting that names a
-     // phone keeps it (tel=, phone=, mobile=, msisdn=…).
+     // #2076: a process's ID in a log line (kwin_wayland_wrapper[1445660]:), unbroken in its brackets
+     // with a colon after them, and a count after a setting that names one (pid=3945093, auid=…, ses=…,
+     // max-age=31536000) are no numbers to call. Only the setting's own value is set aside: matching goes
+     // on after it (pid=1234 2025550143). Any other setting keeps its number (ph=, handy=, phone-work=).
      {const auto end=start+length;
-      if(start>=2&&joined.text.at(start-1)=='['&&(joined.text.at(start-2).isLetterOrNumber()||joined.text.at(start-2)=='_')&&end<joined.text.size()&&joined.text.at(end)==']')continue;
+      static const QRegularExpression unbrokenValue(QStringLiteral("^\\d+"));
+      if(start>=2&&joined.text.at(start-1)=='['&&(joined.text.at(start-2).isLetterOrNumber()||joined.text.at(start-2)=='_')&&end+1<joined.text.size()&&joined.text.at(end)==']'&&joined.text.at(end+1)==':'&&unbrokenValue.match(number).capturedLength()==number.size())continue;
       if(start>=2&&joined.text.at(start-1)=='='){
-       qsizetype k=start-1;while(k>0&&(joined.text.at(k-1).isLower()||joined.text.at(k-1).isDigit()||joined.text.at(k-1)=='_'))--k;
-       const auto key=joined.text.mid(k,start-1-k);
-       static const QRegularExpression phoneKey(QStringLiteral("tel|phone|mobile|mob|cell|fax|msisdn|whatsapp|call|contact|number|num|^no$|^nr$"));
-       if(!key.isEmpty()&&key.front().isLower()&&(k==0||!joined.text.at(k-1).isLetter())&&!phoneKey.match(key).hasMatch())continue;
+       qsizetype k=start-1;while(k>0&&(joined.text.at(k-1).isLetterOrNumber()||joined.text.at(k-1)=='_'||joined.text.at(k-1)=='-'))--k;
+       static const QSet<QString> counts{"pid","ppid","tid","tgid","pgid","sid","uid","gid","euid","egid","auid","ses","session","inode","ino","dev","seq","serial","size","bytes","len","length","count","max-age","maxage","ttl","expires","timeout","offset","ts","time","timestamp","epoch","exit","status","rc","code","res","ret","nonce","port","rss","vsz","mem"};
+       if(counts.contains(joined.text.mid(k,start-1-k).toLower())){
+        qsizetype valueEnd=start;while(valueEnd<end&&!joined.text.at(valueEnd).isSpace())++valueEnd;
+        offset=valueEnd;continue;
+       }
       }}
      // #2076: the pattern starts no number right after a digit's dot, a slash's digits or a longer run,
      // so a date with its time may give it only the time's part: after a slashed date's last slash
@@ -3417,6 +3419,10 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
       static const QRegularExpression mode(QStringLiteral("^[-dlcbps][-rwxsStT]{9}[.+@]?$"));
       int head=first;while(head>0&&candidates.at(head-1).line==line)--head;
       if(bare&&mode.match(candidates.at(head).text).hasMatch()&&months.contains(after.toLower())&&day.match(next).hasMatch())continue;
+      // #2076: ...or an ISO date (ls -l --time-style=long-iso: 2461343 2026-10-27), read apart or with the size.
+      {static const QRegularExpression iso(R"(^((?:19|20)\d\d)-(\d\d)-(\d\d)$)"),sized(R"(^\d+ ((?:19|20)\d\d)-(\d\d)-(\d\d)$)");
+       const auto real=[](const QRegularExpressionMatch& d){return d.hasMatch()&&QDate(d.captured(1).toInt(),d.captured(2).toInt(),d.captured(3).toInt()).isValid();};
+       if(mode.match(candidates.at(head).text).hasMatch()&&((bare&&real(iso.match(after)))||real(sized.match(number))))continue;}
       // A `free` row: the row starts with Mem:, Swap:, Total: or -/+, only numbers lie between, the row
       // holds at least three counts, and free's header is above it.
       {static const QRegularExpression count(QStringLiteral("^[0-9.,]+[KMGTi]?$"));
