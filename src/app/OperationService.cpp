@@ -1550,6 +1550,8 @@ Operation OperationService::run(Job job) {
  if(needsNames) {QList<Artifact> list;for(const auto& item:std::as_const(op.items))list.append(item.artifact);auto names=UploadNaming::batch(list,op.settings.namingMode,capabilities.serverNamesObjects?QStringLiteral("keep"):op.settings.collisionPolicy,capabilities.maximumNameBytes,op.settings.randomName);QJsonArray chosen;
   for(int i=0;i<op.items.size();++i) {
    if(!op.items[i].candidate.isEmpty())continue;
+   // #2079: a sealed request's item that sealing refused keeps its failure; it is never named or sent.
+   if(!sendable(op.items[i],sealing))continue;
    // A diagnostics package ignores naming templates: an unguessable name.
    if(op.action==diagnosticsAction)names[i]={"putgd-diagnostics-"+uuid()+".zip","pending"};
    op.items[i].candidate=names[i].name;if(names[i].status!="pending")op.items[i].uploadStatus=names[i].status;chosen.append(QJsonObject{{"itemId",op.items[i].artifact.id},{"name",names[i].name},{"status",names[i].status}});
@@ -1894,6 +1896,9 @@ Operation OperationService::run(Job job) {
 // Lets the destination's provider get ready while the operation's content is still being
 // chosen, captured or copied. What it readied and the operation never used ends with it.
 void OperationService::anticipate(const Operation& op) {
+ // #2079: a sealed request contacts its destination only once it is sealed, so one that can't
+ // be sealed reaches nothing at all; it gives up the warm-up.
+ if(sealWanted(op))return;
  if(const auto provider=providers_.find(op.destination.providerId))if(auto ready=provider->anticipate(op.destination))anticipated_.insert(op.id,std::move(ready));
 }
 namespace {

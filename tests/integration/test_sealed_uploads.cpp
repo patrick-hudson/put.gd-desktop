@@ -64,6 +64,15 @@ struct Fixture {
   return journal.operation(id);
  }
  QJsonObject detail(const QString& id) {HistoryStore journal(operations->databasePath());return journal.detail(id);}
+ // Several files in one upload.
+ Operation uploadAll(const QStringList& names) {
+  QStringList paths;for(const auto& name:names)paths.append(fixture(dir.path(),name,name.toUtf8()));QString id;
+  operations->uploadFiles(paths,"test",{},[&](Error e,QJsonObject r){id=e?"error:"+e.code:r["operationId"].toString();},"report");
+  if(!waitFor([&]{return !id.isEmpty();},10000)||id.startsWith("error:"))return {};
+  HistoryStore journal(operations->databasePath());
+  (void)waitFor([&]{return !journal.operation(id).active()&&operations->diagnostics()["activeOperations"].toInt()==0;},120000);
+  return journal.operation(id);
+ }
 };
 }
 // Sealed links (#2079) through the upload pipeline: what is sent, the link, Retry and History.
@@ -191,8 +200,12 @@ private slots:
   QCOMPARE(item.uploadStatus,QString("failed"));QCOMPARE(item.error.code,QString("seal_too_large"));QVERIFY(item.error.message.contains("2 GB"));
   QVERIFY(item.seal.isEmpty());QCOMPARE(f.provider->count(),0);
   bool accepted=false;f.operations->retry(op.id,[&](Error e,QJsonObject){QVERIFY2(!e,qPrintable(e.message));accepted=true;});PUTGD_TRY_VERIFY(accepted);
-  HistoryStore journal(f.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(op.id).items.first().error.code,QString("seal_too_large"));
-  QCOMPARE(f.provider->count(),0);
+  // The Retry itself finishes, and fails the same way, before anything is asked of the destination.
+  HistoryStore journal(f.operations->databasePath());
+  PUTGD_TRY_VERIFY(!journal.operation(op.id).active()&&f.operations->diagnostics()["activeOperations"].toInt()==0);
+  // A failed file never leaves its operation completed (put.gd reports it partial).
+  QVERIFY(journal.operation(op.id).stateName()!="completed");QCOMPARE(journal.operation(op.id).items.first().error.code,QString("seal_too_large"));
+  QCOMPARE(f.provider->count(),0);QCOMPARE(f.provider->storage.uploads.load(),0);QCOMPARE(f.provider->storage.checks.load(),0);
   // Turning Seal off for a new upload is how it goes out as an ordinary link.
   const auto plain=f.upload(pattern(129),"huge-again.bin",{{"enabled",false}});QCOMPARE(plain.items.first().uploadStatus,QString("uploaded"));QCOMPARE(f.provider->count(),1);
  }
@@ -200,6 +213,7 @@ private slots:
   Fixture f({{"mode","on"}});f.provider->sealSplit=false;f.operations->setSealLimitsForTesting(64,1LL<<30);PUTGD_TRY_VERIFY(f.operations->ready());
   const auto op=f.upload(pattern(65),"big.bin");const auto item=op.items.first();
   QCOMPARE(item.uploadStatus,QString("failed"));QCOMPARE(item.error.code,QString("seal_split_unavailable"));QVERIFY(item.seal.isEmpty());QCOMPARE(f.provider->count(),0);
+  QCOMPARE(f.provider->storage.uploads.load(),0);QCOMPARE(f.provider->storage.checks.load(),0);QVERIFY(op.stateName()!="completed");
   // The same file fits one page where the limit allows it, and seals.
   const auto small=f.upload(pattern(64),"fits.bin");QVERIFY(small.items.first().sealed());QCOMPARE(f.provider->count(),1);
  }
@@ -214,6 +228,16 @@ private slots:
   QVERIFY(!journal.saveOperation(op));
   QVERIFY(journal.operation(op.id).items.first().seal["key"].toString().isEmpty());QVERIFY(f.detail(id)["link"].toString().isEmpty());
   QCOMPARE(journal.forgetSealKey("missing-id").code,QString("history_not_found"));
+  // The mark lives in the operation's journal: removing the History record doesn't lift it, and
+  // the other file of the same upload keeps its key.
+  const auto pair=f.uploadAll({"one.txt","two.txt"});QCOMPARE(pair.items.size(),2);
+  const auto first=pair.items[0].artifact.id,second=pair.items[1].artifact.id;const auto secondKey=pair.items[1].seal["key"].toString();QVERIFY(!secondKey.isEmpty());
+  QVERIFY(!journal.forgetSealKey(first));
+  int removed=0;QVERIFY(!journal.forget({first},{},&removed));QCOMPARE(removed,1);
+  QVERIFY(!journal.saveOperation(pair));
+  const auto saved=journal.operation(pair.id);
+  QVERIFY(saved.items[0].seal["key"].toString().isEmpty());QVERIFY(saved.items[0].seal["keyForgotten"].toBool());
+  QCOMPARE(saved.items[1].seal["key"].toString(),secondKey);
   const auto plain=f.upload("not sealed","h.txt",{{"enabled",false}});QCOMPARE(journal.forgetSealKey(plain.items.first().artifact.id).code,QString("history_not_sealed"));
  }
 };
