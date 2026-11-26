@@ -1386,6 +1386,10 @@ void OperationService::setSeal(const QString& id,bool enabled,JsonReply reply) {
  const auto found=active_.constFind(id);
  if(found==active_.cend()){reply({"operation_not_found","That operation isn't waiting to upload.",{}},{});return;}
  {std::lock_guard lock(sealHooksMutex_);if(!sealOpen_.contains(id)){reply({"seal_too_late","This upload has already started, so Seal can't change now.",{{"operationId",id}}},{});return;}}
+ // A sensitive text check's editor isn't open yet: its toggle starts from the setting, so a choice
+ // now would disagree with it. Before review a recording likewise shows the setting.
+ if(checkSessions_.contains(id)&&checkSessions_.value(id)->phase()!="editing"){reply({"seal_unavailable","Seal can change once the editor is open. Select Open in editor, or start the capture with seal.",{{"operationId",id}}},{});return;}
+ if(recording_&&recording_->active()&&recording_->activeId()==id&&!recording_->reviewing()&&!recording_->exporting()){reply({"recording_state","Seal can change once the recording is in review.",{{"operationId",id}}},{});return;}
  // The open editor's own toggle, as a click sets it: its change comes back through recordSeal.
  if((editor_&&editingId_==id)||(checkSessions_.contains(id)&&checkSessions_.value(id)->phase()=="editing")){editorCommand(id,"seal",{{"on",enabled}},[reply,id,enabled](Error e,QJsonObject state){if(e){reply(e,{});return;}reply({},{{"operationId",id},{"seal",enabled},{"editor",state}});});return;}
  // The recording review's own toggle, likewise; its change comes back as the review's seal event.

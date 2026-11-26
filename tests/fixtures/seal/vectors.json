@@ -1,5 +1,5 @@
 {
-    "about": "Sealed link format v1 test vectors (#2079). tests/unit/test_seal.cpp checks C++ seals each to containerSha256 and opens it; tools/seal/browser_vectors.py checks Firefox and Chromium do the same. Pattern bytes: (i*31+7) % 251. Large containers are kept by hash only.",
+    "about": "Sealed link format v1 test vectors (#2079). tests/unit/test_seal.cpp checks C++ seals each to containerSha256 and opens it; tests/seal/browser_vectors.py checks Firefox and Chromium do the same. Pattern bytes: (i*31+7) % 251. Large containers are kept by hash only.",
     "schemaVersion": 1,
     "vectors": [
         {

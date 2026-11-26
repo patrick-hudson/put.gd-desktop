@@ -37,8 +37,11 @@ def pinned(page: str) -> str:
         raise SystemExit("viewer.html's CSP must be exactly the pinned policy (see CSP in tools/seal/pin_viewer.py)")
     if page.count("<!--putgd-sealed-->") != 1 or re.search(r"https?://", page):
         raise SystemExit("viewer.html needs one <!--putgd-sealed--> marker and no outside address")
-    page = re.sub(r"script-src 'sha256-[^']*'", f"script-src 'sha256-{csp_hash(script.group(1))}'", page, count=1)
-    return re.sub(r"style-src 'sha256-[^']*'", f"style-src 'sha256-{csp_hash(style.group(1))}'", page, count=1)
+    page, scripts = re.subn(r"script-src 'sha256-[^']*'", f"script-src 'sha256-{csp_hash(script.group(1))}'", page)
+    page, styles = re.subn(r"style-src 'sha256-[^']*'", f"style-src 'sha256-{csp_hash(style.group(1))}'", page)
+    if scripts != 1 or styles != 1:
+        raise SystemExit("viewer.html's CSP needs exactly one script-src and one style-src hash")
+    return page
 
 
 def main() -> int:
@@ -58,9 +61,11 @@ def main() -> int:
         for problem in problems:
             print(problem, file=sys.stderr)
         return 1 if problems else 0
+    source, count = re.subn(r'viewerSha256\[\]="[0-9a-f]{64}"', f'viewerSha256[]="{digest}"', PAGE.read_text(encoding="utf-8"))
+    if count != 1:
+        raise SystemExit("src/seal/SealPage.cpp must hold exactly one viewerSha256[]=\"<64 hex>\" pin")
     VIEWER.write_text(wanted, encoding="utf-8")
-    source = PAGE.read_text(encoding="utf-8")
-    PAGE.write_text(re.sub(r'viewerSha256\[\]="[0-9a-f]{64}"', f'viewerSha256[]="{digest}"', source, count=1), encoding="utf-8")
+    PAGE.write_text(source, encoding="utf-8")
     print(digest)
     return 0
 

@@ -197,6 +197,9 @@ private slots:
   HistoryStore journal(f.operations->databasePath());QVERIFY(!journal.forgetSealKey(id));
   const auto record=f.detail(id);QVERIFY(!record["linkAvailable"].toBool());QVERIFY(record["link"].toString().isEmpty());QVERIFY(record["seal"].toObject()["keyForgotten"].toBool());
   QVERIFY(journal.operation(op.id).items.first().seal["key"].toString().isEmpty());
+  // A writer that read the operation before Forget key can't put the key back.
+  QVERIFY(!journal.saveOperation(op));
+  QVERIFY(journal.operation(op.id).items.first().seal["key"].toString().isEmpty());QVERIFY(f.detail(id)["link"].toString().isEmpty());
   QCOMPARE(journal.forgetSealKey("missing-id").code,QString("history_not_found"));
   const auto plain=f.upload("not sealed","h.txt",{{"enabled",false}});QCOMPARE(journal.forgetSealKey(plain.items.first().artifact.id).code,QString("history_not_sealed"));
  }

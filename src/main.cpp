@@ -572,7 +572,8 @@ int main(int argc,char* argv[]) {
   operations.background([provider,destination,stateRoot,cli,cancelled](putgd::Error&){return putgd::runSealCheck(*provider,destination,stateRoot+"/seal-check",cli,cancelled);},
    [&destinationStatus,profileId,fingerprint,revision,done,cancelled](putgd::Error,QJsonObject seal){
     // A cancelled check records nothing, and neither does one that ran while new keys were stored.
-    if(!(cancelled&&cancelled->load())&&destinationStatus.credentialRevision(profileId)==revision)destinationStatus.sealChecked(profileId,fingerprint,seal["state"]=="passed",seal["reason"].toString());
+    if(destinationStatus.credentialRevision(profileId)!=revision){done({{"state","untested"},{"reason",QStringLiteral("New credentials were stored during the check. Test again.")}});return;}
+    if(!(cancelled&&cancelled->load()))destinationStatus.sealChecked(profileId,fingerprint,seal["state"]=="passed",seal["reason"].toString());
     done(seal);
    });
  });

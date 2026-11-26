@@ -957,7 +957,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
 
     @server.tool(annotations=effect)
     async def set_seal(id: str, enabled: bool) -> Json:
-        """Turn the Seal toggle beside Upload on or off for an open edit or recording review (#2079), as its window's own toggle does; it applies when that upload starts. operation_not_found once the operation has finished. get_operation's seal shows a choice once its upload has started."""
+        """Turn the Seal toggle beside Upload on or off for an open editor (also one opened from the sensitive text prompt) or recording review (#2079), as its window's own toggle does; it applies when that upload starts. Refused with seal_unavailable before a sensitive text check's editor opens, recording_state while recording or exporting, seal_too_late once the upload started, operation_not_found once it finished. To seal a capture from the start, pass seal to perform_action or upload_files."""
         if not identifier(id) or type(enabled) is not bool:
             return invalid()
         return await adapter.call('operation.seal', {'id': id, 'enabled': enabled})

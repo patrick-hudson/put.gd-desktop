@@ -178,7 +178,9 @@ private slots:
    const auto key=seal::keyFromFragment(answer["key"].toString());QCOMPARE(key.size(),32);
    QFile page(request["page"].toString());QVERIFY(page.open(QIODevice::ReadOnly));const auto bytes=page.readAll();
    QCOMPARE(QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex()),answer["page"].toObject()["sha256"].toString());
-   QVERIFY((page.permissions()&(QFile::ReadGroup|QFile::ReadOther))==0);
+   const auto shared=QFile::ReadGroup|QFile::WriteGroup|QFile::ExeGroup|QFile::ReadOther|QFile::WriteOther|QFile::ExeOther;
+   QVERIFY((page.permissions()&shared)==0);
+   if(split)QVERIFY((QFile(request["data"].toString()).permissions()&shared)==0);
    seal::ParsedPage parsed;QVERIFY(!seal::parsePage(bytes,parsed));QCOMPARE(parsed.split,split);
    QByteArray container;
    if(split){QCOMPARE(parsed.bin,QString("Abc123.bin"));QFile data(request["data"].toString());QVERIFY(data.open(QIODevice::ReadOnly));container=data.readAll();
@@ -187,7 +189,10 @@ private slots:
    QByteArray plain;QVERIFY(!opened(container,key,"hunter2",&plain));QCOMPARE(plain,v.plain);
    // An existing output is never overwritten.
    QProcess again;again.start(cli,{"--seal-job"});QVERIFY(again.waitForStarted());again.write(QJsonDocument(request).toJson());again.closeWriteChannel();QVERIFY(again.waitForFinished(60000));
-   QVERIFY(!QJsonDocument::fromJson(again.readAllStandardOutput()).object()["ok"].toBool());
+   QCOMPARE(again.exitStatus(),QProcess::NormalExit);QVERIFY(again.exitCode()!=0);
+   const auto refused=QJsonDocument::fromJson(again.readAllStandardOutput()).object();
+   QCOMPARE(refused["ok"],QJsonValue(false));QCOMPARE(refused["error"].toObject()["code"].toString(),QString("seal_failed"));
+   QFile kept(request["page"].toString());QVERIFY(kept.open(QIODevice::ReadOnly));QCOMPARE(kept.readAll(),bytes);
   }
  }
 };

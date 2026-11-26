@@ -3,6 +3,7 @@
 #include "SealPage.h"
 #include <QCryptographicHash>
 #include <QFile>
+#include <QScopeGuard>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <cstdio>
@@ -42,6 +43,8 @@ int runSealJob() {
  QByteArray input;char chunk[4096];
  while(const auto count=std::fread(chunk,1,sizeof(chunk),stdin)){input.append(chunk,qsizetype(count));if(input.size()>65536)return refuse({"seal_failed","The sealing request is too large.",{}});}
  auto request=QJsonDocument::fromJson(input).object();OPENSSL_cleanse(input.data(),size_t(input.size()));
+ // A passphrase that is there but not text is refused, never read as none.
+ if(request.contains("passphrase")&&!request["passphrase"].isString())return refuse({"seal_failed","The sealing request is invalid.",{}});
  const auto passphrase=request["passphrase"].toString();request.remove("passphrase");
  const bool split=request["form"].toString()=="split";
  if(!viewerIntact())return refuse({"seal_viewer_changed","This build's sealed-link viewer doesn't match its pinned hash.",{}});
@@ -52,13 +55,18 @@ int runSealJob() {
  QFile source(request["input"].toString());
  if(!source.open(QIODevice::ReadOnly)||source.size()!=bytes)return refuse({"seal_failed","Couldn't read the file to seal.",{}});
  auto key=randomKey();if(key.isEmpty())return refuse({"seal_failed","Couldn't make a key.",{}});
+ const auto wipeKey=qScopeGuard([&key]{OPENSSL_cleanse(key.data(),size_t(key.size()));});
  const Meta meta{request["name"].toString(),request["type"].toString(),bytes};
  Output page;if(!create(page.file,request["page"].toString()))return refuse({"seal_failed","Couldn't create the sealed page.",{}});
+ // What this job created goes again unless it answers ok; an existing file was never ours.
+ bool done=false;QStringList created{request["page"].toString()};
+ const auto discard=qScopeGuard([&]{if(!done)for(const auto& path:std::as_const(created))QFile::remove(path);});
  const auto prefix=pagePrefix(split),suffix=pageSuffix(),open=dataOpen(split,request["bin"].toString());
  page.write(prefix.constData(),prefix.size());page.write(open.constData(),open.size());
  QJsonObject result{{"ok",true}};
  if(split) {
   Output data;if(!create(data.file,request["data"].toString()))return refuse({"seal_failed","Couldn't create the sealed data file.",{}});
+  created.append(request["data"].toString());
   if(auto e=seal(source,meta,key,passphrase,[&data](const char* d,qint64 n){return data.write(d,n);}))return refuse(e);
   if(!data.ok||!data.file.flush()||::fsync(data.file.handle())!=0)return refuse({"seal_failed","Couldn't write the sealed data file.",{}});
   result["data"]=data.result();
@@ -70,7 +78,7 @@ int runSealJob() {
  const auto close=dataClose();page.write(close.constData(),close.size());page.write(suffix.constData(),suffix.size());
  if(!page.ok||!page.file.flush()||::fsync(page.file.handle())!=0)return refuse({"seal_failed","Couldn't write the sealed page.",{}});
  result["page"]=page.result();result["key"]=fragment(key);
- OPENSSL_cleanse(key.data(),size_t(key.size()));
+ done=true;
  return reply(result);
 }
 }

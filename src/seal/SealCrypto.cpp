@@ -196,7 +196,8 @@ Error open(QIODevice& input,qint64 total,const QByteArray& key,const QString& pa
  if(lastSize<tagBytes+1||chunks>0x100000000LL)return damaged();
  QByteArray in,out,metaBuffer;qint64 metaLength=-1;qint64 fileBytes=0;
  // Every way out wipes what was decrypted here.
- const auto wipe=qScopeGuard([&]{for(auto* buffer:{&in,&out,&metaBuffer})if(!buffer->isEmpty())OPENSSL_cleanse(buffer->data(),size_t(buffer->size()));});
+ // Each buffer's whole capacity: a shorter last chunk leaves earlier plaintext past its size.
+ const auto wipe=qScopeGuard([&]{for(auto* buffer:{&in,&out,&metaBuffer})if(buffer->capacity()>0){buffer->resize(buffer->capacity());OPENSSL_cleanse(buffer->data(),size_t(buffer->size()));}});
  for(qint64 index=0;index<chunks;++index) {
   const bool last=index==chunks-1;const auto size=last?lastSize:full;
   in.resize(size);if(!readExactly(input,in.data(),size))return damaged();
