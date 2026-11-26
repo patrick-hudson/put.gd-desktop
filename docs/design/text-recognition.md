@@ -1399,6 +1399,11 @@ other tool active it does not. The user's side is in the
     `Amex`, `CC`, `PAN`, `Credit`, `Debit` and their kin), a number needs only the earlier card
     check (13 to 19 digits, Luhn, no ISBN, not all zeros), so its grouping and a counted look don't
     count against it (`Card: 4110 4111 4112 4113`).
+  - A UPS tracking number whose `1Z` recognition read as `12` is no card: an 18-digit run that starts
+    with `12` (`128505239413052898`) is left out by the card kind's own check, since about one in ten
+    of them passes Luhn (#2076). A card label before it still lets the earlier card check take it, and
+    cards numbered from 1 with other lengths (UATP's 15 digits, Indonesia's GPN `1946…` with 16) stay
+    cards.
   - A phone number is also not:
     - a number immediately after a currency sign (`€ $ £ ¥ ₹`, touching it), or with a currency sign or code
       (`EUR`, `USD`, `GBP`, `CHF`, `JPY`, `kr`, `zł`, `₽`) as the next word on its line (`1 234 567 €`);
@@ -1448,7 +1453,27 @@ other tool active it does not. The user's side is in the
       channels);
     - a count with spaced thousands (`1 912 615`, one or two digits then two or three groups of
       three);
-    - an unbroken size in an `ls -l` row (the row starts with a file mode, a month and day follow);
+    - an unbroken size in an `ls -l` row (the row starts with a file mode, a month and day follow, or,
+      with `--time-style=long-iso`, an ISO date: `2461343 2026-10-27`, the size read apart or with the
+      date, as the row's fourth or fifth word; #2076). A number before a date in a file name, or
+      outside such a row, stays a phone number (`Tel 5550123 2026-10-27`);
+    - a process's ID in a log line: unbroken digits in brackets right after a word that names no
+      phone, with a colon after them (`kwin_wayland_wrapper[1445660]:`, #2076). A bracketed phone with
+      separators (`Call[202-555-0143]`) or after a phone word (`Call[2025550143]:`, `Tlf[…]:`) stays one;
+    - the value of a setting that names a count, before `=`: `pid`, `ppid`, `uid`, `gid`, `auid`,
+      `ses`, `inode`, `size`, `bytes`, `count`, `max-age`, `ttl`, `timeout`, `timestamp`, `nonce` and
+      the like (`pid=3945093`, `max-age=31536000`, #2076). Only an unbroken value up to a space is set
+      aside, before the long-span retry, and matching goes on after it (`pid=123456 2025550143` finds
+      `2025550143`). A value with separators (`count=202-555-0143`), a `+` dialling form, any other
+      setting (`tel=`, `ph=`, `handy=`, `port=`, `code=`, `mobileNo=`) and a qualified name with a phone
+      word in any part (`phone.pid=`, `ph.pid=`) keep their number. The phone words are the calling words
+      listed below, and any part holding `tel`, `phone`, `mobil`, `msisdn`, `whatsapp` or `handy`;
+    - a number with a version in it: two dots or more, a first group of one or two digits and a later
+      group of four or more, when fewer than 7 other digits remain (`67598 26.0909.7058`, a ZIP code
+      beside a build number; #2076). A `+` dialling form (`+44.20.7946.0958`), a phone word among the
+      two words before it or stuck to it (`Tel 44 20.7946.0958`, `Tel=44 20.7946.0958`), a phone beside
+      the version (`5550123 26.10.7058`) and the phone groupings `202.555.0143` and `06.12.34.56.78`
+      stay phone numbers;
     - an unbroken number in a `free` row: the row starts with `Mem`, `Swap` or `Total` (with its
       colon attached, read as its own word, or missing) or `-/+`, only counts lie between, the row holds three counts or more, and free's header (`used`,
       `free`) is within three lines above;
@@ -2504,6 +2529,10 @@ and 54 and 56 wrong, and the third 1,268 right.
 
 ## Known limits
 
+- On #2076's sweep of 206 real desktop captures, two small groups of false matches remain by design.
+  An IP address is suggested for a few misread fragments that still read as an address (`0.6.0.6`
+  for a listening socket's `0.0.0.0`; 14 matches). An email address is suggested for a network
+  interface name that reads as an address (`vethbd22d30@if33`; 2 matches).
 - Recognition can misread. Small, unusual or low-contrast type, superscripts and a busy background
   produce errors. Check what you paste.
 - A capture with a lot of text is returned cut at the 16 second budget and marked as cut.
