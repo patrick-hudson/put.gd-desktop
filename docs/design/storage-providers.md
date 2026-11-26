@@ -118,35 +118,35 @@ what the upload returned (a deletion URL), so there is nothing to stat first.
 settings: an upload that came back without a deletion URL reports no removal, with the
 reason in `removeUnavailable`. `safeRemoval()` is true for a provider that can delete
 by such a reference or under the conditional and versioned safeguards above.
-`sealUnavailable` and `sealSplit` (#2079) say what a destination can do with
-[sealed links](sealed-links.md#where-it-works). `sealUnavailable` is one sentence saying why a
-sealed page can't be uploaded there, shown to the user and used as the `seal_unavailable`
+`encryptUnavailable` and `encryptSplit` (#2079) say what a destination can do with
+[encrypted links](encrypted-links.md#where-it-works). `encryptUnavailable` is one sentence saying why an
+encrypted page can't be uploaded there, shown to the user and used as the `encrypt_unavailable`
 message; it is empty when it can, and the destination's Test check still decides. Its default
-is "This destination type doesn't support sealed links.", so a provider seals only once it
-clears it. `sealSplit` means the two-file form works too: a page and its data file side by
+is "This destination type doesn't support encrypted links.", so a provider encrypts only once it
+clears it. `encryptSplit` means the two-file form works too: a page and its data file side by
 side under one public Link address. Per-object presigned or authorized links can't give that,
 because the page fetches `./NAME.bin` without the first link's query. A provider with
 `serverNamesObjects` never gets the two-file form, because the page must name its data file.
 Per provider:
 
-| Provider | `sealUnavailable` | `sealSplit` |
+| Provider | `encryptUnavailable` | `encryptSplit` |
 | --- | --- | --- |
 | S3 and R2 | Always empty, presigned links included | True unless `linkMode` is `presigned` |
 | Backblaze B2 | Always empty, authorized links included | True only for `linkMode` `public` |
 | WebDAV | Empty | True |
-| Nextcloud | "Nextcloud share links download HTML files instead of opening them, so a sealed page can't open there." | False |
-| SFTP | Empty with a Link address, else "Sealed links need a Link address for this destination." | True with a Link address |
+| Nextcloud | "Nextcloud share links download HTML files instead of opening them, so an encrypted page can't open there." | False |
+| SFTP | Empty with a Link address, else "Encrypted links need a Link address for this destination." | True with a Link address |
 | Custom uploader | Empty | False |
 | Proton Drive | "Proton Drive already encrypts files end to end." | False |
 
-So a presigned or authorized link still takes one-page sealed uploads up to 64 MB; only a
-larger file fails, with `seal_split_unavailable`. `ProviderCapabilities::toJson` gives the
-pair as `sealLinks` (true when `sealUnavailable` is empty), `sealSplit`, and
-`sealUnavailable` only when it isn't empty, in the `capabilities` method's `providers` and in
-`history.detail`'s `capabilities`. A sealed upload is an ordinary upload to
+So a presigned or authorized link still takes one-page encrypted uploads up to 64 MB; only a
+larger file fails, with `encrypt_split_unavailable`. `ProviderCapabilities::toJson` gives the
+pair as `encryptedLinks` (true when `encryptUnavailable` is empty), `encryptSplit`, and
+`encryptUnavailable` only when it isn't empty, in the `capabilities` method's `providers` and in
+`history.detail`'s `capabilities`. An encrypted upload is an ordinary upload to
 the provider: an HTML artifact under a random name and, in the two-file form, a second ordinary
-upload before it. It gets no `anticipate` warm-up, so a file sealing refuses never reaches the
-provider ([the pipeline](sealed-links.md#the-pipeline)).
+upload before it. It gets no `anticipate` warm-up, so a file put.gd refuses to encrypt never reaches the
+provider ([the pipeline](encrypted-links.md#the-pipeline)).
 
 `diagnosticSettings` is what a diagnostics package may show of a profile's settings;
 the custom uploader reduces rows to names and addresses to scheme and host.

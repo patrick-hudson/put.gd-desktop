@@ -19,23 +19,23 @@ when it succeeds, for the destination and for every destination that names the s
 keychain entry, so a passed test made with the earlier keys no longer counts
 ([destination checks](configuration.md#destination-checks)); Unlock does not.
 
-A destination's [sealed links](sealed-links.md) passphrase (#2079) is a secret of its own,
-beside the destination's keys. Its reference is the profile's `seal.passphraseCredentials`
-([configuration](configuration.md#sealed-links-setting)), and the store caches it under
-`seal:<profileId>` (`sealPassphraseId`) with one value, `passphrase`. Settings saves it with
-`setup.storeSealPassphrase` (`input` `{"passphrase": …}`, one line of at most 1 KB after NFC
+A destination's [encrypted links](encrypted-links.md) passphrase (#2079) is a secret of its own,
+beside the destination's keys. Its reference is the profile's `encrypt.passphraseCredentials`
+([configuration](configuration.md#encrypted-links-setting)), and the store caches it under
+`encrypt:<profileId>` (`encryptPassphraseId`) with one value, `passphrase`. Settings saves it with
+`setup.storeEncryptPassphrase` (`input` `{"passphrase": …}`, one line of at most 1 KB after NFC
 normalization) to the keychain or for this session only; `putgd-cli` refuses that method with
 `credentials_require_settings`, so the passphrase never becomes a process argument.
-`setup.unlockSealPassphrase` reads a saved one, and the startup read above also starts one
-`unlockSealPassphrase` job for each destination in `passphrase` mode whose passphrase is saved
+`setup.unlockEncryptPassphrase` reads a saved one, and the startup read above also starts one
+`unlockEncryptPassphrase` job for each destination in `passphrase` mode whose passphrase is saved
 to the keychain and not loaded. The startup read starts every such job, even past the cap of
-32 setup jobs at once that applies to other requests. Either answers `seal_passphrase_unset` when the destination
+32 setup jobs at once that applies to other requests. Either answers `encrypt_passphrase_unset` when the destination
 has no `passphraseCredentials`. Storing and unlocking one destination's passphrase run one at
 a time, and a keychain passphrase entry takes the same one-at-a-time lock as any other
 keychain entry. Settings refuses a passphrase reference that another keychain entry also uses
-([configuration](configuration.md#sealed-links-setting)). `setup.credentialHint` reports
-`sealPassphraseLoaded`, never the value. An upload never unlocks it: a sealed upload whose
-passphrase isn't loaded fails with `seal_passphrase_locked`. The passphrase reaches only the sealing helper's standard input.
+([configuration](configuration.md#encrypted-links-setting)). `setup.credentialHint` reports
+`encryptPassphraseLoaded`, never the value. An upload never unlocks it: an encrypted upload whose
+passphrase isn't loaded fails with `encrypt_passphrase_locked`. The passphrase reaches only the encryption helper's standard input.
 History, the journal and diagnostics record only that a link has one. A passphrase given to one
 upload with `putgd-cli upload --passphrase-file` is held in memory for that request only.
 
