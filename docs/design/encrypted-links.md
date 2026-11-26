@@ -286,6 +286,19 @@ Encryption sits in the shared pipeline between the immutable artifact and naming
    where encryption is unavailable answers `encrypt_unavailable` with the reason before any other
    refusal, an export in review included. After a failed upload preparation the editor gives
    back its controls with the same rule, so Encrypt stays disabled where it can't be turned on.
+   Recording review shows the toggle whenever the capture's route is an upload with a
+   destination (`uploadReviewOptions`), whatever that destination is called, and disables it
+   while an export runs. `recording.upload`'s own `encrypt` decides that upload alone and
+   never moves the toggle; without it the upload takes the toggle's choice as the window shows
+   it. `RecordingService::exportTo` fixes that choice when the export starts and keeps it in
+   the export request, so Try again (`retryExport`) uses the same choice, and a toggle change
+   during the export applies to the next upload. An upload that asks for encryption, by
+   `encrypt: true` or as a Try again of an encrypted upload, is refused before anything is
+   exported: with `encrypt_unavailable` (the toggle's reason, then "Upload it without
+   encryption."; "Encrypted links aren't available for this upload." when there is no reason),
+   or with `encrypt_passphrase_locked` ("The Encrypted links passphrase isn't loaded. Unlock it
+   in Destinations, then upload again.") when the destination asks for a saved passphrase that
+   isn't loaded.
    To encrypt a capture from the start, pass `encrypt` with `action.invoke` (region, window,
    monitor, desktop, repeat, clipboard and edit; `scroll`, `record` and `text` refuse it with
    `invalid_request`) or `upload.files`. The choice is written into the operation's `encrypt.requested` before its first artifact is stored, so a
@@ -539,7 +552,9 @@ A destination's default is its profile's `encrypt` key, `{mode, passphraseCreden
 only. **On** stays offered only after a passed check of the connection as shown; **Off**
 always is. Editing any connection setting marks the check untested in the window until the
 edited destination passes a Test. A typed passphrase is cleared once Settings accepts the
-store, and stays typed when it is refused. Agents drive it with
+store, stays typed when it is refused, and is cleared with the other typed secrets when
+Settings closes. Saving a destination whose **Encrypted links** mode didn't change leaves its
+`encrypt` object exactly as saved, `passphraseCredentials` included. Agents drive it with
 `ui.encryptedLinks` (MCP `drive_encrypted_links`): `inspect`, `mode` and `unlock`. Its `available` says
 whether encryption can be turned on there, and `modeEnabled` whether the choice can change. A
 passphrase is typed in the window only.
