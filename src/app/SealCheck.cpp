@@ -30,6 +30,10 @@ QJsonObject runSealCheck(StorageProvider& provider,const Destination& destinatio
  if(cancelled->load())return {{"state","cancelled"}};
  if(check.error||check.status!="absent")return failed(check.error?check.error.message:QStringLiteral("Couldn't find a free name for the test page."));
  UploadRequest request{destination,artifact,artifact.name,uuid(),"absent",check.objectReference,check.concurrencyToken,cancelled};
+ // Providers that journal an upload (SFTP's temporary file, S3's multipart ID) ask before they
+ // rely on remote state. The test page keeps no durable journal (a known limit), so each step
+ // is acknowledged as it comes.
+ request.checkpoint=[](const QJsonObject&,std::function<void(Error)> ack){ack({});};
  auto uploaded=awaitProvider<UploadResult>([&](auto cb){provider.upload(request,cb);});
  if(uploaded.status!="uploaded")return failed(uploaded.error?uploaded.error.message:QStringLiteral("The test page didn't upload."),uploaded.status=="unknown"?QStringLiteral("unknown"):QString());
  const auto receipt=uploaded.receipt;const auto url=receipt.directUrl;
