@@ -121,7 +121,7 @@ private slots:
   // window about a change with refreshSnapshot (UiApplicationController), which joins one in flight.
   QObject::disconnect(&service,&SettingsService::statusChanged,&fixture.session,&UiSession::invalidate);
   QObject::connect(&service,&SettingsService::statusChanged,&fixture.session,[&]{fixture.session.refreshSnapshot();});
-  if(late){bool read=false;fixture.client.replyDelayMs.insert("ui.snapshot",300);fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject&){if(method=="ui.snapshot")read=true;};fixture.session.refreshSnapshot();QVERIFY(waitFor([&]{return read;}));}
+  if(late){bool read=false;fixture.client.replyDelayMs.insert("ui.snapshot",300);fixture.client.beforeDispatch=[&](const QString& method,const QJsonObject&){if(method=="ui.snapshot")read=true;};fixture.session.refreshSnapshot();const bool dispatched=waitFor([&]{return read;});fixture.client.beforeDispatch={};QVERIFY(dispatched);}
   else fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="ui.snapshot";};
   auto off=service.document();auto profiles=off["profiles"].toArray();auto profile=profiles.first().toObject();profile["encrypt"]=QJsonObject{{"mode","off"}};profiles[0]=profile;off["profiles"]=profiles;
   bool done=false;fixture.server.dispatch({{"schemaVersion",1},{"requestId","outside-off"},{"session",fixture.server.socketPath()},{"method","settings.save"},{"params",QJsonObject{{"document",off},{"expectedRevision",service.revision()}}}},[&](Error e,QJsonObject){QVERIFY(!e);done=true;});QVERIFY(waitFor([&]{return done;}));QCOMPARE(fileMode(),QStringLiteral("off"));
