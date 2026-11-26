@@ -122,7 +122,10 @@ void DestinationStatus::credentialsChanged(const QString& profileId) {
  const auto profiles=settings_.snapshot().profiles;
  const auto credentials=profiles.value(profileId)["credentials"].toObject();
  credentialRevisions_[profileId]+=1;
- if(credentials["mode"]=="keychain")for(auto it=profiles.cbegin();it!=profiles.cend();++it)if(it.key()!=profileId&&(*it)["credentials"].toObject()==credentials)credentialRevisions_[it.key()]+=1;
+ QStringList affected{profileId};
+ if(credentials["mode"]=="keychain")for(auto it=profiles.cbegin();it!=profiles.cend();++it)if(it.key()!=profileId&&(*it)["credentials"].toObject()==credentials){credentialRevisions_[it.key()]+=1;affected.append(it.key());}
+ // #2079: new keys are another connection: a passed sealed-link check no longer vouches for them.
+ {std::lock_guard lock(sealMutex_);for(const auto& id:std::as_const(affected))sealRecords_.remove(id);}
  save();emit changed();
 }
 void DestinationStatus::keychainWritten(const QString& reference) {

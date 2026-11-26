@@ -3800,7 +3800,7 @@ bool SettingsWindow::admitSetup(){
 }
 void SettingsWindow::beginSetup(const QString& kind,const QJsonObject& input){
  if(selectedDestinationChanged()||saving_||conflict_||initialProfile_||profile_->currentIndex()<0){status({"save_first","Finish valid destination edits before connecting. Changes save automatically.",{}});return;}
- const auto profileId=profileId_->text(),revision=settings_.revision();QJsonObject params{{"profileId",profileId},{"expectedRevision",revision}};if(kind=="storeCredentials")params["credentials"]=input;else if(kind=="createFolder"||kind=="storeSharePassword"||kind=="trustHostKey")params["input"]=input;
+ const auto profileId=profileId_->text(),revision=settings_.revision();QJsonObject params{{"profileId",profileId},{"expectedRevision",revision}};if(kind=="storeCredentials")params["credentials"]=input;else if(kind=="createFolder"||kind=="storeSharePassword"||kind=="trustHostKey"||kind=="storeSealPassphrase")params["input"]=input;
  const auto testMessage=providerType_->currentData()=="proton-drive"?QString("Checking the Proton account and selected folder…"):providerType_->currentData()==SftpPanel::provider()?QString("Connecting, signing in and testing an upload…"):QString("Testing upload, link and cleanup…");
  if(kind=="testDestination"){testAccepting_=true;setupFeedback(testMessage);}
  updateSetupButton();

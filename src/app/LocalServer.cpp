@@ -231,7 +231,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  if(method=="upload.files") {
   // #2079: seal {enabled, passphrase?}: this upload's own Seal choice, and putgd-cli upload --passphrase-file's passphrase.
   const auto seal=p["seal"].toObject();
-  if(p.contains("seal")&&(!p["seal"].isObject()||!seal["enabled"].isBool()||!fields(seal,{"enabled"},{"passphrase"})||(seal.contains("passphrase")&&(!seal["enabled"].toBool()||!string(seal,"passphrase",1024)||seal["passphrase"].toString().contains('\n')||seal["passphrase"].toString().contains('\r'))))){reply(invalid(),{});return;}
+  if(p.contains("seal")&&(!p["seal"].isObject()||!seal["enabled"].isBool()||!fields(seal,{"enabled"},{"passphrase"})||(seal.contains("passphrase")&&(!seal["enabled"].toBool()||!string(seal,"passphrase",1024)||seal["passphrase"].toString().normalized(QString::NormalizationForm_C).toUtf8().size()>1024||seal["passphrase"].toString().contains('\n')||seal["passphrase"].toString().contains('\r'))))){reply(invalid(),{});return;}
   if(!fields(p,{"paths"},{"installation","profileId","sensitiveText","seal"})||!p["paths"].isArray()||p["paths"].toArray().isEmpty()||p["paths"].toArray().size()>10000
      ||(p.contains("installation")&&!QStringList{"system","appimage"}.contains(p["installation"].toString()))||(p.contains("sensitiveText")&&p["sensitiveText"]!="prompt"&&p["sensitiveText"]!="report")||(p.contains("profileId")&&!string(p,"profileId",64))){reply(invalid(),{});return;}
   QStringList paths;for(const auto& value:p["paths"].toArray()){if(!value.isString()||value.toString().isEmpty()||value.toString().size()>4096||!QDir::isAbsolutePath(value.toString())){reply(invalid(),{});return;}paths.append(value.toString());}

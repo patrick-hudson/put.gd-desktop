@@ -67,7 +67,7 @@ QString readPassphrase(const QString& path,Error& error) {
  const auto raw=file.read(seal::maximumPassphraseBytes+3);const bool more=!file.atEnd();
  auto text=QString::fromUtf8(raw);
  if(text.endsWith('\n'))text.chop(1);if(text.endsWith('\r'))text.chop(1);
- if(more||text.isEmpty()||text.contains('\n')||text.contains('\r')||text.normalized(QString::NormalizationForm_C).toUtf8().size()>seal::maximumPassphraseBytes){error={"seal_passphrase_file","The passphrase file must hold one line of 1 to 1024 bytes.",{}};return {};}
+ if(more||text.isEmpty()||text.contains('\n')||text.contains('\r')||text.normalized(QString::NormalizationForm_C).toUtf8().size()>seal::maximumPassphraseBytes){error={"seal_passphrase_file","The passphrase file must hold one line of at most 1 KB.",{}};return {};}
  return text;
 }
 QString safeName(QString name) {

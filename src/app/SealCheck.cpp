@@ -26,6 +26,7 @@ QJsonObject runSealCheck(StorageProvider& provider,const Destination& destinatio
  {QFile file(artifact.path);if(!file.open(QIODevice::WriteOnly|QIODevice::NewOnly)||!file.setPermissions(QFile::ReadOwner|QFile::WriteOwner)||file.write(page)!=page.size())return failed(QStringLiteral("Couldn't write the test page."));}
  const auto removeFile=qScopeGuard([&]{QFile::remove(artifact.path);});
  auto check=awaitProvider<NameCheck>([&](auto cb){provider.checkName(destination,artifact.name,cb,cancelled);});
+ if(cancelled->load())return {{"state","cancelled"}};
  if(check.error||check.status!="absent")return failed(check.error?check.error.message:QStringLiteral("Couldn't find a free name for the test page."));
  UploadRequest request{destination,artifact,artifact.name,uuid(),"absent",check.objectReference,check.concurrencyToken,cancelled};
  auto uploaded=awaitProvider<UploadResult>([&](auto cb){provider.upload(request,cb);});
@@ -34,10 +35,12 @@ QJsonObject runSealCheck(StorageProvider& provider,const Destination& destinatio
  // Removes the test page whatever the fetch found; the destination keeps nothing of it.
  const auto cleanup=[&]()->QString {
   if(!provider.receiptCapabilities(receipt).safeRemoval())return QStringLiteral("left");
-  auto removed=awaitProvider<DeleteResult>([&](auto cb){provider.remove({uuid(),receipt,{},cancelled},[](const QJsonObject&,std::function<void(Error)> ack){ack({});},cb);});
+  auto removed=awaitProvider<DeleteResult>([&](auto cb){provider.remove({uuid(),receipt,{},std::make_shared<std::atomic_bool>(false)},[](const QJsonObject&,std::function<void(Error)> ack){ack({});},cb);});
   return removed.status=="removed"||removed.status=="missing"?QStringLiteral("removed"):QStringLiteral("failed");
  };
  if(url.isEmpty()){const auto left=cleanup();return failed(QStringLiteral("This destination gives no link for an upload."),left);}
+ // Cancelled after the upload: the test page still goes, and nothing more is fetched.
+ if(cancelled->load()){const auto left=cleanup();return QJsonObject{{"state","cancelled"},{"cleanup",left}};}
  // The link goes over standard input: a presigned link's signature never reaches a command line.
  QProcess probe;probe.setStandardErrorFile(QProcess::nullDevice());probe.start(cli,{"--seal-probe","-"});
  QJsonObject answer;

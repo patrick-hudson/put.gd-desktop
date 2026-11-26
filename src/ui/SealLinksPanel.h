@@ -33,6 +33,6 @@ private:
  void refresh();
  QComboBox* mode_=nullptr;QLabel* state_=nullptr;QLineEdit* passphrase_=nullptr;QPushButton* store_=nullptr;QPushButton* unlock_=nullptr;QLabel* stored_=nullptr;
  QFormLayout* form_=nullptr;QWidget* passphraseRow_=nullptr;
- QString provider_,profileId_,credentialMode_,checkState_,checkReason_;bool loaded_=false;
+ QString provider_,profileId_,credentialMode_,checkState_,checkReason_,hintFor_;bool loaded_=false;
 };
 }

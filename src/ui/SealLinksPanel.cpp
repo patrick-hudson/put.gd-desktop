@@ -43,14 +43,15 @@ void SealLinksPanel::build(QFormLayout* form,const Setting& setting) {
  refresh();
 }
 void SealLinksPanel::load(const QJsonObject& profile,const QJsonObject& status,bool passphraseLoaded,bool edited) {
- provider_=profile.value("provider").toString();profileId_=profile.value("id").toString();
+ provider_=profile.value("provider").toString();if(profileId_!=profile.value("id").toString())hintFor_.clear();profileId_=profile.value("id").toString();
  credentialMode_=profile.value("credentials").toObject().value("mode").toString("keychain");
  const auto check=status.value("seal").toObject();checkState_=check.value("state").toString("untested");checkReason_=check.value("reason").toString();
- loaded_=passphraseLoaded;
+ // A status refresh (edited) keeps what the credential hint said; a newly shown destination waits for it.
+ const auto id=profile.value("id").toString();if(!edited||id!=hintFor_){loaded_=passphraseLoaded;}
  if(!edited){const auto mode=profile.value("seal").toObject().value("mode").toString("off");mode_->setCurrentIndex(qMax(0,mode_->findData(mode)));passphrase_->clear();}
  refresh();
 }
-void SealLinksPanel::setPassphraseLoaded(bool loaded) {loaded_=loaded;refresh();}
+void SealLinksPanel::setPassphraseLoaded(bool loaded) {loaded_=loaded;hintFor_=profileId_;refresh();}
 QWidget* SealLinksPanel::control() const {return mode_;}
 QString SealLinksPanel::mode() const {return mode_?mode_->currentData().toString():QStringLiteral("off");}
 QJsonObject SealLinksPanel::apply(QJsonObject profile) const {
@@ -58,9 +59,11 @@ QJsonObject SealLinksPanel::apply(QJsonObject profile) const {
  if(chosen=="off"){if(profile.contains("seal"))profile["seal"]=QJsonObject{{"mode","off"}};return profile;}
  QJsonObject seal{{"mode",chosen}};
  if(chosen=="passphrase") {
-  // Its own entry, beside the destination's keys, in the same kind of storage.
+  // A saved reference stays as it is; a new one is its own entry, beside the destination's keys,
+  // in the same kind of storage.
+  const auto saved=profile.value("seal").toObject().value("passphraseCredentials").toObject();
   const bool session=profile.value("credentials").toObject().value("mode")=="session";
-  seal["passphraseCredentials"]=QJsonObject{{"mode",session?"session":"keychain"},{"reference",session?QJsonValue(QJsonValue::Null):QJsonValue("putgd/seal/"+profile.value("id").toString())}};
+  seal["passphraseCredentials"]=!saved.isEmpty()?saved:QJsonObject{{"mode",session?"session":"keychain"},{"reference",session?QJsonValue(QJsonValue::Null):QJsonValue("putgd/seal/"+profile.value("id").toString())}};
  }
  profile["seal"]=seal;return profile;
 }
@@ -84,7 +87,8 @@ void SealLinksPanel::refresh() {
  stored_->setText(loaded_?QStringLiteral("Passphrase loaded"):credentialMode_=="session"?QStringLiteral("No passphrase for this session yet"):QStringLiteral("Passphrase not loaded"));
 }
 QJsonObject SealLinksPanel::viewState() const {
- return {{"mode",mode()},{"check",checkState_},{"reason",state_?state_->text():QString()},{"available",mode_&&mode_->isEnabled()},
+ // available: whether sealing can be turned on here; modeEnabled: whether the choice can change (Off always can).
+ return {{"mode",mode()},{"check",checkState_},{"reason",state_?state_->text():QString()},{"available",typeReason(provider_).isEmpty()&&checkState_=="passed"},{"modeEnabled",mode_&&mode_->isEnabled()},
   {"passphraseLoaded",loaded_},{"passphraseTyped",passphrase_&&!passphrase_->text().isEmpty()},{"unlockOffered",unlock_&&unlock_->isVisibleTo(unlock_->parentWidget())}};
 }
 bool SealLinksPanel::drive(const QJsonObject& command,QString* refusal) {

@@ -558,18 +558,20 @@ int main(int argc,char* argv[]) {
  setup.setProviderSetup(providerSetup);
  // Sealed links (#2079): a passed Test also checks the destination serves a sealed page as a
  // page, on a worker; the record ties the result to the connection the test checked.
- setup.setSealChecker([&operations,&providers,&destinationStatus,stateRoot](const QString& profileId,const QJsonObject& profile,std::function<void(QJsonObject)> done){
+ setup.setSealChecker([&operations,&providers,&destinationStatus,stateRoot](const QString& profileId,const QJsonObject& profile,std::shared_ptr<std::atomic_bool> cancelled,std::function<void(QJsonObject)> done){
   auto provider=providers.find(profile["provider"].toString());
   const putgd::Destination destination{profile["provider"].toString(),profileId,{},profile["settings"].toObject(),profile["credentials"].toObject()};
   if(!provider||!provider->capabilities(destination).sealUnavailable.isEmpty()){
    const auto reason=provider?provider->capabilities(destination).sealUnavailable:QStringLiteral("This destination is unavailable.");
+   destinationStatus.sealChecked(profileId,putgd::destinationcheck::fingerprint(profile),false,reason);
    done({{"state","unsupported"},{"reason",reason}});return;
   }
   const auto fingerprint=putgd::destinationcheck::fingerprint(profile);
   const auto cli=QDir(QCoreApplication::applicationDirPath()).filePath("putgd-cli");
-  operations.background([provider,destination,stateRoot,cli](putgd::Error&){return putgd::runSealCheck(*provider,destination,stateRoot+"/seal-check",cli,{});},
-   [&destinationStatus,profileId,fingerprint,done](putgd::Error,QJsonObject seal){
-    destinationStatus.sealChecked(profileId,fingerprint,seal["state"]=="passed",seal["reason"].toString());
+  operations.background([provider,destination,stateRoot,cli,cancelled](putgd::Error&){return putgd::runSealCheck(*provider,destination,stateRoot+"/seal-check",cli,cancelled);},
+   [&destinationStatus,profileId,fingerprint,done,cancelled](putgd::Error,QJsonObject seal){
+    // A cancelled check records nothing.
+    if(!(cancelled&&cancelled->load()))destinationStatus.sealChecked(profileId,fingerprint,seal["state"]=="passed",seal["reason"].toString());
     done(seal);
    });
  });

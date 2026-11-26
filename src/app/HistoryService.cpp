@@ -129,8 +129,10 @@ void HistoryService::forgetSealKey(const QString& id,JsonReply reply) {
  const auto path=operations_.databasePath();
  operations_.background([path,id](Error& e){HistoryStore store(path);const auto data=store.detail(id,&e);return QJsonObject{{"operationId",data["operationId"]}};},[this,path,id,reply](Error e,QJsonObject found){
   if(e){reply(e,{});return;}
-  if(operations_.operationActive(found["operationId"].toString())){reply({"history_busy","This upload is still running. Wait for it to finish, then select Forget key.",{}},{});return;}
-  operations_.background([path,id](Error& e){HistoryStore store(path);e=store.forgetSealKey(id);return QJsonObject{{"historyId",id},{"keyForgotten",!e}};},[this,id,reply](Error e,QJsonObject result){
+  const auto operationId=found["operationId"].toString();
+  if(!operations_.holdOperation(operationId)){reply({"history_busy","This upload is still running. Wait for it to finish, then select Forget key.",{}},{});return;}
+  operations_.background([path,id](Error& e){HistoryStore store(path);e=store.forgetSealKey(id);return QJsonObject{{"historyId",id},{"keyForgotten",!e}};},[this,id,operationId,reply](Error e,QJsonObject result){
+   operations_.releaseOperation(operationId);
    if(!e){notifyChanged();logging::info(logHistory(),"Sealed link key forgotten",{{"historyId",id}});}
    reply(e,result);
   });
@@ -511,7 +513,13 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
      } else partError=found.error;
     }
     auto target=items[index].toObject();target["sealDataStatus"]=partOutcome;items[index]=target;doc["items"]=items;
-    if(partOutcome!="removed"&&partOutcome!="already_missing"&&!e)e={"seal_data_left","The sealed page was deleted, but its data file beside it wasn't. It holds only encrypted data.",{{"dataStatus",partOutcome},{"dataError",partError.toJson()}}};
+    // Not finished until the data file goes too: Retry deletion finds the page gone and tries it again.
+    // A data file changed at the destination isn't put.gd's to delete; it is said, not retried.
+    if(partOutcome=="changed")e={"seal_data_left","The sealed page was deleted. The file beside it changed at the destination, so put.gd left it.",{{"dataStatus",partOutcome}}};
+    else if(partOutcome!="removed"&&partOutcome!="already_missing"){
+     outcome=partOutcome=="unknown"?QStringLiteral("unknown"):QStringLiteral("failed");
+     e={"seal_data_left","The sealed page was deleted, but its data file beside it wasn't. It holds only encrypted data. Select Retry deletion.",{{"dataStatus",partOutcome},{"dataError",partError.toJson()}}};
+    }
    }
    item=items[index].toObject();item["status"]=outcome;item["progress"]=progress;item["error"]=e.toJson();items[index]=item;doc["items"]=items;if((error=store.saveDeletion(doc)))return doc;committed();
    items=doc["items"].toArray();

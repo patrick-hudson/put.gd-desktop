@@ -527,6 +527,8 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
  else text=what+(cause.isEmpty()?".":": "+cause+".");
  if(savedLocally)text+=savedLocally==1?" A local copy was saved.":QString(" %1 local copies were saved.").arg(savedLocally);
  if(!originalNote.isEmpty())text+=" "+originalNote;
+ // #2079: a file that went out unsealed says so, whatever happened to the others.
+ for(const auto& reason:std::as_const(unsealed))text+=" "+reason;
  if(!copied.isEmpty())text+=" "+copied;
  if(hasLink)text+=" Click to open in browser.";
  return text;

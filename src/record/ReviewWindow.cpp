@@ -1339,7 +1339,7 @@ ReviewWindow::ReviewWindow(const Options& options, const RecordingConfig& config
         sealReason_ = seal.value("reason").toString();
         seal_->setChecked(seal.value("on").toBool());
         seal_->setEnabled(sealAvailable_ || seal_->isChecked());
-        seal_->setToolTip(sealAvailable_ ? QStringLiteral("Seal this upload: only someone with the full link can open it") : sealReason_);
+        seal_->setToolTip(sealAvailable_ ? QStringLiteral("Seal this upload. Only someone with the full link can open it") : sealReason_);
         seal_->setVisible(!seal.isEmpty());
     }
     connect(seal_, &QPushButton::toggled, this, [this](bool on) { if (!sealAvailable_) seal_->setEnabled(on); emit sealToggled(on); });
@@ -2412,6 +2412,8 @@ bool ReviewWindow::setConfig(const RecordingConfig& config, quint64 seq) {
 }
 void ReviewWindow::setExporting(bool exporting, const QString& label) {
     stopPlayback();
+    // #2079: the resident ignores the Seal toggle while an export runs, so it can't change then.
+    if (seal_) seal_->setEnabled(!exporting && (sealAvailable_ || seal_->isChecked()));
     if (exporting) { cancelPlacement(); chooser_->cancel(); if (adviceDialog_) { adviceDialog_->close(); adviceDialog_.clear(); } if (overlay_->isOpen()) overlay_->dismiss(); }
     if (exporting && discard_) answerDiscard(false);
     exporting_ = exporting;
@@ -3032,6 +3034,7 @@ ReviewWindow::DriveResult ReviewWindow::driveAction(const QJsonObject& params) {
     if (action == "seal") {
         if (!params["on"].isBool()) return invalid("seal takes on: true or false");
         if (!seal_ || seal_->isHidden()) return invalid("This recording has no upload destination");
+        if (!seal_->isEnabled() && params["on"].toBool() != seal_->isChecked()) return DriveResult{"recording_state", "Seal can't change while an export runs", {}};
         if (params["on"].toBool() && !sealAvailable_) return DriveResult{"seal_unavailable", sealReason_, {}};
         seal_->setChecked(params["on"].toBool());
         return done();

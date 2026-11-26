@@ -131,6 +131,10 @@ public:
  bool operationSettling(const QString& id) const {return settling(id);}
  // Whether this operation still holds its slot (call on the resident's thread).
  bool operationActive(const QString& id) const {return active_.contains(id);}
+ // #2079: keeps Retry off an operation while History rewrites its record (Forget key).
+ // False when it is running or already held. Call both on the resident's thread.
+ bool holdOperation(const QString& id) {if(active_.contains(id)||held_.contains(id))return false;held_.insert(id);return true;}
+ void releaseOperation(const QString& id) {held_.remove(id);}
  void recent(JsonReply);
  // Session-thread snapshot of bounded live observations; no SQL or provider IO.
  QJsonArray activeObservations() const;
@@ -464,6 +468,12 @@ private:
  std::function<QString(const QString&,const QJsonObject&)> sealPassphrase_;
  QString sealHelper_;
  QHash<QString,bool> sealChoices_; // guarded by sealHooksMutex_
+ // Operations whose Seal toggle still counts (an open editor, a recording, a check's editor);
+ // enqueue() closes it. Guarded by sealHooksMutex_.
+ QSet<QString> sealOpen_;
+ QSet<QString> held_;
+ // A request's passphrase while its sensitive text check runs; enqueue() takes it. Memory only.
+ QHash<QString,QString> checkPassphrases_;
  // Seals the items of an upload that are to be sealed and not yet (#2079). False when the
  // journal write failed; items that can't be sealed fail with their own error.
  // Whether this upload is to be sealed: its own choice, else its destination's setting.

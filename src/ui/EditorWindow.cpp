@@ -401,7 +401,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  cancel_=new QPushButton("Cancel",footer);cancel_->setObjectName("editorCancel");Ui::role(cancel_,"quiet");footerGrid_->addWidget(cancel_,2,3);
  // #2079: Seal, beside Upload: this upload only, starting from the destination's Seal links setting.
  seal_=new QPushButton("Seal",uploadGroup);seal_->setObjectName("editorSeal");seal_->setCheckable(true);seal_->setIcon(Ui::icon("lock"));seal_->setProperty("uiIconBase",QSize(20,20));seal_->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));Ui::role(seal_,"quiet");seal_->setAutoDefault(false);seal_->hide();uploadRow->addWidget(seal_);
- connect(seal_,&QPushButton::toggled,this,[this](bool on){seal_->setAccessibleDescription(on?QStringLiteral("On"):QStringLiteral("Off"));emit sealToggled(on);});
+ connect(seal_,&QPushButton::toggled,this,[this](bool on){seal_->setAccessibleDescription(on?QStringLiteral("On"):QStringLiteral("Off"));if(!sealAvailable_&&!on)seal_->setEnabled(false);emit sealToggled(on);});
  upload_=new QPushButton("Upload",uploadGroup);upload_->setObjectName("editorUpload");upload_->setIcon(Ui::icon("upload"));upload_->setProperty("uiIconBase",QSize(20,20));upload_->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));Ui::role(upload_,"primary");upload_->setToolTip("Upload edited image (Ctrl+Enter)");upload_->setAutoDefault(false);uploadRow->addWidget(upload_);footerGrid_->addWidget(uploadGroup,2,4);
  root->addWidget(footer);
 
@@ -1005,7 +1005,7 @@ void EditorWindow::setSeal(const QJsonObject& seal) {
  {const QSignalBlocker block(seal_);seal_->setChecked(seal.value("on").toBool());}
  // Off is always possible; On only where the destination passed its sealed-link check.
  seal_->setEnabled(sealAvailable_||seal_->isChecked());
- seal_->setToolTip(sealAvailable_?QStringLiteral("Seal this upload: only someone with the full link can open it"):sealReason_);
+ seal_->setToolTip(sealAvailable_?QStringLiteral("Seal this upload. Only someone with the full link can open it"):sealReason_);
  seal_->setAccessibleDescription(seal_->isChecked()?QStringLiteral("On"):QStringLiteral("Off"));
  seal_->show();
 }

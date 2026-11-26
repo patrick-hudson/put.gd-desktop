@@ -273,7 +273,11 @@ QList<Operation> HistoryStore::recover(Error* error) {
   // Text recognition (#1428) is never rerun, and nothing it read was ever stored.
   else if(state==OperationState::Recognizing) {op.error={"text_interrupted","Text recognition was interrupted. Nothing was copied.",{}};}
   if(op.active()) {op.advance(OperationState::Interrupted);changed=true;}
-  for(auto& i:op.items) if(i.uploadStatus=="uploading") {i.uploadStatus="unknown";changed=true;}
+  for(auto& i:op.items) {
+   if(i.uploadStatus=="uploading") {i.uploadStatus="unknown";changed=true;}
+   // #2079: a split sealed link's data file in flight is reconciled like the page, never resent blindly.
+   if(auto data=i.seal.value("data").toObject();data.value("uploadStatus")=="uploading"){data["uploadStatus"]="unknown";i.seal["data"]=data;if(i.uploadStatus!="uploaded")i.uploadStatus="unknown";changed=true;}
+  }
   if(op.state()==OperationState::Interrupted&&op.copyStatus=="pending") {op.copyStatus="no_result";changed=true;}
   if(changed){op.phase=op.stateName();for(auto& item:op.items)item.phase=item.uploadStatus;}
   if(changed||(op.state()==OperationState::Interrupted&&op.items.isEmpty())) result.append(op);
@@ -377,7 +381,7 @@ std::optional<Operation> HistoryStore::lastUpload(const QString& profileId,Error
 QStringList HistoryStore::journaledOperations(Error* error) const {
  QStringList result;if(error_) {if(error)*error=error_;return result;}
  auto q=forwardQuery(db_);
- if(!q.exec("SELECT id FROM operations WHERE EXISTS(SELECT 1 FROM json_each(operations.data,'$.items') AS item WHERE json_extract(item.value,'$.uploadJournal.uploadId') IS NOT NULL)")) {if(error)*error=sqlError();return result;}
+ if(!q.exec("SELECT id FROM operations WHERE EXISTS(SELECT 1 FROM json_each(operations.data,'$.items') AS item WHERE json_extract(item.value,'$.uploadJournal.uploadId') IS NOT NULL OR json_extract(item.value,'$.seal.data.uploadJournal.uploadId') IS NOT NULL)")) {if(error)*error=sqlError();return result;}
  while(q.next())result.append(q.value(0).toString());
  return result;
 }

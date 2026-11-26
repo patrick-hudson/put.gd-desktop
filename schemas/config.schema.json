@@ -573,6 +573,27 @@
           "settings",
           "credentials"
         ],
+        "if": {
+          "properties": {
+            "provider": {
+              "enum": [
+                "proton-drive",
+                "nextcloud"
+              ]
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "seal": {
+              "properties": {
+                "mode": {
+                  "const": "off"
+                }
+              }
+            }
+          }
+        },
         "properties": {
           "id": {
             "type": "string",
@@ -625,6 +646,29 @@
                       "null"
                     ],
                     "maxLength": 256
+                  }
+                },
+                "if": {
+                  "properties": {
+                    "mode": {
+                      "const": "keychain"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "reference": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "reference": {
+                      "type": "null"
+                    }
                   }
                 }
               }

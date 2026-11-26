@@ -401,7 +401,7 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
  Operation op;op.id=uuid();op.action=action;op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=upload?++invocation_:invalidateCopyEligibility();op.clipboardRevision=source_.clipboardRevision();
  if(upload) {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
  if(sealValue.isBool())op.seal={{"requested",sealValue.toBool()}};
- auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);sensitiveModes_.insert(op.id,sensitiveMode);if(upload)beginUploadCopies(op,source=="clipboard");if(interactive)selectingId_=op.id;if(action=="edit"){editingId_=op.id;editor_=std::make_shared<EditorSession>();if((interactive&&snapshot.captureStyle.enabled)||styleValue.toBool())styledEdits_.insert(op.id);}
+ auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);sensitiveModes_.insert(op.id,sensitiveMode);if(upload)beginUploadCopies(op,source=="clipboard");if(interactive)selectingId_=op.id;if(action=="edit"){editingId_=op.id;editor_=std::make_shared<EditorSession>();{std::lock_guard lock(sealHooksMutex_);sealOpen_.insert(op.id);}if((interactive&&snapshot.captureStyle.enabled)||styleValue.toBool())styledEdits_.insert(op.id);}
  // An edit uploads only when its editor is done; every other upload follows its capture at once.
  if(upload&&action!="edit")anticipate(op);
 #ifdef __GLIBC__
@@ -615,6 +615,8 @@ bool OperationService::needsSensitiveCheck(const Job& job) const {
 }
 void OperationService::admitUpload(Job job) {
  if(!needsSensitiveCheck(job)){enqueue(std::move(job));return;}
+ // #2079: the jobs a check rebuilds carry the request's passphrase on to enqueue().
+ if(!job.sealPassphrase.isEmpty())checkPassphrases_.insert(job.op.id,job.sealPassphrase);
  if(job.cancelled->load()){job.payload={};job.op.cancelled=true;job.op.advance(OperationState::Cancelled);finish(job.op);return;}
  job.op.phase="checking";observe(job.op.publicJson());emit changed(job.op.id);emit observationsChanged();
  checkQueue_.enqueue(std::move(job));pumpChecks();
@@ -629,6 +631,8 @@ void OperationService::pumpChecks() {
 }
 void OperationService::runCheck(Job job) {
  const auto id=job.op.id;checkingId_=id;checkOperations_.insert(id,job.op);
+ // #2079: Open in editor offers the Seal toggle too, until the checked image uploads.
+ {std::lock_guard lock(sealHooksMutex_);sealOpen_.insert(id);}
  auto session=std::make_shared<EditorSession>();checkSessions_.insert(id,session);
  const bool prompt=sensitiveModes_.value(id)=="prompt";
  QPointer<OperationService> owner(this);
@@ -656,6 +660,12 @@ void OperationService::runCheck(Job job) {
  const auto terms=op.settings.quickRedactTerms,patterns=op.settings.quickRedactPatterns,categories=op.settings.sensitiveTextCategories,cover=op.settings.sensitiveTextCover;
  const auto captureStyle=op.settings.captureStyle;const auto styleLimit=std::min(op.settings.limits.imagePixels,op.settings.limits.imageBytes/4);
  const auto coveredRoot=root_+"/covered/"+id;
+ // #2079: Open in editor offers the Seal toggle beside Upload, as Capture region & edit does.
+ const auto sealNow=sealOptions(op);
+ const QJsonObject sealStart=routeOf(op).destination=="upload"&&!op.destination.profileId.isEmpty()?QJsonObject{{"available",sealNow["available"]},{"on",sealNow["on"]},{"reason",sealNow["reason"]}}:QJsonObject{};
+ session->setSealHandler([owner=QPointer<OperationService>(this),id](bool on){
+  QMetaObject::invokeMethod(QCoreApplication::instance(),[owner,id,on]{if(owner&&!owner->stopping_)owner->recordSeal(id,on);},Qt::QueuedConnection);
+ });
  const auto outputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,qint64(512)*1024*1024);
  const auto inputBytes=std::min<qint64>(op.settings.limits.maxFileBytes,256*1024*1024);
  logging::info(logOperation(),"Sensitive text check started",{{"operationId",id},{"action",op.action},{"mode",prompt?"prompt":"report"}});
@@ -663,7 +673,7 @@ void OperationService::runCheck(Job job) {
  auto clock=std::make_shared<QElapsedTimer>();clock->start();
  background([=](Error&){
   // #1893: Open in editor (the sensitive prompt) of a capture opens with its capture style on; a selected file's starts plain.
-  const auto make=[&](EditorJob::Check check){return EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(languages).withAllCores(allCores).withRedactList(terms,patterns).withLinks(links).withStyle(captureStyle,captureStyle.enabled&&QStringList{"region","window","monitor","desktop","scroll"}.contains(shared->op.action),styleLimit).withCheck(std::move(check));};
+  const auto make=[&](EditorJob::Check check){return EditorJob(staging).withRecentColors(recentColors).withAppearance(appearance).withTextLanguages(languages).withAllCores(allCores).withRedactList(terms,patterns).withLinks(links).withSeal(sealStart).withStyle(captureStyle,captureStyle.enabled&&QStringList{"region","window","monitor","desktop","scroll"}.contains(shared->op.action),styleLimit).withCheck(std::move(check));};
   if(shared->payload.kind=="image"){
    // The original stays here for Upload anyway; the helper reads a staged copy.
    QImage copy=shared->payload.image;*outcome=make({categories,prompt,true,{},cover}).run(copy,destination,outputBytes,session);
@@ -950,6 +960,10 @@ void OperationService::decideSensitive(const QString& id,const QString& choice,J
  });
 }
 void OperationService::enqueue(Job job) {
+ // #2079: the Seal toggle's choice joins the operation before anything of it is stored, and the
+ // toggle closes: from here on the upload has decided, and a later choice is refused.
+ {std::lock_guard lock(sealHooksMutex_);if(const auto choice=sealChoices_.constFind(job.op.id);choice!=sealChoices_.cend())job.op.seal["requested"]=*choice;sealChoices_.remove(job.op.id);sealOpen_.remove(job.op.id);}
+ if(const auto passphrase=checkPassphrases_.take(job.op.id);job.sealPassphrase.isEmpty())job.sealPassphrase=passphrase;
 #ifdef __GLIBC__
  if(job.acquire)heapReclamationPending_=true;
 #endif
@@ -1308,6 +1322,7 @@ Error OperationService::acceptRecording(Operation& op) {
  op.id=uuid();op.action=acceptedAction;op.settings=snapshot;op.settingsRevision=settings_.revision();op.created=QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);op.invocation=upload?++invocation_:invalidateCopyEligibility();op.clipboardRevision=source_.clipboardRevision();
  if(upload) {const auto profile=snapshot.profiles.value(route.profileId);op.destination={profile["provider"].toString(),route.profileId,settings_.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};}
  auto flag=std::make_shared<std::atomic_bool>(false);active_.insert(op.id,flag);if(upload)beginUploadCopies(op,false);
+ if(upload){std::lock_guard lock(sealHooksMutex_);sealOpen_.insert(op.id);}
 #ifdef __GLIBC__
  heapReclamationPending_=true;
 #endif
@@ -1370,14 +1385,23 @@ QJsonObject OperationService::sealOptions(const Operation& op) const {
 void OperationService::setSeal(const QString& id,bool enabled,JsonReply reply) {
  const auto found=active_.constFind(id);
  if(found==active_.cend()){reply({"operation_not_found","That operation isn't waiting to upload.",{}},{});return;}
+ {std::lock_guard lock(sealHooksMutex_);if(!sealOpen_.contains(id)){reply({"seal_too_late","This upload has already started, so Seal can't change now.",{{"operationId",id}}},{});return;}}
  // The open editor's own toggle, as a click sets it: its change comes back through recordSeal.
  if(editor_&&editingId_==id){editorCommand(id,"seal",{{"on",enabled}},[reply,id,enabled](Error e,QJsonObject state){if(e){reply(e,{});return;}reply({},{{"operationId",id},{"seal",enabled},{"editor",state}});});return;}
+ // The recording review's own toggle, likewise; its change comes back as the review's seal event.
+ if(recording_&&recording_->active()&&recording_->activeId()==id){QPointer<OperationService> owner(this);
+  recordingCommand("review",{{"id",id},{"action","seal"},{"on",enabled}},[owner,reply,id,enabled](Error e,QJsonObject state){
+   if(e.code=="seal_unavailable"){reply(e,{});return;}
+   // Still recording, so no review window yet: the choice is kept, and the window starts from it.
+   if(e&&owner)owner->recordSeal(id,enabled);
+   reply({},{{"operationId",id},{"seal",enabled},{"review",e?QJsonValue():QJsonValue(state)}});
+  });return;}
  recordSeal(id,enabled);
  reply({},{{"operationId",id},{"seal",enabled}});
 }
 void OperationService::recordSeal(const QString& id,bool enabled) {
  if(!active_.contains(id))return;
- {std::lock_guard lock(sealHooksMutex_);sealChoices_.insert(id,enabled);}
+ {std::lock_guard lock(sealHooksMutex_);if(!sealOpen_.contains(id))return;sealChoices_.insert(id,enabled);}
  logging::info(logOperation(),"Seal choice set",{{"operationId",id},{"enabled",enabled}});
 }
 // Sealed links (#2079). An upload is sealed when it asked to be (op.seal.requested), else when its
@@ -1386,7 +1410,6 @@ void OperationService::recordSeal(const QString& id,bool enabled) {
 bool OperationService::sealItems(Operation& op,const ProviderCapabilities& capabilities,const QString& requestPassphrase,const std::shared_ptr<std::atomic_bool>& cancelled,const std::function<bool(const OperationItem&)>& saveItem) {
  const auto profile=op.settings.profiles.value(op.destination.profileId);
  const auto setting=profile.value("seal").toObject().value("mode").toString(QStringLiteral("off"));
- {std::lock_guard lock(sealHooksMutex_);if(const auto choice=sealChoices_.constFind(op.id);choice!=sealChoices_.cend())op.seal["requested"]=*choice;}
  if(!sealWanted(op))return true;
  QJsonObject check;QString passphrase=requestPassphrase;
  {std::lock_guard lock(sealHooksMutex_);if(sealCheck_)check=sealCheck_(op.destination.profileId,profile);if(passphrase.isEmpty()&&setting=="passphrase"&&sealPassphrase_)passphrase=sealPassphrase_(op.destination.profileId,profile);}
@@ -1640,7 +1663,15 @@ Operation OperationService::run(Job job) {
    part.receipt=uploaded.receipt;part.uploadStatus="uploaded";part.uploadJournal={};part.error={};return keep();
   }
   if(uploaded.status=="unknown"){part.uploadStatus="unknown";part.error=uploaded.error;return settle("unknown",uploaded.error);}
-  if(uploaded.status=="collision")return settle("failed",{"seal_name_taken","The sealed link's random data file name is already taken at the destination, so the upload didn't finish.",{}});
+  if(uploaded.status=="collision") {
+   // Ours from an earlier attempt whose reply was lost, or someone else's.
+   auto stat=storageRequest<StatResult>([&](auto cb){auto request=part.uploadRequest(op.destination,op.requestTimeoutMs);request.cancellation=cancel;provider->reconcile(request,cb);});
+   if(own(stat)){part.receipt=stat.receipt;part.uploadStatus="uploaded";part.uploadJournal={};part.error={};return keep();}
+   if(stat.status!="foreign"){part.uploadStatus="unknown";return settle("unknown",stat.error?stat.error:Error{"publication_unknown","Couldn't confirm whether the sealed link's data file was uploaded. Check the destination before selecting Retry upload.",{}});}
+   return settle("failed",{"seal_name_taken","The sealed link's random data file name is already taken at the destination, so the upload didn't finish.",{}});
+  }
+  // A failure before the provider settled a journaled (multipart) upload leaves it unknown, as for the page.
+  if(uploaded.status=="failed"&&!part.uploadJournal.isEmpty()&&!cancel->load()){part.uploadStatus="unknown";part.error=uploaded.error;return settle("unknown",uploaded.error);}
   part.uploadStatus=cancel->load()?QStringLiteral("cancelled"):QStringLiteral("failed");part.error=uploaded.error;
   return settle(part.uploadStatus,cancel->load()?Error{"cancelled","Upload cancelled. Select Retry upload to upload this file.",{}}:uploaded.error);
  };
@@ -1863,7 +1894,8 @@ namespace {
 Error settlingError() {return {"operation_settling","Previous attempt is still finishing. Wait a moment and try again.",{}};}
 }
 void OperationService::releaseActive(const QString& id) {
- {std::lock_guard lock(sealHooksMutex_);sealChoices_.remove(id);}
+ {std::lock_guard lock(sealHooksMutex_);sealChoices_.remove(id);sealOpen_.remove(id);}
+ checkPassphrases_.remove(id);
  anticipated_.remove(id);
  // Durable completion and source drain can arrive in either order. Retain the
  // bounded operation slot until both have happened; never unlock a live helper.
@@ -2052,6 +2084,8 @@ void OperationService::retry(const QString& id,JsonReply reply,bool sharingOnly)
  // This operation's own state answers first: a Retry refused as settling or busy is never queued behind cleanup or
  // turned into queue_full (#1578).
  if(active_.contains(id)) {reply(settling(id)?settlingError():Error{"operation_busy","This upload is already running.",{}},{});return;}
+ // #2079: Forget key is writing this operation's record; a Retry now could put the key back.
+ if(held_.contains(id)){reply({"operation_busy","History is changing this upload. Try again in a moment.",{}},{});return;}
  if(cleanupInProgress_&&automaticCleanup_){cleanupStop_->store(true);afterCleanup_.append([this,id,reply,sharingOnly]{retry(id,reply,sharingOnly);});return;}
  if(cleanupInProgress_){reply({"cleanup_busy","Temporary files are being cleared. Wait a moment and try again.",{}},{});return;}
  if(!ready_) {reply(notReadyError(),{});return;}
@@ -2250,6 +2284,16 @@ QJsonObject OperationService::diagnostics() const {
 void OperationService::abandonUploads(HistoryStore& store,Operation& op,QJsonObject& outcome) {
  QSet<QString> changed;
  for(auto& item:op.items) {
+  // #2079: a split sealed link's data file may hold an unfinished multipart upload of its own.
+  if(auto data=item.seal.value("data").toObject();!data.value("uploadJournal").toObject().value("uploadId").toString().isEmpty()&&data.value("uploadStatus")!="uploaded") {
+   auto provider=providers_.find(op.destination.providerId);
+   Error error=provider?Error{}:Error{"provider_unavailable","Destination is unavailable. Restore access to it in Destinations.",{}};
+   if(provider){auto lock=objectLock(op.destination,data.value("objectReference").toObject(),data.value("candidate").toString());std::unique_lock guard(*lock);
+    error=storageRequest<Error>([&](auto cb){provider->abandonUpload(op.destination,data.value("uploadJournal").toObject(),cb);});}
+   if(!error){data["uploadJournal"]=QJsonObject{};item.seal["data"]=data;changed.insert(item.artifact.id);outcome["abortedUploads"]=outcome["abortedUploads"].toInt()+1;}
+   else{item.error.details["incompleteUpload"]=true;item.error.details["abortError"]=error.toJson();changed.insert(item.artifact.id);
+    auto kept=outcome["incompleteUploads"].toArray();if(kept.size()<100)kept.append(QJsonObject{{"operationId",op.id},{"itemId",item.artifact.id},{"error",error.toJson()},{"reported",true}});outcome["incompleteUploads"]=kept;}
+  }
   if(item.uploadJournal["uploadId"].toString().isEmpty()||item.uploadStatus=="uploaded")continue;
   auto provider=providers_.find(op.destination.providerId);
   Error error=provider?Error{}:Error{"provider_unavailable","Destination is unavailable. Restore access to it in Destinations.",{}};

@@ -20,7 +20,7 @@ bool validInput(const QString& kind,const QJsonObject& input) {
  if(kind=="trustHostKey")return input.size()==1&&input["fingerprint"].isString()&&!input["fingerprint"].toString().isEmpty()&&input["fingerprint"].toString().size()<=128;
  if(kind=="storeSharePassword")return input.size()==2&&input["password"].isString()&&input["password"].toString().size()<=4096&&input["reference"].isString()&&!input["reference"].toString().isEmpty()&&input["reference"].toString().size()<=256;
  // #2079: a destination's Seal links passphrase, one line of 1 to 1024 bytes.
- if(kind=="storeSealPassphrase")return input.size()==1&&input["passphrase"].isString()&&!input["passphrase"].toString().isEmpty()&&input["passphrase"].toString().toUtf8().size()<=1024&&!input["passphrase"].toString().contains('\n')&&!input["passphrase"].toString().contains('\r');
+ if(kind=="storeSealPassphrase")return input.size()==1&&input["passphrase"].isString()&&!input["passphrase"].toString().isEmpty()&&input["passphrase"].toString().normalized(QString::NormalizationForm_C).toUtf8().size()<=1024&&!input["passphrase"].toString().contains('\n')&&!input["passphrase"].toString().contains('\r');
  if(kind!="storeCredentials")return input.isEmpty();
  // Named values of a custom HTTP uploader: {"values":{key:value}}; the provider checks them.
  if(input.size()==1&&input.contains("values")) {
@@ -39,7 +39,11 @@ bool validInput(const QString& kind,const QJsonObject& input) {
 // Signing in, signing out, storing credentials, the account inspection that binds them and a Test
 // (which binds a hand-stored Nextcloud app password first) use the same credential: one at a time
 // per destination (#1872).
-QString activeKey(const QString& profileId,const QString& kind) {return profileId+"/"+(QStringList{"connectAccount","signOut","storeCredentials","inspectAccount","testDestination"}.contains(kind)?QStringLiteral("account"):kind);}
+QString activeKey(const QString& profileId,const QString& kind) {
+ // #2079: storing and unlocking one Seal links passphrase run one at a time, as for a keychain entry.
+ if(kind=="storeSealPassphrase"||kind=="unlockSealPassphrase")return profileId+"/sealPassphrase";
+ return profileId+"/"+(QStringList{"connectAccount","signOut","storeCredentials","inspectAccount","testDestination"}.contains(kind)?QStringLiteral("account"):kind);
+}
 }
 // Destinations whose credentials live in put.gd's credential store: S3, Backblaze B2
 // (#282), Cloudflare R2 (#1678), Nextcloud and WebDAV (#1872), and a provider with named values
@@ -251,7 +255,7 @@ void SetupService::finish(const QString& id,Error error,QJsonObject result) {
    sealChecking_.insert(id);
    auto event=*found;event["event"]=QJsonObject{{"step","seal"},{"status","running"}};*found=event;emit changed(id);
    QPointer<SetupService> guarded(this);
-   sealChecker_(profileId,profiles.value(profileId),[guarded,id,result](QJsonObject seal) mutable {
+   sealChecker_(profileId,profiles.value(profileId),cancellations_.value(id),[guarded,id,result](QJsonObject seal) mutable {
     if(!guarded)return;
     if(!seal.isEmpty())result["seal"]=seal;
     guarded->finish(id,{},result);
@@ -268,7 +272,7 @@ void SetupService::finish(const QString& id,Error error,QJsonObject result) {
   if(!error&&record["kind"]=="storeCredentials"&&status_)status_->keychainWritten(entry.mid(QStringLiteral("keychain:").size()));
  }
  startupUnlocks_.remove(id);
- if(record["kind"]=="storeCredentials"||record["kind"]=="unlockCredentials")++credentialGeneration_;
+ if(record["kind"]=="storeCredentials"||record["kind"]=="unlockCredentials"||record["kind"]=="storeSealPassphrase"||record["kind"]=="unlockSealPassphrase")++credentialGeneration_;
  // The record of the destination's last check changes before anyone hears the job ended.
  const auto started=testStarts_.take(id);
  if(status_) {

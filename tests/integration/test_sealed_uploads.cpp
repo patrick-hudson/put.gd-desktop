@@ -5,6 +5,7 @@
 #include <QBuffer>
 #include <QRegularExpression>
 #include <QTemporaryDir>
+#include <QUuid>
 using namespace putgd;using namespace putgd::test;
 namespace {
 // A destination that keeps what it was sent, by name, and serves it under one public folder:
@@ -140,6 +141,18 @@ private slots:
   f.checkState="passed";bool accepted=false;f.operations->retry(op.id,[&](Error e,QJsonObject){QVERIFY2(!e,qPrintable(e.message));accepted=true;});PUTGD_TRY_VERIFY(accepted);
   HistoryStore journal(f.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(op.id).items.first().error.code,QString("seal_passphrase_missing"));
   QCOMPARE(f.provider->count(),0);
+ }
+ // A data file in flight when put.gd stopped is reconciled on Retry, never sent blindly again.
+ void recoveryMarksAnInFlightDataFileUnknown() {
+  QTemporaryDir dir;const auto path=dir.filePath("history.sqlite");
+  Operation op;op.id=QUuid::createUuid().toString(QUuid::WithoutBraces);op.restore(operationState("running"));op.settings=Settings::fromValidated(Settings::defaults());
+  OperationItem item;item.artifact.id="sealed-item";item.uploadStatus="stored";item.publicationId="page";
+  item.seal={{"status","sealed"},{"form","split"},{"key","v1.x"},{"data",QJsonObject{{"uploadStatus","uploading"},{"candidate","abc.bin"},{"publicationId","data"}}}};
+  op.items={item};
+  {HistoryStore store(path);QVERIFY(!store.saveOperation(op));}
+  HistoryStore reopened(path);Error error;reopened.recover(&error);QVERIFY(!error);
+  const auto recovered=reopened.operation(op.id).items.first();
+  QCOMPARE(recovered.seal["data"].toObject()["uploadStatus"].toString(),QString("unknown"));QCOMPARE(recovered.uploadStatus,QString("unknown"));
  }
  // The page and its data file share one random stem.
  void splitNamesShareOneStem() {

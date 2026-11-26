@@ -269,6 +269,21 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
         if (validateCredentials)
             if (auto error = validateCredentials(profile["provider"].toString(), credentials)) return error;
     }
+    // #2079: a Seal links passphrase has a keychain entry of its own: no destination's keys and no
+    // other passphrase share it, or saving one would replace the other.
+    {
+        QStringList used;
+        for (const auto& entry : doc["profiles"].toArray()) {
+            const auto profile = entry.toObject();const auto credentials = profile["credentials"].toObject();
+            if (credentials["mode"] == "keychain") used.append(credentials["reference"].toString());
+        }
+        for (const auto& entry : doc["profiles"].toArray()) {
+            const auto pass = entry.toObject()["seal"].toObject()["passphraseCredentials"].toObject();
+            if (pass["mode"] != "keychain") continue;
+            if (used.contains(pass["reference"].toString())) return invalid("/profiles/seal", "The Seal links passphrase needs its own keychain reference, not another destination's.");
+            used.append(pass["reference"].toString());
+        }
+    }
     if(doc.contains("captureDefaults")) {
         const auto output=doc["captureDefaults"].toObject();
         if(!doc["captureDefaults"].isObject()||!keys(output,{"destination","profileId","publicationMode"})||
