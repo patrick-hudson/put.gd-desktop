@@ -225,7 +225,7 @@ private slots:
   QTest::newRow("a phone after a slashed date is no fraction of a second")<<"Updated 2026/11/24 21-54-26-12"<<QStringList{"phone"}<<QStringList{"phone: 2026/11/24 21-54-26-12"};
   QTest::newRow("a timestamp before another number gives no phone")<<"20261124 215426 1234"<<QStringList{"phone"}<<QStringList{};
   QTest::newRow("a phone after a compact timestamp is a phone")<<"20261124 215426 555-0123"<<QStringList{"phone"}<<QStringList{"phone: 555-0123"};
-  QTest::newRow("a timestamp before another field is no phone")<<"2026-11-24-21-54-26 1234"<<QStringList{"phone"}<<QStringList{};
+  QTest::newRow("a timestamp before another field is no phone")<<"2026-11-24-21-54-26 1234 | Updated 2026-11-24 21-54-26 1234"<<QStringList{"phone"}<<QStringList{};
   QTest::newRow("a compact timestamp is no card")<<"Run 20261124215421 done | Run 20261124215421009 done"<<QStringList{"card","phone"}<<QStringList{};
   QTest::newRow("a phone after a slashed date is a phone")<<"Updated 2026/11/24 0612345678"<<QStringList{"phone"}<<QStringList{"phone: 2026/11/24 0612345678"};
   QTest::newRow("a browser build date is no phone")<<"Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0"<<all<<QStringList{};
