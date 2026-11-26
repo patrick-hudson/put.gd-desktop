@@ -237,8 +237,13 @@ class ConfigurationSchema(unittest.TestCase):
                     self.assertEqual([error.message for error in errors], [])
                     inherited = copy.deepcopy(document)
                     inherited['captureDefaults'] = {'destination': 'local', 'profileId': None, 'publicationMode': 'default'}
+                    # Only actions with an output inherit it: Repeat last region and Copy text take a hotkey only.
+                    routed = {name for name, rules in schema['properties']['actions']['properties'].items()
+                              if 'destination' in rules.get('properties', {})}
+                    self.assertNotIn('text', routed)
+                    self.assertNotIn('repeat', routed)
                     for name, action in inherited['actions'].items():
-                        if name != 'repeat':  # Repeat is always a shortcut-only entry.
+                        if name in routed:
                             action.update(destination='default', profileId=None, publicationMode='default')
                     validator.validate(inherited)
                     checked = subprocess.run([cli, '--socket', str(socket), 'settings.validate', json.dumps({'document': inherited})], env=environment,
