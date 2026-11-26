@@ -216,6 +216,15 @@ private slots:
   QTest::newRow("a phone shaped almost as a date and time is a phone")
    <<"Tel 20261124 | Tel 1960 11 24 21 | Tel 2026 11 24 2154 | Tel 2026-13-24-21-54-26 | Tel 2026-11-24-24-54-26 | Updated 2026-11-24 202 555 0143 | Tel 06-12-34-56-78"
    <<QStringList{"phone"}<<QStringList{"phone: 20261124","phone: 1960 11 24 21","phone: 2026 11 24 2154","phone: 2026-13-24-21-54-26","phone: 2026-11-24-24-54-26","phone: 202 555 0143","phone: 06-12-34-56-78"};
+  // Sol on #2078: numbers that do collide with a timestamp's shape. A day-first date needs its minutes, a
+  // fraction of a second has three or six digits, a date is only a timestamp where the number ends,
+  // and a date is a real one.
+  QTest::newRow("a phone that collides with a timestamp's shape is a phone")
+   <<"Tel 06-12-2026-21 | Tel 06-12-2026 78 | Updated 2026-11-24 06 12 34 56 78 | Tel 2026-02-31-21-54-26"
+   <<QStringList{"phone"}<<QStringList{"phone: 06-12-2026-21","phone: 06-12-2026 78","phone: 06 12 34 56 78","phone: 2026-02-31-21-54-26"};
+  QTest::newRow("a phone after a slashed date is no fraction of a second")<<"Updated 2026/11/24 21-54-26-12"<<QStringList{"phone"}<<QStringList{"phone: 2026/11/24 21-54-26-12"};
+  QTest::newRow("a timestamp before another number gives no phone")<<"20261124 215426 1234"<<QStringList{"phone"}<<QStringList{};
+  QTest::newRow("a compact timestamp is no card")<<"Run 20261124215421 done"<<QStringList{"card","phone"}<<QStringList{};
   QTest::newRow("a phone after a slashed date is a phone")<<"Updated 2026/11/24 0612345678"<<QStringList{"phone"}<<QStringList{"phone: 2026/11/24 0612345678"};
   QTest::newRow("a browser build date is no phone")<<"Mozilla/5.0 (X11; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0"<<all<<QStringList{};
   QTest::newRow("an order number is no phone")<<"Order #10234567 shipped"<<all<<QStringList{};

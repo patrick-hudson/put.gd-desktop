@@ -2,6 +2,7 @@
 #include "QuickRedact.h"
 #include <QElapsedTimer>
 #include <QChar>
+#include <QDate>
 #include <QHash>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -2468,43 +2469,65 @@ bool cardGrouping(const QString& text) {
 // #2076: a date with its time, as file names, logs and timestamps print them, is no number to call or
 // card: put.gd's own capture names (2026-11-24-21-54-26), ISO and log dates with a dashed, dotted or
 // spaced time (2026-11-24 21.54.26), day or month first (24/11/2026 21-54-26), compact (20261124-215426)
-// and a millisecond tail (…-26-123). The date must be one (a year 1900 to 2099, a month and a day) and
-// the time one (hours to 23, minutes and seconds to 59). A date spaced like a phone's groups
-// (2026 11 24) counts only with its hours and minutes spaced the same way (2026 11 24 21 54), and a
-// compact date only with its time, so a phone's digits that merely could be a date stay (Tel 20261124,
-// Tel 1960 11 24 21, Tel 2026 11 24 2154).
+// and a millisecond tail (…-26-123, three or six digits). The date must be a real one (a year 1900 to
+// 2099) and the time one (hours to 23, minutes and seconds to 59). Only an ISO date may have its hour
+// alone (2026-11-22 14); a day- or month-first date needs its minutes too, so a phone's pairs read
+// together (Tel 06-12-2026-21) stay a phone. A date spaced like a phone's groups (2026 11 24) counts
+// only with its hours and minutes spaced the same way (2026 11 24 21 54), and a compact date only with
+// its time, so a phone's digits that merely could be a date stay (Tel 20261124, Tel 1960 11 24 21,
+// Tel 2026 11 24 2154). The caller checks that no more digits follow (timestampAt).
 bool timestamp(const QString& text) {
  static const QRegularExpression ymd(R"(^((?:19|20)\d\d)([-./ ])(\d{1,2})\2(\d{1,2})(?:([-. ])(.*))?$)"),
   dmy(R"(^(\d{1,2})([-./ ])(\d{1,2})\2((?:19|20)\d\d)(?:([-. ])(.*))?$)"),
   compact(R"(^((?:19|20)\d\d)(\d\d)(\d\d)[-. ](.+)$)"),
   // The time: an hour alone, with minutes and seconds apart (21-54-26, 21.54, 21 54) or together
-  // (2154, 215426), and a fraction of a second after the seconds; spaced, apart by spaces alone.
-  apart(R"(^(\d{1,2})(?:[-. ](\d\d)(?:[-. ](\d\d)(?:[-.]\d{1,6})?)?)?$)"),together(R"(^(\d\d)(\d\d)(?:(\d\d)(?:[-.]\d{1,6})?)?$)"),
+  // (2154, 215426), and milliseconds or microseconds after the seconds; spaced, apart by spaces alone.
+  apart(R"(^(\d{1,2})(?:[-. ](\d\d)(?:[-. ](\d\d)(?:[-.](?:\d{3}|\d{6}))?)?)?$)"),together(R"(^(\d\d)(\d\d)(?:(\d\d)(?:[-.](?:\d{3}|\d{6}))?)?$)"),
   spacedTime(R"(^(\d{1,2}) (\d\d)(?: (\d\d))?$)");
- const auto day=[](int month,int d){return month>=1&&month<=12&&d>=1&&d<=31;};
- enum class Time {Any,Minutes,Spaced};
+ const auto real=[](int year,int month,int d){return QDate(year,month,d).isValid();};
+ enum class Time {Hour,Minutes,Spaced};
  const auto time=[&](const QString& rest,Time need){
   const auto shapes=need==Time::Spaced?QList<const QRegularExpression*>{&spacedTime}:QList<const QRegularExpression*>{&apart,&together};
   for(const auto* shape:shapes){
    const auto t=shape->match(rest);if(!t.hasMatch())continue;
    const bool minutes=!t.captured(2).isEmpty();
-   if(t.captured(1).toInt()>23||(need!=Time::Any&&!minutes))continue;
+   if(t.captured(1).toInt()>23||(need!=Time::Hour&&!minutes))continue;
    if((minutes&&t.captured(2).toInt()>59)||(!t.captured(3).isEmpty()&&t.captured(3).toInt()>59))continue;
    return true;
   }
   return false;
  };
  // A date, then optionally its time after one separator (a spaced date's must be a space).
- const auto dated=[&](const QRegularExpressionMatch& m){
+ const auto dated=[&](const QRegularExpressionMatch& m,bool iso){
   const bool spaced=m.captured(2)==QLatin1String(" ");
   if(m.captured(5).isEmpty())return !spaced;
   if(spaced&&m.captured(5)!=QLatin1String(" "))return false;
-  return time(m.captured(6),spaced?Time::Spaced:Time::Any);
+  return time(m.captured(6),spaced?Time::Spaced:iso?Time::Hour:Time::Minutes);
  };
- if(const auto m=ymd.match(text);m.hasMatch()&&day(m.captured(3).toInt(),m.captured(4).toInt()))return dated(m);
- if(const auto m=dmy.match(text);m.hasMatch()&&(day(m.captured(3).toInt(),m.captured(1).toInt())||day(m.captured(1).toInt(),m.captured(3).toInt())))return dated(m);
- if(const auto m=compact.match(text);m.hasMatch()&&day(m.captured(2).toInt(),m.captured(3).toInt()))return time(m.captured(4),Time::Minutes);
+ if(const auto m=ymd.match(text);m.hasMatch()&&real(m.captured(1).toInt(),m.captured(3).toInt(),m.captured(4).toInt()))return dated(m,true);
+ if(const auto m=dmy.match(text);m.hasMatch()){
+  const int a=m.captured(1).toInt(),b=m.captured(3).toInt(),year=m.captured(4).toInt();
+  if(real(year,b,a)||real(year,a,b))return dated(m,false);
+ }
+ if(const auto m=compact.match(text);m.hasMatch()&&real(m.captured(1).toInt(),m.captured(2).toInt(),m.captured(3).toInt()))return time(m.captured(4),Time::Minutes);
  return false;
+}
+// #2076: ...and only where the number ends with it: a timestamp the pattern cut short of more digit
+// groups (2026-11-24 06 12 34, then 56 78) is a date and another number, not one timestamp.
+bool timestampAt(const QString& text,qsizetype start,qsizetype length) {
+ const auto end=start+length;
+ if(end<text.size()){
+  qsizetype k=end;if(text.at(k)==' '||text.at(k)=='-'||text.at(k)=='.'||text.at(k)=='/')++k;
+  if(k<text.size()&&text.at(k).isDigit())return false;
+ }
+ return timestamp(text.mid(start,length));
+}
+// #2076: a 14-digit run that is a whole date and time (20261124215421) is no card: no card issuer
+// numbers start 19 or 20.
+bool compactTimestamp(const QString& text) {
+ static const QRegularExpression shape(R"(^((?:19|20)\d\d)(\d\d)(\d\d)([01]\d|2[0-3])([0-5]\d)([0-5]\d)$)");
+ const auto m=shape.match(text);
+ return m.hasMatch()&&QDate(m.captured(1).toInt(),m.captured(2).toInt(),m.captured(3).toInt()).isValid();
 }
 // A card number as the earlier rule read it: 13 to 19 digits, Luhn-valid, no ISBN-13, and (#1939) not
 // all zeros (0000 0000 0000 0000 passes Luhn).
@@ -2521,7 +2544,7 @@ const QList<Rule>& rules() {
   // #1939: a card number is grouped as a card is printed and is no counted row, except after a card
   // label (findOrdered). A diff's sign may start its word before three digits or more
   // (-5493-9997-9808-2174, -411 11111 1111 1111, {+4111...); a country code (+82 10-...) starts none.
-  {"card",QRegularExpression(R"((?:(?<![\d-])|(?<=(?<![^\s{])[-+])(?=\d{3}))(?<!\d\.)\d(?:[ -]?\d){12,18}(?!\d))"),[](const QString& m){return cardNumber(m)&&cardGrouping(m)&&!countedRow(m)&&!timestamp(m);},1},
+  {"card",QRegularExpression(R"((?:(?<![\d-])|(?<=(?<![^\s{])[-+])(?=\d{3}))(?<!\d\.)\d(?:[ -]?\d){12,18}(?!\d))"),[](const QString& m){return cardNumber(m)&&cardGrouping(m)&&!countedRow(m)&&!timestamp(m)&&!compactTimestamp(m);},1},
   // #1939: a package version shaped as an address is none: after an epoch (1:8.17.4.28) or before a
   // release (8.17.4.28-3.fc45, 2.11.7.54-1ubuntu2). A range (10.0.0.1-10.0.0.255) stays. Each
   // lookbehind has a fixed length: Qt 6.4's PCRE2 rejects variable-length ones.
@@ -2557,8 +2580,6 @@ const QList<Rule>& rules() {
     // whatever its groups (+44 20 21 22 23 24); a diff's added year row (+2023 2024 2025) is none.
     static const QRegularExpression dialled(R"(^\+\d{1,3}(?!\d))");
     if(isbn13(m)||dated.match(m).hasMatch()||(!dialled.match(m).hasMatch()&&countedRow(m)))return false;
-    // #2076: nor a date with its time in any of the ways files and logs print one (timestamp).
-    if(!m.startsWith('+')&&timestamp(m))return false;
     // #1939: nor an EAN-13 as printed under its bar code (9 602850 531546), three colour channels
     // (rgb 247 177 121) or a count with spaces between its thousands (1 912 615).
     static const QRegularExpression ean(R"(^\d \d{6} \d{6}$)"),thousands(R"(^\d{1,2}(?: \d{3}){2,3}$)");
@@ -3176,12 +3197,16 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
     auto found=rule.pattern.match(joined.text,offset);if(!found.hasMatch())break;
     auto length=found.capturedLength();
     qsizetype start=found.capturedStart();
-    // #2076: a phone span that starts with a whole date and is no date with its time is the date, then
-    // another number (Updated 2026-11-24 202 555 0143): matching starts again after the date.
-    if(rule.category=="phone"){
-     static const QRegularExpression lead(R"(^(?:(?:19|20)\d\d([-./])\d{1,2}\1\d{1,2}|\d{1,2}([-./])\d{1,2}\2(?:19|20)\d\d) )");
+    // #2076: a date with its time in any of the ways files and logs print one is no number to call
+    // (timestamp), when the number ends there; a span that starts with an ISO date and is not one
+    // whole timestamp is the date, then another number (Updated 2026-11-24 202 555 0143, 2026-11-24 06
+    // 12 34 56 78): matching starts again after the date. A "+" dialling form is never a timestamp.
+    if(rule.category=="phone"&&!found.captured().startsWith('+')){
+     static const QRegularExpression lead(R"(^(?:19|20)\d\d([-./])\d{1,2}\1\d{1,2} )");
+     const bool whole=timestampAt(joined.text,found.capturedStart(),found.capturedLength());
      const auto date=lead.match(found.captured());
-     if(date.hasMatch()&&timestamp(date.captured().trimmed())&&!timestamp(found.captured())){offset=found.capturedStart()+date.capturedLength();continue;}
+     if(!whole&&date.hasMatch()&&timestamp(date.captured().trimmed())){offset=found.capturedStart()+date.capturedLength();continue;}
+     if(whole){offset=found.capturedEnd();continue;}
     }
     // A greedy phone span may contain two separate numbers. Retry prefixes at
     // word boundaries, then resume at the accepted prefix's end.
@@ -3195,7 +3220,9 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
     };
     // #1939: nor is a longer run of four-digit groups printed evenly (a tracking number).
     const auto fours=[&]{const auto text=found.captured();const auto groups=numberGroups(text);for(qsizetype i=0;i+1<groups.size();++i)if(groups.at(i).size()!=4)return false;return groups.size()>2&&!found.captured().contains('-');};
-    if(rule.category=="phone"&&rule.valid&&!rule.valid(found.captured())&&digits(found.captured())>15&&!((cardShaped(found.captured())||fours())&&evenlySpaced())){
+    // #2076: nor one that starts with a date and its time (20261124 215426 1234): its date is no phone.
+    const auto timestamped=[&]{for(qsizetype end=found.capturedStart()+1;end<found.capturedEnd();++end)if(joined.text.at(end)==' '&&timestamp(joined.text.mid(found.capturedStart(),end-found.capturedStart())))return true;return false;};
+    if(rule.category=="phone"&&rule.valid&&!rule.valid(found.captured())&&digits(found.captured())>15&&!((cardShaped(found.captured())||fours())&&evenlySpaced())&&!timestamped()){
      const auto accept=[&](qsizetype end){
       const auto prefix=joined.text.mid(found.capturedStart(),end-found.capturedStart());
       const auto shorter=rule.pattern.match(prefix);
@@ -3328,7 +3355,7 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
       qsizetype from=start-(joined.text.at(start-1)==' '?1:0);
       while(from>0&&(joined.text.at(from-1).isDigit()||joined.text.at(from-1)=='/'||joined.text.at(from-1)=='.'||joined.text.at(from-1)=='-'))--from;
       while(from<start&&!joined.text.at(from).isDigit())++from;
-      if(from<start&&timestamp(joined.text.mid(from,start+length-from)))continue;
+      if(from<start&&timestampAt(joined.text,from,start+length-from))continue;
      }
      if(zip.match(number).hasMatch()){
       // A ZIP+4 is no phone, except one shaped as a Brazilian mobile (9XXXX-XXXX) with no ZIP word or
