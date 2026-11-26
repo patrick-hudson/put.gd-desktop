@@ -2,6 +2,7 @@
 #include "fixtures/Waits.h"
 #include "seal/SealCrypto.h"
 #include "seal/SealPage.h"
+#include "app/SealCheck.h"
 #include <QBuffer>
 #include <QRegularExpression>
 #include <QTemporaryDir>
@@ -150,6 +151,14 @@ private slots:
   f.checkState="passed";bool accepted=false;f.operations->retry(op.id,[&](Error e,QJsonObject){QVERIFY2(!e,qPrintable(e.message));accepted=true;});PUTGD_TRY_VERIFY(accepted);
   HistoryStore journal(f.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(op.id).items.first().error.code,QString("seal_passphrase_missing"));
   QCOMPARE(f.provider->count(),0);
+ }
+ // The Test check's requests carry the destination's settings revision like any other: a worker
+ // refuses one without it, so the check never sends such a request (#2079, lab d69).
+ void sealCheckNeedsTheSettingsRevision() {
+  KeepingProvider provider;QTemporaryDir dir;
+  const Destination destination{"opaque","test",{},QJsonObject{{"workspace","w"}},QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}};
+  const auto result=runSealCheck(provider,destination,dir.filePath("seal-check"),QStringLiteral(PUTGD_CLI_PATH),{});
+  QCOMPARE(result["state"].toString(),QString("failed"));QCOMPARE(provider.storage.checks.load(),0);QCOMPARE(provider.storage.uploads.load(),0);
  }
  // A data file in flight when put.gd stopped is reconciled on Retry, never sent blindly again.
  void recoveryMarksAnInFlightDataFileUnknown() {

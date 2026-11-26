@@ -558,9 +558,10 @@ int main(int argc,char* argv[]) {
  setup.setProviderSetup(providerSetup);
  // Sealed links (#2079): a passed Test also checks the destination serves a sealed page as a
  // page, on a worker; the record ties the result to the connection the test checked.
- setup.setSealChecker([&operations,&providers,&destinationStatus,stateRoot](const QString& profileId,const QJsonObject& profile,std::shared_ptr<std::atomic_bool> cancelled,std::function<void(QJsonObject)> done){
+ setup.setSealChecker([&operations,&providers,&destinationStatus,&settings,stateRoot](const QString& profileId,const QJsonObject& profile,std::shared_ptr<std::atomic_bool> cancelled,std::function<void(QJsonObject)> done){
   auto provider=providers.find(profile["provider"].toString());
-  const putgd::Destination destination{profile["provider"].toString(),profileId,{},profile["settings"].toObject(),profile["credentials"].toObject()};
+  // The revision the request carries, as every other request does: workers refuse one without it.
+  const putgd::Destination destination{profile["provider"].toString(),profileId,settings.revision(),profile["settings"].toObject(),profile["credentials"].toObject()};
   if(!provider||!provider->capabilities(destination).sealUnavailable.isEmpty()){
    const auto reason=provider?provider->capabilities(destination).sealUnavailable:QStringLiteral("This destination is unavailable.");
    destinationStatus.sealChecked(profileId,putgd::destinationcheck::fingerprint(profile),false,reason);

@@ -16,6 +16,7 @@ QString uuid() {return QUuid::createUuid().toString(QUuid::WithoutBraces);}
 }
 QJsonObject runSealCheck(StorageProvider& provider,const Destination& destination,const QString& staging,const QString& cli,std::shared_ptr<std::atomic_bool> cancelled) {
  if(!cancelled)cancelled=std::make_shared<std::atomic_bool>(false);
+ if(destination.profileRevision.isEmpty())return failed(QStringLiteral("The destination's settings revision is missing."));
  const auto caps=provider.capabilities(destination);
  if(!caps.sealUnavailable.isEmpty())return failed(caps.sealUnavailable);
  // The page, as a private file the provider uploads like any artifact.
