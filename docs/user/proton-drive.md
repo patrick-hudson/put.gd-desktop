@@ -398,8 +398,10 @@ Under the builder's Proton lock, `lend`:
 1. Copies the guest brokers into the VM and gives the VM the same blank lab keyring.
 2. Exports the builder's session through the [private credential bridge](../../tools/lab/secret_bridge/README.md)
    and imports it under a new `putgd-lab-UUID` name. If the import fails, `lend` removes
-   the guest entry, and once the removal is confirmed it imports again, once, under a fresh
-   name with new broker processes. KDE's keyring refuses about one new process in a hundred
+   the guest entry, and once the removal is confirmed it imports again, once, with new
+   broker processes: under a fresh name, or under the `--guest-reference` name when one was
+   given. If the removal is not confirmed, there is no second import and the Proton lock
+   stays blocked for `recover`. KDE's keyring refuses about one new process in a hundred
    ([#1418](https://github.com/patrick-hudson/put.gd-desktop/issues/1418)), so the bridge also
    repeats a refused keychain call once in the same process.
 3. Runs COMMAND with `PUTGD_LAB_RUN`, `PUTGD_LAB_PROTON_REFERENCE` and
@@ -410,12 +412,18 @@ Under the builder's Proton lock, `lend`:
 5. Deletes only the guest entry.
 
 Receipts go in `~/putgd-lab/proton/receipts/<time>-<run>/` and hold names and states,
-never session material. `lend.json` also records the guest keyring's provider, default
-collection and whether it was just restarted, each import try (`provisionTries`), and for a
-lend that stopped before COMMAND the step that failed (`failedStep`: `host_brokers`, `place_brokers`,
-`prepare_keyring`, `export` or `import`). A failed import's receipt is kept as
-`provision-1.json`. `lend` also records its outcome in the registry as
-`lastLend`. The smoke test creates a new folder, runs **Check account and folder**
+never session material. `lend.json` also records:
+- `guestKeyring`: the guest keyring's provider, default collection and whether it was just
+  restarted.
+- `provisionTries`: one entry per import try. A try is either `imported`, or failed with its
+  cleanup `pending`, `confirmed` or `nothing_imported`, plus the keyring state after it.
+- `failedStep` and `failure`: when the lend stopped before COMMAND with nothing left in the
+  guest (step `lend_failed` or `provision_failed_abandoned`). The step is `host_brokers`,
+  `place_brokers`, `prepare_keyring`, `export` or `import`.
+
+When a first import fails and its cleanup is confirmed, its receipt is renamed
+`provision-1.json` before the second try, which uses `provision.json`. `lend` also records its
+outcome in the registry as `lastLend`. The smoke test creates a new folder, runs **Check account and folder**
 against it and requires the `account-folder` scope. It then uploads a synthetic
 image privately into that folder, and creates, inspects and revokes its link. With
 `--pictures` it saves the guest's Destinations and History. It has these options:

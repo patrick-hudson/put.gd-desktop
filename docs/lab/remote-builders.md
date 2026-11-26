@@ -619,13 +619,17 @@ guest and sshd's restart cost the row its guest.
 | Live R2 (live rows) | Three uploads to a Cloudflare R2 destination with the bucket-scoped key: public links on `https://cf.ul.gy` and on the bucket's r2.dev address, then a presigned link (signed for at most a day, refused unsigned). Each GET returns the file; each delete from History leaves the origin without the object. A public GET after a delete is recorded, not judged, as either host may serve a cached copy |
 | Live Proton (live rows) | An upload; the recipient's download matches the saved bytes; after revoking, the link no longer resolves. A row with `"proton": false` leaves it out (—) until a Proton lend is proven on its golden |
 
-A Live Proton attempt first lends the builder's session to the guest. When that lend stops
-before the test and its receipts show nothing left in the guest's keychain (step
-`provision_failed_abandoned` or `lend_failed`, every `provision*.json` at `cleanup_confirmed`),
-the cell runs its second attempt, and the attempt's assertion names the lend step that failed
-and the guest keyring, for example "Proton lend stopped before the test: guest keychain import
-refused on 2 tries; guest keyring ksecretd" (#2105). Any other unreturned lend still stops the
-row.
+A Live Proton attempt first lends the builder's session to the guest. Sometimes the attempt's
+own lend stops before the test and leaves nothing in the guest's keychain. That is: the Proton
+source check after it passed; the attempt started exactly one new lend for this run; that
+lend's `lend.json` names no guest entry and ends at `provision_failed_abandoned` or
+`lend_failed`; the Proton lock is not blocked; and every `provision*.json` is at
+`cleanup_confirmed`. Then the attempt is recorded as ⚪ (`not_run`) and the cell runs its
+second attempt. The attempt's assertion names the lend step that failed. It names the guest
+keyring only when the provider is one the controller knows, with "(just restarted)" when it
+was, and it always ends "nothing left in the guest". For example: "Proton lend stopped before
+the test: guest keychain import refused on 2 tries; guest keyring ksecretd; nothing left in
+the guest" (#2105). Any other unreturned lend still stops the row.
 
 ➖ marks a feature the [acceptance matrix](../testing/acceptance-matrix.md) says that
 desktop does not support (`UNSUPPORTED` in `nightly_desktops.py`, with the matrix's
