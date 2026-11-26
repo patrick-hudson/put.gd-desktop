@@ -64,7 +64,8 @@ public:
  void r2Command(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
  // ui.davDestination (#1872): the Nextcloud and WebDAV forms, edited and signed in as a user does.
  void davCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
- // ui.encryptedLinks (#2079): the selected destination's Encrypted links card, as a user drives it.
+ // ui.encryptedLinks (#2079): the selected destination's Encrypted links card, as a user drives it. A mode
+ // change answers once the file has it, or with settings_not_saved once it can't be (#2103).
  void encryptedLinksCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
  // ui.sftpDestination (#1871): the SFTP form, edited, pasted into, tested and trusted as a user does.
  void sftpCommand(const QJsonObject& params,std::function<void(Error,QJsonObject)> reply);
@@ -135,6 +136,12 @@ private:
   bool reconciling=false; // Remove: its add's answer was lost; decided only once the file has been read again
  };
  QList<SaveOperation> saveQueue_;SaveOperation sending_;
+ // #2103: ui.encryptedLinks mode changes waiting for their save, each answered by settleEncryptWaits.
+ // confirmed: a snapshot read after the call, or a failure to read one (confirmError), so a window
+ // that hasn't heard of a change made elsewhere never answers from its stale copy.
+ struct EncryptWait {quint64 serial=0;QString profileId,mode;std::function<void(Error,QJsonObject)> reply;bool confirmed=false;Error confirmError;};
+ QList<EncryptWait> encryptWaits_;quint64 encryptWaitSerial_=0;void settleEncryptWaits(quint64 expired=0);
+ QString savedEncryptMode(const QString& profileId)const;QJsonObject encryptState()const;
  // Unsaved destination groups and settings, "<id>|<group>" or "|<path>", with the reason.
  QMap<QString,QString> notSaved_;
  QPointer<QWidget> typingControl_;
