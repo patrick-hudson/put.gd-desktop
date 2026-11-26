@@ -183,12 +183,25 @@ private slots:
   QCOMPARE(f.provider->count(),2);QVERIFY(f.provider->file(item.candidate).size()<20000);
   QByteArray plain;seal::Meta meta;const auto e=open(*f.provider,item.link(),{},plain,meta);QVERIFY2(!e,qPrintable(e.message));QCOMPARE(plain,bytes);
  }
- // A destination whose links can't serve two files side by side uploads such a file unsealed, and says why.
- void tooLargeForThisDestinationUploadsUnsealedWithItsReason() {
-  Fixture f({{"mode","on"}});f.provider->sealSplit=false;PUTGD_TRY_VERIFY(f.operations->ready());
-  const auto op=f.upload(pattern(seal::inlineLimit+1),"big.bin");const auto item=op.items.first();
-  QCOMPARE(item.uploadStatus,QString("uploaded"));QCOMPARE(item.seal["status"].toString(),QString("off"));QVERIFY(item.seal["reason"].toString().contains("64 MB"));
-  QCOMPARE(item.link(),item.receipt.directUrl);
+ // A sealed request that sealing can't take is never sent unsealed: it fails before anything
+ // goes out, and Retry keeps it sealed (#2079, the design's limits).
+ void fileTooLargeToSealIsNeverSent() {
+  Fixture f({{"mode","on"}});f.operations->setSealLimitsForTesting(64,128);PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto op=f.upload(pattern(129),"huge.bin");const auto item=op.items.first();
+  QCOMPARE(item.uploadStatus,QString("failed"));QCOMPARE(item.error.code,QString("seal_too_large"));QVERIFY(item.error.message.contains("2 GB"));
+  QVERIFY(item.seal.isEmpty());QCOMPARE(f.provider->count(),0);
+  bool accepted=false;f.operations->retry(op.id,[&](Error e,QJsonObject){QVERIFY2(!e,qPrintable(e.message));accepted=true;});PUTGD_TRY_VERIFY(accepted);
+  HistoryStore journal(f.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(op.id).items.first().error.code,QString("seal_too_large"));
+  QCOMPARE(f.provider->count(),0);
+  // Turning Seal off for a new upload is how it goes out as an ordinary link.
+  const auto plain=f.upload(pattern(129),"huge-again.bin",{{"enabled",false}});QCOMPARE(plain.items.first().uploadStatus,QString("uploaded"));QCOMPARE(f.provider->count(),1);
+ }
+ void twoFilesWhereLinksCantServeThemIsNeverSent() {
+  Fixture f({{"mode","on"}});f.provider->sealSplit=false;f.operations->setSealLimitsForTesting(64,1LL<<30);PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto op=f.upload(pattern(65),"big.bin");const auto item=op.items.first();
+  QCOMPARE(item.uploadStatus,QString("failed"));QCOMPARE(item.error.code,QString("seal_split_unavailable"));QVERIFY(item.seal.isEmpty());QCOMPARE(f.provider->count(),0);
+  // The same file fits one page where the limit allows it, and seals.
+  const auto small=f.upload(pattern(64),"fits.bin");QVERIFY(small.items.first().sealed());QCOMPARE(f.provider->count(),1);
  }
  // Forget key: History keeps no way to open it, and offers no link.
  void forgetKeyLeavesNoLink() {

@@ -123,6 +123,8 @@ public:
  bool sealAvailableFor(const QString& action) const;
  // Tests may point sealing at another putgd-cli.
  void setSealHelperForTesting(const QString& path) {sealHelper_=path;}
+ // Tests may lower the sealing size limits (64 MiB for one page, 2 GiB in all).
+ void setSealLimitsForTesting(qint64 inlineBytes,qint64 totalBytes) {sealInlineLimit_=inlineBytes;sealTotalLimit_=totalBytes;}
  // This resident's installation class ("system" or "appimage"); tests may set it.
  void setInstallation(QString installation) {installation_=std::move(installation);}
  QString installation() const {return installation_;}
@@ -467,6 +469,7 @@ private:
  std::function<QJsonObject(const QString&,const QJsonObject&)> sealCheck_;
  std::function<QString(const QString&,const QJsonObject&)> sealPassphrase_;
  QString sealHelper_;
+ qint64 sealInlineLimit_=67108864LL,sealTotalLimit_=2147483648LL;
  QHash<QString,bool> sealChoices_; // guarded by sealHooksMutex_
  // Operations whose Seal toggle still counts (an open editor, a recording, a check's editor);
  // enqueue() closes it. Guarded by sealHooksMutex_.
@@ -478,9 +481,9 @@ private:
  // journal write failed; items that can't be sealed fail with their own error.
  // Whether this upload is to be sealed: its own choice, else its destination's setting.
  bool sealWanted(const Operation& op) const;
- // The one rule every send obeys: an upload that is to be sealed sends an item only once it
- // is sealed, or once sealing was turned off for it with a reason (seal.status "off").
- static bool sendable(const OperationItem& item,bool sealWanted) {return !sealWanted||item.sealed()||item.seal.value("status")==QLatin1String("off");}
+ // The one rule every send obeys, without exceptions: an upload that is to be sealed sends an
+ // item only once it is sealed.
+ static bool sendable(const OperationItem& item,bool sealWanted) {return !sealWanted||item.sealed();}
  bool sealItems(Operation& op,const ProviderCapabilities&,const QString& requestPassphrase,const std::shared_ptr<std::atomic_bool>& cancelled,const std::function<bool(const OperationItem&)>& saveItem);
  Error startupError_;
  // Recovers the journal on a worker; a failure (a full disk, an I/O error, a database another tool holds, or a lock that cannot be taken: QLockFile

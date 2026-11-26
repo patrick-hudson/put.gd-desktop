@@ -1386,12 +1386,17 @@ void OperationService::setSeal(const QString& id,bool enabled,JsonReply reply) {
  const auto found=active_.constFind(id);
  if(found==active_.cend()){reply({"operation_not_found","That operation has finished, or there is none with this ID.",{}},{});return;}
  {std::lock_guard lock(sealHooksMutex_);if(!sealOpen_.contains(id)){reply({"seal_too_late","This upload has already started, so Seal can't change now.",{{"operationId",id}}},{});return;}}
- // A sensitive text check's editor isn't open yet: its toggle starts from the setting, so a choice
- // now would disagree with it. Before review a recording likewise shows the setting.
+ // A change counts only while the window that shows the toggle is open and editing: a sensitive
+ // text check's editor not yet opened, a recording not yet in review and an edit already
+ // submitted all show (or showed) another state.
  if(checkSessions_.contains(id)&&checkSessions_.value(id)->phase()!="editing"){reply({"seal_unavailable","Seal can change once the editor is open. Select Open in editor, or start the capture with seal.",{{"operationId",id}}},{});return;}
  if(recording_&&recording_->active()&&recording_->activeId()==id&&!recording_->reviewing()&&!recording_->exporting()){reply({"recording_state","Seal can change once the recording is in review.",{{"operationId",id}}},{});return;}
+ const bool editorOpen=editor_&&editingId_==id&&editor_->phase()=="editing";
+ const bool checkOpen=checkSessions_.contains(id)&&checkSessions_.value(id)->phase()=="editing";
+ const bool reviewOpen=recording_&&recording_->active()&&recording_->activeId()==id;
+ if(!editorOpen&&!checkOpen&&!reviewOpen){reply({"seal_too_late","This upload has already started, so Seal can't change now.",{{"operationId",id}}},{});return;}
  // The open editor's own toggle, as a click sets it: its change comes back through recordSeal.
- if((editor_&&editingId_==id)||(checkSessions_.contains(id)&&checkSessions_.value(id)->phase()=="editing")){editorCommand(id,"seal",{{"on",enabled}},[reply,id,enabled](Error e,QJsonObject state){if(e){reply(e,{});return;}reply({},{{"operationId",id},{"seal",enabled},{"editor",state}});});return;}
+ if(editorOpen||checkOpen){editorCommand(id,"seal",{{"on",enabled}},[reply,id,enabled](Error e,QJsonObject state){if(e){reply(e,{});return;}reply({},{{"operationId",id},{"seal",enabled},{"editor",state}});});return;}
  // The recording review's own toggle, likewise; its change comes back as the review's seal event.
  // While an export runs nothing changes; before review the choice is kept and the window starts from it.
  if(recording_&&recording_->active()&&recording_->activeId()==id) {
@@ -1425,13 +1430,12 @@ bool OperationService::sealItems(Operation& op,const ProviderCapabilities& capab
   else if(check.value("state")!="passed")refusal={"seal_check_required",check.value("state")=="failed"?"This destination didn't pass the sealed-link check: "+check.value("reason").toString()+" Turn off Seal to upload it.":QStringLiteral("Select Test upload and link for this destination before uploading sealed links."),{}};
   else if(op.seal.value("passphraseFrom")=="request"&&requestPassphrase.isEmpty())refusal={"seal_passphrase_missing","This upload's passphrase came with the request and isn't kept, so it can't be sealed now. Upload the file again with its passphrase.",{}};
   else if(setting=="passphrase"&&passphrase.isEmpty())refusal={"seal_passphrase_locked","The Seal links passphrase isn't loaded. Unlock it in Destinations, then select Retry upload.",{}};
-  if(refusal) {item.uploadStatus="failed";item.phase="failed";item.error=refusal;if(!saveItem(item))return false;continue;}
-  // The format's limits, as the design sets them: such a file uploads unsealed and says why.
-  const bool split=item.artifact.bytes>67108864LL;
-  QString off;
-  if(item.artifact.bytes>2147483648LL)off=QStringLiteral("Files over 2 GB can't be sealed, so this one uploaded without sealing.");
-  else if(split&&(!capabilities.sealSplit||capabilities.serverNamesObjects))off=QStringLiteral("Files over 64 MB are sealed as two files, which this destination's links can't serve, so this one uploaded without sealing.");
-  if(!off.isEmpty()){item.seal={{"status","off"},{"reason",off}};logging::info(logOperation(),"Upload not sealed",{{"operationId",op.id},{"itemId",item.artifact.id},{"bytes",double(item.artifact.bytes)}});if(!saveItem(item))return false;continue;}
+  // The format's limits: a file sealing can't take fails before anything is sent. It is never
+  // uploaded unsealed; the user turns off Seal and uploads again for an ordinary link.
+  const bool split=item.artifact.bytes>sealInlineLimit_;
+  if(!refusal&&item.artifact.bytes>sealTotalLimit_)refusal={"seal_too_large","This file is too large to seal (2 GB limit). Turn off Seal to upload it as an ordinary link.",{}};
+  else if(!refusal&&split&&(!capabilities.sealSplit||capabilities.serverNamesObjects))refusal={"seal_split_unavailable","Files over 64 MB are sealed as a page and a data file beside it, which this destination's links can't serve. Turn off Seal to upload it as an ordinary link.",{}};
+  if(refusal) {item.uploadStatus="failed";item.phase="failed";item.error=refusal;logging::info(logOperation(),"Upload not sealed, so not sent",{{"operationId",op.id},{"itemId",item.artifact.id},{"code",refusal.code},{"bytes",double(item.artifact.bytes)}});if(!saveItem(item))return false;continue;}
   item.phase="sealing";observe(op.publicJson());
   // The page and its data file share one random stem, as the design shows (k3Xq….html, k3Xq….bin).
   const auto pageName=SealJob::randomName("html"),binName=split?pageName.chopped(5)+".bin":QString();

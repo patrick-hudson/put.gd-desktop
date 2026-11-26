@@ -167,17 +167,20 @@ Error HistoryStore::checkpointOperation(const Operation& op,const QSet<QString>&
 }
 Error HistoryStore::persistOperation(const Operation& given,const ProviderRegistry* providers,const QSet<QString>* changedItems) {
  if(error_) return error_;
- if(!db_.transaction()) return sqlError();
+ bool sealedKeys=false;for(const auto& item:given.items)sealedKeys|=item.sealed()&&!item.seal.value("key").toString().isEmpty();
+ // #2079: reading before writing takes the write lock first, as saveDeletion does.
+ if(sealedKeys?!beginWrite():!db_.transaction()) return sqlError();
  QSqlQuery q(db_);
  // #2079: a key Forget key removed stays removed, whatever copy of the operation a writer
- // started from (a Retry, a copy or a local-save retry that read it earlier).
+ // started from (a Retry, a copy or a local-save retry that read it earlier). The mark is read
+ // from the operation's own journal, which outlives its History record, in one query.
  Operation op=given;
- for(auto& item:op.items) {
-  if(!item.sealed()||item.seal.value("key").toString().isEmpty())continue;
-  q.prepare("SELECT json_extract(data,'$.seal.keyForgotten') FROM history WHERE id=?");q.addBindValue(item.artifact.id);
+ if(sealedKeys) {
+  q.prepare("SELECT json_extract(item.value,'$.artifact.id') FROM operations,json_each(operations.data,'$.items') AS item WHERE operations.id=? AND json_extract(item.value,'$.seal.keyForgotten')=1");
+  q.addBindValue(op.id);
   if(!q.exec()){db_.rollback();return sqlError();}
-  if(q.next()&&q.value(0).toInt()==1){item.seal["key"]=QString();item.seal["keyForgotten"]=true;}
-  q.finish();
+  QSet<QString> forgotten;while(q.next())forgotten.insert(q.value(0).toString());q.finish();
+  for(auto& item:op.items)if(forgotten.contains(item.artifact.id)){item.seal["key"]=QString();item.seal["keyForgotten"]=true;}
  }
  q.prepare("INSERT INTO operations VALUES(?,?) ON CONFLICT(id) DO UPDATE SET data=excluded.data");q.addBindValue(op.id);q.addBindValue(encode(op.toJson()));bool ok=q.exec();
  for(const auto& item:op.items) {
@@ -609,7 +612,8 @@ Error HistoryStore::updateRemote(const QString& id,const QString& status,const E
 }
 Error HistoryStore::forgetSealKey(const QString& id) {
  if(error_)return error_;
- if(!db_.transaction())return sqlError();
+ // It reads before it writes: the write lock first.
+ if(!beginWrite())return sqlError();
  const auto fail=[this](Error e){db_.rollback();return e;};
  QSqlQuery q(db_);q.prepare("SELECT data,operation_id FROM history WHERE id=?");q.addBindValue(id);
  if(!q.exec())return fail(sqlError());

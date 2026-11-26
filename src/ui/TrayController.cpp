@@ -466,8 +466,8 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
  // A suppressed copy (#473) is deliberate: the clipboard moved on, or a newer
  // copy took its place, between the capture and the link. Say so, and where
  // the link still is.
- bool sealed=!items.isEmpty(),passphrase=false;QStringList unsealed;
- for(const auto& value:items){const auto seal=value.toObject()["seal"].toObject();sealed&=seal["status"]=="sealed";passphrase|=seal["passphrase"].toBool();if(seal["status"]=="off"&&value.toObject()["uploadStatus"]=="uploaded"&&!unsealed.contains(seal["reason"].toString()))unsealed.append(seal["reason"].toString());}
+ bool sealed=!items.isEmpty(),passphrase=false;
+ for(const auto& value:items){const auto seal=value.toObject()["seal"].toObject();sealed&=seal["status"]=="sealed";passphrase|=seal["passphrase"].toBool();}
  const QString copied=copy=="copied"?(localOnly?"Result copied to clipboard.":sealed?QString(items.size()>1?"Sealed links copied to clipboard.":"Sealed link copied to clipboard.")+(passphrase?QStringLiteral(" Send the passphrase separately."):QString()):"Link copied to clipboard."):copy=="failed"?(localOnly?"Couldn't copy the result.":"Couldn't copy the link."):
   copy=="suppressed"?(localOnly?"Result not copied because your clipboard changed. Copy it from History.":"Link not copied because your clipboard changed. Copy it from History."):QString{};
  // #1820: a covered upload whose original, before covering, couldn't be kept locally says so, whatever the upload's outcome.
@@ -478,8 +478,6 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
   // #1820: what the sensitive text check covered on its own, never after a check that couldn't finish.
   if(const auto sensitive=operation["sensitive"].toObject();sensitive["complete"].toBool(false))if(const auto covered=coveredSentence(sensitive["covered"].toObject());!covered.isEmpty())parts.append(covered);
   if(!originalNote.isEmpty())parts.append(originalNote);
-  // #2079: a file that was to be sealed and couldn't be says why it went unsealed.
-  for(const auto& reason:std::as_const(unsealed))parts.append(reason);
   if(!copied.isEmpty())parts.append(copied);
   // #1871: an SFTP upload without a Link address says where the file went; the clipboard is left as it was.
   if(!hasLink&&items.size()==1){const auto receipt=items.first().toObject()["receipt"].toObject();const auto place=receipt["objectReference"].toObject()["location"].toString();if(receipt["destination"].toObject()["providerId"]=="sftp"&&!place.isEmpty())parts.append("Saved to "+place+".");}
@@ -527,8 +525,6 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
  else text=what+(cause.isEmpty()?".":": "+cause+".");
  if(savedLocally)text+=savedLocally==1?" A local copy was saved.":QString(" %1 local copies were saved.").arg(savedLocally);
  if(!originalNote.isEmpty())text+=" "+originalNote;
- // #2079: a file that went out unsealed says so, whatever happened to the others.
- for(const auto& reason:std::as_const(unsealed))text+=" "+reason;
  if(!copied.isEmpty())text+=" "+copied;
  if(hasLink)text+=" Click to open in browser.";
  return text;

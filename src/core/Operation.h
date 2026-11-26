@@ -18,7 +18,7 @@ struct OperationItem {
  // Durable but private: never part of publicJson().
  QJsonObject uploadJournal;
  // Sealed links (#2079). Empty when the upload wasn't to be sealed. Otherwise:
- //  status   "sealed", or "off" with `reason` (one sentence) when sealing was turned off for it
+ //  status   "sealed" (a file that can't be sealed fails before anything is sent, and stays unsealed here)
  //  form     "inline" (one page) or "split" (the page and a data file beside it)
  //  key      the link fragment "v1.<43 chars>", a bearer secret kept with History's links;
  //           empty with keyForgotten true after Forget key
