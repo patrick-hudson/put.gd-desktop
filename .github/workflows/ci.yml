@@ -103,14 +103,15 @@ jobs:
         run: python3 -m pytest -v tests/desktop/test_surface*.py tests/desktop/test_review_adversarial.py --junitxml=build/contracts/surface-tests.xml
       - name: Sealed-link viewer in Firefox and Chromium
         # #2079: the pinned viewer's hash and CSP hashes, the format vectors sealed and opened in
-        # both browsers, and the request log that shows the page fetches nothing else.
+        # both browsers, and the request log that shows the page fetches nothing else. Two
+        # browsers at 240 s each leave the harness time to report a hang inside the step limit.
         if: always()
         timeout-minutes: 10
         run: |
           python3 tools/seal/pin_viewer.py --check
           firefox --version
           google-chrome --version
-          python3 tests/seal/browser_vectors.py --timeout 300
+          python3 tests/seal/browser_vectors.py --timeout 240
       - name: Cold-family observer contracts
         if: always()
         run: python3 tools/ci/contracts.py observer

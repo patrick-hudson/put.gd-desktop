@@ -455,6 +455,12 @@ private slots:
   QVERIFY(!qdbus_cast<WireLayout>(layout.children.at(20).variant()).props["visible"].toBool());
   // #2079: Capture region (sealed) shows only once its destination passed the sealed-link check.
   QVERIFY(!qdbus_cast<WireLayout>(layout.children.at(1).variant()).props["visible"].toBool());
+  // Once it passed, the row shows and starts a sealed region capture.
+  {QSignalSpy sealedActions(&tray,&NativeTray::actionActivated);traymenu::State sealed;sealed.sealedRegion=true;tray.setMenu(sealed);
+   const auto shown=qdbus_cast<WireLayout>(call("/Menu","com.canonical.dbusmenu","GetLayout",{0,-1,QStringList{}}).arguments().at(1));
+   const auto row=qdbus_cast<WireLayout>(shown.children.at(7).variant());QCOMPARE(row.id,50);QVERIFY(row.props["visible"].toBool());
+   QCOMPARE(click(50).type(),QDBusMessage::ReplyMessage);PUTGD_TRY_COMPARE(sealedActions.size(),1);QCOMPARE(sealedActions.first().first().toString(),QString("region-sealed"));
+   tray.setMenu({});}
   // The capture delay is a radio group one level down, None chosen until told otherwise.
   const auto delay = qdbus_cast<WireLayout>(layout.children.at(15).variant());
   QCOMPARE(delay.id, 33); QCOMPARE(delay.props["children-display"].toString(), QString("submenu")); QCOMPARE(delay.children.size(), 5);
