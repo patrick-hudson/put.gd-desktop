@@ -489,7 +489,7 @@ Encryption for one upload:
 | --- | --- |
 | `action.invoke` | `encrypt`: true or false (not for scroll, record or text) |
 | `upload.files` | `encrypt`: `{enabled, passphrase?}` |
-| `recording.upload` | `encrypt`: true or false, for this upload alone. The review's Encrypt toggle is left as it is; without `encrypt` the upload follows the toggle as the window shows it. The choice is fixed when the export starts, and Try again (`retryExport`) keeps it. `encrypt: true`, or a Try again of an encrypted upload, is refused before anything is exported with `encrypt_unavailable` (the destination's reason, then "Upload it without encryption.") or, when the destination's saved passphrase isn't loaded, `encrypt_passphrase_locked` |
+| `recording.upload` | `encrypt`: true or false, for this upload alone. The review's Encrypt toggle is left as it is; without `encrypt` the upload follows the toggle as the window shows it. The choice is fixed when the export starts, and Try again (`retryExport`) keeps it. An upload whose choice is to encrypt, from `encrypt: true`, the toggle or a Try again, is refused before anything is exported with `encrypt_unavailable` (the destination's reason, then "Upload it without encryption.") or, when the destination's saved passphrase isn't loaded, `encrypt_passphrase_locked`. The window then offers Upload again, not Try again |
 | `operation.encrypt` | `id`, `enabled`: the Encrypt toggle of an open editor or recording review, only while that window is open |
 | `editor.encrypt` | `id`, `on`: the open editor's own Encrypt toggle |
 | `recording.review` | `id`, `action` `encrypt`, `on`: the review window's own Encrypt toggle (`encrypt_unavailable` first when encryption can't be turned on, then `recording_state` while an export runs) |

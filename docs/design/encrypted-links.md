@@ -292,13 +292,14 @@ Encryption sits in the shared pipeline between the immutable artifact and naming
    never moves the toggle; without it the upload takes the toggle's choice as the window shows
    it. `RecordingService::exportTo` fixes that choice when the export starts and keeps it in
    the export request, so Try again (`retryExport`) uses the same choice, and a toggle change
-   during the export applies to the next upload. An upload that asks for encryption, by
-   `encrypt: true` or as a Try again of an encrypted upload, is refused before anything is
+   during the export applies to the next upload. An upload whose fixed choice is to encrypt,
+   whether from `encrypt: true`, the toggle or a Try again, is refused before anything is
    exported: with `encrypt_unavailable` (the toggle's reason, then "Upload it without
    encryption."; "Encrypted links aren't available for this upload." when there is no reason),
    or with `encrypt_passphrase_locked` ("The Encrypted links passphrase isn't loaded. Unlock it
    in Destinations, then upload again.") when the destination asks for a saved passphrase that
-   isn't loaded.
+   isn't loaded. Since nothing was exported, the review window offers Upload again for any
+   `encrypt_*` refusal, not Try again.
    To encrypt a capture from the start, pass `encrypt` with `action.invoke` (region, window,
    monitor, desktop, repeat, clipboard and edit; `scroll`, `record` and `text` refuse it with
    `invalid_request`) or `upload.files`. The choice is written into the operation's `encrypt.requested` before its first artifact is stored, so a
