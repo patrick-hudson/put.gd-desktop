@@ -24,6 +24,11 @@
     target_link_libraries(test_minisign PRIVATE putgd_minisign OpenSSL::Crypto Qt6::Test)
     add_test(NAME update_minisign_verify COMMAND test_minisign WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
     add_test(NAME update_appimage_install_child COMMAND test_update_install)
+    # Sealed links (#2079): the format's vectors, tampering and the pinned viewer.
+    add_executable(test_seal tests/unit/test_seal.cpp)
+    target_link_libraries(test_seal PRIVATE putgd_seal OpenSSL::Crypto Qt6::Test)
+    add_test(NAME seal_format_contract COMMAND test_seal WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
+    set_tests_properties(seal_format_contract PROPERTIES ENVIRONMENT "PUTGD_TEST_CLI=$<TARGET_FILE:putgd-cli>")
   endif()
   add_executable(test_update_service tests/unit/test_update_service.cpp)
   target_link_libraries(test_update_service PRIVATE putgd_app putgd_s3_runtime Qt6::Test)
