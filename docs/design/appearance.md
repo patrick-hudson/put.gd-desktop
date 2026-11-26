@@ -257,7 +257,7 @@ scheduled from the click, not a measured start time. Such a row first waits for 
 when the host reports events (a close seen before, or an `opened` event for this menu), at most
 250 ms. It then waits out the rest of the compositor's fade of the closed menu, counted from the
 close, or from the click when no close came (a later close restarts it). The fade allowance is
-one 34 ms frame plus the desktop's animation: 456 ms on KDE by default (`kwin-fadingpopups`, KWin's
+one 34 ms frame plus the visible part of the desktop's animation: 456 ms on KDE by default (`kwin-fadingpopups`, KWin's
 fadingpopups time scaled by kdeglobals `AnimationDurationFactor`), 184 ms on GNOME and Cinnamon,
 34 ms when the fadingpopups effect, GNOME's `enable-animations` or Cinnamon's
 `desktop-effects-on-menus` is off or KWin animations are instant, and 250 ms on desktops not
