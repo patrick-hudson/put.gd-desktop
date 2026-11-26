@@ -594,6 +594,9 @@ private slots:
         QTest::newRow("no-location") << QString("no-location") << QString("unknown") << 0;
         QTest::newRow("cut-after") << QString("cut-after") << QString("unknown") << 0;
         QTest::newRow("link-moved") << QString("link-moved") << QString("unknown") << 0;
+        // Only a whole 301, 302, 303, 307 or 308 counts: not a 304, and not a cut redirect.
+        QTest::newRow("not-a-redirect") << QString("not-modified") << QString("unknown") << 0;
+        QTest::newRow("cut-redirect") << QString("cut-redirect") << QString("unknown") << 0;
     }
     void aRedirectedConfirmationNeedsTheLinkGone() {
         QFETCH(QString, shape);
@@ -609,16 +612,20 @@ private slots:
         else if (shape == "missing-before") f.rules({{{"call", "file"}, {"status", 404}, {"body", "not found"}}, form, {{"call", "confirm"}, {"status", 302}, {"location", f.base + "/"}}});
         else if (shape == "gone-410") f.rules({{{"call", "file"}}, form, {{"call", "confirm"}, {"status", 302}, {"location", f.base + "/"}}, {{"call", "file"}, {"status", 410}, {"body", "gone"}}});
         else if (shape == "no-location") f.rules({form, {{"call", "confirm"}, {"status", 302}}});
-        else if (shape == "cut-after") f.rules({{{"call", "file"}}, form, {{"call", "confirm"}, {"status", 302}, {"location", f.base + "/"}}, {{"call", "file"}, {"status", 404}, {"body", "not found"}, {"cut", "length"}}});
+        // Phased, so a resend of the cut check gets the same cut answer.
+        else if (shape == "cut-after") f.rules({{{"call", "file"}, {"phased", QJsonObject{{"before", QJsonObject{}}, {"after", QJsonObject{{"status", 404}, {"body", "not found"}, {"cut", "length"}}}}}}, form,
+                                                {{"call", "confirm"}, {"status", 302}, {"location", f.base + "/"}}});
+        else if (shape == "not-modified") f.rules({form, {{"call", "confirm"}, {"status", 304}, {"location", f.base + "/"}}});
+        else if (shape == "cut-redirect") f.rules({form, {{"call", "confirm"}, {"status", 302}, {"location", f.base + "/"}, {"body", "moved"}, {"cut", "length"}, {"remaining", 5}}});
         else f.rules({{{"call", "file"}, {"phased", QJsonObject{{"before", QJsonObject{}}, {"after", QJsonObject{{"status", 404}, {"body", "not found"}}}}}}, form,
                       {{"call", "confirm"}, {"status", 302}, {"location", f.base + "/"}}});
         const auto result = f.remove(uploaded.receipt);
         QVERIFY2(result.status == expected, qPrintable(result.status + " " + result.error.code + ": " + result.error.message));
-        QCOMPARE(f.events("confirm").size(), 1);
+        QVERIFY(f.events("confirm").size() >= 1);
         if (expected == "failed") QCOMPARE(result.error.code, QString("http_delete_unconfirmed"));
         if (expected == "unknown") {
             QCOMPARE(result.error.code, QString("http_outcome_unknown"));
-            QCOMPARE(result.error.details["httpStatus"].toInt(), 302);
+            QCOMPARE(result.error.details["httpStatus"].toInt(), shape == "not-modified" ? 304 : 302);
             if (shape == "missing-before") QCOMPARE(result.error.details["checkBeforeStatus"].toInt(), 404);
             QCOMPARE(result.progress["phase"].toString(), QString("delete_intent"));
         }

@@ -25,8 +25,8 @@ server does, or "barrier": a name it waits on until POST /__release {barrier} (a
 or answer 404 only to a request sending a cookie: "notFoundFor": "name=value". A "delete"
 rule can set one: "setCookie": "name=value". A "delete" rule {"form": true} answers with a
 confirmation page whose form posts to /confirm/<file id>/<token>, as XBackBone 3.8.2 does; that
-POST deletes the file and answers as a "confirm" rule says ("status", "location"; "store": false
-deletes nothing), or 200 without one.
+POST deletes the file and answers as a "confirm" rule says ("status", "location", "cut";
+"store": false deletes nothing), or 200 without one.
 A "file" rule {"phased": {"before": R, "after": R}} is never used up. The link then answers a
 whole 302 to /look/<phase>/<file id>, the phase being "after" once a deletion of the file has
 been asked for, and that address answers as R (a "file" rule's status, body and cut; {} serves
@@ -305,6 +305,7 @@ class Handler(BaseHTTPRequestHandler):
                 if entry and entry['deleteToken'] == parts[2] and not entry.get('deleted') and rule.get('store', True):
                     entry['deleted'] = True
             headers = {'Location': rule['location']} if rule.get('location') else {}
+            self.cut = rule.get('cut')
             return self.reply(rule.get('status', 200), rule.get('body', ''), headers=headers)
         # Read the body first: left on a kept-alive connection, it would be parsed as the
         # start of the next request (which then fails as an unsupported method, 501).
