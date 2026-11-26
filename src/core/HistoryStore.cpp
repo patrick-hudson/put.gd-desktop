@@ -430,7 +430,8 @@ bool HistoryStore::releasable(const QString& historyId,const QSet<QString>& runn
   bool settled=false;
   for(const auto& value:doc["items"].toArray()){const auto item=value.toObject();if(item["historyId"]!=historyId)continue;
    const auto status=item["status"].toString();
-   settled=(QStringList{"failed","unknown","pending"}.contains(status)&&!item["progress"].toObject().contains("phase"))||status=="unsupported_safe_removal"||status=="version_retained";}
+   // #2079: a sealed page's data file has its own request checkpoint, which holds the record the same way.
+   settled=(QStringList{"failed","unknown","pending"}.contains(status)&&!item["progress"].toObject().contains("phase")&&!item["sealDataProgress"].toObject().contains("phase"))||status=="unsupported_safe_removal"||status=="version_retained";}
   if(!settled)return false;
  }
  if(release)*release=held;

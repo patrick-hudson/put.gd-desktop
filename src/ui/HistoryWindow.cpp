@@ -104,7 +104,7 @@ QColor metadataColor(const QJsonObject& record,const QString& part,const QColor&
  return status&&(part=="Deletion failed"||part=="Sharing failed"||part.startsWith("Couldn't copy"))?t.danger:status&&remote.isEmpty()&&copy=="copied"?t.success:neutral;
 }
 QString failureDetail(const QJsonObject& record){auto text=HistoryModel::statusText(record);const auto label=HistoryModel::failureLabel(record);if(text==label)return {};if(text.startsWith(label+" · "))text.remove(0,label.size()+3);return text;}
-QString failureDescription(const QModelIndex& index){const auto record=index.data(HistoryModel::RecordRole).toJsonObject();QStringList parts{record["name"].toString(index.data().toString()),HistoryModel::failureLabel(record),index.data(HistoryModel::CreatedRole).toString(),failureDetail(record)};parts.removeAll({});return parts.join(". ");}
+QString failureDescription(const QModelIndex& index){const auto record=index.data(HistoryModel::RecordRole).toJsonObject();QStringList parts{record["name"].toString(index.data().toString()),HistoryModel::sealedLabel(record),HistoryModel::failureLabel(record),index.data(HistoryModel::CreatedRole).toString(),failureDetail(record)};parts.removeAll({});return parts.join(". ");}
 // Beside the actions the detail keeps one line; on a line of its own its facts wrap
 // whole, and only a fact wider than the row elides.
 void compactFailureDetail(QTextDocument& document,const QModelIndex& index,int width,int skip=0,bool wrap=false){
@@ -1642,8 +1642,9 @@ void HistoryWindow::showRowMenu(const QModelIndex& i,const QPoint& point,bool ov
  if(files.size()==1&&!row["linkAvailable"].toBool()&&files.first().toObject()["uploadStatus"]=="uploaded"){const auto receipt=files.first().toObject()["receipt"].toObject();const auto place=receipt["objectReference"].toObject()["location"].toString();if(receipt["destination"].toObject()["providerId"]=="sftp"&&!place.isEmpty())menu.addAction(Ui::icon("copy"),"Copy path",this,[this,place]{QGuiApplication::clipboard()->setText(place);notify({},"Path copied: "+place);});}
  if(remaining("Copy result")&&HistoryModel::copyLocalResult(row))menu.addAction("Copy result",this,[this]{operationAction("operation.copy");});
  // #2079: Forget key leaves the file at the destination and no way to open it.
- if(remaining("Forget key")&&files.size()==1&&row["sealed"].toBool()&&!row["seal"].toObject()["keyForgotten"].toBool()&&!i.data(HistoryModel::ActiveRole).toBool())
-  menu.addAction(Ui::icon("lock"),"Forget key…",this,[this,id=files.first().toObject()["id"].toString()]{forgetSealKey(id);});
+ // In a batch it is the file chosen in the inspector (the first until another is chosen), named.
+ if(const auto keyFile=files.size()==1?files.first().toObject():selectedRecord();remaining("Forget key")&&keyFile["sealed"].toBool()&&!keyFile["seal"].toObject()["keyForgotten"].toBool()&&!i.data(HistoryModel::ActiveRole).toBool())
+  menu.addAction(Ui::icon("lock"),files.size()>1?"Forget key for "+keyFile["name"].toString().replace(QLatin1Char('&'),QStringLiteral("&&"))+"…":QStringLiteral("Forget key…"),this,[this,id=keyFile["id"].toString()]{forgetSealKey(id);});
  if(remaining("Open in browser")&&files.size()==1&&row["linkAvailable"].toBool())menu.addAction("Open in browser",this,[this,url=files.first().toObject()["link"].toString()]{openBrowser(url);});
  if(remaining("Edit image…")&&editable(row)){auto* edit=menu.addAction("Edit image…",this,[this,row]{editAgain(row);});edit->setToolTip("Edit the saved copy. Earlier marks are already flattened.");}
  // #1428: one file only; disabled with the reason when it cannot apply.

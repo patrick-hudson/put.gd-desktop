@@ -514,9 +514,16 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
      if(found.status=="missing")partOutcome="already_missing";
      else if(found.status=="foreign")partOutcome="changed";
      else if(found.status=="own"&&found.receipt.publicationId==part.publicationId) {
-      auto partCheckpoint=[path,&doc,&items,index,committed](const QJsonObject& checkpoint,std::function<void(Error)> ack){
+      // As the page's checkpoint: once Quit began, an intent isn't acknowledged (the journal goes
+      // back to before it), so the provider sends no further delete during shutdown.
+      auto partCheckpoint=[path,&doc,&items,index,committed,quitting](const QJsonObject& checkpoint,std::function<void(Error)> ack){
        auto proposed=items;auto target=proposed[index].toObject();target["sealDataProgress"]=checkpoint;proposed[index]=target;
        auto proposedDoc=doc;proposedDoc["items"]=proposed;HistoryStore durable(path);const auto saved=durable.saveDeletion(proposedDoc);
+       if(!saved&&quitting->load()) {
+        if(checkpoint["phase"].toString().endsWith("intent")){if(!durable.saveDeletion(doc))committed();}
+        else {items=std::move(proposed);doc=std::move(proposedDoc);committed();}
+        ack({"cancelled","put.gd is quitting",{}});return;
+       }
        if(!saved){items=std::move(proposed);doc=std::move(proposedDoc);committed();}
        ack(saved);
       };

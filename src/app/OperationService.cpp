@@ -2307,6 +2307,15 @@ QJsonObject OperationService::diagnostics() const {
 }
 void OperationService::abandonUploads(HistoryStore& store,Operation& op,QJsonObject& outcome) {
  QSet<QString> changed;
+ // The user hears of each kept upload once (#226), with at most `bytes` stored in its parts.
+ const auto notify=[&](const Error& error,double bytes){
+  auto notice=outcome["incompleteUploadNotice"].toObject();
+  const auto add=[&](const char* key,const QString& value){auto values=notice[key].toArray();if(!value.isEmpty()&&!values.contains(value))values.append(value);notice[key]=values;};
+  notice["count"]=notice["count"].toInt()+1;notice["bytes"]=notice["bytes"].toDouble()+bytes;
+  add("providers",op.destination.providerId);add("profiles",op.destination.profileId);add("buckets",op.destination.settings.value("bucket").toString());
+  if(!notice.contains("error"))notice["error"]=error.toJson();
+  outcome["incompleteUploadNotice"]=notice;
+ };
  for(auto& item:op.items) {
   // #2079: a split sealed link's data file may hold an unfinished multipart upload of its own.
   if(auto data=item.seal.value("data").toObject();!data.value("uploadJournal").toObject().value("uploadId").toString().isEmpty()&&data.value("uploadStatus")!="uploaded") {
@@ -2314,9 +2323,14 @@ void OperationService::abandonUploads(HistoryStore& store,Operation& op,QJsonObj
    Error error=provider?Error{}:Error{"provider_unavailable","Destination is unavailable. Restore access to it in Destinations.",{}};
    if(provider){auto lock=objectLock(op.destination,data.value("objectReference").toObject(),data.value("candidate").toString());std::unique_lock guard(*lock);
     error=storageRequest<Error>([&](auto cb){provider->abandonUpload(op.destination,data.value("uploadJournal").toObject(),cb);});}
-   if(!error){data["uploadJournal"]=QJsonObject{};item.seal["data"]=data;changed.insert(item.artifact.id);outcome["abortedUploads"]=outcome["abortedUploads"].toInt()+1;}
-   else{item.error.details["incompleteUpload"]=true;item.error.details["abortError"]=error.toJson();changed.insert(item.artifact.id);
-    auto kept=outcome["incompleteUploads"].toArray();if(kept.size()<100)kept.append(QJsonObject{{"operationId",op.id},{"itemId",item.artifact.id},{"error",error.toJson()},{"reported",true}});outcome["incompleteUploads"]=kept;}
+   if(!error){data["uploadJournal"]=QJsonObject{};data.remove("incompleteUploadReported");item.seal["data"]=data;changed.insert(item.artifact.id);outcome["abortedUploads"]=outcome["abortedUploads"].toInt()+1;}
+   else{
+    // Its own once-only mark, beside the data file's journal: the page's upload has its own.
+    const bool reported=data.value("incompleteUploadReported").toBool();data["incompleteUploadReported"]=true;item.seal["data"]=data;
+    item.error.details["incompleteUpload"]=true;item.error.details["abortError"]=error.toJson();changed.insert(item.artifact.id);
+    auto kept=outcome["incompleteUploads"].toArray();if(kept.size()<100)kept.append(QJsonObject{{"operationId",op.id},{"itemId",item.artifact.id},{"error",error.toJson()},{"reported",reported}});outcome["incompleteUploads"]=kept;
+    if(!reported)notify(error,data.value("uploadJournal").toObject().value("bytes").toDouble(data.value("artifact").toObject().value("bytes").toDouble()));
+   }
   }
   if(item.uploadJournal["uploadId"].toString().isEmpty()||item.uploadStatus=="uploaded")continue;
   auto provider=providers_.find(op.destination.providerId);
@@ -2339,16 +2353,8 @@ void OperationService::abandonUploads(HistoryStore& store,Operation& op,QJsonObj
    auto kept=outcome["incompleteUploads"].toArray();
    if(kept.size()<100)kept.append(QJsonObject{{"operationId",op.id},{"itemId",item.artifact.id},{"error",error.toJson()},{"reported",reported}});
    outcome["incompleteUploads"]=kept;
-   if(!reported) {
-    auto notice=outcome["incompleteUploadNotice"].toObject();
-    const auto add=[&](const char* key,const QString& value){auto values=notice[key].toArray();if(!value.isEmpty()&&!values.contains(value))values.append(value);notice[key]=values;};
-    notice["count"]=notice["count"].toInt()+1;
-    // The upload's whole size: at most this much is stored in its parts.
-    notice["bytes"]=notice["bytes"].toDouble()+item.uploadJournal.value("bytes").toDouble(double(item.artifact.bytes));
-    add("providers",op.destination.providerId);add("profiles",op.destination.profileId);add("buckets",op.destination.settings.value("bucket").toString());
-    if(!notice.contains("error"))notice["error"]=error.toJson();
-    outcome["incompleteUploadNotice"]=notice;
-   }
+   // The upload's whole size: at most this much is stored in its parts.
+   if(!reported)notify(error,item.uploadJournal.value("bytes").toDouble(double(item.artifact.bytes)));
    fields["error"]=logging::errorFields(error);
    logging::warning(providerLog(op.destination.providerId),"Incomplete upload kept",fields);
   }

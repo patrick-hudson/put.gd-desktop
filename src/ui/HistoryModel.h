@@ -58,6 +58,8 @@ public:
  static bool storedNothing(const QJsonObject&);
  // Short failure label: what failed, not the error message.
  static QString failureLabel(const QJsonObject&);
+ // #2079: "Sealed link" or "Sealed link, key forgotten" for a sealed record; empty otherwise.
+ static QString sealedLabel(const QJsonObject&);
  // What a row (a capture group) can do now. The inline action, the inspector,
  // the row menu and the selection strip all ask these, so none of them offers
  // a command the resident would refuse for this row's state and receipts.

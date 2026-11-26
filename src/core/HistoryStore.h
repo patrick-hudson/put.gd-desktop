@@ -73,8 +73,9 @@ public:
  Error recordCopiedLink(const QString& historyId,QString& operationId);
  Error updateRemote(const QString& historyId,const QString& status,const Error& = {});
  // Forget key (#2079): removes a sealed link's key from the record and its operation's
- // journal in one transaction. The file stays at the destination and nobody can open it
- // again. history_not_sealed for a record that isn't a sealed upload.
+ // journal in one transaction, on this computer only: History can't open or copy the link
+ // again, but the file stays at the destination and anyone who already has the full link can
+ // still open it. history_not_sealed for a record that isn't a sealed upload.
  Error forgetSealKey(const QString& historyId);
  // The error log (#1753), a table beside the journal: entries are already redacted
  // JSON objects with id, time, kind and subject. saveError inserts or replaces one by
