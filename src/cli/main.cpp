@@ -30,7 +30,7 @@ int main(int argc,char** argv) {
  const auto args=parser.positionalArguments();const auto id=parser.isSet("request-id")?parser.value("request-id"):QUuid::createUuid().toString(QUuid::WithoutBraces);
  auto error=[&](QString code,QString message) {return putgd::cli::fail(id,code,message);};
  if(args.size()<1||args.size()>2)return error("invalid_request","Supply a method and optional JSON parameter object");
- if(args[0]=="setup.storeCredentials"||args[0]=="setup.storeSharePassword")return error("credentials_require_settings","Enter credentials in Destinations.");
+ if(args[0]=="setup.storeCredentials"||args[0]=="setup.storeSharePassword"||args[0]=="setup.storeSealPassphrase")return error("credentials_require_settings","Enter credentials in Destinations.");
  if(args[0]=="setup.revealCredentialSecret")return error("credentials_require_settings","View credentials in Destinations.");
  // The error log's entries come from put.gd itself; its own windows add theirs (#1753).
  if(args[0]=="errors.record")return error("invalid_request","errors.record is for put.gd's own windows; read the log with errors.list.");

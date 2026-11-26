@@ -1636,7 +1636,7 @@ void HistoryWindow::showRowMenu(const QModelIndex& i,const QPoint& point,bool ov
  // #1871: an SFTP upload without a Link address has no link; where it went on the server instead.
  if(files.size()==1&&!row["linkAvailable"].toBool()&&files.first().toObject()["uploadStatus"]=="uploaded"){const auto receipt=files.first().toObject()["receipt"].toObject();const auto place=receipt["objectReference"].toObject()["location"].toString();if(receipt["destination"].toObject()["providerId"]=="sftp"&&!place.isEmpty())menu.addAction(Ui::icon("copy"),"Copy path",this,[this,place]{QGuiApplication::clipboard()->setText(place);notify({},"Path copied: "+place);});}
  if(remaining("Copy result")&&HistoryModel::copyLocalResult(row))menu.addAction("Copy result",this,[this]{operationAction("operation.copy");});
- if(remaining("Open in browser")&&files.size()==1&&row["linkAvailable"].toBool())menu.addAction("Open in browser",this,[this,url=files.first().toObject()["receipt"].toObject()["directUrl"].toString()]{openBrowser(url);});
+ if(remaining("Open in browser")&&files.size()==1&&row["linkAvailable"].toBool())menu.addAction("Open in browser",this,[this,url=files.first().toObject()["link"].toString()]{openBrowser(url);});
  if(remaining("Edit image…")&&editable(row)){auto* edit=menu.addAction("Edit image…",this,[this,row]{editAgain(row);});edit->setToolTip("Edit the saved copy. Earlier marks are already flattened.");}
  // #1428: one file only; disabled with the reason when it cannot apply.
  if(files.size()==1){const auto file=files.first().toObject();

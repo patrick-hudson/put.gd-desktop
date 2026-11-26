@@ -1,5 +1,6 @@
 #include "SetupService.h"
 #include "core/DestinationCheck.h"
+#include "core/SealJob.h"
 #include <QJsonArray>
 #include <QPointer>
 #include <QUuid>
@@ -18,6 +19,8 @@ bool validInput(const QString& kind,const QJsonObject& input) {
  // SFTP (#1871): the host key fingerprint the user (or agent) was shown, exactly.
  if(kind=="trustHostKey")return input.size()==1&&input["fingerprint"].isString()&&!input["fingerprint"].toString().isEmpty()&&input["fingerprint"].toString().size()<=128;
  if(kind=="storeSharePassword")return input.size()==2&&input["password"].isString()&&input["password"].toString().size()<=4096&&input["reference"].isString()&&!input["reference"].toString().isEmpty()&&input["reference"].toString().size()<=256;
+ // #2079: a destination's Seal links passphrase, one line of 1 to 1024 bytes.
+ if(kind=="storeSealPassphrase")return input.size()==1&&input["passphrase"].isString()&&!input["passphrase"].toString().isEmpty()&&input["passphrase"].toString().toUtf8().size()<=1024&&!input["passphrase"].toString().contains('\n');
  if(kind!="storeCredentials")return input.isEmpty();
  // Named values of a custom HTTP uploader: {"values":{key:value}}; the provider checks them.
  if(input.size()==1&&input.contains("values")) {
@@ -54,7 +57,7 @@ SetupService::~SetupService() {
  std::lock_guard lock(completion_->mutex);completion_->owner=nullptr;
 }
 void SetupService::start(const QString& kind,const QString& profileId,const QString& expectedRevision,const QJsonObject& input,JsonReply reply) {
- if(!QStringList{"storeCredentials","unlockCredentials","testDestination","connectAccount","inspectAccount","createFolder","storeSharePassword","signOut","trustHostKey"}.contains(kind)||!validInput(kind,input)) {reply(invalid(),{});return;}
+ if(!QStringList{"storeCredentials","unlockCredentials","testDestination","connectAccount","inspectAccount","createFolder","storeSharePassword","signOut","trustHostKey","storeSealPassphrase","unlockSealPassphrase"}.contains(kind)||!validInput(kind,input)) {reply(invalid(),{});return;}
  const auto metadata=settings_.metadata();
  if(expectedRevision!=settings_.revision()||expectedRevision!=metadata["observedRevision"].toString()) {
   reply({"config_conflict","Settings changed elsewhere. Save or reload before continuing.",{}},{});return;
@@ -105,6 +108,12 @@ void SetupService::start(const QString& kind,const QString& profileId,const QStr
    std::lock_guard lock(context->mutex);if(auto* owner=context->owner)QMetaObject::invokeMethod(owner,[owner,id,value]{if(owner->jobs_.contains(id)&&owner->jobs_[id]["state"]=="running"){auto job=owner->jobs_[id];job["event"]=value;owner->jobs_[id]=job;emit owner->changed(id);}},Qt::QueuedConnection);
   };
   providerSetup_(kind,destination,input,std::move(finish),std::move(event));
+ }else if(kind=="storeSealPassphrase"||kind=="unlockSealPassphrase") {
+  // #2079: kept like any other secret, in its own entry beside the destination's keys.
+  const auto passphraseReference=profile["seal"].toObject()["passphraseCredentials"].toObject();
+  if(passphraseReference.isEmpty()){complete({"seal_passphrase_unset","Choose On with a passphrase for Seal links on this destination first.",{}});return;}
+  if(kind=="storeSealPassphrase"){Credentials value;value.values.insert("passphrase",input["passphrase"].toString());credentials_.save(sealPassphraseId(profileId),passphraseReference,std::move(value),complete);}
+  else credentials_.unlock(sealPassphraseId(profileId),passphraseReference,complete);
  }else if(kind=="storeCredentials") {
   QStringList names;
   const bool named=namedCredentials_&&!namedCredentials_(profile,{},&names);
@@ -164,6 +173,10 @@ QStringList SetupService::unlockSavedCredentials() {
  const auto snapshot=settings_.snapshot();
  if(!snapshot.unlockCredentialsAtStartup||!settings_.metadata()["validation"].toObject()["ok"].toBool())return started;
  for(auto it=snapshot.profiles.cbegin();it!=snapshot.profiles.cend();++it){
+  // #2079: a Seal links passphrase saved to the keychain is read once at startup too.
+  const auto seal=it.value()["seal"].toObject();const auto sealReference=seal["passphraseCredentials"].toObject();
+  if(seal["mode"]=="passphrase"&&sealReference["mode"]=="keychain"&&!credentials_.cached(sealPassphraseId(it.key()),sealReference))
+   start("unlockSealPassphrase",it.key(),settings_.revision(),{},[&](Error error,QJsonObject result){if(!error)started.append(result["setupId"].toString());});
   const auto reference=it.value()["credentials"].toObject();
   if(!usesCredentialStore(it.value())||reference["mode"]!="keychain"||credentials_.cached(it.key(),reference))continue;
   start("unlockCredentials",it.key(),settings_.revision(),{},[&](Error error,QJsonObject result){if(!error)started.append(result["setupId"].toString());});
@@ -183,6 +196,8 @@ void SetupService::credentialHint(const QString& profileId,const QString& expect
  // setup already owns that consent, and only this bounded hint leaves its cache.
  const auto cached=credentials_.cached(profileId,reference);
  QJsonObject hint{{"available",bool(cached)},{"mode",reference["mode"]}};
+ // #2079: whether the Seal links passphrase is loaded, never the passphrase.
+ if(const auto sealReference=profile["seal"].toObject()["passphraseCredentials"].toObject();!sealReference.isEmpty())hint["sealPassphraseLoaded"]=bool(credentials_.cached(sealPassphraseId(profileId),sealReference));
  if(cached){hint["accessKeyHint"]=cached->accessKey.size()>4?cached->accessKey.left(4)+QString::fromUtf8("…"):QString::fromUtf8("••••");hint["secretStored"]=!cached->secretKey.isEmpty();hint["tokenStored"]=!cached->sessionToken.isEmpty();}
  // Named values: which of the names the settings need are loaded, never a value.
  QStringList names;
@@ -229,6 +244,22 @@ std::shared_ptr<std::atomic_bool> SetupService::cancellation(const QString& prof
 }
 void SetupService::finish(const QString& id,Error error,QJsonObject result) {
  const auto found=jobs_.find(id);if(found==jobs_.end()||(*found)["state"]!="running")return;
+ // #2079: a passed Test goes on to the sealed-page check before it reports, unless cancelled.
+ if((*found)["kind"]=="testDestination"&&!error&&sealChecker_&&!sealChecking_.contains(id)&&!(cancellations_.value(id)&&cancellations_.value(id)->load())) {
+  const auto profileId=(*found)["profileId"].toString();const auto profiles=settings_.snapshot().profiles;
+  if(profiles.contains(profileId)) {
+   sealChecking_.insert(id);
+   auto event=*found;event["event"]=QJsonObject{{"step","seal"},{"status","running"}};*found=event;emit changed(id);
+   QPointer<SetupService> guarded(this);
+   sealChecker_(profileId,profiles.value(profileId),[guarded,id,result](QJsonObject seal) mutable {
+    if(!guarded)return;
+    if(!seal.isEmpty())result["seal"]=seal;
+    guarded->finish(id,{},result);
+    guarded->sealChecking_.remove(id);
+   });
+   return;
+  }
+ }
  cancellations_.remove(id);
  auto& record=*found;record.remove("event");record["result"]=result;record["state"]=error?"failed":"completed";record["error"]=error.toJson();
  active_.remove(activeKey(record["profileId"].toString(),record["kind"].toString()));

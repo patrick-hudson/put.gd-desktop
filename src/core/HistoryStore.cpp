@@ -35,6 +35,13 @@ QJsonObject publicRecord(QJsonObject data) {
  data["linkRefreshable"]=!expiry.isEmpty()&&available&&!QStringList{"pending","deleting","unknown","superseded"}.contains(data["remoteStatus"].toString())&&expires.isValid()&&expires<=QDateTime::currentDateTimeUtc()&&
    !data["receipt"].toObject()["objectReference"].toObject()["linkExpiresAt"].toString().isEmpty();
  data["linkAvailable"]=available&&!(expires.isValid()&&expires<=QDateTime::currentDateTimeUtc());
+ // #2079: the link to copy, open and show as a QR code: with a sealed link's key after #.
+ data["link"]=data["linkAvailable"].toBool()?OperationItem::recordLink(data):QString();
+ if(data.contains("seal")) {
+  auto seal=data["seal"].toObject();auto page=seal["page"].toObject();page.remove("path");seal["page"]=page;
+  if(seal.contains("data")){auto part=seal["data"].toObject();auto file=part["artifact"].toObject();file.remove("path");part["artifact"]=file;part.remove("uploadJournal");seal["data"]=part;}
+  data["seal"]=seal;data["sealed"]=seal["status"]=="sealed";
+ }
  return data;
 }
 // The journal's own layout: <root>/artifacts/<operation>/<item> and
@@ -138,6 +145,12 @@ void HistoryStore::relocate(Operation& op) const {
   auto& artifact=item.artifact;
   artifact.path=relocated(artifact.path,artifactPath(root_,op.id,artifact.id),"/artifacts/"+op.id+"/"+artifact.id);
   artifact.previewPath=relocated(artifact.previewPath,previewPath(root_,artifact.id),"/previews/"+artifact.id+".png");
+  // #2079: a sealed item's page and data file sit beside its artifact.
+  if(!item.seal.isEmpty()) {
+   const auto move=[&](QJsonObject file){const auto id=file.value("id").toString();if(!id.isEmpty())file["path"]=relocated(file.value("path").toString(),artifactPath(root_,op.id,id),"/artifacts/"+op.id+"/"+id);return file;};
+   if(item.seal.contains("page"))item.seal["page"]=move(item.seal.value("page").toObject());
+   if(item.seal.contains("data")){auto data=item.seal.value("data").toObject();data["artifact"]=move(data.value("artifact").toObject());item.seal["data"]=data;}
+  }
  }
 }
 QJsonObject HistoryStore::relocate(QJsonObject record) const {
@@ -579,6 +592,28 @@ Error HistoryStore::updateRemote(const QString& id,const QString& status,const E
  auto remote=remoteFields(data);remote["remoteStatus"]=status;remote["remoteError"]=e.toJson();
  if(!db_.transaction())return sqlError();
  if(!persistRemote(db_,id,remote)||!db_.commit()){db_.rollback();return sqlError();}return {};
+}
+Error HistoryStore::forgetSealKey(const QString& id) {
+ if(error_)return error_;
+ if(!db_.transaction())return sqlError();
+ const auto fail=[this](Error e){db_.rollback();return e;};
+ QSqlQuery q(db_);q.prepare("SELECT data,operation_id FROM history WHERE id=?");q.addBindValue(id);
+ if(!q.exec())return fail(sqlError());
+ if(!q.next())return fail({"history_not_found","This item is no longer in History.",{}});
+ auto data=decode(q.value(0));const auto operationId=q.value(1).toString();q.finish();
+ const auto forget=[](QJsonObject seal){seal["key"]=QString();seal["keyForgotten"]=true;return seal;};
+ if(data["seal"].toObject()["status"]!="sealed")return fail({"history_not_sealed","This item isn't a sealed link.",{}});
+ data["seal"]=forget(data["seal"].toObject());
+ q.prepare("UPDATE history SET data=? WHERE id=?");q.addBindValue(encode(data));q.addBindValue(id);if(!q.exec())return fail(sqlError());
+ q.prepare("SELECT data FROM operations WHERE id=?");q.addBindValue(operationId);if(!q.exec())return fail(sqlError());
+ if(q.next()) {
+  auto op=decode(q.value(0));q.finish();auto items=op["items"].toArray();
+  for(qsizetype i=0;i<items.size();++i){auto item=items[i].toObject();if(item["artifact"].toObject()["id"]==id&&item.contains("seal")){item["seal"]=forget(item["seal"].toObject());items[i]=item;}}
+  op["items"]=items;
+  q.prepare("UPDATE operations SET data=? WHERE id=?");q.addBindValue(encode(op));q.addBindValue(operationId);if(!q.exec())return fail(sqlError());
+ }
+ if(!db_.commit())return fail(sqlError());
+ return {};
 }
 
 // The error log (#1753). Entries are written by one resident queue at a time

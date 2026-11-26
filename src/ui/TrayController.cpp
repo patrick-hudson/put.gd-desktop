@@ -402,7 +402,7 @@ TrayController::TrayController(OperationService& operations,
    const auto items=operation["items"].toArray();
    if(guard->native_&&items.size()==1) {
     const auto item=OperationItem::fromJson(items.first().toObject());
-    if(item.linkAvailable())link=QUrl(item.receipt.directUrl);
+    if(item.linkAvailable())link=QUrl(item.link());
    }
 #endif
    // A failed upload offers a diagnostics package for just that operation (#122).
@@ -451,7 +451,9 @@ QString TrayController::diagnosticsActionText(const QJsonObject& operation) {
 QString TrayController::completionTitle(const QJsonObject& operation) {
  const auto items=operation["items"].toArray();bool localOnly=!items.isEmpty(),problem=operation["state"]!="completed"||meaningfulError(operation["error"].toObject()),localFailed=false;
  for(const auto& value:items){const auto item=value.toObject();const auto local=item["local"].toObject();localOnly&=item["uploadStatus"]=="local_only";localFailed|=local["status"]=="failed"||meaningfulError(local["error"].toObject());problem|=item["uploadStatus"]=="failed"||meaningfulError(item["error"].toObject())||localFailed;}
- if(!problem)return localOnly?QString("Saved locally"):QString("Upload complete");
+ // #2079: a sealed link copied says so in the title, as the design words it.
+ bool sealed=!items.isEmpty();for(const auto& value:items)sealed&=value.toObject()["seal"].toObject()["status"]=="sealed";
+ if(!problem)return localOnly?QString("Saved locally"):sealed&&operation["copyStatus"]=="copied"?QString(items.size()>1?"Sealed links copied":"Sealed link copied"):QString("Upload complete");
  if((localFailed&&localOnly)||operation["error"].toObject()["code"]=="archive_failed")return "Local save failed";
  return "Finished with errors";
 }
@@ -464,7 +466,9 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
  // A suppressed copy (#473) is deliberate: the clipboard moved on, or a newer
  // copy took its place, between the capture and the link. Say so, and where
  // the link still is.
- const QString copied=copy=="copied"?(localOnly?"Result copied to clipboard.":"Link copied to clipboard."):copy=="failed"?(localOnly?"Couldn't copy the result.":"Couldn't copy the link."):
+ bool sealed=!items.isEmpty(),passphrase=false;QStringList unsealed;
+ for(const auto& value:items){const auto seal=value.toObject()["seal"].toObject();sealed&=seal["status"]=="sealed";passphrase|=seal["passphrase"].toBool();if(seal["status"]=="off"&&!unsealed.contains(seal["reason"].toString()))unsealed.append(seal["reason"].toString());}
+ const QString copied=copy=="copied"?(localOnly?"Result copied to clipboard.":sealed?(passphrase?"Sealed link copied to clipboard. Send the passphrase separately.":"Sealed link copied to clipboard."):"Link copied to clipboard."):copy=="failed"?(localOnly?"Couldn't copy the result.":"Couldn't copy the link."):
   copy=="suppressed"?(localOnly?"Result not copied because your clipboard changed. Copy it from History.":"Link not copied because your clipboard changed. Copy it from History."):QString{};
  // #1820: a covered upload whose original, before covering, couldn't be kept locally says so, whatever the upload's outcome.
  const QString originalNote=operation["sensitive"].toObject()["original"].toObject()["status"]=="failed"?QStringLiteral("Couldn't save the unredacted original locally."):QString();
@@ -474,6 +478,8 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
   // #1820: what the sensitive text check covered on its own, never after a check that couldn't finish.
   if(const auto sensitive=operation["sensitive"].toObject();sensitive["complete"].toBool(false))if(const auto covered=coveredSentence(sensitive["covered"].toObject());!covered.isEmpty())parts.append(covered);
   if(!originalNote.isEmpty())parts.append(originalNote);
+  // #2079: a file that was to be sealed and couldn't be says why it went unsealed.
+  for(const auto& reason:std::as_const(unsealed))parts.append(reason);
   if(!copied.isEmpty())parts.append(copied);
   // #1871: an SFTP upload without a Link address says where the file went; the clipboard is left as it was.
   if(!hasLink&&items.size()==1){const auto receipt=items.first().toObject()["receipt"].toObject();const auto place=receipt["objectReference"].toObject()["location"].toString();if(receipt["destination"].toObject()["providerId"]=="sftp"&&!place.isEmpty())parts.append("Saved to "+place+".");}

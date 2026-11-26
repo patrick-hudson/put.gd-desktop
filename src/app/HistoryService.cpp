@@ -1,4 +1,5 @@
 #include "HistoryService.h"
+#include "core/Log.h"
 #include "core/QrImage.h"
 #include <QFileInfo>
 #include <chrono>
@@ -112,7 +113,7 @@ void HistoryService::copyLink(const QString& id,JsonReply reply) {
   if(e){reply(e,{});return;}
   if(!data["linkAvailable"].toBool()){reply({"link_unavailable","This link is no longer available.",{}},{});return;}
   notifyChanged();
-  operations_.copyHistoryUrl(data["receipt"].toObject()["directUrl"].toString(),[this,id,reply](Error e,QJsonObject result) {
+  operations_.copyHistoryUrl(data["link"].toString(),[this,id,reply](Error e,QJsonObject result) {
    if(e||!result["copied"].toBool()){reply(e,result);return;}
    const auto path=operations_.databasePath();
    operations_.background([path,id](Error& e){HistoryStore store(path);QString operationId;e=store.recordCopiedLink(id,operationId);return QJsonObject{{"operationId",operationId}};},
@@ -123,12 +124,24 @@ void HistoryService::copyLink(const QString& id,JsonReply reply) {
   },ticket);
  });
 }
+void HistoryService::forgetSealKey(const QString& id,JsonReply reply) {
+ if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}
+ const auto path=operations_.databasePath();
+ operations_.background([path,id](Error& e){HistoryStore store(path);const auto data=store.detail(id,&e);return QJsonObject{{"operationId",data["operationId"]}};},[this,path,id,reply](Error e,QJsonObject found){
+  if(e){reply(e,{});return;}
+  if(operations_.operationActive(found["operationId"].toString())){reply({"history_busy","This upload is still running. Wait for it to finish, then select Forget key.",{}},{});return;}
+  operations_.background([path,id](Error& e){HistoryStore store(path);e=store.forgetSealKey(id);return QJsonObject{{"historyId",id},{"keyForgotten",!e}};},[this,id,reply](Error e,QJsonObject result){
+   if(!e){notifyChanged();logging::info(logHistory(),"Sealed link key forgotten",{{"historyId",id}});}
+   reply(e,result);
+  });
+ });
+}
 void HistoryService::copyLinks(const QStringList& ids,JsonReply reply) {
  if(!operations_.ready()){reply(operations_.notReadyError(),{});return;}
  const auto ticket=operations_.invalidateCopyEligibility();
  operations_.background([this,ids](Error& e) {
   QStringList urls;
-  for(const auto& id:ids){const auto data=copyableLink(id,e);if(e)return QJsonObject{};if(!data["linkAvailable"].toBool()){e={"link_unavailable","This link is no longer available.",{{"historyId",id}}};return QJsonObject{};}urls.append(data["receipt"].toObject()["directUrl"].toString());}
+  for(const auto& id:ids){const auto data=copyableLink(id,e);if(e)return QJsonObject{};if(!data["linkAvailable"].toBool()){e={"link_unavailable","This link is no longer available.",{{"historyId",id}}};return QJsonObject{};}urls.append(data["link"].toString());}
   return QJsonObject{{"text",urls.join('\n')}};
  },[this,ids,reply,ticket](Error e,QJsonObject links) {
   if(e){reply(e,{});return;}
@@ -150,7 +163,7 @@ void HistoryService::qr(const QString& id,const QString& mode,const QString& pat
  operations_.background([this,id,mode,path,overwrite](Error& e) {
   const auto data=copyableLink(id,e);if(e)return QJsonObject{};
   if(!data["linkAvailable"].toBool()){e=qr::unavailable(data);return QJsonObject{};}
-  const auto url=data["receipt"].toObject()["directUrl"].toString();
+  const auto url=data["link"].toString();
   qr::Matrix matrix;if((e=qr::encode(url.toUtf8(),matrix)))return QJsonObject{};
   QJsonObject result{{"historyId",id},{"modules",matrix.size}};
   if(mode=="show"){result["url"]=url;return result;}
@@ -235,7 +248,10 @@ QJsonObject HistoryService::prepare(const QStringList& ids,const QJsonArray& pro
   QJsonObject target{{"historyId",id}};
   if(current["id"].toString()!=receipt.destination.profileId)target["currentProfileId"]=current["id"];
   auto caps=provider->receiptCapabilities(receipt);if(!caps.safeRemoval()) {e={"unsupported_capability",caps.removeUnavailable.isEmpty()?QStringLiteral("This destination can't safely delete this file."):caps.removeUnavailable,{{"historyId",id}}};return {};}
-  target["receipt"]=receipt.toJson();target["effect"]=caps.deletionEffect;targets.append(target);
+  target["receipt"]=receipt.toJson();target["effect"]=caps.deletionEffect;
+  // #2079: a split sealed link's data file goes too, once its page is gone.
+  if(const auto part=data["seal"].toObject()["data"].toObject();part["uploadStatus"]=="uploaded"&&!part["receipt"].toObject().isEmpty())target["sealData"]=part["receipt"];
+  targets.append(target);
  }
  const auto digest=QString::fromLatin1(QCryptographicHash::hash(QJsonDocument(targets).toJson(QJsonDocument::Compact),QCryptographicHash::Sha256).toHex());
  return {{"targets",targets},{"acknowledgement",digest},{"localCopiesPreserved",true},{"cacheNotice","Copies already cached by browsers or a CDN can stay visible for a while"}};
@@ -470,6 +486,32 @@ void HistoryService::runDelete(QJsonObject doc,std::shared_ptr<std::atomic_bool>
      }
     }
     }
+   }
+   // #2079: the sealed page is gone, so its data file beside it goes too. It is checked and
+   // deleted like the page, with its own durable checkpoint; one left behind holds only
+   // ciphertext nobody has a page for, and the deletion says so.
+   if((outcome=="removed"||outcome=="already_missing")&&items[index].toObject().contains("sealData")&&!quitting->load()) {
+    auto part=StorageReceipt::fromJson(items[index].toObject()["sealData"].toObject());
+    part.destination.profileId=receipt.destination.profileId;part.destination.credentialReference=receipt.destination.credentialReference;
+    QString partOutcome="unknown";Error partError;
+    if(!part.validate()) {
+     auto found=awaitProvider<StatResult>([&](auto cb){provider->statForRemoval(part,quitting,cb);});
+     if(found.status=="missing")partOutcome="already_missing";
+     else if(found.status=="foreign")partOutcome="changed";
+     else if(found.status=="own"&&found.receipt.publicationId==part.publicationId) {
+      auto partCheckpoint=[path,&doc,&items,index,committed](const QJsonObject& checkpoint,std::function<void(Error)> ack){
+       auto proposed=items;auto target=proposed[index].toObject();target["sealDataProgress"]=checkpoint;proposed[index]=target;
+       auto proposedDoc=doc;proposedDoc["items"]=proposed;HistoryStore durable(path);const auto saved=durable.saveDeletion(proposedDoc);
+       if(!saved){items=std::move(proposed);doc=std::move(proposedDoc);committed();}
+       ack(saved);
+      };
+      DeleteRequest request{doc["id"].toString()+"-data",part,items[index].toObject()["sealDataProgress"].toObject(),cancelled,quitting};
+      auto removed=awaitProvider<DeleteResult>([&](auto cb){provider->remove(request,partCheckpoint,cb);});
+      partOutcome=removed.status=="missing"?QStringLiteral("already_missing"):removed.status;partError=removed.error;
+     } else partError=found.error;
+    }
+    auto target=items[index].toObject();target["sealDataStatus"]=partOutcome;items[index]=target;doc["items"]=items;
+    if(partOutcome!="removed"&&partOutcome!="already_missing"&&!e)e={"seal_data_left","The sealed page was deleted, but its data file beside it wasn't. It holds only encrypted data.",{{"dataStatus",partOutcome},{"dataError",partError.toJson()}}};
    }
    item=items[index].toObject();item["status"]=outcome;item["progress"]=progress;item["error"]=e.toJson();items[index]=item;doc["items"]=items;if((error=store.saveDeletion(doc)))return doc;committed();
    items=doc["items"].toArray();

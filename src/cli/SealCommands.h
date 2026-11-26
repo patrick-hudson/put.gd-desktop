@@ -6,8 +6,9 @@
 //   putgd-cli open URL [-o FILE] [--passphrase-file F]
 //       downloads a sealed link, checks the page is byte for byte put.gd's pinned viewer,
 //       and decrypts it here. The key is the link's fragment, which is never sent.
-//   putgd-cli --seal-probe URL
-//       the resident's Test check: fetches URL as a visitor and reports how it was served.
+//   putgd-cli --seal-probe URL|-
+//       the resident's Test check: fetches URL (or one line of standard input) as a visitor
+//       and reports how it was served.
 // Each prints one JSON line.
 namespace putgd::cli {
 bool isSealCommand(int argc,char** argv);

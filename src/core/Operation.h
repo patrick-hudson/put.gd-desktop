@@ -17,6 +17,24 @@ struct OperationItem {
  // The provider's last acknowledged resumable-upload journal (UploadRequest::resume).
  // Durable but private: never part of publicJson().
  QJsonObject uploadJournal;
+ // Sealed links (#2079). Empty when the upload wasn't to be sealed. Otherwise:
+ //  status   "sealed", or "off" with `reason` (one sentence) when sealing was turned off for it
+ //  form     "inline" (one page) or "split" (the page and a data file beside it)
+ //  key      the link fragment "v1.<43 chars>", a bearer secret kept with History's links;
+ //           empty with keyForgotten true after Forget key
+ //  passphrase  true when the link also needs a passphrase (never the passphrase itself)
+ //  page     the sealed page's private artifact, which is what uploads under `candidate`
+ //  data     split form only: {artifact, candidate, uploadStatus, receipt, objectReference,
+ //           condition, concurrencyToken, publicationId, uploadJournal, error}
+ // Retry uploads these same files, so a link already shared keeps working.
+ QJsonObject seal;
+ bool sealed() const {return seal.value("status")==QLatin1String("sealed");}
+ // What uploads under `candidate`: the sealed page, or the file itself.
+ Artifact uploadArtifact() const;
+ // The link to copy: the destination's link, with the key after # when sealed.
+ QString link() const;
+ // The same for a History record's data (its receipt and seal).
+ static QString recordLink(const QJsonObject& record);
  QJsonObject toJson() const;
  static OperationItem fromJson(const QJsonObject&);
  UploadRequest uploadRequest(const Destination&,std::optional<int> requestTimeoutMs={}) const;
@@ -48,6 +66,8 @@ struct Operation {
  QJsonObject sensitive;
  // #1893: the capture style applied at export ({applied: true, original?: {status, paths}}); empty when none was.
  QJsonObject style;
+ // #2079: the upload's own Seal choice ({requested: bool}); empty: the destination's Seal links setting.
+ QJsonObject seal;
  std::optional<int> requestTimeoutMs; // Explicit retry budget, separate from immutable settings.
  Error error;
  QJsonObject toJson() const;

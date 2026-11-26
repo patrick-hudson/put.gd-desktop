@@ -140,7 +140,7 @@ void OperationService::queueLinkCopy(const std::shared_ptr<UploadCopy>& state,co
   // Resolve the durable item again at dispatch, including every resumed copy.
   background([path,id,item](Error& error) {
    HistoryStore store(path);const auto op=store.operation(id,&error);QString url;
-   for(const auto& value:op.items)if(value.artifact.id==item&&value.linkAvailable())url=value.receipt.directUrl;
+   for(const auto& value:op.items)if(value.artifact.id==item&&value.linkAvailable())url=value.link();
    return QJsonObject{{"url",url}};
   },[payload,ready](Error error,QJsonObject value){payload->text=value["url"].toString();ready(error);});
  },{id});
@@ -149,7 +149,7 @@ void OperationService::refreshUploadLinks(UploadCopy& state,const Operation& op)
  state.operation=op;state.links.clear();
  for(int index=0;index<op.items.size();++index) {
   const auto& item=op.items[index];
-  if(state.seen.contains(item.artifact.id)&&item.linkAvailable())state.links.insert(index,item.receipt.directUrl);
+  if(state.seen.contains(item.artifact.id)&&item.linkAvailable())state.links.insert(index,item.link());
  }
 }
 void OperationService::finishUploadCopies(Operation op,JsonReply reply) {
@@ -161,7 +161,7 @@ void OperationService::finishUploadCopies(Operation op,JsonReply reply) {
  // Final receipts also cover reconciliation/retry paths which made no new PUT.
  for(int index=0;index<op.items.size();++index) {
   const auto& item=op.items[index];
-  if(item.linkAvailable())uploadLinkReady(op.id,item.artifact.id,index,item.receipt.directUrl);
+  if(item.linkAvailable())uploadLinkReady(op.id,item.artifact.id,index,item.link());
  }
  state->finished=true;
  if(state->group){--state->group->pending;settleUploadGroup(state->group);}

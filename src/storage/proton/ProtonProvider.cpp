@@ -263,6 +263,7 @@ ProviderCapabilities ProtonProvider::capabilities(const Destination&) const {
  // MAX_FILE_SIZE_FOR_FREE_USER, reported as destination_file_too_large_for_plan),
  // so none is declared.
  caps.maximumObjectBytes=0;
+ caps.sealUnavailable="Proton Drive already encrypts files end to end.";
  caps.deletionEffect="Remote file deletion isn't available for Proton Drive because Proton doesn't support atomic revision-guarded deletes. Revoke share links separately.";return caps;
 }
 QString ProtonProvider::defaultPublicationMode(const Destination& destination) const {return destination.settings["shareByDefault"].toBool(true)?"share":"private";}

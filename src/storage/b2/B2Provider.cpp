@@ -37,6 +37,9 @@ ProviderCapabilities B2Provider::capabilities(const Destination& destination) co
     caps.urls = true;
     caps.maximumNameBytes = b2::maximumNameBytes - 1 - int(destination.settings["objectPrefix"].toString().toUtf8().size());
     caps.maximumObjectBytes = b2::maximumFileBytes;
+    // An authorized link's token is in its query, which a page's relative ./NAME.bin drops.
+    caps.sealUnavailable.clear();
+    caps.sealSplit = destination.settings["linkMode"].toString() == QLatin1String("public");
     caps.deletionEffect = "Deletes exactly the uploaded B2 file version by its ID. put.gd never uploads over a visible file, so the name then shows "
                           "nothing, or an older version that was hidden before the upload. Authorized links stop working when they expire.";
     return caps;

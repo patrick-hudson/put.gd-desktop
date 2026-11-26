@@ -232,7 +232,7 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
     for (const auto& entry : doc["profiles"].toArray()) {
         if (!entry.isObject()) return invalid("/profiles", "Each profile must be an object.");
         const auto profile = entry.toObject();
-        if (!keys(profile, {"id", "label", "provider", "settings", "credentials"}) ||
+        if (!keys(profile, profile.contains("seal") ? QStringList{"id", "label", "provider", "settings", "credentials", "seal"} : QStringList{"id", "label", "provider", "settings", "credentials"}) ||
             !identifier(profile["id"]) || !text(profile["label"], 1, 128) ||
             !identifier(profile["provider"]) || !profile["settings"].isObject() || !profile["credentials"].isObject())
             return invalid("/profiles", "Profile fields or identifiers are invalid.");
@@ -244,6 +244,18 @@ Error Settings::validate(const QJsonObject& original, const ProfileValidator& va
             (credentials["mode"] == "keychain" && !text(credentials["reference"], 1, 256)) ||
             (credentials["mode"] == "session" && !credentials["reference"].isNull()))
             return invalid("/profiles/credentials", "Choose Save to keychain or Use for this session.");
+        // Sealed links (#2079): the destination's default, off unless set.
+        if (profile.contains("seal")) {
+            const auto seal = profile["seal"].toObject();
+            const auto pass = seal["passphraseCredentials"].toObject();
+            const bool passOk = keys(pass, {"mode", "reference"}) && choice(pass["mode"], {"keychain", "session"}) &&
+                ((pass["mode"] == "keychain" && text(pass["reference"], 1, 256)) || (pass["mode"] == "session" && pass["reference"].isNull()));
+            if (!profile["seal"].isObject() || !keys(seal, seal.contains("passphraseCredentials") ? QStringList{"mode", "passphraseCredentials"} : QStringList{"mode"}) || !choice(seal["mode"], {"off", "on", "passphrase"}) ||
+                (seal["mode"] == "passphrase" && !passOk) || (seal.contains("passphraseCredentials") && !passOk))
+                return invalid("/profiles/seal", "Choose Off, On or On with a passphrase for Seal links.");
+            if (pass["mode"] == "keychain" && pass["reference"] == profile["credentials"].toObject()["reference"])
+                return invalid("/profiles/seal", "The Seal links passphrase needs its own keychain reference, not the destination's.");
+        }
         if (!validateProfile) return invalid("/profiles/provider", "Provider validation is unavailable.");
         // The refused destination, as the submitted document names it (#1675).
         if (auto error = validateProfile(profile["provider"].toString(), profile["settings"].toObject())) {

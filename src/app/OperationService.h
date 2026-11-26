@@ -100,16 +100,33 @@ public:
  // resolved once and stored with the operation. Never a local-only save. Links
  // are copied as for a capture. Answers with the operation ID once it is durable.
  static constexpr const char* fileManagerAction="files";
- void uploadFiles(const QStringList& paths,const QString& profileId,const QString& installation,JsonReply,const QString& sensitiveMode=QStringLiteral("report"));
+ // seal (#2079): {enabled, passphrase?} overrides the destination's Seal links setting; absent keeps it.
+ void uploadFiles(const QStringList& paths,const QString& profileId,const QString& installation,JsonReply,const QString& sensitiveMode=QStringLiteral("report"),const QJsonObject& seal={});
  // Refuses upload.files with a retryable error (initializing) while it answers one,
  // e.g. while the startup read of saved credentials is still running.
  void setUploadGate(std::function<Error()> gate) {uploadGate_=std::move(gate);}
+ // Sealed links (#2079): the destination's Test check ({state, reason}, DestinationStatus) and
+ // its Seal links passphrase from the credential cache (empty when not loaded). Both may be
+ // called from upload workers. Unset: no destination counts as checked.
+ // Both get the destination's profile as the upload accepted it (op.settings), never today's.
+ void setSealHooks(std::function<QJsonObject(const QString& profileId,const QJsonObject& profile)> check,std::function<QString(const QString& profileId,const QJsonObject& profile)> passphrase)
+  {std::lock_guard lock(sealHooksMutex_);sealCheck_=std::move(check);sealPassphrase_=std::move(passphrase);}
+ // #2079: the Seal toggle beside Upload in the editor and recording review, and agents:
+ // sets this waiting operation's own Seal choice until its upload starts sealing.
+ void setSeal(const QString& id,bool enabled,JsonReply reply);
+ // What an upload of this operation would do about sealing: {on, setting, available,
+ // reason?, passphrase}. `on` is the operation's own choice, else the destination's.
+ QJsonObject sealOptions(const Operation&) const;
+ // Tests may point sealing at another putgd-cli.
+ void setSealHelperForTesting(const QString& path) {sealHelper_=path;}
  // This resident's installation class ("system" or "appimage"); tests may set it.
  void setInstallation(QString installation) {installation_=std::move(installation);}
  QString installation() const {return installation_;}
  void inspect(const QString& id,JsonReply);
  // The operation has finished but still holds its slot; a Retry now is answered operation_settling (#1578).
  bool operationSettling(const QString& id) const {return settling(id);}
+ // Whether this operation still holds its slot (call on the resident's thread).
+ bool operationActive(const QString& id) const {return active_.contains(id);}
  void recent(JsonReply);
  // Session-thread snapshot of bounded live observations; no SQL or provider IO.
  QJsonArray activeObservations() const;
@@ -282,7 +299,9 @@ private:
   // #1893: the capture before its style, stored instead when the store refuses the styled PNG for size or space.
   QByteArray unstyled={};
   // #1893: the style applied to the payload ({applied, pictureMissing?}), recorded once it is stored.
-  QJsonObject style={};};
+  QJsonObject style={};
+  // #2079: a passphrase this upload's request carried (putgd-cli upload --passphrase-file); memory only.
+  QString sealPassphrase={};};
  // #1893: whether a job's capture goes on its capture style, and doing it (on the worker).
  static bool needsStyle(const Job&);
  // #1893: edits of a new capture (region, window, desktop, scrolling): their editor starts styled.
@@ -436,6 +455,19 @@ private:
  std::atomic_bool destinationTestsReady_{false};
  QString installation_;
  std::function<Error()> uploadGate_;
+ mutable std::mutex sealHooksMutex_;
+ std::function<QJsonObject(const QString&,const QJsonObject&)> sealCheck_;
+ std::function<QString(const QString&,const QJsonObject&)> sealPassphrase_;
+ QString sealHelper_;
+ QHash<QString,bool> sealChoices_; // guarded by sealHooksMutex_
+ // Seals the items of an upload that are to be sealed and not yet (#2079). False when the
+ // journal write failed; items that can't be sealed fail with their own error.
+ // Whether this upload is to be sealed: its own choice, else its destination's setting.
+ bool sealWanted(const Operation& op) const;
+ // The one rule every send obeys: an upload that is to be sealed sends an item only once it
+ // is sealed, or once sealing was turned off for it with a reason (seal.status "off").
+ static bool sendable(const OperationItem& item,bool sealWanted) {return !sealWanted||item.sealed()||item.seal.value("status")==QLatin1String("off");}
+ bool sealItems(Operation& op,const ProviderCapabilities&,const QString& requestPassphrase,const std::shared_ptr<std::atomic_bool>& cancelled,const std::function<bool(const OperationItem&)>& saveItem);
  Error startupError_;
  // Recovers the journal on a worker; a failure (a full disk, an I/O error, a database another tool holds, or a lock that cannot be taken: QLockFile
  // reports a stale lock it failed to remove the same way as a live owner) is retried with a growing pause until it succeeds, so a fault that

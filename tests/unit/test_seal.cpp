@@ -154,6 +154,12 @@ private slots:
   QCOMPARE(seal::parsePage(seal::pagePrefix(false)+seal::dataOpen(false)+"QUJD</script><script>x"+seal::dataClose()+seal::pageSuffix(),parsed).code,QString("seal_page_changed"));
   QCOMPARE(seal::parsePage(seal::pagePrefix(false)+seal::dataOpen(false)+"QUJ=D==="+seal::dataClose()+seal::pageSuffix(),parsed).code,QString("seal_page_changed"));
  }
+ // The Test check's page is the probe vector, and opens with its public key.
+ void probePageIsTheProbeVector() {
+  const auto v=named("probe");seal::ParsedPage parsed;QVERIFY(!seal::parsePage(seal::probePage(),parsed));
+  QCOMPARE(QByteArray::fromBase64(parsed.base64),sealed(v));
+  QCOMPARE(seal::keyFromFragment(seal::probeFragment()),v.key);
+ }
  // The resident's helper: putgd-cli --seal-job writes a page (and a data file) and answers the key.
  void sealJobWritesPagesThatOpen() {
   const auto cli=qEnvironmentVariable("PUTGD_TEST_CLI");if(cli.isEmpty())QSKIP("PUTGD_TEST_CLI is not set");

@@ -118,8 +118,10 @@ int open(const QStringList& args) {
  return finish({},{{"path",target},{"name",meta.name},{"type",meta.type},{"bytes",double(meta.size)},{"form",parsed.split?"split":"inline"},{"viewerSha256",QString::fromLatin1(seal::viewerSha256)}});
 }
 int probe(const QStringList& args) {
- if(args.size()!=2)return finish({"invalid_request","Usage: putgd-cli --seal-probe URL",{}});
- const QUrl url(args[1],QUrl::StrictMode);
+ if(args.size()!=2)return finish({"invalid_request","Usage: putgd-cli --seal-probe URL (or - to read it from standard input)",{}});
+ QString text=args[1];
+ if(text=="-"){QFile in;if(!in.open(stdin,QIODevice::ReadOnly))return finish({"invalid_request","Couldn't read the address.",{}});text=QString::fromUtf8(in.readLine(16384)).trimmed();}
+ const QUrl url(text,QUrl::StrictMode);
  if(!url.isValid()||(url.scheme()!="https"&&url.scheme()!="http"))return finish({"invalid_request","The address must be http or https.",{}});
  useHostCaBundle();
  QBuffer body;body.open(QIODevice::ReadWrite);

@@ -29,7 +29,7 @@ target_include_directories(putgd_capture_style_render PUBLIC src)
 target_link_libraries(putgd_capture_style_render PUBLIC putgd_capture_style Qt6::Gui putgd_build_options)
 add_library(putgd_core STATIC src/core/Settings.cpp src/core/SensitiveText.cpp src/core/DestinationCheck.cpp src/core/CommandText.cpp src/core/SettingsService.cpp src/core/ImagePages.cpp
   src/platform/Geometry.cpp
-  src/core/ClipboardPayload.cpp src/core/ArtifactStore.cpp src/core/ImageJob.cpp src/core/PosterJob.cpp src/core/TextJob.cpp src/core/LocalArchive.cpp
+  src/core/ClipboardPayload.cpp src/core/ArtifactStore.cpp src/core/ImageJob.cpp src/core/PosterJob.cpp src/core/TextJob.cpp src/core/LocalArchive.cpp src/core/SealJob.cpp
   src/core/UploadNaming.cpp src/core/StorageReceipt.cpp src/core/StorageProvider.cpp
   src/core/Operation.cpp src/core/HistoryStore.cpp src/core/SanitizedPng.cpp src/core/EditorJob.cpp src/core/HelperFiles.cpp src/core/RecordingModel.cpp src/core/KeptSpans.cpp
   src/core/ReleaseLink.cpp src/core/Update.cpp src/core/SystemUpdates.cpp src/core/Distribution.cpp src/core/ZipWriter.cpp src/core/FolderZip.cpp

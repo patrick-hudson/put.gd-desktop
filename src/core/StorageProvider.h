@@ -29,6 +29,12 @@ struct ProviderCapabilities {
  bool settlesUploads=false;
  // Why this recorded upload cannot be deleted, when remove is false for it alone.
  QString removeUnavailable;
+ // Sealed links (#2079): why a sealed page can't be uploaded here, in one sentence; empty
+ // when it can (the destination's Test check still decides). sealSplit: the two-file form
+ // also works, a page and its data file side by side under one public Link address, which
+ // per-file presigned or authorized links can't give.
+ QString sealUnavailable=QStringLiteral("This destination type doesn't support sealed links.");
+ bool sealSplit=false;
  // Whether a recorded object can be deleted without risking another object.
  bool safeRemoval() const {return remove&&!deletionEffect.isEmpty()&&(referenceDelete||(stat&&(conditionalDelete||versionAddressing)));}
  QJsonObject toJson() const;

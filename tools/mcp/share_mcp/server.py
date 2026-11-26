@@ -326,8 +326,8 @@ def create_server(adapter: CliAdapter) -> MCPServer:
         return await adapter.call('ui.viewState', {})
 
     @server.tool(annotations=effect)
-    async def perform_action(action: str, delay_seconds: int | None = None) -> Json:
-        """Acquire region/window/monitor/desktop/clipboard, then configured local save or public upload; may copy result. `monitor` captures the monitor the pointer is on. `repeat` captures the rectangle of the last region capture again with no selector (repeat_unavailable when there is none yet, repeat_layout_changed when the monitors changed since); its operation is a region capture. delay_seconds (3, 5 or 10; region, window, monitor, desktop, repeat and edit only) shows a cancellable countdown first: a region is selected before it runs, every other target is taken when it ends, and a screen that is locked at that moment captures nothing (session_locked). cancel_operation ends a countdown. `edit` opens the editor after a region selection instead; use open_editor for other sources. `scroll` starts a scrolling region capture; invoking it again while capturing stops and keeps the image. `record` starts a screen recording from a dragged region (or raises the active one); drive it with the recording tools. `text` (Copy text from region) lets the user select a region and copies the text and codes in it to the clipboard; nothing is saved or uploaded, it has no output route, and get_text_recognition follows it."""
+    async def perform_action(action: str, delay_seconds: int | None = None, seal: bool | None = None) -> Json:
+        """Acquire region/window/monitor/desktop/clipboard, then configured local save or public upload; may copy result. `monitor` captures the monitor the pointer is on. `repeat` captures the rectangle of the last region capture again with no selector (repeat_unavailable when there is none yet, repeat_layout_changed when the monitors changed since); its operation is a region capture. delay_seconds (3, 5 or 10; region, window, monitor, desktop, repeat and edit only) shows a cancellable countdown first: a region is selected before it runs, every other target is taken when it ends, and a screen that is locked at that moment captures nothing (session_locked). cancel_operation ends a countdown. `edit` opens the editor after a region selection instead; use open_editor for other sources. `scroll` starts a scrolling region capture; invoking it again while capturing stops and keeps the image. `record` starts a screen recording from a dragged region (or raises the active one); drive it with the recording tools. `text` (Copy text from region) lets the user select a region and copies the text and codes in it to the clipboard; nothing is saved or uploaded, it has no output route, and get_text_recognition follows it. seal true or false (a capture action) overrides the destination's Seal links setting for this upload (#2079): a sealed upload is an encrypted page whose link carries its key after #, and it fails with seal_check_required or seal_unavailable rather than upload unsealed."""
         if action not in {'region', 'window', 'monitor', 'desktop', 'repeat', 'clipboard', 'edit', 'record', 'scroll', 'text'}:
             return invalid()
         params: Json = {'action': action}
@@ -335,12 +335,16 @@ def create_server(adapter: CliAdapter) -> MCPServer:
             if type(delay_seconds) is not int or delay_seconds not in DELAY_SECONDS or action not in DELAYABLE_ACTIONS:
                 return invalid()
             params['delaySeconds'] = delay_seconds
+        if seal is not None:
+            if type(seal) is not bool or action in {'record', 'scroll', 'text'}:
+                return invalid()
+            params['seal'] = seal
         # The resident answers when the operation is accepted, before any countdown.
         return await adapter.call('action.invoke', params)
 
     @server.tool(annotations=effect)
-    async def upload_files(paths: list[str], profile_id: str | None = None) -> Json:
-        """Upload files and folders right away, as a file manager's "Upload with put.gd" does (#1105): 1-10000 absolute paths to existing regular files or folders. Folders follow preferences.fileManagerFolders: zip (default) uploads each folder as one <folder name>.zip; files uploads every file in it (symlinks skipped; limits.maxFiles counts the expanded files). Goes to profile_id, else captureDefaults' destination when it is an upload with a profile, else the only destination; with none it is refused with destination_required and nothing is saved locally. Uses captureDefaults.publicationMode and copies the links like a capture. Every path is checked before anything is accepted: a refusal (files_rejected, input_excessive, destination_object_too_large, disk_space_insufficient) names each bad file in details.files. Returns operationId; poll get_operation until it finishes."""
+    async def upload_files(paths: list[str], profile_id: str | None = None, seal: bool | None = None) -> Json:
+        """Upload files and folders right away, as a file manager's "Upload with put.gd" does (#1105): 1-10000 absolute paths to existing regular files or folders. Folders follow preferences.fileManagerFolders: zip (default) uploads each folder as one <folder name>.zip; files uploads every file in it (symlinks skipped; limits.maxFiles counts the expanded files). Goes to profile_id, else captureDefaults' destination when it is an upload with a profile, else the only destination; with none it is refused with destination_required and nothing is saved locally. Uses captureDefaults.publicationMode and copies the links like a capture. Every path is checked before anything is accepted: a refusal (files_rejected, input_excessive, destination_object_too_large, disk_space_insufficient) names each bad file in details.files. Returns operationId; poll get_operation until it finishes. seal true or false overrides the destination's Seal links setting (#2079); a passphrase is never passed here, only the destination's own from the keychain."""
         if not isinstance(paths, list) or not 0 < len(paths) <= 10000 or not all(identifier(path, 4096) and path.startswith('/') for path in paths):
             return invalid()
         if profile_id is not None and not identifier(profile_id, 64):
@@ -348,6 +352,10 @@ def create_server(adapter: CliAdapter) -> MCPServer:
         params: Json = {'paths': paths}
         if profile_id is not None:
             params['profileId'] = profile_id
+        if seal is not None:
+            if type(seal) is not bool:
+                return invalid()
+            params['seal'] = {'enabled': seal}
         return await adapter.call('upload.files', params, timeout=150)
 
     @server.tool(annotations=effect)
@@ -837,11 +845,14 @@ def create_server(adapter: CliAdapter) -> MCPServer:
         return await adapter.call('recording.saveCopy', params)
 
     @server.tool(annotations=effect)
-    async def upload_recording(id: str, revision: int) -> Json:
-        """The only action that publishes: export the result at the reviewed revision, validate it and send it through the configured destination (may publish a public link and copy it). Returns once the export starts (state exporting, with operationId); exports can take minutes. If get_recording shows reviewing again, lastExport.error says why and nothing was uploaded; once the session is handed to the upload it is recording_unavailable and get_operation on operationId has the outcome. Never falls back to the unedited clip."""
-        if not identifier(id) or type(revision) is not int or revision < 1:
+    async def upload_recording(id: str, revision: int, seal: bool | None = None) -> Json:
+        """The only action that publishes: export the result at the reviewed revision, validate it and send it through the configured destination (may publish a public link and copy it). Returns once the export starts (state exporting, with operationId); exports can take minutes. If get_recording shows reviewing again, lastExport.error says why and nothing was uploaded; once the session is handed to the upload it is recording_unavailable and get_operation on operationId has the outcome. Never falls back to the unedited clip. seal true or false sets the review's Seal toggle for this upload first (#2079)."""
+        if not identifier(id) or type(revision) is not int or revision < 1 or (seal is not None and type(seal) is not bool):
             return invalid()
-        return await adapter.call('recording.upload', {'id': id, 'revision': revision})
+        params: Json = {'id': id, 'revision': revision}
+        if seal is not None:
+            params['seal'] = seal
+        return await adapter.call('recording.upload', params)
 
     @server.tool(annotations=read)
     async def get_operation(id: str, kind: str = 'operation') -> Json:
@@ -943,8 +954,20 @@ def create_server(adapter: CliAdapter) -> MCPServer:
         return await adapter.call(methods[action], {'id': id})
 
     @server.tool(annotations=effect)
+    async def set_seal(id: str, enabled: bool) -> Json:
+        """Turn the Seal toggle beside Upload on or off for an open edit or recording review (#2079), as its window's own toggle does; it applies when that upload starts. operation_not_found once the operation has finished. get_operation's seal shows a choice once its upload has started."""
+        if not identifier(id) or type(enabled) is not bool:
+            return invalid()
+        return await adapter.call('operation.seal', {'id': id, 'enabled': enabled})
+
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True, open_world_hint=False))
+    async def forget_history_key(id: str) -> Json:
+        """Forget key (#2079): remove a sealed link's key from History. The file stays at the destination and nobody, put.gd included, can open it again; Copy link and QR code stop being offered. history_not_sealed for an item that isn't a sealed link; history_busy while its upload runs."""
+        return await adapter.call('history.forgetKey', {'id': id}) if identifier(id) else invalid()
+
+    @server.tool(annotations=effect)
     async def copy_history_link(id: str) -> Json:
-        """Copy the recorded link. Expired S3 presigned and B2 authorized links refresh from the saved receipt and original cached credentials before copying. credential_setup_required never opens a keyring prompt; explicitly unlock saved credentials first."""
+        """Copy the recorded link (a sealed link with its key after #, history.detail's link). Expired S3 presigned and B2 authorized links refresh from the saved receipt and original cached credentials before copying. credential_setup_required never opens a keyring prompt; explicitly unlock saved credentials first."""
         return await adapter.call('history.copyLink', {'id': id}, timeout=645) if identifier(id) else invalid()
 
     @server.tool(annotations=effect)

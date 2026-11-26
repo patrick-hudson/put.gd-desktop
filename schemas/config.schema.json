@@ -590,6 +590,59 @@
           "settings": {
             "type": "object"
           },
+          "seal": {
+            "description": "Sealed links (#2079): this destination's default for new uploads. off (the default when absent), on, or passphrase, whose passphrase is kept under passphraseCredentials like any other secret.",
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "mode"
+            ],
+            "properties": {
+              "mode": {
+                "enum": [
+                  "off",
+                  "on",
+                  "passphrase"
+                ]
+              },
+              "passphraseCredentials": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "mode",
+                  "reference"
+                ],
+                "properties": {
+                  "mode": {
+                    "enum": [
+                      "keychain",
+                      "session"
+                    ]
+                  },
+                  "reference": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 256
+                  }
+                }
+              }
+            },
+            "if": {
+              "properties": {
+                "mode": {
+                  "const": "passphrase"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "mode",
+                "passphraseCredentials"
+              ]
+            }
+          },
           "credentials": {
             "type": "object",
             "additionalProperties": false,

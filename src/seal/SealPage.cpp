@@ -30,6 +30,11 @@ QByteArray pagePrefix(bool split) {
  return head;
 }
 QByteArray pageSuffix() {const auto page=viewer();return page.mid(page.indexOf(marker)+marker.size());}
+QByteArray probePage() {
+ static const QByteArray container=QByteArrayLiteral("UEdEU0VBTDEBAAAAABAAAAAAAAADa1R8loijOZDLopPqh3yF/iPaaYootZrv7DwsRokmQu+87nchyoEAAAAAAJnbfqrab+ZMLDuTno2a6/GmFds8T4HIhSKB9qlyVw85lZVDKp4CAkBDDzKkU2rir3YgnrQKW6hWxG0DrGZ9Z2AaKJtAHQgAFzvzWsFAoelvXhrP7xA5LHkYoGnN5FskiRVPGe20yQB8oR92ecQiaVO+dEDa9ZBpptDdmrKuPd7g1PzqfA==");
+ return pagePrefix(false)+dataOpen(false)+container+dataClose()+pageSuffix();
+}
+QString probeFragment() {return QStringLiteral("v1.")+QString::fromLatin1(QByteArray::fromHex("b88f6e3d577beb7ae6550951a8c4970711c41bc0f48cbc52ada4f44856b24aa9").toBase64(QByteArray::Base64UrlEncoding|QByteArray::OmitTrailingEquals));}
 bool validBinName(const QString& name) {
  if(!name.endsWith(".bin"))return false;
  const auto stem=name.chopped(4);if(stem.isEmpty()||stem.size()>128)return false;

@@ -181,6 +181,9 @@ ProviderCapabilities S3Provider::capabilities(const Destination& destination) co
     // Larger files upload in parts; S3 itself stores objects of at most 5 TiB.
     result.maximumObjectBytes = s3MaximumObjectBytes;
     result.settlesUploads = true;
+    // A presigned link signs one object, so a sealed page can't fetch its data file beside it.
+    result.sealUnavailable.clear();
+    result.sealSplit = destination.settings["linkMode"].toString() != QLatin1String("presigned");
     return result;
 }
 QString S3Provider::serializationKey(const Destination& destination, const QJsonObject& object, const QString& candidate) const {

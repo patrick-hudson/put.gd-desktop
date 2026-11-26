@@ -61,6 +61,9 @@ QJsonObject itemSummary(const OperationItem& item,int attempts) {
  if(item.error)result["error"]=item.error.toJson();
  if(!item.receipt.directUrl.isEmpty())result["directUrl"]=item.receipt.directUrl;
  if(item.objectReference.contains("key"))result["objectKey"]=item.objectReference["key"];
+ // #2079: how it was sealed, never its key.
+ if(!item.seal.isEmpty()){QJsonObject seal{{"status",item.seal.value("status")},{"form",item.seal.value("form")},{"passphrase",item.seal.value("passphrase")},{"keyForgotten",item.seal.value("keyForgotten")}};
+  if(item.seal.contains("reason"))seal["reason"]=item.seal.value("reason");if(item.seal.contains("data"))seal["dataStatus"]=item.seal.value("data").toObject().value("uploadStatus");result["seal"]=seal;}
  return result;
 }
 }

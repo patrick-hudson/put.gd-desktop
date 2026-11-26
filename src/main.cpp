@@ -24,6 +24,9 @@
 #include "app/RecordingHelperBackend.h"
 #include "app/ScrollHelperBackend.h"
 #include "app/SetupService.h"
+#include "app/SealCheck.h"
+#include "core/DestinationCheck.h"
+#include "core/SealJob.h"
 #include "app/DestinationTestJournal.h"
 #include "app/StorageLocations.h"
 #include "ui/Appearance.h"
@@ -553,6 +556,30 @@ int main(int argc,char* argv[]) {
   operations.background([proton,method,destination,input,event](putgd::Error& error){return proton->setup(method,destination,input,error,event);},std::move(reply));
  };
  setup.setProviderSetup(providerSetup);
+ // Sealed links (#2079): a passed Test also checks the destination serves a sealed page as a
+ // page, on a worker; the record ties the result to the connection the test checked.
+ setup.setSealChecker([&operations,&providers,&destinationStatus,stateRoot](const QString& profileId,const QJsonObject& profile,std::function<void(QJsonObject)> done){
+  auto provider=providers.find(profile["provider"].toString());
+  const putgd::Destination destination{profile["provider"].toString(),profileId,{},profile["settings"].toObject(),profile["credentials"].toObject()};
+  if(!provider||!provider->capabilities(destination).sealUnavailable.isEmpty()){
+   const auto reason=provider?provider->capabilities(destination).sealUnavailable:QStringLiteral("This destination is unavailable.");
+   done({{"state","unsupported"},{"reason",reason}});return;
+  }
+  const auto fingerprint=putgd::destinationcheck::fingerprint(profile);
+  const auto cli=QDir(QCoreApplication::applicationDirPath()).filePath("putgd-cli");
+  operations.background([provider,destination,stateRoot,cli](putgd::Error&){return putgd::runSealCheck(*provider,destination,stateRoot+"/seal-check",cli,{});},
+   [&destinationStatus,profileId,fingerprint,done](putgd::Error,QJsonObject seal){
+    destinationStatus.sealChecked(profileId,fingerprint,seal["state"]=="passed",seal["reason"].toString());
+    done(seal);
+   });
+ });
+ operations.setSealHooks([&destinationStatus](const QString& profileId,const QJsonObject& profile){return destinationStatus.sealCheckFor(profileId,putgd::destinationcheck::fingerprint(profile));},
+  [&credentials](const QString& profileId,const QJsonObject& profile)->QString{
+   const auto reference=profile.value("seal").toObject().value("passphraseCredentials").toObject();
+   if(reference.isEmpty())return {};
+   const auto cached=credentials.cached(putgd::sealPassphraseId(profileId),reference);
+   return cached?cached->values.value("passphrase"):QString();
+  });
  setup.setNamedCredentials([](const QJsonObject& profile,const QMap<QString,QString>& values,QStringList* names){return profile["provider"]==putgd::sftp::providerId?putgd::sftp::namedCredentials(profile,values,names):putgd::http::namedCredentials(profile,values,names);});
  setup.setCredentialBinding([](const QJsonObject& profile){const auto provider=profile["provider"].toString();return putgd::dav::isDav(provider)?putgd::dav::binding(profile["settings"].toObject(),provider):QString();});
  server.setSetupService(&setup);

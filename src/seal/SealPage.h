@@ -25,6 +25,10 @@ QByteArray dataOpen(bool split,const QString& bin={});
 inline QByteArray dataClose() {return QByteArrayLiteral("</script>");}
 // A data file name the split page may name: 1 to 128 of [A-Za-z0-9_-], then ".bin".
 bool validBinName(const QString&);
+// The Test check's page (#2079): the "probe" vector of tests/fixtures/seal/vectors.json as an
+// inline page. Its key is public (probeFragment), so it proves only how a destination serves a page.
+QByteArray probePage();
+QString probeFragment();
 struct ParsedPage {bool split=false;QString bin;QByteArray base64;};
 // Checks that `page` is exactly the pinned viewer around one well-formed data element.
 // seal_page_changed when anything else differs: it is not put.gd's viewer.
