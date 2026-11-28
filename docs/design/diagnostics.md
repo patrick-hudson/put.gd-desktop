@@ -542,11 +542,13 @@ bytes it saves.
 The report's own configuration fields hold no destination label, bucket, address,
 credentials, keys, tokens or links, no saved Quick redact word or pattern (counts only),
 no QR code content and no file name. The pictures and the recognized text are another
-matter: they are the screen as it was, unredacted. Whatever the capture showed (a
-credential, a link, a name, a file name, a word from the redaction list) is in
-`original.*`, in the words and in each finding's text, and a PNG or JPEG file from the
-file manager keeps whatever metadata its bytes carry, since the original is saved byte for
-byte.
+matter. `original.*` holds the capture's pixels unredacted: whatever it showed (a
+credential, a link, a name, a file name, a word from the redaction list) is in it, and a
+PNG or JPEG file from the file manager keeps whatever metadata its bytes carry, since the
+original is saved byte for byte. `covered.png` has the suggested covers over it. The
+recognized text, in the words and in each finding's text, can hold secrets too, though
+recognition can miss or misread text, so it isn't a full account of what the picture
+shows.
 
 ### Retention of reports
 
@@ -595,8 +597,11 @@ secret is in the report. The exception has these bounds:
 - No saved list word or pattern, destination detail, credential, link, QR code content
   or file name is in a report's configuration fields. The pictures and recognized text are
   unredacted and show whatever was on screen, and an original file keeps its own metadata.
-- A package includes reports only within their own 64 MiB allowance, and says so in one
-  line in Settings. An agent can leave them out with `falseAlarmReports: false`.
+- A package holds reports only when asked for: Settings' dialog, which says so before
+  saving and asks for the reports its preview named, or an explicit `falseAlarmReports`
+  (CLI `--false-alarm-reports`, MCP `include_false_alarm_reports`). History's, the tray's
+  and the error log's **Save diagnostics** hold none. Reports have their own 64 MiB
+  allowance.
 
 ## Diagnostics package
 
@@ -609,7 +614,7 @@ locally first; it can then be uploaded to a working destination (see "Uploading 
 package" below).
 
 ```sh
-putgd-cli diagnostics.bundle [--operation ID] [--since 7d] [--include-names] [--output PATH] [--no-false-alarm-reports] [--upload [--profile ID] [--copy-link]]
+putgd-cli diagnostics.bundle [--operation ID] [--since 7d] [--include-names] [--output PATH] [--false-alarm-reports] [--upload [--profile ID] [--copy-link]]
 ```
 
 The flags map to the JSON parameters `operation`, `since`, `includeNames`,
@@ -624,20 +629,22 @@ takes `operation_id`, `since`, `include_names`, `output`, `preview`, `notify`,
   be saved in and `defaultFolder`. The Settings dialog shows this before saving.
 - **`notify`:** `true` makes the resident post a **diagnostics saved** notification
   with **Show in folder** after saving. Not together with `preview`.
-- **`falseAlarmReports`:** `false` leaves [false-alarm reports](#false-alarm-reports) out.
-  The default is `true`. The CLI flag is `--no-false-alarm-reports` and the MCP parameter
-  is `include_false_alarm_reports`. A list of report names instead holds at most those (of
-  the ones the window or operation would take), and an empty list none: the Settings
-  dialog sends the names its preview counted, so the package holds no report its notice
-  didn't count. It can hold fewer: each report is checked again when the package is saved,
-  and one that is no longer whole, no longer there (retention or Clear logs removed it) or
-  no longer fits is left out and counted.
+- **`falseAlarmReports`:** `true` adds the [false-alarm reports](#false-alarm-reports).
+  The default is `false`, so a package holds none unless asked: History's, the tray's and
+  the error log's saves never hold reports. The CLI flag is `--false-alarm-reports` and the
+  MCP parameter is `include_false_alarm_reports`. A list of report names instead holds at
+  most those (of the ones the window or operation would take), and an empty list none: the
+  Settings dialog's preview asks with `true`, and its save sends the names that preview
+  counted, so the package holds no report its notice didn't count. It can hold fewer: each
+  report is checked again when the package is saved. One no longer whole or no longer
+  fitting is left out and counted (`invalid`, `omitted`); one deleted since the preview
+  (by retention or Clear logs) is simply gone and isn't counted anywhere.
 
 A preview writes nothing, so it takes none of `upload`, `profileId` and `copyLink`.
 
 - **`operation`:** package that one operation, with the log records from ten minutes
-  before it was accepted to ten minutes after its last record, and that operation's
-  false-alarm reports. `since` is ignored.
+  before it was accepted to ten minutes after its last record, and, when asked for, that
+  operation's false-alarm reports. `since` is ignored.
 - **`since`:** without `operation`, the failed, partial and interrupted operations
   created in this window, and the false-alarm reports created in it, together with completed uploads whose link did not reach
   the clipboard (`copyStatus` `suppressed`, `failed` or `partial`, or `no_result`
@@ -682,13 +689,14 @@ counted as `invalid` and left out. `manifest.json`, the reply and the preview ca
 `falseAlarmReports`: `included`, `omitted`, `invalid`, `eligible`, `bytes`, `maximumBytes`,
 `requested` and `names`. Reports are read and checked when the package is saved, not
 when it is previewed, so a saved package can hold fewer than its preview counted; the
-Settings dialog's result after saving says how many it holds.
+Settings dialog's result after saving says how many it holds when it holds any.
 
 **Never included:** credentials, secrets or tokens, keychain data, signed URLs,
 artifact or preview bytes, screenshots, clipboard content, recognized text, Quick redact's
 saved words and patterns, and the raw `history.sqlite` and core dumps. The one exception
-is a [false-alarm report](#an-exception-to-the-diagnostics-rules), which holds the
-pictures and recognized text of a capture the user marked **Not sensitive**.
+is a [false-alarm report](#an-exception-to-the-diagnostics-rules), in a package that asked
+for reports, which holds the pictures and recognized text of a capture the user marked
+**Not sensitive**.
 
 ### Redaction in packages
 
@@ -933,7 +941,7 @@ destination settings** when they were for one session only).
   the text read from them, which can show anything that was on screen. Apart from those,
   credentials, tokens, signed links, file contents, screenshots, and clipboard text are
   never included." Without reports it reads as before. **Save package** sends the names
-  the preview counted, and the saved result says how many reports the package holds. It
+  the preview counted, and the saved result says how many reports the package holds when it holds any. It
   has no checkbox and no confirmation. **Include file names** sets `includeNames`
   (off each time the dialog opens). **Choose folder…** saves the folder in
   `preferences.diagnostics.packageFolder`, so later packages go there; **Use default**
