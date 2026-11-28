@@ -1,6 +1,7 @@
 #pragma once
 #include "OperationService.h"
 #include <QDateTime>
+#include <optional>
 #include <QDir>
 #include <QSet>
 #include <QRegularExpression>
@@ -18,6 +19,9 @@ struct BundleRequest {
  QString profileId;
  // #2134: include the false-alarm reports of the package's window (or operation), which hold screen content.
  bool falseAlarmReports=true;
+ // With names (falseAlarmReports given as a list): only these reports, as a preview listed them, so a package
+ // holds no report its notice didn't count (Settings' dialog).
+ std::optional<QStringList> falseAlarmNames;
 };
 // Replaces names, object keys, URLs and private paths in a diagnostics package
 // with stable per-package hashes (the same value always gets the same token in

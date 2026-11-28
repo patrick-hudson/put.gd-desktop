@@ -171,7 +171,15 @@ QString DiagnosticsBundles::defaultFolder(const Settings& settings) {return QDir
 Error DiagnosticsBundles::parse(const QJsonObject& params,BundleRequest& request) {
  const Error invalid{"invalid_request","diagnostics.bundle takes operation (an ID), since (1m to 365d, such as 7d or 24h), includeNames, output (an absolute .zip path or folder), preview, falseAlarmReports, and upload with profileId and copyLink",{}};
  for(auto it=params.begin();it!=params.end();++it)if(!QStringList{"operation","since","includeNames","output","preview","upload","profileId","copyLink","falseAlarmReports"}.contains(it.key()))return invalid;
- if(params.contains("falseAlarmReports")){if(!params["falseAlarmReports"].isBool())return invalid;request.falseAlarmReports=params["falseAlarmReports"].toBool();}
+ if(params.contains("falseAlarmReports")){
+  const auto value=params["falseAlarmReports"];
+  if(value.isArray()){
+   QStringList names;const auto list=value.toArray();if(list.size()>10000)return invalid;
+   for(const auto& name:list){if(!name.isString()||!FalseAlarmReports::reportName(name.toString()))return invalid;names.append(name.toString());}
+   request.falseAlarmNames=names;request.falseAlarmReports=!names.isEmpty();
+  }else if(value.isBool())request.falseAlarmReports=value.toBool();
+  else return invalid;
+ }
  if(params.contains("upload")){if(!params["upload"].isBool())return invalid;request.upload=params["upload"].toBool();}
  if(params.contains("copyLink")){if(!params["copyLink"].isBool()||!request.upload)return invalid;request.copyLink=params["copyLink"].toBool();}
  if(params.contains("profileId")){const auto id=params["profileId"].toString();if(!params["profileId"].isString()||id.isEmpty()||id.size()>64||!request.upload)return invalid;request.profileId=id;}
@@ -519,10 +527,10 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
  // first, in an allowance of their own beside the 20 MiB, so they never push out log records. A preview counts
  // them without reading them.
  FalseAlarmReports::Selection reports;
- if(request.falseAlarmReports&&!context.falseAlarmsDirectory.isEmpty())reports=FalseAlarmReports::select(context.falseAlarmsDirectory,from,to,request.operationId,FalseAlarmReports::bundleBytes,!request.preview);
+ if(request.falseAlarmReports&&!context.falseAlarmsDirectory.isEmpty())reports=FalseAlarmReports::select(context.falseAlarmsDirectory,from,to,request.operationId,FalseAlarmReports::bundleBytes,!request.preview,request.falseAlarmNames?&*request.falseAlarmNames:nullptr);
  QJsonArray reportNames;
  for(const auto& report:std::as_const(reports.reports)){reportNames.append(report.name);for(const auto& [name,bytes]:report.files)entries.append({"false-alarms/"+report.name+"/"+name,bytes});}
- const QJsonObject reportSummary{{"included",reports.reports.size()},{"omitted",reports.omitted},{"eligible",reports.eligible},{"bytes",double(reports.bytes)},{"maximumBytes",double(FalseAlarmReports::bundleBytes)},{"requested",request.falseAlarmReports},{"names",reportNames}};
+ const QJsonObject reportSummary{{"included",reports.reports.size()},{"omitted",reports.omitted},{"invalid",reports.invalid},{"eligible",reports.eligible},{"bytes",double(reports.bytes)},{"maximumBytes",double(FalseAlarmReports::bundleBytes)},{"requested",request.falseAlarmReports},{"names",reportNames}};
  QJsonArray manifestFiles;for(const auto& [path,bytes]:entries)manifestFiles.append(QJsonObject{{"path",path},{"bytes",bytes.size()},{"sha256",sha256(bytes)}});
  QJsonObject scope{{"from",fromText},{"to",toText}};
  if(!request.operationId.isEmpty())scope["operationId"]=request.operationId;else scope["since"]=QString::number(request.sinceMs/60000)+"m";

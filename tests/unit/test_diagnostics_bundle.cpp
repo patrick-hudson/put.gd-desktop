@@ -308,13 +308,17 @@ private slots:
    {"check",QJsonObject{{"found",QJsonObject{{"phone",9}}},{"categories",QJsonArray{"phone","synthetic-private-kind"}},{"automatic",QJsonArray{}}}},
    {"recognition",QJsonObject{{"engine",QJsonObject{{"name","other"},{"version","5.5.0"},{"scale",2}}},{"environment","synthetic-private-env"}}},
    {"findings",QJsonArray{QJsonObject{{"kind","card"},{"rule","card"},{"text",QString(5000,'x')},{"words",QJsonArray{0,7}},{"box",QJsonArray{1,2,3,4}},{"token","synthetic-private-token"}},
-                          QJsonObject{{"kind","synthetic-private-kind"},{"text","dropped"}}}},
+                          QJsonObject{{"kind","synthetic-private-kind"},{"text","dropped"}},
+                          // N4: a bad box goes, never kept as null; the finding stays without one.
+                          QJsonObject{{"kind","phone"},{"rule","phone"},{"text","200 63292"},{"box",QJsonArray{1,2,"x",4}},{"marks",QJsonArray{QJsonArray{1,2,3},QJsonArray{0,0,5,5}}}}}},
    {"words",QJsonObject{{"total",1},{"list",QJsonArray{word,QJsonObject{{"text",3}}}}}},{"codes",QJsonArray{QJsonObject{{"kind","otp"},{"box",QJsonArray{0,0,5,5}},{"text","synthetic-private-code"}}}}};
   Error error;const auto report=FalseAlarmReports::compose(helper,{{"check",QJsonObject{{"found",QJsonObject{{"card",1}}},{"complete",true}}}},error);QVERIFY(!error);
   const auto bytes=QJsonDocument(report).toJson();QVERIFY2(!bytes.contains("synthetic-private"),bytes.constData());
   QCOMPARE(report["check"].toObject()["found"].toObject(),(QJsonObject{{"card",1}}));QCOMPARE(report["check"].toObject()["categories"].toArray(),(QJsonArray{"phone"}));
   QCOMPARE(report["recognition"].toObject()["engine"].toObject()["name"].toString(),QString("tesseract"));
-  const auto findings=report["findings"].toArray();QCOMPARE(findings.size(),1);
+  const auto findings=report["findings"].toArray();QCOMPARE(findings.size(),2);
+  QVERIFY(!findings.at(1).toObject().contains("box"));QCOMPARE(findings.at(1).toObject()["marks"].toArray(),(QJsonArray{QJsonArray{0,0,5,5}}));
+  QVERIFY(!bytes.contains("null"));
   QCOMPARE(findings.first().toObject()["text"].toString().size(),4096);QCOMPARE(findings.first().toObject()["words"].toArray(),(QJsonArray{0}));
   QCOMPARE(report["words"].toObject()["list"].toArray().size(),1);QCOMPARE(report["codes"].toArray().first().toObject().keys(),(QStringList{"box","kind"}));
   QCOMPARE(report["image"].toObject().keys(),(QStringList{"height","width"}));
@@ -331,7 +335,13 @@ private slots:
   {QFile tampered(QDir(bad.path).filePath("covered.png"));QVERIFY(tampered.open(QIODevice::Append));tampered.write("x");}
   const auto selection=FalseAlarmReports::select(folder,now.addDays(-1),now.addDays(1),{},FalseAlarmReports::bundleBytes);
   QCOMPARE(selection.reports.size(),1);QCOMPARE(selection.reports.first().name,good.name);QCOMPARE(selection.invalid,1);
-  QCOMPARE(selection.reports.first().files.size(),3);
+  QCOMPARE(selection.reports.first().files.size(),3);QCOMPARE(selection.eligible,selection.reports.size()+selection.omitted+selection.invalid);
+  // N1: a package bound to a preview's names holds just those.
+  const QStringList none,onlyGood{good.name};
+  QCOMPARE(FalseAlarmReports::select(folder,now.addDays(-1),now.addDays(1),{},FalseAlarmReports::bundleBytes,true,&none).reports.size(),0);
+  QCOMPARE(FalseAlarmReports::select(folder,now.addDays(-1),now.addDays(1),{},FalseAlarmReports::bundleBytes,true,&onlyGood).invalid,0);
+  {BundleRequest named;QVERIFY(!DiagnosticsBundles::parse({{"falseAlarmReports",QJsonArray{good.name}}},named));QCOMPARE(named.falseAlarmNames,std::optional<QStringList>(onlyGood));
+   QCOMPARE(DiagnosticsBundles::parse({{"falseAlarmReports",QJsonArray{"../escape"}}},named).code,QString("invalid_request"));}
   // A half-written folder goes with Clear logs; a report folder holding a file put.gd didn't write stays, and is counted.
   QVERIFY(QDir().mkpath(QDir(folder).filePath(".putgd-false-alarm-20260101T000000000Z-0123abcd")));
   {QFile stray(QDir(good.path).filePath("notes.txt"));QVERIFY(stray.open(QIODevice::WriteOnly));stray.write("kept");}

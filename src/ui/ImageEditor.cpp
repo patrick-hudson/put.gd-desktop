@@ -31,6 +31,7 @@
 #include <QPointer>
 #include <QUuid>
 #include <memory>
+#include <algorithm>
 #ifdef Q_OS_UNIX
 #include <cerrno>
 #include <fcntl.h>
@@ -96,6 +97,8 @@ public:
   return QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());
  }
  void discardReport(){if(staging_.descriptor()>=0){::unlinkat(staging_.descriptor(),"report.json",0);::unlinkat(staging_.descriptor(),"report-covered.png",0);}}
+ // A duplicate of the staging directory's descriptor for a report's worker (N5); -1 when staging isn't intact.
+ int duplicateDirectory(){return intact()&&staging_.descriptor()>=0?::fcntl(staging_.descriptor(),F_DUPFD_CLOEXEC,0):-1;}
  const QString& directory() const {return staging_.path();}
  QFile input,output;
 private:
@@ -116,6 +119,22 @@ bool recentColorList(const QJsonValue& value,QStringList& colors){
 }
 }
 namespace {
+// #2134 N5: a report file written through its own duplicate of the staging directory's descriptor, so the worker
+// that writes it never touches the session's files and the session never waits for it. Returns the digest, or empty.
+QString writeReportAt(int directory,const char* name,const QByteArray& bytes){
+#ifdef Q_OS_UNIX
+ if(directory<0||bytes.isEmpty())return {};
+ const int fd=::openat(directory,name,O_WRONLY|O_CREAT|O_EXCL|O_CLOEXEC|O_NOFOLLOW,0600);
+ if(fd<0)return {};
+ qint64 written=0;
+ while(written<bytes.size()){const auto n=::write(fd,bytes.constData()+written,size_t(bytes.size()-written));if(n<0&&errno==EINTR)continue;if(n<=0)break;written+=n;}
+ if(::fchmod(fd,0600)!=0||written!=bytes.size()||::fsync(fd)!=0){::close(fd);::unlinkat(directory,name,0);return {};}
+ ::close(fd);
+ return QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());
+#else
+ Q_UNUSED(directory);Q_UNUSED(name);Q_UNUSED(bytes);return {};
+#endif
+}
 // #1820: the kinds covered automatically, each with its count; kinds with none are left out.
 QJsonObject coveredJson(const QList<QPair<QString,int>>& covered){QJsonObject out;for(const auto& [category,count]:covered)if(count>0)out[category]=count;return out;}
 }
@@ -254,7 +273,8 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   if(falseAlarmSaved){code="false_alarm_already_saved";message="A report for this capture was already saved";return false;}
   if(falseAlarmPending){code="editor_busy";message="The report is still being saved";return false;}
   if(falseAlarmWorker){code="editor_busy";message="The report is still being saved";return false;}
-  falseAlarmPending=true;falseAlarmReply=std::move(reply);falseAlarmId=QUuid::createUuid().toString(QUuid::WithoutBraces);falseAlarmLate.clear();
+  // N2: a report that timed out here is still outstanding: its identity stays, so its late answer is still taken.
+  falseAlarmPending=true;falseAlarmReply=std::move(reply);falseAlarmId=QUuid::createUuid().toString(QUuid::WithoutBraces);
   showFalseAlarm("saving",QStringLiteral("Saving a report for diagnostics…"));
   // While the prompt waits the document is as the check left it; the editor's copy was frozen when it opened.
   if(checkedCovered.isNull())checkedCovered=document->render();
@@ -267,13 +287,19 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   // The `from` the helper sends is where the check is when the frame goes, decided on the GUI thread below; the JSON
   // says the same.
   const QString from=deciding?QStringLiteral("prompt"):QStringLiteral("editor");input.reportedFrom=from;
-  falseAlarmWorker=QThread::create([prepared,image,input,&files]{
+  const int directory=files.duplicateDirectory();
+  if(directory<0){falseAlarmFailed("image_job_io",QStringLiteral("The editor's private staging isn't available."));return true;}
+  // Tests may slow the preparation down, to cancel the capture while a report is still being prepared (N5).
+  const int delayMs=std::clamp(qEnvironmentVariableIntValue("PUTGD_TEST_FALSE_ALARM_DELAY_MS"),0,60000);
+  falseAlarmWorker=QThread::create([prepared,image,input,directory,delayMs]{
+   if(delayMs)QThread::msleep(ulong(delayMs));
    QByteArray coveredPng;{QBuffer buffer(&coveredPng);buffer.open(QIODevice::WriteOnly);QImageWriter writer(&buffer,"png");if(!writer.write(image))coveredPng.clear();}
-   if(coveredPng.isEmpty()){prepared->failure=QStringLiteral("The covered image couldn't be encoded.");return;}
+   if(coveredPng.isEmpty()){prepared->failure=QStringLiteral("The covered image couldn't be encoded.");::close(directory);return;}
    const auto json=QJsonDocument(editor::falseAlarm::build(input)).toJson(QJsonDocument::Compact);
-   prepared->json=files.writeReport("report.json",json);prepared->covered=prepared->json.isEmpty()?QString():files.writeReport("report-covered.png",coveredPng);
+   prepared->json=writeReportAt(directory,"report.json",json);prepared->covered=prepared->json.isEmpty()?QString():writeReportAt(directory,"report-covered.png",coveredPng);
    prepared->jsonBytes=json.size();prepared->coveredBytes=coveredPng.size();
    if(prepared->json.isEmpty()||prepared->covered.isEmpty())prepared->failure=QStringLiteral("Check free disk space and try again.");
+   ::close(directory);
   });
   QObject::connect(falseAlarmWorker.data(),&QThread::finished,&app,[&,prepared,id,from,width=image.width(),height=image.height()]{
    if(falseAlarmWorker)falseAlarmWorker->deleteLater();
@@ -605,8 +631,12 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    if(!object["ok"].isBool()||!object["reportId"].isString()||object.size()!=7||(ok&&(!object["name"].isString()||!object["bytes"].isString()))||(!ok&&(!object["code"].isString()||!object["message"].isString()))){fail();return;}
    const auto answered=object["reportId"].toString();
    // F3: a report saved after this side gave up waiting is still the report: it is taken as saved.
-   if(!falseAlarmPending&&ok&&!falseAlarmLate.isEmpty()&&answered==falseAlarmLate&&!falseAlarmSaved){
-    falseAlarmLate.clear();falseAlarmSaved=true;falseAlarmName=object["name"].toString().left(128);
+   if(!falseAlarmLate.isEmpty()&&answered==falseAlarmLate){
+    falseAlarmLate.clear();
+    if(!ok||falseAlarmSaved)return;
+    // N2: it saved after all. A retry waiting meanwhile is answered with it too.
+    falseAlarmSaved=true;falseAlarmName=object["name"].toString().left(128);
+    if(falseAlarmPending){falseAlarmPending=false;falseAlarmDeadline.stop();falseAlarmId.clear();if(auto reply=std::exchange(falseAlarmReply,{}))reply({{"saved",true},{"name",falseAlarmName},{"bytes",object["bytes"]}},{},{});}
     showFalseAlarm("saved",QStringLiteral("Report saved for diagnostics."));return;
    }
    if(!falseAlarmPending||answered!=falseAlarmId)return;
@@ -714,7 +744,9 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   fail();
  });
  const auto exitCode=app.exec();control.stop();
- if(falseAlarmWorker)falseAlarmWorker->wait();
+ // N5: a report still being prepared never holds the session up: its worker owns its own copies and its own
+ // descriptor, and is left to end with the process; a report not handed over is not saved.
+ if(falseAlarmWorker){falseAlarmWorker->disconnect();(void)falseAlarmWorker.data();}
  prompt.reset();window.reset();document.reset();
  return exitCode;
 #endif

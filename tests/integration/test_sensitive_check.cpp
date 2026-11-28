@@ -10,6 +10,8 @@
 #include "app/FalseAlarmReports.h"
 #include <QDirIterator>
 #include <QUuid>
+#include <QElapsedTimer>
+#include <QScopeGuard>
 #include "fixtures/Waits.h"
 #include <QCoreApplication>
 #include <algorithm>
@@ -220,6 +222,22 @@ private slots:
   PUTGD_TRY_VERIFY(report.done);
   QVERIFY2(!report.error||QStringList({"editor_finalizing","editor_closed"}).contains(report.error.code),qPrintable(report.error.code+": "+report.error.message));
   QCOMPARE(reports.list()["count"].toInt(),report.error?0:1);
+ }
+ // #2134 N5: Cancel while a report is still being prepared closes the capture at once: the report is simply not saved,
+ // and the helper's exit never waits for it.
+ void cancelWhileAReportIsPreparedClosesCleanly(){
+  qputenv("PUTGD_TEST_FALSE_ALARM_DELAY_MS","9000");const auto restore=qScopeGuard([]{qunsetenv("PUTGD_TEST_FALSE_ALARM_DELAY_MS");});
+  Fixture f(page(card));PUTGD_TRY_VERIFY(f.operations->ready());
+  FalseAlarmReports reports(f.dir.filePath("state/false-alarms"));f.operations->setFalseAlarmReports(&reports);
+  const auto id=f.start();
+  QVERIFY(f.reaches(id,"sensitive_text_found"));
+  Call report;f.operations->reportFalseAlarm(id,[&](Error e,QJsonObject r){report={e,r,true};});
+  QElapsedTimer clock;clock.start();
+  QVERIFY(!call([&](JsonReply r){f.operations->decideSensitive(id,"cancel",r);}).error);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["state"].toString(),QString("cancelled"),8000);
+  QVERIFY2(clock.elapsed()<8000,qPrintable(QString::number(clock.elapsed())));
+  {const auto error=f.inspect(id)["error"].toObject();QVERIFY2(error["code"].toString().isEmpty()||error["code"]=="cancelled",QJsonDocument(error).toJson().constData());}
+  PUTGD_TRY_VERIFY(report.done);QVERIFY(report.error);QCOMPARE(reports.list()["count"].toInt(),0);
  }
  // #2134: the editor the check opened offers Not sensitive too, with the check's findings and covers, not the edit.
  void notSensitiveInTheEditorTheCheckOpened(){

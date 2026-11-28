@@ -544,7 +544,7 @@ public:
   scope_=label("packageScope");form->addRow("Covers",scope_);
   contents_=label("packageContents");contents_->setTextFormat(Qt::RichText);
   operations_=label("packageOperations");
-  auto* never=new QLabel("Credentials, tokens, signed links, file contents, screenshots, and clipboard text are never included.",this);never->setWordWrap(true);Ui::role(never,"muted");form->addRow("Never",never);
+  never_=new QLabel(neverText(0),this);never_->setObjectName("packageNever");never_->setWordWrap(true);Ui::role(never_,"muted");form->addRow("Never",never_);
   auto* names=new QWidget(this);auto* namesLayout=new QVBoxLayout(names);namesLayout->setContentsMargins(0,0,0,0);namesLayout->setSpacing(space(Space::xs));
   includeNames_=new QCheckBox("Include file names",this);includeNames_->setObjectName("includeFileNames");includeNames_->setAccessibleName("Include file names");namesLayout->addWidget(includeNames_);
   redaction_=label("packageRedaction");Ui::role(redaction_,"muted");namesLayout->addWidget(redaction_);form->addRow("Names",names);
@@ -605,6 +605,8 @@ public:
  QJsonObject params(bool preview)const{
   QJsonObject p{{"includeNames",includeNames_->isChecked()}};if(!operation_.isEmpty())p["operation"]=operation_;if(!custom_.isEmpty())p["output"]=custom_;
   if(preview)p["preview"]=true;else p["notify"]=true;
+  // #2134: the package holds the false-alarm reports the preview counted, and no other, so the notice shown is true.
+  if(!preview){QJsonArray names;for(const auto& name:preview_.value("falseAlarmReports").toObject().value("names").toArray())names.append(name);p["falseAlarmReports"]=names;}
   if(!preview&&uploading()){p["upload"]=true;p["copyLink"]=true;p["profileId"]=target_["profileId"].toString();}
   return p;
  }
@@ -696,9 +698,10 @@ private:
    {"config.redacted.json","settings without credentials"},{"coredumps.json","system crash reports, stack traces only"},{"operations.json",(count==1?QString("1 upload"):QString("%1 uploads").arg(count))},{"logs/putgd.jsonl",QString("%1 log records").arg(records)+(preview_["droppedLogRecords"].toInt()?QString(", %1 older ones left out to stay under 20 MB").arg(preview_["droppedLogRecords"].toInt()):QString{})}};
   const auto fileLine=[](const QString& name,const QString& text){return QString(R"(<span style="font-family: '%1'; font-size: %2px">%3</span>: %4)").arg(Ui::monoFamily().toHtmlEscaped()).arg(Ui::scaled(Ui::Type::metadata)).arg(name.toHtmlEscaped(),text.toHtmlEscaped());};
   for(const auto& name:preview_["files"].toArray())files.append(fileLine(name.toString(),about.value(name.toString())));
-  // #2134: false-alarm reports hold real screen content, and the package says so in one line.
-  if(const int reports=preview_["falseAlarmReports"].toObject()["included"].toInt();reports>0)
-   files.append(fileLine("false-alarms/",(reports==1?QString("1 false-alarm report"):QString("%1 false-alarm reports").arg(reports))+", with pictures of your screen and the text read from them"));
+  // #2134: false-alarm reports hold real screen content, and the package says so before it is saved.
+  const int reports=preview_.value("falseAlarmReports").toObject().value("included").toInt();
+  if(reports>0)files.append(fileLine("false-alarms/",reports==1?QString("1 false-alarm report"):QString("%1 false-alarm reports").arg(reports)));
+  never_->setText(neverText(reports));Ui::role(never_,reports>0?"warning":"muted");
   contents_->setText(files.join("<br>"));
   QStringList lines;const auto list=preview_["operationList"].toArray();
   for(int i=0;i<list.size()&&i<5;++i)lines.append(operationLine(list[i].toObject()));
@@ -718,8 +721,14 @@ private:
   auto fallback=sentence(target_["message"].toString("No working upload destination"));if(!fallback.isEmpty())fallback[0]=fallback[0].toUpper();return fallback;
  }
  QString saveLabel()const{return uploading()?"Save and upload":"Save package";}
+ // What a package never holds, and the one exception, said before saving when the package will hold reports (#2134).
+ static QString neverText(int reports){
+  if(reports<1)return "Credentials, tokens, signed links, file contents, screenshots, and clipboard text are never included.";
+  return (reports==1?QString("This package includes 1 false-alarm report"):QString("This package includes %1 false-alarm reports").arg(reports))
+   +", with pictures of your screen and the text read from them, which can show anything that was on screen. Apart from those, credentials, tokens, signed links, file contents, screenshots, and clipboard text are never included.";
+ }
  UiSession& session_;
- QLabel *scope_,*contents_,*operations_,*redaction_,*folder_,*result_;QCheckBox* includeNames_;QPushButton *useDefault_,*show_,*close_,*save_;FileDialog* chooser_=nullptr;
+ QLabel *scope_,*contents_,*operations_,*redaction_,*folder_,*result_,*never_=nullptr;QCheckBox* includeNames_;QPushButton *useDefault_,*show_,*close_,*save_;FileDialog* chooser_=nullptr;
  QScrollArea* scroll_=nullptr;QFrame* rule_=nullptr;QHBoxLayout* footer_=nullptr;QWidget* chooserFailure_=nullptr;QLabel* chooserError_=nullptr;
  QCheckBox* upload_;QLabel* uploadNote_;QJsonObject target_;bool checkingTarget_=false,uploadRequested_=false;quint64 targetSequence_=0;
  QString operation_,custom_;QJsonObject preview_,saved_;Error error_;bool previewing_=false,saving_=false;quint64 previewSequence_=0;QList<Reply> previewReplies_;

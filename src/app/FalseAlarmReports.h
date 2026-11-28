@@ -45,7 +45,8 @@ public:
  struct Packed {QString name;QList<QPair<QString,QByteArray>> files;qint64 bytes=0;};
  // `invalid`: reports in the window that aren't whole (a file missing, extra or not as report.json records it).
  struct Selection {QList<Packed> reports;int omitted=0;qint64 bytes=0;int eligible=0;int invalid=0;};
- static Selection select(const QString& directory,const QDateTime& from,const QDateTime& to,const QString& operationId,qint64 budget,bool read=true);
+ // `only`, when set: just these names (a preview's list). eligible = included + omitted + invalid.
+ static Selection select(const QString& directory,const QDateTime& from,const QDateTime& to,const QString& operationId,qint64 budget,bool read=true,const QStringList* only=nullptr);
  static constexpr qint64 bundleBytes=64LL*1024*1024;
  // The settings a report records: the check's kinds, recognition languages, Unhinged mode, Quick redact's saved
  // words and patterns as counts only, capture style and Keep a local copy on or off, and the destination's

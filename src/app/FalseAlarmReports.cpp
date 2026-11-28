@@ -140,9 +140,10 @@ bool whole(const QJsonValue& value,qint64 low,qint64 high){const double d=value.
 QJsonValue integer(const QJsonValue& value,qint64 low,qint64 high){return whole(value,low,high)?QJsonValue(value.toDouble()):QJsonValue();}
 QJsonValue number(const QJsonValue& value,double low,double high){const double d=value.toDouble(-1e300);return value.isDouble()&&std::isfinite(d)&&d>=low&&d<=high?QJsonValue(d):QJsonValue();}
 QString text(const QJsonValue& value,qsizetype most){return value.isString()?value.toString().left(most):QString();}
+// A box [x, y, w, h], or Undefined: a bad one is dropped, never kept as null.
 QJsonValue box(const QJsonValue& value){
- const auto array=value.toArray();if(!value.isArray()||array.size()!=4)return {};
- QJsonArray out;for(int i=0;i<4;++i){if(!whole(array.at(i),i<2?-1000000:0,1000000))return {};out.append(array.at(i));}
+ const auto array=value.toArray();if(!value.isArray()||array.size()!=4)return QJsonValue(QJsonValue::Undefined);
+ QJsonArray out;for(int i=0;i<4;++i){if(!whole(array.at(i),i<2?-1000000:0,1000000))return QJsonValue(QJsonValue::Undefined);out.append(array.at(i));}
  return out;
 }
 const QStringList& kinds(){static const QStringList list{"email","phone","ip","card","key","name","list"};return list;}
@@ -316,13 +317,14 @@ QJsonObject FalseAlarmReports::list() const {
  return {{"directory",directory_},{"reports",reports},{"count",reports.size()},{"bytes",double(total)},
   {"retention",QJsonObject{{"days",days_.load()},{"bytes",double(bytes_.load())}}}};
 }
-FalseAlarmReports::Selection FalseAlarmReports::select(const QString& directory,const QDateTime& from,const QDateTime& to,const QString& operationId,qint64 budget,bool read){
+FalseAlarmReports::Selection FalseAlarmReports::select(const QString& directory,const QDateTime& from,const QDateTime& to,const QString& operationId,qint64 budget,bool read,const QStringList* only){
  std::lock_guard guard(lock());Selection selection;
  if(!usableFolder(directory))return selection;
  auto all=entries(directory);std::reverse(all.begin(),all.end());
  for(const auto& entry:std::as_const(all)){
   if(operationId.isEmpty()&&(entry.created<from||entry.created>to))continue;
   if(!operationId.isEmpty()&&readReport(entry.path)["operationId"].toString()!=operationId)continue;
+  if(only&&!only->contains(entry.name))continue;
   ++selection.eligible;
   // Whole reports only: one that doesn't fit what is left is counted, and an older, smaller one may still fit.
   if(selection.bytes+entry.bytes>budget){++selection.omitted;continue;}
