@@ -357,14 +357,19 @@ design is in [scrolling capture](../design/scroll-capture.md).
   and the pointer is put back; the end of the control pipe stops injection at once. The user-scroll
   capture also checks its own source rate: asked for 60, and still 60 with 48 to 62 delivered when it
   kept up. On every build, a fallback must end at 30 frames a second, give a reason past its
-  threshold (the source sent under 48 frames a second, or the loop missed 25 to 100% of the frames),
-  and report more than 0 and at most 62 delivered. That is enough on a sanitizer build. On any other
-  build the helper's thread times must also show a busy host (#2099):
-  - the thread that fell behind used less CPU a frame than a 60 fps interval (twice that for
-    unoptimized code, the dev preset);
+  threshold (the source sent at most 48.0 frames a second as the reason rounds it, or the loop missed
+  25 to 100% of the frames), and report more than 0 and at most 62 delivered. That is enough on a
+  sanitizer build. On any other build the times of the threads that fell behind must also show a busy
+  host (#2099). Those are the loop for a loop fallback, and the source's grab and copy threads for a
+  source fallback:
+  - each of them used less CPU a frame than a 60 fps interval. The loop gets twice that in
+    unoptimized code (the dev preset); the grab and copy threads run GStreamer's optimized code and
+    take under 1 ms a frame in any build;
   - when the loop caused the fallback, its CPU time plus its wait for a CPU, per frame it took, is at
     least 60% of a 60 fps interval;
-  - the loop's or the grab's thread waited for a CPU for at least a tenth of the time.
+  - one of them waited for a CPU for at least a tenth of the time. The waits come from the kernel's
+    scheduler accounting, which CI's and the lab's kernels keep; without it they read 0 and a
+    fallback fails.
 
   On a non-sanitizer build, a fallback on an idle host fails. There is no
   compositor or window manager, so it does not establish Cinnamon behaviour.
