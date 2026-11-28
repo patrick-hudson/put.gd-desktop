@@ -2,9 +2,6 @@
 #include "OperationService.h"
 #include "core/DestinationCheck.h"
 #include "core/Log.h"
-#include "storage/dav/DavCommon.h"
-#include "storage/s3/R2Settings.h"
-#include "storage/sftp/SftpCommon.h"
 #include <QFile>
 #include <QFileInfo>
 #include <QDir>
@@ -13,10 +10,6 @@
 #include <QSaveFile>
 #include <cmath>
 namespace putgd {
-bool DestinationStatus::storesKeys(const QJsonObject& profile) {
- const auto provider=profile.value("provider").toString();
- return provider=="s3"||provider=="backblaze-b2"||provider==r2::providerId||dav::isDav(provider);
-}
 namespace {
 // The keychain entries configured destinations own, in any credentials mode: the reference each
 // names, and putgd/<id> (what Settings writes when it switches to the keychain) and
@@ -98,7 +91,7 @@ void DestinationStatus::save() {
  const auto sessionOnly=[&](const QString& id){const auto found=profiles.constFind(id);if(found==profiles.cend()||(*found)["credentials"].toObject()["mode"]!="session")return false;
   // #2118: SFTP signs in with the SSH agent or a key file unless a password or key passphrase was
   // stored for this session; only then are its checks the session's.
-  if((*found)["provider"]==sftp::providerId)return credentialRevisions_.value(id)>0;
+  if((*found)["provider"]=="sftp")return credentialRevisions_.value(id)>0;
   return !usesCredentials_||usesCredentials_(*found);};
  for(auto it=records_.cbegin();it!=records_.cend();++it) {
   if(sessionOnly(it.key()))continue;

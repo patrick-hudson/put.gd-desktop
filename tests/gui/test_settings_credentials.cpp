@@ -184,7 +184,7 @@ private slots:
   auto doc=threeDestinations();auto profiles=doc["profiles"].toArray();auto first=profiles[0].toObject();first["credentials"]=QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}};profiles[0]=first;doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));
   const auto asked=first["id"].toString();secrets.setSession(asked,{"synthetic-access","synthetic-secret",{}});
   UiSessionFixture fixture(service,secrets);DestinationStatus checks(dir.filePath("destination-status.json"),service);fixture.server.setDestinationStatus(&checks);
-  JsonReply running;SetupService setup(service,secrets,[&](const QString&,const QJsonObject&,JsonReply reply){running=std::move(reply);});setup.setDestinationStatus(&checks);fixture.server.setSetupService(&setup);
+  std::function<void(Error)> running;SetupService setup(service,secrets,[&](const QString&,const QJsonObject&,std::function<void(Error)> reply){running=std::move(reply);});setup.setDestinationStatus(&checks);fixture.server.setSetupService(&setup);
   MainWindow window(fixture.session);window.navigate("destinations");window.show();auto* settings=window.settings();
   QVERIFY(waitFor([&]{auto state=std::make_shared<QJsonObject>();settings->encryptedLinksCommand({{"action","inspect"},{"profileId",asked}},[state](Error,QJsonObject s){*state=s;});return waitFor([&]{return !state->isEmpty();})&&(*state)["testEnabled"].toBool();}));
   fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="setup.testDestination";};
@@ -196,7 +196,7 @@ private slots:
   fixture.client.hold={};QVERIFY(fixture.client.release());
   QVERIFY(waitFor([&]{return answer->done;},10000));QVERIFY2(!answer->error,qPrintable(answer->error.message));
   QCOMPARE(answer->state["profileId"].toString(),asked);QVERIFY(answer->state["testing"].toBool());
-  if(running)running({},{});
+  if(running)running({});
  }
  // #2103: ui.encryptedLinks answers a mode change only once the file has it, so an agent's next
  // call (setup.storeEncryptPassphrase reads the saved mode) never races the save. Two Capture

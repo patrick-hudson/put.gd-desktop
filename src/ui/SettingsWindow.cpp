@@ -4099,7 +4099,7 @@ void SettingsWindow::pollSetup(){
     // #1892: the host key box shows the fingerprint; the status line only says where to look.
     if(!sftpPanel_->offeredFingerprint().isEmpty())e.message=e.code=="ssh_trusted_key_changed"?QStringLiteral("The server's host key changed. Compare the new key above before you trust it."):QStringLiteral("put.gd doesn't know this server's host key yet. Compare it above before you trust it.");}
    // #2118: how the last Test of each destination ended, for ui.encryptedLinks inspect.
-   if(job["kind"]=="testDestination"){QJsonObject outcome{{"state",e?"failed":"passed"}};if(e){outcome["code"]=e.code;outcome["message"]=e.message;}else if(data["result"].toObject().contains("encrypt"))outcome["encrypt"]=data["result"].toObject()["encrypt"].toObject()["state"];testOutcomes_.insert(job["profileId"].toString(),outcome);}
+   if(job["kind"]=="testDestination"){QJsonObject outcome{{"state",e?"failed":"passed"},{"fingerprint",job["fingerprint"]}};if(e){outcome["code"]=e.code;outcome["message"]=e.message;}else if(data["result"].toObject().contains("encrypt"))outcome["encrypt"]=data["result"].toObject()["encrypt"].toObject()["state"];testOutcomes_.insert(job["profileId"].toString(),outcome);}
    if(e){if(job["kind"]=="testDestination"&&!currentTest)e.message="Connection test failed for the original destination settings. "+e.message;
     // A custom uploader's test shows the start of a reply it could not read, so the Response fields can be fixed.
     if(const auto excerpt=data["result"].toObject()["replyExcerpt"].toString();!excerpt.isEmpty())e.message+=" The reply began: "+excerpt;
@@ -4270,7 +4270,8 @@ QString SettingsWindow::savedEncryptMode(const QString& profileId)const{
 QJsonObject SettingsWindow::encryptState()const{
  auto state=encryptPanel_->viewState();const auto id=profileId_->text();state["profileId"]=id;
  // #2118: how this destination's last Test upload and link ended, while this window watched it.
- if(testOutcomes_.contains(id))state["lastTest"]=testOutcomes_.value(id);
+ // Only of the connection shown: an edited destination's earlier test says nothing about it.
+ if(auto outcome=testOutcomes_.value(id);!outcome.isEmpty()&&outcome.take("fingerprint").toString()==destinationcheck::fingerprint(editedProfile()))state["lastTest"]=outcome;
  state["saved"]=savedEncryptMode(id)==encryptPanel_->mode()&&!queued("destination:"+id);return state;
 }
 // Each waiting mode change is answered once the file has it, or with settings_not_saved once it can't

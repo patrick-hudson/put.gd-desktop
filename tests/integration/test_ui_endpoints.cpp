@@ -51,11 +51,11 @@ private slots:
   for(const auto* id:{"s","k"})profiles.append(QJsonObject{{"id",id},{"label","SFTP"},{"provider","sftp"},{"settings",QJsonObject{{"workspace",QString("fixture-")+id}}},{"credentials",QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}}});
   document["profiles"]=profiles;QVERIFY(settings.save(document,{}));
   const auto path=dir.filePath("data/destination-status.json");
-  {DestinationStatus status(path,settings);status.setUsesCredentials(&DestinationStatus::storesKeys);status.load();
+  {DestinationStatus status(path,settings);status.setUsesCredentials(&SetupService::storesKeys);status.load();
    // "s" had a password stored for the session; "k" uses the SSH agent and stored nothing.
    status.credentialsChanged("s");
    for(const auto* id:{"s","k"}){status.encryptChecked(id,destinationcheck::fingerprint(settings.snapshot().profiles.value(id)),true,{});QCOMPARE(status.encryptCheck(id)["state"].toString(),QString("passed"));}}
-  DestinationStatus restarted(path,settings);restarted.setUsesCredentials(&DestinationStatus::storesKeys);restarted.load();
+  DestinationStatus restarted(path,settings);restarted.setUsesCredentials(&SetupService::storesKeys);restarted.load();
   QCOMPARE(restarted.encryptCheck("s")["state"].toString(),QString("untested"));
   QCOMPARE(restarted.encryptCheck("k")["state"].toString(),QString("passed"));
  }

@@ -24,14 +24,11 @@ public:
  void load();
  // Follows uploads and forgets removed destinations from then on.
  void follow(OperationService& operations);
- // Whether a destination keeps keys: S3, B2, a custom uploader with secret values. A
- // session-mode destination that does is kept in memory only, so after a restart it is
- // untested. Unset, every destination counts as keeping keys.
+ // Whether a destination keeps keys (SetupService::storesKeys, and a custom uploader with secret
+ // values). A session-mode destination that does is kept in memory only, so after a restart it is
+ // untested. Unset, every destination counts as keeping keys. SFTP's checks are the session's only
+ // once a password or key passphrase was stored for the session (#2118).
  void setUsesCredentials(std::function<bool(const QJsonObject& profile)> uses){usesCredentials_=std::move(uses);}
- // The destination types that always sign in with keys SetupService stores: S3, B2, R2, Nextcloud
- // and WebDAV. A custom uploader's named secrets are the caller's to add. SFTP's checks are the
- // session's only once a password or key passphrase was stored for the session (#2118).
- static bool storesKeys(const QJsonObject& profile);
  // Counts stores of new credentials (and Proton sign-ins) for a destination.
  quint64 credentialRevision(const QString& profileId) const {return credentialRevisions_.value(profileId);}
  // A store of credentials starts or succeeds: every configured destination that names the
