@@ -1517,7 +1517,7 @@ Operation OperationService::run(Job job) {
   if(item.linkAvailable()) {
    int index=0;while(index<op.items.size()&&op.items[index].artifact.id!=item.artifact.id)++index;
    QPointer<OperationService> owner(this);
-   QMetaObject::invokeMethod(this,[owner,id=op.id,itemId=item.artifact.id,index,url=item.link()]{if(owner&&!owner->stopping_)owner->uploadLinkReady(id,itemId,index,url);},Qt::QueuedConnection);
+   QMetaObject::invokeMethod(this,[owner,id=op.id,itemId=item.artifact.id,index,url=item.link(),count=int(op.items.size())]{if(owner&&!owner->stopping_)owner->uploadLinkReady(id,itemId,index,url,count);},Qt::QueuedConnection);
   }
   return true;
  };
@@ -1658,10 +1658,10 @@ Operation OperationService::run(Job job) {
  auto show=[&](const OperationItem& item,int index){std::lock_guard lock(itemsMutex);op.items[index]=item;observe(op.publicJson());};
  auto commit=[&](const OperationItem& item,int index)->bool {
   if(auto e=persist(item,index)){std::lock_guard lock(itemsMutex);op.error=e;op.advance(OperationState::Failed);persisted=false;return false;}
-  {std::lock_guard lock(itemsMutex);observe(op.publicJson());}
+  int count=0;{std::lock_guard lock(itemsMutex);observe(op.publicJson());count=int(op.items.size());}
   if(item.linkAvailable()) {
    QPointer<OperationService> owner(this);
-   QMetaObject::invokeMethod(this,[owner,id=op.id,itemId=item.artifact.id,index,url=item.link()]{if(owner&&!owner->stopping_)owner->uploadLinkReady(id,itemId,index,url);},Qt::QueuedConnection);
+   QMetaObject::invokeMethod(this,[owner,id=op.id,itemId=item.artifact.id,index,url=item.link(),count]{if(owner&&!owner->stopping_)owner->uploadLinkReady(id,itemId,index,url,count);},Qt::QueuedConnection);
   }
   return true;
  };
@@ -2161,7 +2161,7 @@ void OperationService::retry(const QString& id,JsonReply reply,bool sharingOnly)
   if(!pending) {active_.remove(id);performCopy(op,true,reply);return;}
   if(provider)if(auto timeout=provider->retryRequestTimeout(op.destination,settings_.snapshot().profiles.value(op.destination.profileId)))op.requestTimeoutMs=std::max(op.requestTimeoutMs.value_or(0),*timeout);
   if(!op.advance(OperationState::Stored)){active_.remove(id);reply({"operation_busy","This upload is already running.",{}},{});return;}
-  op.cancelled=reserved->load();op.error={};op.phase="queued";op.invocation=++invocation_;op.clipboardRevision=source_.clipboardRevision();op.copyStatus="pending";beginUploadCopies(op);
+  op.cancelled=reserved->load();op.error={};op.phase="queued";op.invocation=++invocation_;op.clipboardRevision=source_.clipboardRevision();op.copyStatus="pending";op.copy={};beginUploadCopies(op);
   background([path,op](Error& error){HistoryStore store(path);error=store.saveOperation(op);return QJsonObject{};},[this,reply,op,reserved,sharingOnly](Error error,QJsonObject)mutable{
    if(error){abandonUploadCopies(op.id);releaseActive(op.id);reply(error,{});return;}
    op.cancelled=reserved->load();Job job{op,{},false,reserved,{}};job.sharingOnly=sharingOnly;enqueue(std::move(job));reply({},{{"operationId",op.id},{"retryAccepted",true}});

@@ -23,6 +23,11 @@ struct OperationService::UploadCopy {
  std::shared_ptr<UploadCopyGroup> group;
  int pending=0;
  bool finished=false,waitingForGroup=false,recorded=false,copied=false,suppressed=false;
+ // #2127: one request with several files (a folder uploaded file by file, a multi-file
+ // selection) copies its links once, as one ordered list, when it finishes.
+ bool joined=false;
+ // What the successful clipboard commits held, for the notice (#2127).
+ int copiedLinks=0;bool copiedEncrypted=true;
  // Why the automatic copy was refused, for the log record (copyGuard).
  QJsonObject suppression;
  Error error;
@@ -98,11 +103,12 @@ void OperationService::interruptUploadCopy(const QString& id) {
   currentCopy_->retryUnsent=true;source_.invalidateCopyEligibility();
  }
 }
-void OperationService::uploadLinkReady(const QString& id,const QString& item,int index,const QString& url) {
+void OperationService::uploadLinkReady(const QString& id,const QString& item,int index,const QString& url,int count) {
  const auto state=uploadCopies_.value(id);
  if(!state||state->seen.contains(item)||url.isEmpty())return;
  state->seen.insert(item);state->links.insert(index,url);
  if(state->group)return;
+ if(count>1){state->joined=true;return;}
  // The cursor has passed this file already: nothing earlier can still be
  // waiting on it, so its link is copied now rather than held forever (#478).
  if(index<state->cursor){queueLinkCopy(state,item,index);return;}
@@ -123,10 +129,12 @@ void OperationService::flushUploadLinks(const std::shared_ptr<UploadCopy>& state
 void OperationService::queueLinkCopy(const std::shared_ptr<UploadCopy>& state,const QString& item,int index) {
  ++state->pending;
  auto payload=std::make_shared<CopyPayload>();payload->kind="text";
+ // Whether the durable item resolved at dispatch is an encrypted one (#2127), for the notice.
+ auto encrypted=std::make_shared<bool>(false);
  const auto path=databasePath();const auto id=state->operation.id;
- queueCopy([payload]{return *payload;},[this,state,index](Error error) {
+ queueCopy([payload]{return *payload;},[this,state,index,encrypted](Error error) {
   --state->pending;
-  if(!error)state->copied=true;
+  if(!error){state->copied=true;++state->copiedLinks;state->copiedEncrypted&=*encrypted;}
   else if(error.code=="copy_suppressed"){state->suppressed=true;if(state->suppression.isEmpty())state->suppression=nativeCopyGuard(error);}
   else if(error.code=="copy_no_result")state->links.remove(index);
   else state->error=error;
@@ -136,13 +144,13 @@ void OperationService::queueLinkCopy(const std::shared_ptr<UploadCopy>& state,co
   const auto guard=copyGuard(stopping_,state->cancellation->load(),"superseded",state->epoch,uploadCopyEpoch_,state->revision,source_.clipboardRevision());
   if(!guard.isEmpty())state->suppression=guard;return guard.isEmpty();
  },true,
- [this,path,id,item,payload](auto ready) {
+ [this,path,id,item,payload,encrypted](auto ready) {
   // Resolve the durable item again at dispatch, including every resumed copy.
   background([path,id,item](Error& error) {
-   HistoryStore store(path);const auto op=store.operation(id,&error);QString url;
-   for(const auto& value:op.items)if(value.artifact.id==item&&value.linkAvailable())url=value.link();
-   return QJsonObject{{"url",url}};
-  },[payload,ready](Error error,QJsonObject value){payload->text=value["url"].toString();ready(error);});
+   HistoryStore store(path);const auto op=store.operation(id,&error);QString url;bool sealed=false;
+   for(const auto& value:op.items)if(value.artifact.id==item&&value.linkAvailable()){url=value.link();sealed=value.encrypted();}
+   return QJsonObject{{"url",url},{"encrypted",sealed}};
+  },[payload,encrypted,ready](Error error,QJsonObject value){payload->text=value["url"].toString();*encrypted=value["encrypted"].toBool();ready(error);});
  },{id});
 }
 void OperationService::refreshUploadLinks(UploadCopy& state,const Operation& op) {
@@ -161,7 +169,13 @@ void OperationService::finishUploadCopies(Operation op,JsonReply reply) {
  // Final receipts also cover reconciliation/retry paths which made no new PUT.
  for(int index=0;index<op.items.size();++index) {
   const auto& item=op.items[index];
-  if(item.linkAvailable())uploadLinkReady(op.id,item.artifact.id,index,item.link());
+  if(item.linkAvailable())uploadLinkReady(op.id,item.artifact.id,index,item.link(),int(op.items.size()));
+ }
+ // #2127: several files of one request are this operation's own list, whatever
+ // uploadClipboardBehavior says; separate captures keep each_link.
+ if(!state->group&&(state->joined||op.items.size()>1)) {
+  auto group=std::make_shared<UploadCopyGroup>();group->epoch=state->epoch;group->revision=state->revision;group->pending=1;
+  group->members.insert(op.invocation,state);state->group=group;state->waitingForGroup=true;
  }
  state->finished=true;
  if(state->group){--state->group->pending;settleUploadGroup(state->group);}
@@ -186,7 +200,9 @@ void OperationService::settleUploadGroup(const std::shared_ptr<UploadCopyGroup>&
   for(const auto& state:members) {
    state->waitingForGroup=false;
    if(included->contains(state->operation.id)) {
-    if(!error)state->copied=true;
+    if(!error){state->copied=true;state->copiedLinks+=int(state->links.size());
+     // The durable items the list was built from at dispatch say which links are encrypted.
+     for(auto it=state->links.cbegin();it!=state->links.cend();++it)state->copiedEncrypted&=it.key()<state->operation.items.size()&&state->operation.items[it.key()].encrypted();}
     else if(error.code=="copy_suppressed")state->suppressed=true;
     else if(error.code!="copy_no_result")state->error=error;
    }else if(error.code=="copy_suppressed"&&!state->links.isEmpty()&&!state->cancellation->load())state->suppressed=true;
@@ -232,6 +248,7 @@ void OperationService::recordUploadCopy(const std::shared_ptr<UploadCopy>& state
   logging::warning(logOperation(),"Automatic copy not attempted",{{"operationId",op.id},{"action",op.action},{"behavior",op.settings.uploadClipboardBehavior},{"links",state->links.size()},{"held",state->held.size()},{"cursor",state->cursor}});
  }
  if(state->error)op.error=state->error;
+ op.copy={{"links",int(state->links.size())},{"copied",state->copiedLinks},{"encrypted",state->copiedLinks>0&&state->copiedEncrypted}};
  {
   // One record per upload (#473): the outcome the notification and Activity
   // show, and for a suppressed copy which guard refused it and the revisions

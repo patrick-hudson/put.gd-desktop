@@ -17,6 +17,7 @@
 #include <QDir>
 #include <future>
 #include <QRegularExpression>
+#include <QScopeGuard>
 #include <QTemporaryDir>
 #include <QUuid>
 using namespace putgd;using namespace putgd::test;
@@ -28,6 +29,8 @@ public:
  OpaqueProvider storage;mutable QMutex mutex;QHash<QString,QByteArray> files;QString encryptUnavailable;bool encryptSplit=true,privateUploads=false;int failNext=0;QString linkBase=QStringLiteral("https://files.example.invalid/f/");
  // Like SFTP: an upload journals its temporary file through the checkpoint first, and refuses without one.
  bool requireCheckpoint=false;std::atomic_bool checkpointAnswered{false};QStringList revisionsSeen;
+ int maximumConcurrentRequests(const Destination&) const override {return concurrency;}
+ int concurrency=1;
  ProviderCapabilities capabilities(const Destination& d) const override {auto c=storage.capabilities(d);c.encryptUnavailable=encryptUnavailable;c.encryptSplit=encryptSplit;c.privateUploads=privateUploads;return c;}
  QString serializationKey(const Destination& d,const QJsonObject& o,const QString& n) const override {return storage.serializationKey(d,o,n);}
  Error validateSettings(const QJsonObject& s) const override {return storage.validateSettings(s);}
@@ -162,6 +165,28 @@ private slots:
   QVERIFY(!op.publicJson()["items"].toArray()[0].toObject()["encrypt"].toObject()["page"].toObject().contains("path"));
  }
  // The upload's own choice beats the destination's, both ways.
+ // #2127: one upload's encrypted links are copied once, in file order, keys intact, whatever order the
+ // files finish in. A file that failed adds no link, and the recorded count is what the clipboard held.
+ void oneUploadsLinksAreCopiedOnceInFileOrder() {
+  Fixture f({{"mode","on"}});PUTGD_TRY_VERIFY(f.operations->ready());
+  auto doc=f.settings->document();auto limits=doc["limits"].toObject();limits["concurrentUploads"]=3;doc["limits"]=limits;QVERIFY(f.settings->save(doc,f.settings->revision()));
+  f.provider->concurrency=3;f.provider->storage.dispatcher=this;f.provider->storage.deferUploads=true;f.provider->failNext=1;
+  // A failed check below still lets every held transfer finish, so the fixture tears down.
+  // Completions queued meanwhile are drained inside the wait, so none is left blocked.
+  auto drain=qScopeGuard([&]{f.provider->storage.deferUploads=false;(void)waitFor([&]{while(!f.provider->storage.completions.isEmpty())f.provider->storage.completions.takeFirst()();return f.operations->diagnostics()["activeOperations"].toInt()==0;},30000);});
+  QStringList paths;for(const auto* name:{"a.txt","b.txt","c.txt","d.txt"})paths.append(fixture(f.dir.path(),name,QByteArray("synthetic ")+name));
+  QString id;f.operations->uploadFiles(paths,"test",{},[&](Error e,QJsonObject r){QVERIFY2(!e,qPrintable(e.message));id=r["operationId"].toString();},"report",{});
+  // Three transfers wait (the fourth file failed at once); they finish last first.
+  PUTGD_TRY_COMPARE(f.provider->storage.completions.size(),3);
+  while(!f.provider->storage.completions.isEmpty())f.provider->storage.completions.takeLast()();
+  HistoryStore journal(f.operations->databasePath());
+  PUTGD_TRY_VERIFY(!journal.operation(id).active()&&f.operations->diagnostics()["activeOperations"].toInt()==0);
+  const auto op=journal.operation(id);QStringList links;int failed=0;
+  for(const auto& item:op.items){if(item.uploadStatus=="failed"){++failed;QVERIFY(item.link().isEmpty()||!item.linkAvailable());continue;}QVERIFY(item.encrypted());QVERIFY(item.link().contains("#v1."));links.append(item.link());}
+  QCOMPARE(failed,1);QCOMPARE(links.size(),3);
+  QCOMPARE(f.source.copiedTexts.size(),1);QCOMPARE(f.source.copiedTexts.first(),links.join('\n'));
+  QCOMPARE(op.copy["copied"].toInt(),3);QCOMPARE(op.copy["links"].toInt(),3);QVERIFY(op.copy["encrypted"].toBool());
+ }
  void perUploadChoiceOverridesTheDestination() {
   Fixture off({});PUTGD_TRY_VERIFY(off.operations->ready());
   auto op=off.upload("plain","a.txt",{{"enabled",true}});QVERIFY(op.items.first().encrypted());

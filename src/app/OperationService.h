@@ -413,7 +413,8 @@ private:
  void flushUploadLinks(const std::shared_ptr<UploadCopy>&);
  void queueLinkCopy(const std::shared_ptr<UploadCopy>&,const QString& item,int index);
  bool detachCompletedUploadCopies(const QString&,JsonReply&);
- void uploadLinkReady(const QString&,const QString&,int,const QString&);
+ // count: the operation's files; with several, their links are copied once, as one list (#2127).
+ void uploadLinkReady(const QString&,const QString&,int,const QString&,int count);
  void finishUploadCopies(Operation,JsonReply);
  void settleUploadGroup(const std::shared_ptr<UploadCopyGroup>&);
  void recordUploadCopy(const std::shared_ptr<UploadCopy>&);

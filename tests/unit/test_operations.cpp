@@ -124,9 +124,11 @@ private slots:
   source.payload.kind="files";for(int i=0;i<2;++i)source.payload.files.append(fixture(d.path(),QString("cancel-%1.txt").arg(i),"synthetic batch"));
   OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
   auto drain=qScopeGuard([&]{provider->deferUploads=false;for(auto complete:provider->completions)complete();provider->completions.clear();if(source.pending)source.acknowledge();});QString id;
-  operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();PUTGD_TRY_COMPARE(source.copies,1);QVERIFY(source.pending);PUTGD_TRY_COMPARE(provider->completions.size(),1);
-  operations.cancel(id,[](Error e,QJsonObject){QVERIFY(!e);});if(source.pending)source.acknowledge();provider->completions.takeFirst()();PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
-  QCOMPARE(source.current,QString("synthetic initial clipboard"));QCOMPARE(source.revision,quint64(0));QCOMPARE(journal.operation(id).stateName(),QString("cancelled"));QCOMPARE(journal.operation(id).copyStatus,QString("no_result"));QVERIFY(journal.operation(id).items.first().linkAvailable());
+  // #2127: a batch's links are copied once, as one list, after its last file: nothing is copied before that.
+  operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});PUTGD_TRY_COMPARE(provider->completions.size(),1);provider->completions.takeFirst()();PUTGD_TRY_COMPARE(provider->completions.size(),1);QCOMPARE(source.copies,0);
+  provider->completions.takeFirst()();PUTGD_TRY_COMPARE(source.copies,1);QVERIFY(source.pending);
+  operations.cancel(id,[](Error,QJsonObject){});if(source.pending)source.acknowledge();PUTGD_TRY_COMPARE(operations.diagnostics()["activeOperations"].toInt(),0);
+  QCOMPARE(source.current,QString("synthetic initial clipboard"));QCOMPARE(source.revision,quint64(0));QCOMPARE(journal.operation(id).copyStatus,QString("no_result"));QVERIFY(journal.operation(id).items.first().linkAvailable());
  }
  void cancelledListMemberIsRemovedFromAnUnsentNativeCommit() {
   QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;provider->deferUploads=true;registry.add("opaque",provider);
@@ -458,6 +460,18 @@ private slots:
   QCOMPARE(QFile::exists(spools[ids.indexOf(remaining.first())]),false);QVERIFY(QFile::exists(spools[ids.indexOf(retried)]));
   QCOMPARE(manual["trigger"].toString(),QString("manual"));QVERIFY(!QFile::exists(preview));
   PUTGD_TRY_VERIFY(ops.activeObservations().isEmpty());ops.shutdown();provider->beforeAbandon={};
+ }
+ // #2127: one request with several files copies their links once, as one list in file order, even with
+ // each_link (a folder uploaded file by file, several files chosen in one menu action).
+ void oneRequestsLinksAreCopiedOnceAsAList() {
+  QTemporaryDir d;ProviderRegistry registry;auto provider=std::make_shared<OpaqueProvider>();provider->dispatcher=this;registry.add("opaque",provider);
+  SettingsService settings(d.filePath("config.json"),[&](auto id,auto doc){return registry.validate(id,doc);});QVERIFY(settings.save(configuration(d.path()),{}));
+  Source source;source.payload.kind="files";for(int i=0;i<3;++i)source.payload.files.append(fixture(d.path(),QString("list-%1.txt").arg(i),QByteArray("synthetic list ")+QByteArray::number(i)));
+  OperationService operations(d.filePath("data"),settings,registry,source);PUTGD_TRY_VERIFY(operations.ready());HistoryStore journal(operations.databasePath());
+  QString id;operations.invoke("clipboard",[&](Error e,QJsonObject r){QVERIFY(!e);id=r["operationId"].toString();});
+  PUTGD_TRY_COMPARE(journal.operation(id).copyStatus,QString("copied"));
+  const auto op=journal.operation(id);QCOMPARE(op.items.size(),3);QStringList links;for(const auto& item:op.items)links.append(item.link());
+  QCOMPARE(source.copies,1);QCOMPARE(source.copied.text,links.join('\n'));
  }
  // #478: Proton Drive's link arrives from the sharing step, after the file's
  // transfer has settled. each_link must still copy it.
