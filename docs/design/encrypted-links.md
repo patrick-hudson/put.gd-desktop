@@ -513,8 +513,10 @@ load a record whose revision isn't the destination's current one is dropped, so 
 outlives the keys it ran with across a restart. A check made with session-only credentials is never written, so like the
 destination's own Test it ends with the session. Session-only credentials are the keys of S3,
 B2, R2, Nextcloud and WebDAV (`SetupService::storesKeys`), a custom uploader's named secret
-values, and an SFTP password or key passphrase that the session cache holds when the status is
-saved. An SFTP destination that signs in with the SSH agent or a key file keeps its check. New
+values, and an SFTP password or key passphrase that the session cache holds when the check is
+recorded. That is decided once, when the check is recorded, so switching the destination's
+credential storage later never writes it. An SFTP destination that signs in with the SSH agent
+or a key file keeps its check. New
 credentials stored for the destination, or for one that shares its keychain entry, clear it
 (`DestinationStatus::credentialsChanged`). A check that ran while new keys were stored
 records nothing and is reported `untested` with "New credentials were stored during the
