@@ -88,7 +88,7 @@ Right-click files or folders in your file manager and choose **Upload with put.g
 **Upload encrypted with put.gd**, alongside it, uploads the same items as [encrypted links](#encrypted-links), to the same destination and with its passphrase setting. A folder becomes one encrypted `.zip`, or one encrypted link per file with **Upload each file**. Encrypted means encrypted: nothing is ever uploaded unencrypted from this entry.
 - If the destination hasn't passed **Test upload and link**, nothing is uploaded. The notice says so, and the destination's **Encrypted links** card opens, with the test one click away.
 - Proton Drive and Nextcloud can't make encrypted links, so nothing is uploaded there, and the notice says why.
-- A file too large to encrypt (over 2 GB, or over 64 MB where the destination's links can't serve a page with a data file beside it) isn't uploaded. The other files of the same action still are, and the notice names the one that wasn't.
+- A file too large to encrypt (over 2 GB, or over 64 MB where the destination's links can't serve a page with a data file beside it) isn't uploaded. The other files of the same action still are, and **History** shows which one wasn't. A selection over the ordinary upload limits isn't uploaded at all, as with **Upload with put.gd**.
 - If an older put.gd is still running after an update, the notice says "put.gd was updated. Quit put.gd and open it again, then try again." Quit it from the tray or the main window, open it again, and choose the entry again.
 
 **File manager menu** switches both entries.
