@@ -60,6 +60,9 @@ public:
  static QString encryptedLabel(); // #2119: the entry that uploads encrypted links
  // #2132: the menu file the package installs at <XDG data dir>/<relative>, byte for byte; empty for another path.
  static QByteArray packagedMenu(const QString& relative);
+ // #2136: the per-user menu file at <relative> as an earlier AppImage wrote it from that file's
+ // earlier template, with this context's launcher and icon; empty where there is none. For tests.
+ static QByteArray earlierMenuForTesting(const FileManagerContext&,const QString& relative);
  // #2132: this context's AppImage launcher as #2119's build wrote it, before entries carried hashes; for tests.
  static QByteArray earlierLauncherForTesting(const FileManagerContext&);
 

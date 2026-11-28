@@ -550,6 +550,23 @@ private slots:
   QVERIFY(!QFileInfo::exists(f.menu("kio/servicemenus/putgd-upload.desktop")));
   QCOMPARE(readAll(replaced(f)+"/data/kio/servicemenus/putgd-upload.desktop"),legacy);QCOMPARE(mode(replaced(f)+"/data/kio/servicemenus/putgd-upload.desktop"),programMode);
  }
+ // #2136 R5-2: an AppImage's encrypted Nemo and FileManager-Actions entries from before their
+ // visibility test are recognized byte for byte, and move aside for the package's.
+ void systemInstallRecognizesTheEarlierEncryptedTemplates() {
+  for(const auto& relative:{QStringLiteral("nemo/actions/putgd-upload-encrypted.nemo_action"),QStringLiteral("file-manager/actions/putgd-upload-encrypted.desktop")}) {
+   Fixture f;auto& c=f.context;
+   const auto earlier=FileManagerIntegration::earlierMenuForTesting(c,relative);
+   QVERIFY2(earlier.contains("--upload --encrypt -- %F")&&earlier.contains("X-putgd-Managed=true"),qPrintable(relative));
+   QVERIFY2(!earlier.contains("encrypted-entry-hidden"),qPrintable(relative));
+   write(f.menu(relative),earlier);
+   f.package(relative);
+   c.installation="system";
+   const auto result=FileManagerIntegration::apply(c);
+   QVERIFY2(!result.error,qPrintable(result.error.message));
+   QVERIFY2(!QFileInfo::exists(f.menu(relative)),qPrintable(relative));
+   QCOMPARE(readAll(replaced(f)+"/data/"+relative),earlier);
+  }
+ }
  // Only an exact AppImage copy moves: an edited one, a lookalike naming the launcher in a comment,
  // a menu folder that is a link, and a package file that isn't put.gd's all leave things alone.
  void systemInstallLeavesAnythingElse() {
@@ -624,8 +641,13 @@ private slots:
   // The old plain-only KIO menu offers only Upload with put.gd.
   {Fixture f;write(QDir(f.context.dataDirs[0]).filePath(kio),"[Desktop Entry]\nActions=putgdUpload;\n\n[Desktop Action putgdUpload]\nName=Upload with put.gd\nExec=/usr/bin/putgd-launcher --upload -- %F\n");QVERIFY(!counted(f,kio));}
   // #2136: the KF6 package's plain-only menu beside its putgd KIO plugin offers both entries.
-  {Fixture f;write(QDir(f.context.dataDirs[0]).filePath(kio),"[Desktop Entry]\nActions=putgdUpload;\n\n[Desktop Action putgdUpload]\nName=Upload with put.gd\nExec=/usr/bin/putgd-launcher --upload -- %F\n");
-   f.installPlugin("qt6/plugins/kf6/kfileitemaction","putgd.so");QVERIFY(counted(f,kio));}
+  const QByteArray plain="[Desktop Entry]\nActions=putgdUpload;\n\n[Desktop Action putgdUpload]\nName=Upload with put.gd\nExec=/usr/bin/putgd-launcher --upload -- %F\n";
+  {Fixture f;write(QDir(f.context.dataDirs[0]).filePath(kio),plain);f.installPlugin("qt6/plugins/kf6/kfileitemaction","putgd.so");QVERIFY(counted(f,kio));}
+  // R5-1: a link to a plugin isn't the package's (its owner and its folder's are checked too).
+  {Fixture f;write(QDir(f.context.dataDirs[0]).filePath(kio),plain);f.installPlugin("qt6/plugins/kf6/kfileitemaction","putgd.so");
+   QVERIFY(QFile::rename(QDir(f.context.libraryDirs[0]).filePath("qt6/plugins/kf6/kfileitemaction/putgd.so"),f.path("elsewhere.so")));
+   QVERIFY(QFile::link(f.path("elsewhere.so"),QDir(f.context.libraryDirs[0]).filePath("qt6/plugins/kf6/kfileitemaction/putgd.so")));QVERIFY(!counted(f,kio));}
+
   // Nemo's plain action without its encrypted sibling, and a lookalike that runs something else.
   {Fixture f;write(QDir(f.context.dataDirs[0]).filePath(nemo),packaged(nemo));QVERIFY(!counted(f,nemo));}
   {Fixture f;f.package(nemo);write(QDir(f.context.dataDirs[0]).filePath(nemo),"[Nemo Action]\nName=Upload with put.gd\nExec=/opt/other --upload -- %F\n");QVERIFY(!counted(f,nemo));}

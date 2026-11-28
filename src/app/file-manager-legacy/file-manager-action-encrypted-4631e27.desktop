@@ -1,0 +1,11 @@
+# "Upload encrypted with put.gd" in PCManFM and PCManFM-Qt (#2119), beside
+# "Upload with put.gd": one FileManager-Actions entry per file.
+[Desktop Entry]
+Type=Action
+Name=Upload encrypted with put.gd
+Icon=putgd
+Profiles=putgd;
+
+[X-Action-Profile putgd]
+MimeTypes=all/all;
+Exec=/usr/bin/putgd-launcher --upload --encrypt -- %F
