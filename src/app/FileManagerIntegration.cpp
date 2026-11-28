@@ -746,13 +746,17 @@ void upgradeAppImageLauncher(const FileManagerContext& c,const QStringList& know
  const auto render=[&](const char* source){return substitute(QString::fromUtf8(source).replace("# __PUTGD_DISCOVERY__",discovery),values).toUtf8();};
  if(!values.contains("USER_RUNTIME"))values.insert("USER_RUNTIME",shellQuoted(c.userRuntime.isEmpty()?QStringLiteral("/run/user/%1").arg(::getuid()):c.userRuntime));
  const auto current=render(putgdFileManagerLauncher);
- if(text.toUtf8()==current)return;
- bool earlier=false;
- for(const char* legacy:{putgdFileManagerLauncher987483d,putgdFileManagerLauncher2f1bc55,putgdFileManagerLauncher217621f,putgdFileManagerLauncher4631e27})earlier|=render(legacy)==text.toUtf8();
- if(!earlier||values.size()<9||discovery.isEmpty()) {logging::info(logApp(),"Left the AppImage's file manager launcher as it is: it isn't one put.gd wrote",{{"path",path}});return;}
- if(commit(path,current,programMode)==Write::Failed){fail(ioError("Cannot update the AppImage's file manager launcher",path));return;}
- logging::info(logApp(),"Updated the AppImage's file manager launcher so its removal keeps edited entries",{{"path",path}});
- // Hashes for the record's entries that are still exactly what the AppImage wrote.
+ if(text.toUtf8()!=current) {
+  bool earlier=false;
+  for(const char* legacy:{putgdFileManagerLauncher987483d,putgdFileManagerLauncher2f1bc55,putgdFileManagerLauncher217621f,putgdFileManagerLauncher4631e27})earlier|=render(legacy)==text.toUtf8();
+  if(!earlier||values.size()<9||discovery.isEmpty()) {logging::info(logApp(),"Left the AppImage's file manager launcher as it is: it isn't one put.gd wrote",{{"path",path}});return;}
+  // Its own mode stays (R3-1).
+  if(commit(path,current,QFileInfo(path).permissions()&modeBits)==Write::Failed){fail(ioError("Cannot update the AppImage's file manager launcher",path));return;}
+  logging::info(logApp(),"Updated the AppImage's file manager launcher so its removal keeps edited entries",{{"path",path}});
+ }
+ // Hashes for the record's entries that are still exactly what the AppImage wrote. This runs at
+ // every start while the launcher is the current one, so a record write that failed is retried;
+ // an entry that already has a hash gets no second one (R3-2).
  const auto recordFile=recordPath(c,"appimage");
  const auto record=readRecord(recordFile);
  if(!managedFile(recordFile))return;

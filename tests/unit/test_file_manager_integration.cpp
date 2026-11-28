@@ -760,6 +760,30 @@ private slots:
   QCOMPARE(f.run(launcher,{"--cleanup-if-missing"}),0);
   QCOMPARE(readAll(f.menu(nemo)),edited);QVERIFY(!QFileInfo::exists(f.menu("kio/servicemenus/putgd-upload.desktop")));
  }
+ // #2132 R3-1, R3-2: the upgrade keeps the launcher's own mode, and the record's hashes are added
+ // at a later start when writing them failed, once only.
+ void launcherUpgradeKeepsItsModeAndRetriesTheRecord() {
+  Fixture f;auto& c=f.context;c.installation="appimage";QVERIFY(!FileManagerIntegration::apply(c).error);
+  const auto launcher=FileManagerIntegration::launcherPath(c),recordFile=QDir(c.dataRoot).filePath("file-manager/appimage.owned");
+  const auto own=QFileInfo(launcher).path();
+  constexpr auto ownerOnly=QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner;
+  write(launcher,FileManagerIntegration::earlierLauncherForTesting(c),ownerOnly);
+  QStringList lines;for(const auto& line:QString::fromUtf8(readAll(recordFile)).split('\n'))if(!line.startsWith("hash "))lines<<line;
+  write(recordFile,lines.join('\n').toUtf8());
+  const auto hashes=[&]{return QString::fromUtf8(readAll(recordFile)).count("\nhash ");};
+  auto system=c;system.installation="system";
+  QVERIFY(!FileManagerIntegration::apply(system).error);
+  QCOMPARE(mode(launcher),QFile::Permissions(ownerOnly));QVERIFY(readAll(launcher).contains("remove_exact"));
+  const auto expected=hashes();QVERIFY(expected>0);
+  // The record loses its hashes again and can't be written: the next start reports it, and the one after adds them, once.
+  write(recordFile,lines.join('\n').toUtf8());
+  QVERIFY(QFile::setPermissions(own,QFile::ReadOwner|QFile::ExeOwner));
+  const auto refused=FileManagerIntegration::apply(system);
+  QVERIFY(QFile::setPermissions(own,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));
+  QCOMPARE(refused.error.code,QString("file_manager_io"));QCOMPARE(hashes(),0);
+  QVERIFY(!FileManagerIntegration::apply(system).error);QCOMPARE(hashes(),expected);
+  QVERIFY(!FileManagerIntegration::apply(system).error);QCOMPARE(hashes(),expected);
+ }
  // A launcher that isn't exactly one put.gd wrote is left as it is.
  void aChangedLauncherIsLeftAlone() {
   Fixture f;auto& c=f.context;c.installation="appimage";QVERIFY(!FileManagerIntegration::apply(c).error);
