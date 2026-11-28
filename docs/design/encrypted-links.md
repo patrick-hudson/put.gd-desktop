@@ -561,7 +561,7 @@ edited destination passes a Test. A typed passphrase is cleared once Settings ac
 store, stays typed when it is refused, and is cleared with the other typed secrets when
 Settings closes. Saving a destination whose **Encrypted links** mode didn't change leaves its
 `encrypt` object exactly as saved, `passphraseCredentials` included. Agents drive it with
-`ui.encryptedLinks` (MCP `drive_encrypted_links`): `inspect`, `mode`, `unlock` and `test`. Its `available` says
+`ui.encryptedLinks` (MCP `drive_encrypted_links`): `inspect`, `mode`, `unlock`, `test` and `show`. Its `available` says
 whether encryption can be turned on there, `modeEnabled` whether the choice can change and
 `saved` whether the file has the mode shown, with nothing for this
 destination still waiting to save. `mode` answers only once the file has the new
@@ -598,7 +598,7 @@ words with the next step (#2118). A disabled choice with nothing beside it read 
   destination can encrypt, and also when that destination encrypts by default but its check
   no longer passes. Selecting it then opens Settings at that destination's **Encrypted links**
   card, with **Test upload and link** focused, and captures nothing. No new tray row and no
-  dialog.
+  dialog. `ui.encryptedLinks` `show` opens the same place for agents.
 
 The passphrase is kept like any other secret, in its own keychain entry or for this session
 only, never in `config.json` ([credentials](credentials.md)). `setup.storeEncryptPassphrase`
