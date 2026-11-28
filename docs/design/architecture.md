@@ -208,13 +208,16 @@ to short-lived `putgd-cli` children, keeping TLS out of the idle resident.
 
 Upload copying follows issue #32. `preferences.uploadClipboardBehavior` defaults
 to `each_link`, including legacy configurations. A confirmed link becomes eligible
-after its durable item checkpoint. One operation with several files (a folder
-uploaded file by file, several files chosen in one action) copies its links once,
-in file order, when the operation finishes, whatever the setting says (#2127). It
-uses `list`'s one-member group, so links are re-read at dispatch. Separate
-operations follow `each_link`: each link is copied as it becomes ready. A
-separate sharing step, as on Proton, must settle before that file's link counts
-as ready (#478).
+after its durable item checkpoint. With `each_link`, each operation's links are
+copied as they become ready, except that one operation with several files (a
+folder uploaded file by file, several files chosen in one action) copies its links
+once, in file order, when it finishes (#2127). That uses a group of one, like
+`list`'s, so links are re-read at dispatch. With `list`, such an operation is
+simply one member of the group below and can share its list with other
+overlapping uploads. A separate sharing step, as on Proton, must settle before
+that file's link counts as ready (#478). The operation's `copy` record holds how
+many links it was to copy, how many the clipboard commits held, and whether they
+were encrypted; the notice counts from it.
 
 `list` groups overlapping operations with the same saved mode, explicit-copy
 epoch and expected clipboard revision. It copies available links in invocation
