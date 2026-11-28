@@ -12,7 +12,7 @@ python tools/proton/provision_runtime.py
 cmake --preset release -DPUTGD_OCR=ON -DBUILD_TESTING=OFF -DPUTGD_RELEASE_TAG="${RELEASE_TAG:-}" \
   -DPUTGD_BUNDLE_PROTON=ON -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INSTALL_LIBDIR=lib \
   -DPUTGD_PACKAGE_TARGET=archlinux -DPUTGD_NAUTILUS_PLUGIN=ON \
-  -DPUTGD_CAJA_PLUGIN=ON -DPUTGD_PEONY_PLUGIN=OFF
+  -DPUTGD_CAJA_PLUGIN=ON -DPUTGD_PEONY_PLUGIN=OFF -DPUTGD_KIO_PLUGIN=ON
 cmake --build --preset release --parallel "$jobs"
 ccache --show-stats
 python tools/releases/arch.py

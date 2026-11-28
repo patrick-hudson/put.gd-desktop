@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """Audit a native package's file-manager menu plugins (#1105): where each is
-installed, that none needs a file-manager library or Qt (readelf -d), that the
+installed, that none but the KIO plugin needs a file-manager library or Qt
+(readelf -d; KIO's links KF6 KIO, as Dolphin plugins do, #2136), that the
 Peony plugin's undefined symbols are all Qt, libstdc++ or libc ones and none is
 libpeony's (nm -D), and that each loads the way its file manager loads it
-(the build tree's putgd-<fm>-check, QPluginLoader for Peony). Not desktop acceptance."""
+(the build tree's putgd-<fm>-check, QPluginLoader for Peony, KPluginFactory for
+KIO). Where the KIO plugin ships, the KIO service menu must not also offer Upload
+encrypted with put.gd, and where it doesn't, the service menu must (#2136). Not
+desktop acceptance."""
 from __future__ import annotations
 
 import argparse
@@ -16,13 +20,16 @@ import subprocess
 # name: (directory the file manager loads from, module file)
 PLUGINS = {"nautilus": ("nautilus/extensions-4", "libputgd-nautilus.so"),
            "caja": ("caja/extensions-2.0", "libputgd-caja.so"),
-           "peony": ("peony-extensions", "libputgd-peony.so")}
+           "peony": ("peony-extensions", "libputgd-peony.so"),
+           "kio": ("kf6/kfileitemaction", "putgd.so")}
 # Package matrix names in .github/workflows/package.yml.
-REQUIRED = {"ubuntu24.04": ("nautilus", "caja", "peony"), "ubuntu26.04": ("nautilus", "caja", "peony"),
-            "debian13": ("nautilus", "caja", "peony"), "fedora44": ("nautilus", "caja"),
-            "fedora45": ("nautilus", "caja"), "archlinux": ("nautilus", "caja")}
-FORBIDDEN_NEEDED = re.compile(r"^lib(nautilus-extension|caja-extension|peony|Qt\d)")
-FORBIDDEN_DEPENDENCY = re.compile(r"nautilus|caja|peony|qt5", re.IGNORECASE)
+# KIO needs KF6, which Ubuntu 24.04 lacks.
+REQUIRED = {"ubuntu24.04": ("nautilus", "caja", "peony"), "ubuntu26.04": ("nautilus", "caja", "peony", "kio"),
+            "debian13": ("nautilus", "caja", "peony", "kio"), "fedora44": ("nautilus", "caja", "kio"),
+            "fedora45": ("nautilus", "caja", "kio"), "archlinux": ("nautilus", "caja", "kio")}
+FORBIDDEN_NEEDED = re.compile(r"^lib(nautilus-extension|caja-extension|peony|Qt\d|KF\d)")
+FORBIDDEN_DEPENDENCY = re.compile(r"nautilus|caja|peony|qt5|kf6|kio", re.IGNORECASE)
+KIO_SERVICE_MENU = "usr/share/kio/servicemenus/putgd-upload.desktop"
 PEONY_SYMBOL_SOURCES = re.compile(r"^lib(Qt\d\w+|stdc\+\+|c|m|gcc_s)[.]so")
 
 
@@ -72,7 +79,12 @@ def audit_plugins(root: Path, build: Path, *, package_target: str | None = None,
             raise ValueError(f"Expected one {name} plugin, found {len(found)}")
         plugin = found[0]
         needed = re.findall(r"\(NEEDED\).*?\[(.*?)\]", run(["readelf", "-d", str(plugin)]))
-        if forbidden := [soname for soname in needed if FORBIDDEN_NEEDED.match(soname)]:
+        if name == "kio":
+            # Linked like any Dolphin plugin (Plasma's desktop loads KIO with local symbols); the
+            # package dependency check below keeps KDE out of Depends and Requires.
+            if "libKF6KIOWidgets.so.6" not in needed:
+                raise ValueError(f"kio plugin doesn't link libKF6KIOWidgets.so.6: {needed}")
+        elif forbidden := [soname for soname in needed if FORBIDDEN_NEEDED.match(soname)]:
             raise ValueError(f"{name} plugin needs {forbidden}; it must resolve them from the file manager")
         check = build / "src/filemanager" / f"putgd-{name}-check"
         if not check.is_file():
@@ -85,6 +97,16 @@ def audit_plugins(root: Path, build: Path, *, package_target: str | None = None,
         if name == "caja" and not (root / "usr/share/caja/extensions/libputgd-caja.caja-extension").is_file():
             raise ValueError("Caja plugin lacks /usr/share/caja/extensions/libputgd-caja.caja-extension")
         result[name] = record
+    service_menu = root / KIO_SERVICE_MENU
+    if package_target is not None and not service_menu.is_file():
+        raise ValueError(f"{package_target} package lacks /{KIO_SERVICE_MENU}")
+    if service_menu.is_file():
+        # One Upload encrypted with put.gd in Dolphin: the plugin's, or else the service menu's.
+        offers = "putgdUploadEncrypted" in service_menu.read_text(encoding="utf-8")
+        if "kio" in result and offers:
+            raise ValueError(f"/{KIO_SERVICE_MENU} offers Upload encrypted with put.gd beside the KIO plugin")
+        if "kio" not in result and not offers:
+            raise ValueError(f"/{KIO_SERVICE_MENU} lacks Upload encrypted with put.gd and no KIO plugin offers it")
     if metadata is not None:
         requires = metadata["requires"]
         entries = requires.split(",") if isinstance(requires, str) else requires

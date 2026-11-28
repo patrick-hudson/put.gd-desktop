@@ -26,7 +26,10 @@ class FileManagerPluginAuditTests(unittest.TestCase):
             (self.build / "src/filemanager").mkdir(parents=True, exist_ok=True)
             (self.build / f"src/filemanager/putgd-{name}-check").write_text("")
             self.needed[filename] = ["libc.so.6"]
+        self.needed["putgd.so"] = ["libKF6KIOWidgets.so.6", "libQt6Core.so.6", "libc.so.6"]
         self.write("usr/share/caja/extensions/libputgd-caja.caja-extension")
+        self.write(audit.KIO_SERVICE_MENU)
+        (self.root / audit.KIO_SERVICE_MENU).write_text("[Desktop Entry]\nActions=putgdUpload;\n")
 
     def write(self, relative):
         path = self.root / relative
@@ -47,21 +50,59 @@ class FileManagerPluginAuditTests(unittest.TestCase):
 
     def test_each_suite_needs_its_plugins(self):
         result = self.audit(package_target="ubuntu24.04", metadata={"requires": "libc6 (>= 2.14), libstdc++6 (>= 5)"})
-        self.assertEqual(sorted(result), ["caja", "nautilus", "peony"])
+        self.assertEqual(sorted(result), ["caja", "kio", "nautilus", "peony"])
         self.assertEqual(result["nautilus"]["path"], "/usr/lib/x86_64-linux-gnu/nautilus/extensions-4/libputgd-nautilus.so")
         (self.root / "usr/lib/x86_64-linux-gnu/peony-extensions/libputgd-peony.so").unlink()
-        self.assertEqual(sorted(self.audit(package_target="fedora44")), ["caja", "nautilus"])
+        self.assertEqual(sorted(self.audit(package_target="fedora44")), ["caja", "kio", "nautilus"])
         with self.assertRaisesRegex(ValueError, "lacks the peony plugin"):
             self.audit(package_target="debian13")
+        # #2136: KF6 targets need the Dolphin plugin; Ubuntu 24.04 has no KF6.
+        self.write("usr/lib/x86_64-linux-gnu/peony-extensions/libputgd-peony.so")
+        (self.root / "usr/lib/x86_64-linux-gnu/kf6/kfileitemaction/putgd.so").unlink()
+        (self.root / audit.KIO_SERVICE_MENU).write_text("[Desktop Entry]\nActions=putgdUpload;putgdUploadEncrypted;\n")
+        self.assertEqual(sorted(self.audit(package_target="ubuntu24.04")), ["caja", "nautilus", "peony"])
+        for target in ("ubuntu26.04", "fedora45", "archlinux"):
+            with self.subTest(target), self.assertRaisesRegex(ValueError, "lacks the kio plugin"):
+                self.audit(package_target=target)
+
+    def test_one_encrypted_entry_in_dolphin(self):
+        menu = self.root / audit.KIO_SERVICE_MENU
+        menu.parent.mkdir(parents=True, exist_ok=True)
+        plain = "[Desktop Entry]\nActions=putgdUpload;\n\n[Desktop Action putgdUpload]\nName=Upload with put.gd\n"
+        both = plain.replace("putgdUpload;", "putgdUpload;putgdUploadEncrypted;") + "\n[Desktop Action putgdUploadEncrypted]\nName=Upload encrypted with put.gd\n"
+        menu.write_text(plain)
+        self.assertIn("kio", self.audit())
+        menu.write_text(both)
+        with self.assertRaisesRegex(ValueError, "beside the KIO plugin"):
+            self.audit()
+        (self.root / "usr/lib/x86_64-linux-gnu/kf6/kfileitemaction/putgd.so").unlink()
+        self.assertNotIn("kio", self.audit())
+        menu.write_text(plain)
+        with self.assertRaisesRegex(ValueError, "no KIO plugin offers it"):
+            self.audit()
 
     def test_plugins_link_no_file_manager_or_qt(self):
-        for soname in ("libnautilus-extension.so.4", "libcaja-extension.so.1", "libpeony.so.3", "libQt5Core.so.5"):
+        for soname in ("libnautilus-extension.so.4", "libcaja-extension.so.1", "libpeony.so.3", "libQt5Core.so.5", "libKF6KIOWidgets.so.6"):
             self.needed["libputgd-peony.so"] = ["libc.so.6", soname]
             with self.subTest(soname), self.assertRaisesRegex(ValueError, "must resolve them from the file manager"):
                 self.audit()
 
+    def test_every_package_has_the_kio_service_menu(self):
+        (self.root / audit.KIO_SERVICE_MENU).unlink()
+        self.assertIn("kio", self.audit())
+        with self.assertRaisesRegex(ValueError, "lacks /usr/share/kio/servicemenus/putgd-upload.desktop"):
+            self.audit(package_target="ubuntu24.04")
+
+    def test_kio_plugin_links_kio(self):
+        # #2136: the Dolphin plugin links KF6 KIO and Qt, unlike the others.
+        self.assertIn("libKF6KIOWidgets.so.6", self.audit()["kio"]["needed"])
+        self.needed["putgd.so"] = ["libQt6Core.so.6", "libc.so.6"]
+        with self.assertRaisesRegex(ValueError, "doesn't link libKF6KIOWidgets"):
+            self.audit()
+
     def test_package_depends_on_no_file_manager(self):
-        for requires in ("libc6, nautilus", ["libc.so.6()(64bit)", "libcaja-extension.so.1()(64bit)"], "libqt5core5t64"):
+        for requires in ("libc6, nautilus", ["libc.so.6()(64bit)", "libcaja-extension.so.1()(64bit)"], "libqt5core5t64", "libkf6kiowidgets6",
+                         ["libKF6KIOWidgets.so.6()(64bit)"]):
             with self.subTest(requires), self.assertRaisesRegex(ValueError, "depends on a file manager"):
                 self.audit(metadata={"requires": requires})
 

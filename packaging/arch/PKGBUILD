@@ -27,7 +27,9 @@ optdepends=('gvfs: network locations' 'xdg-desktop-portal: desktop portal servic
             'tesseract-data-ara: read Arabic pages' 'tesseract-data-heb: read Hebrew pages'
             'tesseract-data-hin: read Devanagari pages' 'tesseract-data-tha: read Thai pages'
             'tesseract-data-ell: read Greek pages')
-makedepends=('cmake' 'ninja' 'python' 'git' 'pkgconf' 'wayland-protocols' 'nautilus' 'caja')
+# kio: the Dolphin plugin (#2136) builds against it and links KF6 KIO. pacman adds no
+# dependencies by itself, so KDE stays out of depends (dolphin is an optdepend above).
+makedepends=('cmake' 'ninja' 'python' 'git' 'pkgconf' 'wayland-protocols' 'nautilus' 'caja' 'kio')
 # CMake has already stripped product binaries and recorded private runtime hashes.
 # makepkg must preserve these exact bytes, including bundled Proton code.
 options=('!strip' '!debug')

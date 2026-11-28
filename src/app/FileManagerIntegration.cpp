@@ -414,7 +414,9 @@ bool onPath(const FileManagerContext& c,const QString& name) {
 // file manager loads modules (#2119: the same test decides skipping and replacing scripts).
 bool systemPlugin(const FileManagerContext& c,const QString& relative) {
  const auto roots=c.libraryDirs.isEmpty()?QStringList{"/usr/lib64","/usr/lib/x86_64-linux-gnu","/usr/lib/aarch64-linux-gnu","/usr/lib"}:c.libraryDirs;
- const auto module=relative.startsWith("caja/")?QStringLiteral("libputgd-caja.so"):relative.startsWith("peony")?QStringLiteral("libputgd-peony.so"):QStringLiteral("libputgd-nautilus.so");
+ // #2136: KIO's is the KF6 KFileItemAction plugin, kf6/kfileitemaction/putgd.so under Qt's plugin folder.
+ const auto module=relative.startsWith("caja/")?QStringLiteral("libputgd-caja.so"):relative.startsWith("peony")?QStringLiteral("libputgd-peony.so"):
+  relative.endsWith("kf6/kfileitemaction")?QStringLiteral("putgd.so"):QStringLiteral("libputgd-nautilus.so");
  for(const auto& root:roots) {
   const QFileInfo file(QDir(QDir(root).filePath(relative)).filePath(module));
   if(file.isFile()&&!file.isSymLink())return true;
@@ -507,7 +509,9 @@ bool systemCopy(const FileManagerContext& c,const MenuFormat& format) {
   if(!file.isFile()||file.isSymLink()||file.ownerId()!=c.systemOwner||QFileInfo(directory).ownerId()!=c.systemOwner)return false;
   const auto name=QString::fromLatin1(format.name);const bool encrypted=name.contains(QStringLiteral("-encrypted"));
   if(!packagedExec(file.filePath(),encrypted))return false;
-  if(QString::fromLatin1(format.directory)=="kio/servicemenus")return packagedExec(file.filePath(),true);
+  // KIO's one file holds both actions, or (#2136, KF6 packages) only Upload with put.gd while the
+  // package's putgd KFileItemAction plugin offers Upload encrypted with put.gd: both entries either way.
+  if(QString::fromLatin1(format.directory)=="kio/servicemenus")return packagedExec(file.filePath(),true)||systemPlugin(c,QStringLiteral("qt6/plugins/kf6/kfileitemaction"));
   auto sibling=name;
   if(encrypted)sibling.remove(QStringLiteral("-encrypted"));else sibling.insert(QStringLiteral("putgd-upload").size(),QStringLiteral("-encrypted"));
   const auto siblingPath=QDir(QDir(directory).filePath(QString::fromLatin1(format.directory))).filePath(sibling);
@@ -770,6 +774,34 @@ void upgradeAppImageLauncher(const FileManagerContext& c,const QStringList& know
  auto updated=readSmall(recordFile);if(!updated.endsWith('\n'))updated+='\n';
  if(commit(recordFile,updated+added.toUtf8(),dataMode)==Write::Failed)fail(ioError("Cannot update the AppImage's file manager record",recordFile));
 }
+}
+QString FileManagerIntegration::encryptedEntryMarker(const QString& dataRoot) {
+ // dataRoot is <XDG data home>/putgd, and the plugins read PUTGD_FM_ENCRYPTED_HIDDEN
+ // (src/filemanager/encrypted-entry.h) below the data home; the unit test holds them equal.
+ return QDir(dataRoot).filePath(QStringLiteral("file-manager/encrypted-entry-hidden"));
+}
+QString FileManagerIntegration::encryptedEntryDataHome(const QString& xdgDataHome,const QString& home) {
+ // The XDG spec ignores a relative value, and so do the plugins and the shell tests.
+ return QDir::cleanPath(xdgDataHome.startsWith('/')?xdgDataHome:QDir(home).filePath(".local/share"));
+}
+Error FileManagerIntegration::setEncryptedEntryHidden(const QString& dataRoot,bool hidden,const QString& why,bool* changed) {
+ if(changed)*changed=false;
+ const auto path=encryptedEntryMarker(dataRoot);
+ const QFileInfo info(path);
+ if(!hidden) {
+  if(!info.exists()&&!info.isSymLink())return {};
+  if(!QFile::remove(path))return ioError("Cannot remove the file manager's encrypted-entry marker",path);
+  if(changed)*changed=true;
+  return {};
+ }
+ switch(commit(path,(why+'\n').toUtf8(),dataMode,false)) {
+ case Write::Written:if(changed)*changed=true;return {};
+ case Write::Unchanged:return {};
+ // A symlink or folder there: left alone, and the menus may not show what put.gd decided.
+ case Write::Conflict:return ioError("The file manager's encrypted-entry marker isn't a file put.gd can replace",path);
+ case Write::Failed:break;
+ }
+ return ioError("Cannot write the file manager's encrypted-entry marker",path);
 }
 QString FileManagerIntegration::label() {return QStringLiteral("Upload with put.gd");}
 QString FileManagerIntegration::encryptedLabel() {return QStringLiteral("Upload encrypted with put.gd");}

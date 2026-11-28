@@ -1,6 +1,9 @@
 # "Upload encrypted with put.gd" in Nemo (#2119), beside "Upload with put.gd":
 # files and folders in any location. Nemo escapes each %F path itself; quotes
-# around it would break names.
+# around it would break names. The condition hides it while put.gd's marker
+# says the destination can't encrypt (#2136, src/filemanager/encrypted-entry.h):
+# Nemo runs it at every context menu, one /bin/sh, about 2 ms. A relative
+# XDG_DATA_HOME means ~/.local/share. Conditions is a list, so its semicolons are \;.
 [Nemo Action]
 Name=Upload encrypted with put.gd
 Comment=Upload the selected items as encrypted links with put.gd
@@ -8,3 +11,4 @@ Exec=/usr/bin/putgd-launcher --upload --encrypt -- %F
 Icon-Name=putgd
 Selection=notnone
 Extensions=any;
+Conditions=exec /bin/sh -c 'case "$XDG_DATA_HOME" in /*) d=$XDG_DATA_HOME \;\; *) d=$HOME/.local/share \;\; esac\; test ! -e "$d/putgd/file-manager/encrypted-entry-hidden"';

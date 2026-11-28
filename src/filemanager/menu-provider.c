@@ -2,12 +2,15 @@
 // Caja (#1105). One source, built once per extension API (fm-api.h). The file
 // manager loads this module into its own process for every user, so it only
 // builds the two menu items and, when one is chosen, starts the launcher with
-// the selection's activation URIs. No I/O,
-// IPC, path checks, main-loop sources or timers: the launcher alone decides
-// what has a local path. Not linked to the extension library; its symbols
+// the selection's activation URIs. No IPC, main-loop sources or timers, and no
+// I/O but one access() of the resident's marker (#2136, encrypted-entry.h), which
+// leaves the encrypted item out where encrypting can't work. The launcher alone
+// decides what has a local path. Not linked to the extension library; its symbols
 // resolve from the file manager. Built with hidden visibility; only the module
 // entry points are exported.
 #include "fm-api.h"
+
+#include <unistd.h>
 
 #define PUTGD_FM_EXPORT __attribute__((visibility("default")))
 
@@ -53,12 +56,23 @@ static FmMenuItem *upload_item(GList *files, guint count, gboolean encrypt) {
   return item;
 }
 
+// #2136: whether the resident's marker hides Upload encrypted with put.gd, read at every menu.
+// GLib keeps a relative XDG_DATA_HOME; the XDG spec, and put.gd, ignore it.
+static gboolean encrypted_hidden(void) {
+  const char *data = g_getenv("XDG_DATA_HOME");
+  char *marker = data && data[0] == '/' ? g_build_filename(data, PUTGD_FM_ENCRYPTED_HIDDEN, NULL)
+                                        : g_build_filename(g_get_home_dir(), ".local/share", PUTGD_FM_ENCRYPTED_HIDDEN, NULL);
+  const gboolean hidden = access(marker, F_OK) == 0;
+  g_free(marker);
+  return hidden;
+}
+
 static GList *get_file_items(FM_GET_FILE_ITEMS_PARAMETERS) {
   (void)provider;
   guint count = g_list_length(files);
   if(!count) return NULL;
   GList *items = g_list_append(NULL, upload_item(files, count, FALSE));
-  return g_list_append(items, upload_item(files, count, TRUE));
+  return encrypted_hidden() ? items : g_list_append(items, upload_item(files, count, TRUE));
 }
 
 static void putgd_menu_provider_init(FmMenuProviderInterface *iface) { iface->get_file_items = get_file_items; }

@@ -1395,9 +1395,35 @@ Error OperationService::encryptRefusal(const QString& action,const QString& prof
   op.settings=Settings::fromValidated(FileUploads::routedDocument(snapshot,route));const auto profile=snapshot.profiles.value(route.profileId);
   op.destination={profile["provider"].toString(),route.profileId,{},profile["settings"].toObject(),profile["credentials"].toObject()};state=encryptOptions(op);state["profileId"]=route.profileId;
  } else state=encryptStateFor(action==Settings::repeatActionName()?QStringLiteral("region"):action);
+ // #2136: a file manager's encrypted upload where encrypting can't work at all is refused before
+ // anything is copied, with the provider's reason and the entry that does work.
+ if(action==fileManagerAction&&!state.value("available").toBool()&&!state.value("checkRequired").toBool()) {
+  const auto reason=state.value("reason").toString();const QJsonObject details{{"profileId",state.value("profileId")}};
+  // A menu entry names what works instead of the editor's Encrypt toggle: Upload with put.gd, but
+  // only while the destination's Encrypted links is off. When it's on, that entry encrypts too.
+  const bool plainWorks=state.value("setting").toString(QStringLiteral("off"))=="off";
+  if(reason==encryptNeedsLink())return {"encrypt_needs_link",installation.isEmpty()?reason:plainWorks?
+   QStringLiteral("Encrypted files open only from their link, and Sharing is set to Private upload. Change Sharing in Settings → Capture, or select Upload with put.gd instead."):
+   QStringLiteral("Encrypted files open only from their link, and Sharing is set to Private upload. Change Sharing in Settings → Capture, or turn off Encrypted links for this destination."),details};
+  return {"encrypt_unavailable",reason+(installation.isEmpty()?QStringLiteral(" Or upload it without encryption."):
+   plainWorks?QStringLiteral(" Select Upload with put.gd instead."):QStringLiteral(" Turn off Encrypted links for this destination.")),details};
+ }
  if(!state["checkRequired"].toBool())return {};
  // #2119: the destination, so a file manager's encrypted upload can open it at its Test.
  return {"encrypt_check_required",state["reason"].toString()+QStringLiteral(" Or upload it without encryption."),{{"profileId",state["profileId"]}}};
+}
+QJsonObject OperationService::encryptedEntryState() const {
+ const auto snapshot=settings_.snapshot();
+ const auto route=FileUploads::resolve(snapshot);
+ // Several destinations and no capture default: Upload with put.gd asks for one, and so does this.
+ if(route.error)return snapshot.profiles.isEmpty()?QJsonObject{{"shown",false},{"reason","no_destination"}}:QJsonObject{{"shown",true}};
+ const auto profile=snapshot.profiles.value(route.profileId);const auto providerId=profile["provider"].toString();
+ const auto provider=providers_.find(providerId);
+ const Destination destination{providerId,route.profileId,{},profile["settings"].toObject(),profile["credentials"].toObject()};
+ const auto unavailable=provider?provider->capabilities(destination).encryptUnavailable:QStringLiteral("This destination is unavailable.");
+ QJsonObject out{{"shown",unavailable.isEmpty()},{"provider",providerId},{"profileId",route.profileId}};
+ if(!unavailable.isEmpty()){out["reason"]="encrypt_unavailable";out["message"]=unavailable;}
+ return out;
 }
 QJsonObject OperationService::encryptStateFor(const QString& action) const {
  Operation op;op.action=action;op.settings=settings_.snapshot();
@@ -2328,7 +2354,8 @@ QJsonObject OperationService::capabilities() const {
 #endif
  auto sourceCapabilities=source_.capabilities();sourceCapabilities["scroll"]=scroll_->capabilities();
  // #2119: the file manager's client asks this when an encrypted upload.files is refused as malformed.
- return {{"source",sourceCapabilities},{"providers",providers_.capabilities()},{"uploadFiles",QJsonObject{{"encrypt",true}}},
+ // #2136: encryptedEntry says whether file managers show Upload encrypted with put.gd now.
+ return {{"source",sourceCapabilities},{"providers",providers_.capabilities()},{"uploadFiles",QJsonObject{{"encrypt",true},{"encryptedEntry",encryptedEntryState()}}},
   {"editor",QJsonObject{{"available",editor},{"admissionPixels",double(EditorJob::admissionPixels)},{"open",!editingId_.isEmpty()},
    {"sources",QJsonArray{"region","window","desktop","clipboard","file","scroll"}},{"fileFormats",QJsonArray{"png","jpeg"}},{"output","png"},
    {"shapes",QJsonArray{"redact","blur","arrow","rectangle","text","highlight","step","pen","ellipse","line"}},{"blurStyles",QJsonArray{"blur","pixelate"}},

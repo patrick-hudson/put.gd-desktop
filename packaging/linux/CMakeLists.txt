@@ -24,12 +24,20 @@ endforeach()
 # inert where it is absent. src/app/FileManagerIntegration.cpp writes the
 # AppImage's per-user copies from these same files; its image carries none.
 if(NOT PUTGD_PACKAGE_TARGET STREQUAL "appimage")
-  putgd_install_snapshot(filemanager/kio-servicemenu.desktop "${CMAKE_INSTALL_DATADIR}/kio/servicemenus" RENAME putgd-upload.desktop)
+  if(TARGET putgd-kio)
+    # KF6 (#2136): the putgd KFileItemAction plugin offers Upload encrypted with put.gd,
+    # so the service menu keeps only Upload with put.gd (src/filemanager generates it).
+    get_target_property(kio_service_menu putgd-kio PUTGD_SERVICE_MENU)
+    putgd_install_snapshot("${kio_service_menu}" "${CMAKE_INSTALL_DATADIR}/kio/servicemenus" RENAME putgd-upload.desktop)
+  else()
+    putgd_install_snapshot(filemanager/kio-servicemenu.desktop "${CMAKE_INSTALL_DATADIR}/kio/servicemenus" RENAME putgd-upload.desktop)
+  endif()
   putgd_install_snapshot(filemanager/putgd-upload.nemo_action "${CMAKE_INSTALL_DATADIR}/nemo/actions")
   putgd_install_snapshot(filemanager/thunar-sendto.desktop "${CMAKE_INSTALL_DATADIR}/Thunar/sendto" RENAME putgd-upload.desktop)
   putgd_install_snapshot(filemanager/file-manager-action.desktop "${CMAKE_INSTALL_DATADIR}/file-manager/actions" RENAME putgd-upload.desktop)
   putgd_install_snapshot(filemanager/putgd-upload.contract "${CMAKE_INSTALL_DATADIR}/contractor")
-  # "Upload encrypted with put.gd" (#2119): KIO's is a second action in the file above.
+  # "Upload encrypted with put.gd" (#2119): KIO's is a second action in the file above,
+  # or the putgd KFileItemAction plugin where it is built (#2136).
   putgd_install_snapshot(filemanager/putgd-upload-encrypted.nemo_action "${CMAKE_INSTALL_DATADIR}/nemo/actions")
   putgd_install_snapshot(filemanager/thunar-sendto-encrypted.desktop "${CMAKE_INSTALL_DATADIR}/Thunar/sendto" RENAME putgd-upload-encrypted.desktop)
   putgd_install_snapshot(filemanager/file-manager-action-encrypted.desktop "${CMAKE_INSTALL_DATADIR}/file-manager/actions" RENAME putgd-upload-encrypted.desktop)
@@ -37,7 +45,7 @@ if(NOT PUTGD_PACKAGE_TARGET STREQUAL "appimage")
 endif()
 # File-manager menu plugins (#1105, src/filemanager), each where its file
 # manager loads extensions, with the distros' plain shared-object mode.
-foreach(file_manager_plugin putgd-nautilus putgd-caja putgd-peony)
+foreach(file_manager_plugin putgd-nautilus putgd-caja putgd-peony putgd-kio)
   if(TARGET ${file_manager_plugin})
     get_target_property(plugin_dir ${file_manager_plugin} PUTGD_INSTALL_DIR)
     install(TARGETS ${file_manager_plugin} LIBRARY DESTINATION "${plugin_dir}"
@@ -272,6 +280,22 @@ set(CPACK_RPM_PACKAGE_DESCRIPTION "${CPACK_PACKAGE_DESCRIPTION}")
 set(CPACK_DEBIAN_PACKAGE_SECTION graphics)
 set(CPACK_PACKAGING_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+if(TARGET putgd-kio)
+  # Why this exists (#2136): the Dolphin plugin links KF6 KIO, and dpkg-shlibdeps would turn
+  # those libraries into a hard Depends that pulls KDE Frameworks onto every DEB install.
+  # src/filemanager/kio-weak-deps.cmake writes a shlibs.local naming exactly the KF6
+  # libraries the plugin NEEDs, with no dependency. This pre-build script puts it in the
+  # staging debian/ folder where CPack runs dpkg-shlibdeps and which CPack removes right
+  # after, so it never ships. dpkg-shlibdeps takes shlibs.local over the symbols files, so
+  # the DEB depends on no KDE library and the plugin is simply unused where KIO is missing.
+  # (A private -l folder doesn't work: dpkg-shlibdeps falls through to the packaged copy.)
+  # No other put.gd binary links KF6; tools/releases/audit_file_manager_plugins.py rejects
+  # any kf6/kio dependency.
+  get_target_property(kio_shlibs_local putgd-kio PUTGD_WEAK_DEPENDENCIES)
+  file(CONFIGURE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/package-inputs/kio-shlibs-local.cmake" CONTENT
+    "if(CPACK_GENERATOR STREQUAL \"DEB\")\n  file(MAKE_DIRECTORY \"\${CPACK_TEMPORARY_DIRECTORY}/debian\")\n  file(COPY_FILE \"@kio_shlibs_local@\" \"\${CPACK_TEMPORARY_DIRECTORY}/debian/shlibs.local\")\nendif()\n" @ONLY)
+  list(APPEND CPACK_PRE_BUILD_SCRIPTS "${CMAKE_CURRENT_BINARY_DIR}/package-inputs/kio-shlibs-local.cmake")
+endif()
 set(CPACK_DEBIAN_PACKAGE_PRIVATE_DIRS "${PUTGD_AWS_RUNTIME_DIR}")
 # History previews of WebP recordings and images read through Qt's WebP image
 # plugin (#189), which Debian, Ubuntu and Fedora ship apart from Qt GUI (GIF and
@@ -316,14 +340,16 @@ endforeach()
 set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION ${putgd_rpm_system_dirs})
 # Private AWS libraries satisfy only this app, never another RPM. Keep automatic
 # detection of their system dependencies; filter only the bundled SONAMEs.
-# The file-manager plugins provide nothing either, and link no file-manager
-# library; the requires filter is a backstop. Their directories stay in the
+# The file-manager plugins provide nothing either. The Nautilus and Caja ones link
+# no file-manager library, so their filter is a backstop; the KIO plugin links
+# KF6 KIO (#2136), and the libKF6 filter keeps KDE out of Requires, so the plugin
+# is simply unused where KIO is missing. Their directories stay in the
 # file list: the RPM co-owns them, as Fedora asks when their owner isn't required.
 # RPM's default stripping also changes bytes after our runtime digest is written.
 set(putgd_rpm_private_dirs "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/putgd" ${putgd_file_manager_plugin_dirs})
 list(JOIN putgd_rpm_private_dirs "|" putgd_rpm_private_dirs)
 set(CPACK_RPM_SPEC_MORE_DEFINE
-  "%global __provides_exclude_from ^(${putgd_rpm_private_dirs})/.*$\n%global __requires_exclude ^(libaws[-A-Za-z0-9_]*|libs2n|libnautilus-extension|libcaja-extension)[.]so.*$\n%define __spec_install_post /bin/true")
+  "%global __provides_exclude_from ^(${putgd_rpm_private_dirs})/.*$\n%global __requires_exclude ^(libaws[-A-Za-z0-9_]*|libs2n|libnautilus-extension|libcaja-extension|libKF6[A-Za-z]+)[.]so.*$\n%define __spec_install_post /bin/true")
 if(TARGET putgd-ocr)
   string(APPEND CPACK_DEBIAN_PACKAGE_DEPENDS ", tesseract-ocr-eng")
   string(APPEND CPACK_RPM_PACKAGE_REQUIRES ", tesseract-langpack-eng")

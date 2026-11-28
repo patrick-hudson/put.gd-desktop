@@ -8,6 +8,8 @@
 #error "Define PUTGD_FM_NAUTILUS or PUTGD_FM_CAJA"
 #endif
 
+#include "encrypted-entry.h"
+
 #define PUTGD_FM_LAUNCHER "/usr/bin/putgd-launcher"
 #define PUTGD_FM_LABEL "Upload with put.gd"
 #define PUTGD_FM_ENCRYPTED_LABEL "Upload encrypted with put.gd" // #2119

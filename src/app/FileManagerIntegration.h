@@ -63,6 +63,16 @@ public:
  // #2132: this context's AppImage launcher as #2119's build wrote it, before entries carried hashes; for tests.
  static QByteArray earlierLauncherForTesting(const FileManagerContext&);
 
+ // #2136: the marker that hides "Upload encrypted with put.gd" in file managers that can
+ // hide it, <dataRoot>/file-manager/encrypted-entry-hidden (src/filemanager/encrypted-entry.h).
+ // dataRoot here is always <XDG data home>/putgd, the path the menus read, even when the
+ // resident's own data root is still a legacy folder.
+ static QString encryptedEntryMarker(const QString& dataRoot);
+ // The data home the menus read the marker under: XDG_DATA_HOME when absolute, else home/.local/share.
+ static QString encryptedEntryDataHome(const QString& xdgDataHome,const QString& home);
+ // Writes the marker, its one line `why` (a provider ID, or no-destination), when hidden, and
+ // removes it when not. Only a change touches the file; `changed` says whether one did.
+ static Error setEncryptedEntryHidden(const QString& dataRoot,bool hidden,const QString& why,bool* changed=nullptr);
  // The /bin/sh -c script that restarts a restartable file manager, its name as $1; empty for any other name.
  static QString restartScript(const QString& name);
  // The existing system directories whose put.gd files (menu files, plugins) make

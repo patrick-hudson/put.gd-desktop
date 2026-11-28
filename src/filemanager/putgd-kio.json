@@ -1,0 +1,11 @@
+{
+    "KPlugin": {
+        "Description": "Adds Upload encrypted with put.gd where the destination can encrypt",
+        "Icon": "putgd",
+        "MimeTypes": [
+            "application/octet-stream",
+            "inode/directory"
+        ],
+        "Name": "Upload encrypted with put.gd"
+    }
+}
