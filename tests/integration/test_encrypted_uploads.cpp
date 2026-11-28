@@ -172,7 +172,8 @@ private slots:
   auto doc=f.settings->document();auto limits=doc["limits"].toObject();limits["concurrentUploads"]=3;doc["limits"]=limits;QVERIFY(f.settings->save(doc,f.settings->revision()));
   f.provider->concurrency=3;f.provider->storage.dispatcher=this;f.provider->storage.deferUploads=true;f.provider->failNext=1;
   // A failed check below still lets every held transfer finish, so the fixture tears down.
-  auto drain=qScopeGuard([&]{f.provider->storage.deferUploads=false;while(!f.provider->storage.completions.isEmpty())f.provider->storage.completions.takeFirst()();(void)waitFor([&]{return f.operations->diagnostics()["activeOperations"].toInt()==0;},30000);});
+  // Completions queued meanwhile are drained inside the wait, so none is left blocked.
+  auto drain=qScopeGuard([&]{f.provider->storage.deferUploads=false;(void)waitFor([&]{while(!f.provider->storage.completions.isEmpty())f.provider->storage.completions.takeFirst()();return f.operations->diagnostics()["activeOperations"].toInt()==0;},30000);});
   QStringList paths;for(const auto* name:{"a.txt","b.txt","c.txt","d.txt"})paths.append(fixture(f.dir.path(),name,QByteArray("synthetic ")+name));
   QString id;f.operations->uploadFiles(paths,"test",{},[&](Error e,QJsonObject r){QVERIFY2(!e,qPrintable(e.message));id=r["operationId"].toString();},"report",{});
   // Three transfers wait (the fourth file failed at once); they finish last first.

@@ -28,7 +28,8 @@ public:
  mutable QMutex mutex;QHash<QString,StorageReceipt> objects;std::atomic_int uploads{0},deletes{0},checks{0};bool loseReply=false,failUpload=false,allowDelete=true,slowDelete=false,wrongStatDestination=false;QObject* dispatcher=nullptr;
  std::function<void()> capabilitiesGate;
  bool prepareUploads=false,deferChecks=false;QList<std::function<void()>> checkCompletions;
- bool deferUploads=false;QList<std::function<void()>> completions;QList<UploadRequest> requests;
+ // Read on upload worker threads and set by tests: atomic.
+ std::atomic_bool deferUploads{false};QList<std::function<void()>> completions;QList<UploadRequest> requests;
  // Resumable uploads: journal before an uncertain end, and record each journal received.
  qint64 maximumObjectBytes=0;bool journalThenUnknown=false,journalThenFail=false;QList<QJsonObject> resumes;
  // Retired journals (#146): each one abandoned, and the error to answer with.
