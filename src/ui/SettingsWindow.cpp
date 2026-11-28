@@ -1637,6 +1637,8 @@ bool SettingsWindow::eventFilter(QObject* watched,QEvent* event){
  if(watched==destinationPage_&&event->type()==QEvent::Hide)resetCredentialSecretDisplay();
  // A destination opened before its page was on screen scrolls to its Endpoint problem now (#1676).
  if(watched==destinationPage_&&event->type()==QEvent::Show&&!loading_)showS3SettingsProblems();
+ // #2118: Encrypted links asked for before the page was on screen is scrolled to now, once laid out.
+ if(watched==destinationPage_&&event->type()==QEvent::Show)revealEncryptedLinks();
  if(watched==destinationPage_&&event->type()==QEvent::Hide)s3_["endpoint"]->setProperty("revealedFor",{});
  if(revealUpdates_&&(event->type()==QEvent::Move||event->type()==QEvent::Resize)&&watched==updatesCard_)revealUpdates();
  if(event->type()==QEvent::Hide&&watched==generalPage_&&!event->spontaneous())revealUpdates_=false;
@@ -3037,12 +3039,21 @@ void SettingsWindow::showCaptureSettings(const QStringList& affectedActions){
  revealAndFocus(target);
 }
 void SettingsWindow::showEncryptedLinks(){
+ // Kept until the card is on screen: a fresh window shows its page, and lays it out, only later.
+ revealEncryptFor_=profileId_->text();revealEncryptedLinks();
+}
+void SettingsWindow::revealEncryptedLinks(){
+ if(revealEncryptFor_.isEmpty())return;
  QTimer::singleShot(0,this,[this]{
-  auto* section=findChild<QWidget*>("encryptedLinksSection");if(!section||!encryptPanel_)return;
-  auto* test=findChild<QPushButton*>("encryptedLinksTest");
-  QWidget* target=test&&test->isVisibleTo(this)&&test->isEnabled()?static_cast<QWidget*>(test):encryptPanel_->control();
+  // findControl: the destination page may live in the main window, outside this one.
+  auto* section=findControl<QWidget*>("encryptedLinksSection");
+  if(revealEncryptFor_.isEmpty()||!section||!encryptPanel_||profileId_->text()!=revealEncryptFor_){if(profileId_->text()!=revealEncryptFor_)revealEncryptFor_.clear();return;}
+  if(!section->isVisible())return;
+  auto* test=findControl<QPushButton*>("encryptedLinksTest");
+  QWidget* target=test&&test->isVisible()&&test->isEnabled()?static_cast<QWidget*>(test):encryptPanel_->control();
   for(auto* parent=section->parentWidget();parent;parent=parent->parentWidget())if(auto* scroll=qobject_cast<QScrollArea*>(parent)){if(auto* layout=scroll->widget()->layout())layout->activate();scroll->ensureWidgetVisible(section,24,24);scroll->ensureWidgetVisible(target,24,24);break;}
   target->setFocus(Qt::TabFocusReason);target->setAttribute(Qt::WA_KeyboardFocusChange);target->window()->setAttribute(Qt::WA_KeyboardFocusChange);target->update();
+  revealEncryptFor_.clear();
  });
 }
 void SettingsWindow::showUpdates(){

@@ -230,7 +230,7 @@ private:
  // A finished setup job of a Nextcloud or WebDAV destination; true when it was handled whole.
  bool davSetupFinished(const QJsonObject& job,const QJsonObject& data,const Error& error,bool currentTest);
  // #1871: the SFTP form; inspectProfile_ is the destination whose ssh -G line is being read.
- SftpPanel* sftpPanel_=nullptr;class EncryptedLinksPanel* encryptPanel_=nullptr;void loadEncryptPanel(bool edited);QString sftpInspected_;void inspectSftp();QString sftpInspectKey()const;
+ SftpPanel* sftpPanel_=nullptr;class EncryptedLinksPanel* encryptPanel_=nullptr;void loadEncryptPanel(bool edited);QString revealEncryptFor_;void revealEncryptedLinks();QString sftpInspected_;void inspectSftp();QString sftpInspectKey()const;
  // #1871: a Clear about to start; its setup job record carries the mark from then on.
  bool sftpClearPending_=false;
  QVector<QHash<QString,CredentialInputs>> credentialDrafts_;

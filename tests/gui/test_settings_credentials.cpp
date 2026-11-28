@@ -12,6 +12,8 @@
 #include <QSignalSpy>
 #include <QStandardItemModel>
 #include <QVBoxLayout>
+#include <QScrollArea>
+#include <QScrollBar>
 // Secrets typed, stored or revealed in Settings never reach the configuration,
 // saved view state, a credential hint reply or another destination.
 class SettingsGui:public SettingsGuiFixture {
@@ -148,6 +150,26 @@ private slots:
   state=inspect();QVERIFY(state["testOffered"].toBool());QVERIFY(!state["available"].toBool());QVERIFY(state["reason"].toString().startsWith("Needs Test upload and link again."));
   checks.encryptChecked(saved()["id"].toString(),destinationcheck::fingerprint(saved()),false,"The link address isn't https.");fixture.session.invalidate();
   QVERIFY(waitFor([&]{return inspect()["check"]=="failed";}));QCOMPARE(inspect()["reason"].toString(),QString("The link address isn't https. Fix that, then select Test upload and link again."));
+ }
+ // #2118: the tray's encryptedLinks:<id> opens a window that isn't on screen yet; once it is shown
+ // and laid out, the card and its Test upload and link are in view and the button has the focus.
+ void encryptedLinksOpenScrolledToTheCardOnAFreshWindow(){
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
+  UiSessionFixture fixture(service,secrets);DestinationStatus checks(dir.filePath("destination-status.json"),service);fixture.server.setDestinationStatus(&checks);
+  MainWindow window(fixture.session);window.resize(1100,640);
+  // As UiApplicationController opens it: the destination, then the card, then the window.
+  window.showDestination("synthetic-third");window.settings()->showEncryptedLinks();window.show();
+  auto* test=window.findChild<QPushButton*>("encryptedLinksTest");QVERIFY(test);
+  const auto inView=[&]{
+   if(!test->isVisible())return false;
+   for(auto* parent=test->parentWidget();parent;parent=parent->parentWidget())if(auto* area=qobject_cast<QScrollArea*>(parent)){
+    const QRect shown(test->mapTo(area->viewport(),QPoint(0,0)),test->size());return area->viewport()->rect().contains(shown);}
+   return false;};
+  QVERIFY(waitFor(inView,5000));
+  PUTGD_TRY_VERIFY(test->hasFocus());
+  // It was a long page: the card sits well below its top, so it really scrolled.
+  auto* area=[&]()->QScrollArea*{for(auto* parent=test->parentWidget();parent;parent=parent->parentWidget())if(auto* a=qobject_cast<QScrollArea*>(parent))return a;return nullptr;}();
+  QVERIFY(area);QVERIFY(area->verticalScrollBar()->value()>0);
  }
  // #2103: ui.encryptedLinks answers a mode change only once the file has it, so an agent's next
  // call (setup.storeEncryptPassphrase reads the saved mode) never races the save. Two Capture
