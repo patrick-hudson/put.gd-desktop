@@ -19,6 +19,10 @@ Files are named `putgd-<UTC start, yyyyMMddTHHmmsszzz>Z-<pid>-<sequence>.jsonl`,
 name order is time order. The resident starts a new file when it starts and when the
 current file reaches the rotation size. Other files in the folder are never touched.
 
+A second folder, `$XDG_STATE_HOME/putgd/false-alarms/`, sits beside `logs/` and holds
+false-alarm reports (see [False-alarm reports](#false-alarm-reports)). It is created
+and checked the same way: owner-only (0700), a directory owned by the user.
+
 Only the resident opens log files. Helpers (`putgd-ui`, `putgd-capture`,
 `putgd-region`, `putgd-record`, `putgd-s3-worker`, and `putgd-ui --edit-image`)
 keep their existing restrictions and write nothing to disk: the resident reads their
@@ -227,10 +231,23 @@ ago, then the oldest files until the folder fits `logBytes`; the file being writ
 kept. It runs when the resident starts, after each rotation, when the settings change
 and once a day.
 
+The same two settings also bound the false-alarm reports folder, on its own: the
+reports' size is not part of the log files' total (see
+[Retention of reports](#retention-of-reports)).
+
 **Clear logs** is the `logs.clear` session method (`putgd-cli logs.clear`, MCP
 `clear_logs`) and the **Clear logs…** button in Settings → Advanced → Diagnostics,
 which asks first. It deletes every log file, starts a new one with a `Logs cleared`
-record and returns `removedFiles` and `removedBytes`.
+record and returns `removedFiles` and `removedBytes`. It also deletes every
+false-alarm report, including folders a write left half-made, and adds `removedReports` and
+`removedReportBytes` to its reply. It checks each removal: when a report folder is still there
+afterwards (one holding a file put.gd didn't write), or the reports folder is a link or isn't the
+user's own and so isn't touched, it fails with `false_alarm_clear_incomplete`. Its message says the
+logs were cleared and the reports were not all removed, and its details carry the counts and
+`reportsLeft`. The reports are deleted even when clearing the logs fails: that error
+(`logging_unavailable` or `logging_busy`) then also carries `removedReports`,
+`removedReportBytes` and, when any are left, `reportsLeft`, and its message says how the
+reports went.
 
 ## Diagnostics fields
 
@@ -455,6 +472,140 @@ when they need to be retained longer.
    `eu-unstrip -n --core` is not needed: the record already names each module's
    build ID and offset.
 
+## False-alarm reports
+
+The sensitive text panel can be wrong. When it flags something that isn't sensitive,
+**Not sensitive** saves a false-alarm report: the image as it was checked, the image
+with the suggested covers, and a `report.json` with everything about the capture and
+the check that a maintainer needs to see why it was flagged (#2134). The panel and
+editor side is in [text recognition](text-recognition.md#the-prompt). This section
+covers what is written, where, for how long and who can read it.
+
+A report is saved only when the user selects **Not sensitive**, once for each prompt (a
+file selection can ask once per file). Nothing else creates one. `putgd-cli` and MCP do the same through `operation.reportFalseAlarm`.
+
+### Location and files
+
+Reports are in `$XDG_STATE_HOME/putgd/false-alarms/`, which is
+`~/.local/state/putgd/false-alarms/` when `XDG_STATE_HOME` is unset or not absolute,
+beside `logs/`. Each report is one folder named
+`putgd-false-alarm-<UTC yyyyMMddTHHmmsszzz>Z-<8 hex>/`, so name order is time order. The
+folder is 0700 and its files are 0600. The resident writes it under a hidden name and
+renames it whole, so a half-written report never shows up. The reports folder must be a
+directory of the user's own and not a link; it is checked before it is made owner-only,
+and a folder that fails the check is never followed for saving, retention, Clear logs,
+listing or packaging. Only the resident writes
+there. The editor helper hands the files over through its private staging, the way
+**Copy image** does. The code is `src/app/FalseAlarmReports.*` and
+`src/editor/FalseAlarmReport.*`.
+
+| File | Contents |
+| --- | --- |
+| `original.png` | The image exactly as it was checked, byte for byte and lossless. A JPEG file from the file manager is `original.jpg`. |
+| `covered.png` | The image with every suggested cover, as the panel's preview shows it. From the editor, the covered image as the check left it, not later edits. |
+| `report.json` | The details below. |
+
+### report.json
+
+`schemaVersion` is 1 and `kind` is `false_alarm`. Boxes are `[x, y, w, h]` in the image's
+own pixels.
+
+| Field | Contents |
+| --- | --- |
+| `name`, `created`, `operationId` | The folder name, the UTC creation time and the capture's operation |
+| `prompt`, `reportedFrom` | The prompt number, and `prompt` or `editor` for where **Not sensitive** was selected |
+| `build` | put.gd's build manifest: version, channel and the rest |
+| `environment` | `desktop` (each part of `XDG_CURRENT_DESKTOP` that is a known desktop name, `unknown` otherwise), `sessionType` (`x11`, `wayland`, `tty`, `mir` or `unknown`), the OS `ID` and `VERSION_ID` (`unknown` when not a plain token), kernel, architecture and `qtRuntime` |
+| `capture` | `action` (`region`, `window`, `monitor`, `desktop`, `scroll`, `clipboard` or `files` for the file manager's **Upload with put.gd**), `source` (`capture`, `clipboard` or `file`), `mode` (`prompt` or `report`), `format` (`png` or `jpg`), `bytes`, `devicePixelRatio` when known and, for a selection with more than one checkable image, `file` such as `2 of 3`, counted among the selection's PNG and JPEG files only. Never a file name in this field |
+| `image` | `width` and `height` |
+| `settings` | `sensitiveTextCheck` (enabled, and each kind `off`, `warn` or `redact`), `textRecognitionLanguages`, `unhingedMode`, `quickRedact` as `{terms: N, patterns: M}` counts only, `captureStyle` on or off, `keepLocalCopy`, and `destination` as `{provider}` only |
+| `check` | `found`, `covered`, `complete`, `reason`, `codes`, `categories` and `automatic` |
+| `recognition` | `engine` (`name` `tesseract`, `version`, `scale`, `bands`, `banded`), `languagesUsed`, `languagesSkipped`, `detection`, `truncated`, `engineStartMs`, `recognizeMs`, `totalMs`, `cropOffset`, and how many `candidates` and `codes` were read. `scale` is the largest scale a panel was read at, so 2 means read at twice the size. Boxes are already mapped back to the image's pixels |
+| `findings[]` | Each match: `kind`, `automatic` (covered without asking), `rule`, `text` (the recognized text of the match), `words` (indexes into `words.list`), `lines`, `box`, `marks` (the cover rectangles placed), `covered` and `confidence` as `{lowest, mean}` |
+| `words` | `total`, `listed`, `omitted` and `list[]` of `{text, box, confidence, line, second}`: every recognized word. Past 50,000 words, or when the helper's compact JSON would pass 8 MiB, only the words on each match's lines and two lines either side; if that is still over, only the matched words themselves, halved until it fits. 8 MiB is the helper's trimming target; the hard limit is the transport's 9 MiB (`EditorJob::maximumReportJsonBytes`), past which the resident refuses the report with `edit_output_invalid`. Findings are never cut, so one whose findings alone pass 8 MiB is saved if it stays under 9 MiB. A finding's `words` index points into `list`, or is `-1` for a word left out |
+| `codes[]` | QR codes covered as secrets: `kind` (`otp`, `wifi` or `key`) and `box`, never their content |
+| `files[]` | `name`, `bytes` and `sha256` of each picture |
+
+`rule` names what matched: `email`, `card`, `ip.v4`, `ip.v6`, `phone`, `name.account`,
+`name.prompt`, `list.word`, `list.pattern.<n>` (the 1-based position of the saved
+pattern, never the word or pattern itself), and for keys `key.<source>`, several
+joined with commas: `key.pem`, `key.jwt`, `key.prefix.<n>` (the index of the known token
+prefix), `key.run` (an unbroken hex or base64 run), `key.structural`, `key.labelled`,
+`key.command` and `key.two_factor`.
+
+The resident never stores the helper's JSON as it came: it rebuilds `report.json` field
+by field from the schema above, each value of its type and within its length (a finding's
+text 4,096 characters, a word's 512), and drops anything else. The check's `found`,
+`covered`, `complete` and `reason` are the resident's own, as the check reported them, and
+so are the counts its log records carry. It takes a report only from a check waiting at its
+prompt, or in the editor that check opened, asked from that place, with something found or
+covered. The original is the resident's own staged input, checked against its digest on the
+bytes it saves.
+
+The report's own configuration fields hold no destination label, bucket, address,
+credentials, keys, tokens or links, no saved Quick redact word or pattern (counts only),
+no QR code content and no file name. The pictures and the recognized text are another
+matter. `original.*` holds the capture's pixels unredacted: whatever it showed (a
+credential, a link, a name, a file name, a word from the redaction list) is in it, and a
+PNG or JPEG file from the file manager keeps whatever metadata its bytes carry, since the
+original is saved byte for byte. `covered.png` has the suggested covers over it. The
+recognized text, in the words and in each finding's text, can hold secrets too, though
+recognition can miss or misread text, so it isn't a full account of what the picture
+shows.
+
+### Retention of reports
+
+Reports use the settings in [Retention](#retention) and apply them to the reports
+folder on its own, apart from the log files' total. Reports created more than
+`retention.logDays` ago (by the UTC time in their folder name) go, then the oldest until
+the folder fits `retention.logBytes`.
+The newest report always stays, even when it alone is over the limit. This runs after
+each save, when the resident starts, when the settings change and once a day. A report
+is saved even for a huge original. The package's allowance then decides whether it is
+included. **Clear logs** deletes every report.
+
+The log records the outcome and never the content: `False alarm report saved`
+(`operationId`, the report name, `bytes`, `pruned`, and the found and covered kinds
+with counts) or `False alarm report not saved` (the error), `False alarm reports removed
+by retention` and `False alarm reports cleared`.
+
+`diagnostics.falseAlarms` (MCP `list_false_alarm_reports`) lists the reports without
+their pictures or text: `directory`, `reports` (newest first, each with `name`,
+`created`, `bytes`, `operationId`, `reportedFrom`, `found` and `covered`), `count`,
+`bytes` and `retention` (`days` and `bytes`).
+
+### An exception to the diagnostics rules
+
+Diagnostics never contain pixels or recognized text (see "Never included" under
+[Contents](#contents)), and [text recognition](text-recognition.md#privacy) says the
+check never stores recognized text. A false-alarm report breaks both rules on purpose.
+Patrick approved it on #2134:
+
+> I should be able to click a button that marks it as a false flag, and in that data it
+> captures a snapshot to debug logs of the image itself (with the actual image saved, I
+> know this violates one of our rules, but I need this info for debugging), it also
+> captures the screenshot as it's redacted, and it captures all the relevant details
+> around the capture into this debug file. That gets saved on disk where normal diag logs
+> go, and then it's included in the diag logs that get exported from settings.
+
+A report holds real screen content: the pictures, and the recognized text of each
+finding and of the page's words. If the user marks a real secret as not sensitive, that
+secret is in the report. The exception has these bounds:
+
+- Only an explicit **Not sensitive** (or `operation.reportFalseAlarm`), once per prompt, creates a report. Nothing else
+  does.
+- Only the resident writes one, beside the logs, owner-only.
+- Log retention applies, with the newest report always kept, and **Clear logs** removes
+  every report.
+- No saved list word or pattern, destination detail, credential, link, QR code content
+  or file name is in a report's configuration fields. The pictures and recognized text are
+  unredacted and show whatever was on screen, and an original file keeps its own metadata.
+- A package holds reports only when asked for: Settings' dialog, which says so before
+  saving and asks for the reports its preview named, or an explicit `falseAlarmReports`
+  (CLI `--false-alarm-reports`, MCP `include_false_alarm_reports`). History's, the tray's
+  and the error log's **Save diagnostics** hold none. Reports have their own 64 MiB
+  allowance.
+
 ## Diagnostics package
 
 One `.zip` a user can send to a maintainer, who can then work out what happened.
@@ -466,28 +617,39 @@ locally first; it can then be uploaded to a working destination (see "Uploading 
 package" below).
 
 ```sh
-putgd-cli diagnostics.bundle [--operation ID] [--since 7d] [--include-names] [--output PATH] [--upload [--profile ID] [--copy-link]]
+putgd-cli diagnostics.bundle [--operation ID] [--since 7d] [--include-names] [--output PATH] [--false-alarm-reports] [--upload [--profile ID] [--copy-link]]
 ```
 
 The flags map to the JSON parameters `operation`, `since`, `includeNames`,
 `output`, `upload`, `profileId` and `copyLink`; MCP `create_diagnostics_bundle`
 takes `operation_id`, `since`, `include_names`, `output`, `preview`, `notify`,
-`upload`, `profile_id` and `copy_link`. Two more JSON parameters:
+`upload`, `profile_id` and `copy_link`. Three more JSON parameters:
 
 - **`preview`:** `true` returns what the package would hold and writes nothing:
   `files`, `redaction`, `scope` (`from`, `to`, and `operationId` or `since`),
   `operations` (a count) and `operationList` (each one's `id`, `action`, `state`,
-  `created` and item count), `logRecords`, `droppedLogRecords`, the `folder` it would
+  `created` and item count), `logRecords`, `droppedLogRecords`, `falseAlarmReports`, the `folder` it would
   be saved in and `defaultFolder`. The Settings dialog shows this before saving.
 - **`notify`:** `true` makes the resident post a **diagnostics saved** notification
   with **Show in folder** after saving. Not together with `preview`.
+- **`falseAlarmReports`:** `true` adds the [false-alarm reports](#false-alarm-reports).
+  The default is `false`, so a package holds none unless asked: History's, the tray's and
+  the error log's saves never hold reports. The CLI flag is `--false-alarm-reports` and the
+  MCP parameter is `include_false_alarm_reports`. A list of report names instead holds at
+  most those (of the ones the window or operation would take), and an empty list none: the
+  Settings dialog's preview asks with `true`, and its save sends the names that preview
+  counted, so the package holds no report its notice didn't count. It can hold fewer: each
+  report is checked again when the package is saved. One no longer whole or no longer
+  fitting is left out and counted (`invalid`, `omitted`); one deleted since the preview
+  (by retention or Clear logs) is simply gone and isn't counted anywhere.
 
 A preview writes nothing, so it takes none of `upload`, `profileId` and `copyLink`.
 
 - **`operation`:** package that one operation, with the log records from ten minutes
-  before it was accepted to ten minutes after its last record. `since` is ignored.
+  before it was accepted to ten minutes after its last record, and, when asked for, that
+  operation's false-alarm reports. `since` is ignored.
 - **`since`:** without `operation`, the failed, partial and interrupted operations
-  created in this window, together with completed uploads whose link did not reach
+  created in this window, and, when asked for, the false-alarm reports created in it, together with completed uploads whose link did not reach
   the clipboard (`copyStatus` `suppressed`, `failed` or `partial`, or `no_result`
   while an item still has a link; #473), newest first, at most 50, and the window's
   log records. `1m` to
@@ -501,7 +663,7 @@ A preview writes nothing, so it takes none of `upload`, `profileId` and `copyLin
 
 Packages are named `putgd-diagnostics-<UTC yyyyMMdd-HHmmss>Z.zip` and written 0600.
 The reply gives `path`, `bytes`, `sha256`, `redaction` (`hashed` or `names`), `files`,
-`operations`, `logRecords`, `droppedLogRecords`, `defaultFolder` and `pruned`. One
+`operations`, `logRecords`, `droppedLogRecords`, `falseAlarmReports`, `defaultFolder` and `pruned`. One
 package is built at a time (`diagnostics_busy`); other errors are
 `operation_not_found`, `diagnostics_output_exists`, `diagnostics_output_unavailable`
 and `invalid_request`.
@@ -517,14 +679,27 @@ and `invalid_request`.
 | `coredumps.json` | systemd-coredump's text stack traces for put.gd executables in the window, or `available: false` (see "systemd-coredump" above); never a core file |
 | `operations.json` | Each operation's ID, action, state, phase, creation time, cancellation, copy status, provider, profile and error, and per item its ID, MIME type, category, size, name, upload name, upload/share/remote status, phase, local-copy status, error (with HTTP status, provider code and S3 request IDs), object key, direct URL and the number of upload attempts in the log window |
 | `logs/putgd.jsonl` | The log records in the window, oldest first, with the package redaction applied |
+| `false-alarms/<name>/original.png` (or `original.jpg`), `covered.png`, `report.json` | Each [false-alarm report](#false-alarm-reports) in the window, or for `operation` that operation's reports. Every file is in the manifest with its size and SHA-256. Hashed mode doesn't sanitize reports: the pictures, the recognized text and the original's own metadata go in as saved |
 
-The package is at most 20 MiB. The other files go first; the log records fill the
-rest, newest first, so when it would go over, the oldest records are dropped and
-counted in `droppedRecords`.
+The package is at most 20 MiB without false-alarm reports. The other files go first;
+the log records fill the rest, newest first, so when it would go over, the oldest
+records are dropped and counted in `droppedRecords`. False-alarm reports have their own
+allowance of 64 MiB on top, so they never push out log records. Whole reports go in,
+newest first. One that doesn't fit is counted as omitted, and an older, smaller one may
+still fit. Only a whole report goes in: `report.json`, `covered.png` and exactly one
+original, each picture with the size and SHA-256 `report.json` records; any other is
+counted as `invalid` and left out. `manifest.json`, the reply and the preview carry
+`falseAlarmReports`: `included`, `omitted`, `invalid`, `eligible`, `bytes`, `maximumBytes`,
+`requested` and `names`. Reports are read and checked when the package is saved, not
+when it is previewed, so a saved package can hold fewer than its preview counted; the
+Settings dialog's result after saving says how many it holds when it holds any.
 
 **Never included:** credentials, secrets or tokens, keychain data, signed URLs,
 artifact or preview bytes, screenshots, clipboard content, recognized text, Quick redact's
-saved words and patterns, and the raw `history.sqlite` and core dumps.
+saved words and patterns, and the raw `history.sqlite` and core dumps. The one exception
+is a [false-alarm report](#an-exception-to-the-diagnostics-rules), in a package that asked
+for reports, which holds the pictures and recognized text of a capture the user marked
+**Not sensitive**.
 
 ### Redaction in packages
 
@@ -631,7 +806,7 @@ An entry is added for:
 - a refused session call that stands for a person's action: copying a link or image,
   a QR code or Copy text, sharing, unlocking credentials, preparing, confirming,
   retrying or cancelling a deletion, Retry, Retry local save, cancelling an upload,
-  Upload with put.gd, recording commands, a diagnostics package, saving settings,
+  Upload with put.gd, recording commands, a diagnostics package, a false-alarm report, saving settings,
   clearing History or temporary files, and `action.invoke`. Malformed requests, busy
   or not-yet-ready answers and closed windows are left out. The reply's
   `details.errorLogId` names the entry;
@@ -749,7 +924,12 @@ destination settings** when they were for one session only).
 - **Debug logging**, the `preferences.diagnostics.debugLogging` checkbox. Under it,
   when it turns itself off (`diagnostics.logging.debugLoggingExpiresAt`).
 - **Logs**: the file count, folder size and oldest record from
-  `diagnostics.logging`, with the retention limits, and **Clear logs…**.
+  `diagnostics.logging`, with the retention limits, and **Clear logs…**. The row's help
+  reads "Clear logs deletes all log files and false-alarm reports, and starts a fresh
+  log." The confirmation reads "Delete every put.gd log file and false-alarm report?
+  Uploads, history, settings and saved diagnostics packages stay." When at least one
+  report was removed, the result line adds "1 false-alarm report removed." or "N
+  false-alarm reports removed."
 - A warning while `loggingDegraded` is true, with the reason and the dropped record
   count. Uploads and captures carry on regardless.
 - **Last unclean exit**: `diagnostics.uncleanExit.last`, the version, when it started,
@@ -757,7 +937,15 @@ destination settings** when they were for one session only).
   or a power loss) ended it.
 - **Create diagnostics package…**, a dialog that shows a `preview` first: what the
   package covers, its files with the upload and log record counts, the failed uploads
-  and uploads whose link was not copied included, the redaction and the folder. **Include file names** sets `includeNames`
+  and uploads whose link was not copied included, the redaction and the folder. When the
+  preview includes false-alarm reports, the file list adds "false-alarms/: 2 false-alarm
+  reports", and the **Never** line, in the warning style, says so before anything is
+  saved: "This package includes 2 false-alarm reports, with pictures of your screen and
+  the text read from them, which can show anything that was on screen. Apart from those,
+  credentials, tokens, signed links, file contents, screenshots, and clipboard text are
+  never included." Without reports it reads as before. **Save package** sends the names
+  the preview counted, and the saved result says how many reports the package holds when it holds any. It
+  has no checkbox and no confirmation. **Include file names** sets `includeNames`
   (off each time the dialog opens). **Choose folder…** saves the folder in
   `preferences.diagnostics.packageFolder`, so later packages go there; **Use default**
   clears it. **Save package** calls `diagnostics.bundle` with `notify`, then shows the
@@ -766,9 +954,10 @@ destination settings** when they were for one session only).
   `diagnostics.uploadTarget` for the default destination in the background (it can
   take minutes: a Test connection); the preview and **Save package** don't wait for
   it. While it runs, a line under the options says it is checking. When the
-  destination works, the checkbox appears, ticked, with the sharing `warning` under
-  it, and the button reads **Save and upload**: the save adds `upload`, `copyLink`
-  and that `profileId`. Afterwards the dialog shows the link and whether it was
+  destination works, the checkbox appears, unticked, with the sharing `warning` under
+  it; ticking it makes the button read **Save and upload**, and the save adds `upload`,
+  `copyLink` and that `profileId`. A package that holds false-alarm reports then sends
+  them to that destination too. Afterwards the dialog shows the link and whether it was
   copied, or why it wasn't uploaded, and the saved file stays either way. When the
   destination doesn't work, the checkbox stays hidden and the line says why: no
   upload destination, the last upload failed with a credential or configuration

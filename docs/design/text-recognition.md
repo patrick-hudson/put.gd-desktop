@@ -2027,6 +2027,19 @@ Focus starts on **Redact and upload**, or on **Cancel** when it isn't offered.
   "Covered …", and **Keep a local copy** keeps the original. It is offered when a `warn` kind was found
   (`sensitive.found` not empty), for each file of a selection too. A check that couldn't finish and found
   only automatic covers, or nothing, doesn't offer it.
+- **Not sensitive** is a quiet button on the "Check the image before uploading. Detection can
+  miss text." line. It is offered when the check found or covered something on an image it could
+  read. It saves a [false-alarm report](diagnostics.md#false-alarm-reports) and shows one line
+  under it: "Saving a report for diagnostics…", then "Report saved for diagnostics." (the button
+  goes away) or "Couldn't save the report. <why>" (the button works again). The panel stays open
+  with its existing choices, and nothing uploads or changes. There is no dialog, and one report per
+  prompt. The editor that **Open in editor** opens shows the same button next to **Quick redact**
+  in the Redact tool's panel, with the same line. Its report uses what the check found and the
+  covered image as the check left it, not later edits. A check that finished and found only kinds
+  set to **Redact automatically** uploads with no panel, so no report can be made for it. A check
+  that couldn't finish opens the panel even then, and offers **Not sensitive** when it covered
+  something. Ordinary Capture region & edit, recordings and Quick redact you run yourself in the
+  editor are not covered.
 - **Open in editor** opens the editor on the same document, with the
   suggested marks already placed and the Redact tool chosen. Nothing is recognized a second time.
   From there it is an ordinary edit: its Upload sends the edited PNG, and its Cancel stores and uploads
@@ -2067,6 +2080,23 @@ settles a panel that a person is looking at.
   the last prompt's findings for a moment) and then on to the upload or the end. After `edit` the
   phase becomes `editing`, the `editor.*` methods drive the editor by the same ID, and `editor.submit`
   (MCP `submit_editor`) sends the edited image.
+- **Not sensitive.** `operation.reportFalseAlarm {id}` (MCP `report_false_alarm`) does what the
+  button does for that capture, while its check's prompt waits (panel or report mode, phase
+  `sensitive_text_found`) or in the editor that check opened. It replies `{saved: true, name, path,
+  bytes, operationId}` and waits up to 90 s (the CLI 105 s). Nothing else changes: at a waiting
+  prompt, answer it with `operation.decide` as usual; in the check's editor, the editor's own
+  `editor.submit` or `editor.cancel` ends it. `operation.inspect` shows the report in
+  `sensitive.falseAlarm`: `{state: saving}`, then `{state: saved, name, bytes}` or `{state: failed,
+  code}`, for the panel and in report mode alike. `editor.inspect` of the check's editor has
+  `falseAlarm` with `offered` and `state` (`none`, `saving`, `saved` or `failed`), `message` while a
+  line is shown and `name` once saved. There is one report per prompt: a
+  request while one is saving answers `editor_busy`, and one after it was saved answers
+  `false_alarm_already_saved` (or, from a helper that stopped waiting, that report again). The report
+  is prepared off the GUI thread from what the check left; a decision taken meanwhile wins, and the
+  report is then dropped with `editor_finalizing`. A capture cancelled or decided while its report is
+  prepared closes at once: the helper never waits for the preparation, and that report isn't saved.
+  A report that timed out in the helper stays outstanding; if it saves after all, that is the report,
+  and a retry sent meanwhile is answered with it. Refusals of availability and timing: `false_alarm_unavailable` (nothing flagged on a readable image, no prompt or check editor open, or the capture was decided; or, on saving, the reports folder isn't usable, no name could be found or the report's private folder couldn't be made), `false_alarm_already_saved`, `sensitive_check_running`, `editor_busy` (a report is still being saved) and `editor_finalizing` (the capture was decided while the report was prepared). Failures saving it: `false_alarm_write_failed` (the folder couldn't be written, such as a full disk), `edit_output_invalid` (the editor's report wasn't in the expected form), `editor_io` and `image_job_io` (staging), `edit_export_failed` (the covered image couldn't be encoded) and `editor_timeout` (no answer in time; a report that saves later still counts) and `editor_closed` (put.gd was closing).
 - **File selections.** A selection can ask once per file. `sensitive.prompt` numbers each prompt. Pass
   it as `prompt` when answering, so a decision never reaches a later file's prompt.
 - **Refusals.**
@@ -2090,12 +2120,22 @@ or upload the text as text. The image itself is what uploads or is saved locally
 choice. The resident gets findings only: kinds with counts, whether the check finished and why not, and
 the prompt number. It logs the check's start, outcome, findings and duration. The journal,
 observations, `operation.inspect` and diagnostics carry the same findings and nothing more, up to
-the decision; `operation.decide` answers only `decided` and `operationId`. The panel shows kinds and counts. After **Open in editor** the
+the decision, apart from a false-alarm report's state and name (`sensitive.falseAlarm`) once **Not
+sensitive** was selected; `operation.decide` answers only `decided` and `operationId`. The panel shows kinds and counts. After **Open in editor** the
 check's document becomes an ordinary editor. When the check placed no marks (it couldn't finish, and
 found nothing), the editor still holds the check's recognition result, and `editor.inspect` can return
 those words to the same-user caller that asks, without another recognition run. Placing any suggested
 mark starts a new recognition revision, which clears the result. The notification says only that a capture is waiting.
 Tests and evidence use only test values.
+
+A [false-alarm report](diagnostics.md#false-alarm-reports) is the one place put.gd keeps the image
+and the recognized text. It is saved only when the user selects **Not sensitive** (or an agent calls
+`operation.reportFalseAlarm`), it stays on disk under the log retention rules, and
+[diagnostics.md](diagnostics.md#an-exception-to-the-diagnostics-rules) records the exception and its
+bounds. A finished check that found only **Redact automatically** kinds uploads with no panel and
+keeps no original, so it has no report.
+The report's original image and recognized text are unredacted and show whatever the capture held;
+only `covered.png` has the suggested covers over it.
 
 ### Cost
 
@@ -2163,7 +2203,11 @@ not checked (the option off, Edit & upload, a local-only capture) costs nothing.
 Every interactive capability has a session method, a `putgd-cli` form (the CLI forwards any
 method as it is) and an MCP tool with strict validation, `additionalProperties: false`.
 `schemas/text-recognition.schema.json` states every
-helper message and session method as data, with examples under `tests/fixtures/text/`. A
+helper message and session method as data, with examples under `tests/fixtures/text/`.
+`tests/integration/test_config_schema.py` checks the helper protocol's examples
+(`helper-protocol.json`) against it. The helper's output carries an
+optional `engine` member, `{version, scale, bands}` (#2134): Tesseract's own version string, the
+largest scale a panel was read at and the number of bands, which a false-alarm report records. A
 parameter that names an operation is spelled `id`. The recognition methods reply at once and are
 followed through `inspect`, as for scrolling capture and recording.
 
