@@ -135,6 +135,17 @@ private slots:
   const QJsonObject operation{{"state","partial"},{"copyStatus","no_result"},{"items",items}};
   QCOMPARE(TrayController::completionMessage(operation,false),expected);
  }
+ // #2127: one request's several links are copied as one list; the notice says how many.
+ void severalLinksCopiedSayHowMany() {
+  const auto item=[](const QString& url,bool encrypted){QJsonObject value{{"uploadStatus","uploaded"},{"shareStatus","shared"},{"receipt",QJsonObject{{"directUrl",url}}}};if(encrypted)value["encrypt"]=QJsonObject{{"status","encrypted"}};return value;};
+  QJsonObject operation{{"state","completed"},{"copyStatus","copied"},{"items",QJsonArray{item("https://a",false),item("https://b",false),item("https://c",false)}}};
+  QCOMPARE(TrayController::completionMessage(operation,false),QString("3 files uploaded. 3 links copied to clipboard."));
+  operation["items"]=QJsonArray{item("https://a",true),item("https://b",true)};
+  QCOMPARE(TrayController::completionTitle(operation),QString("Encrypted links copied"));
+  QVERIFY2(TrayController::completionMessage(operation,false).startsWith("2 files uploaded. 2 encrypted links copied to clipboard."),qPrintable(TrayController::completionMessage(operation,false)));
+  operation["items"]=QJsonArray{item("https://a",false)};
+  QVERIFY(TrayController::completionMessage(operation,false).startsWith("Uploaded. Link copied to clipboard."));
+ }
  // #1820: an upload the sensitive text check covered says what it covered, never after a check that couldn't finish.
  void aCoveredUploadSaysWhatWasCovered() {
   QJsonObject item;item["uploadStatus"]="uploaded";item["shareStatus"]="shared";

@@ -1516,7 +1516,7 @@ Operation OperationService::run(Job job) {
   if(item.linkAvailable()) {
    int index=0;while(index<op.items.size()&&op.items[index].artifact.id!=item.artifact.id)++index;
    QPointer<OperationService> owner(this);
-   QMetaObject::invokeMethod(this,[owner,id=op.id,itemId=item.artifact.id,index,url=item.link()]{if(owner&&!owner->stopping_)owner->uploadLinkReady(id,itemId,index,url);},Qt::QueuedConnection);
+   QMetaObject::invokeMethod(this,[owner,id=op.id,itemId=item.artifact.id,index,url=item.link(),count=int(op.items.size())]{if(owner&&!owner->stopping_)owner->uploadLinkReady(id,itemId,index,url,count);},Qt::QueuedConnection);
   }
   return true;
  };
@@ -1657,10 +1657,10 @@ Operation OperationService::run(Job job) {
  auto show=[&](const OperationItem& item,int index){std::lock_guard lock(itemsMutex);op.items[index]=item;observe(op.publicJson());};
  auto commit=[&](const OperationItem& item,int index)->bool {
   if(auto e=persist(item,index)){std::lock_guard lock(itemsMutex);op.error=e;op.advance(OperationState::Failed);persisted=false;return false;}
-  {std::lock_guard lock(itemsMutex);observe(op.publicJson());}
+  int count=0;{std::lock_guard lock(itemsMutex);observe(op.publicJson());count=int(op.items.size());}
   if(item.linkAvailable()) {
    QPointer<OperationService> owner(this);
-   QMetaObject::invokeMethod(this,[owner,id=op.id,itemId=item.artifact.id,index,url=item.link()]{if(owner&&!owner->stopping_)owner->uploadLinkReady(id,itemId,index,url);},Qt::QueuedConnection);
+   QMetaObject::invokeMethod(this,[owner,id=op.id,itemId=item.artifact.id,index,url=item.link(),count]{if(owner&&!owner->stopping_)owner->uploadLinkReady(id,itemId,index,url,count);},Qt::QueuedConnection);
   }
   return true;
  };

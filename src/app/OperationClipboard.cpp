@@ -23,6 +23,9 @@ struct OperationService::UploadCopy {
  std::shared_ptr<UploadCopyGroup> group;
  int pending=0;
  bool finished=false,waitingForGroup=false,recorded=false,copied=false,suppressed=false;
+ // #2127: one request with several files (a folder uploaded file by file, a multi-file
+ // selection) copies its links once, as one ordered list, when it finishes.
+ bool joined=false;
  // Why the automatic copy was refused, for the log record (copyGuard).
  QJsonObject suppression;
  Error error;
@@ -98,11 +101,12 @@ void OperationService::interruptUploadCopy(const QString& id) {
   currentCopy_->retryUnsent=true;source_.invalidateCopyEligibility();
  }
 }
-void OperationService::uploadLinkReady(const QString& id,const QString& item,int index,const QString& url) {
+void OperationService::uploadLinkReady(const QString& id,const QString& item,int index,const QString& url,int count) {
  const auto state=uploadCopies_.value(id);
  if(!state||state->seen.contains(item)||url.isEmpty())return;
  state->seen.insert(item);state->links.insert(index,url);
  if(state->group)return;
+ if(count>1){state->joined=true;return;}
  // The cursor has passed this file already: nothing earlier can still be
  // waiting on it, so its link is copied now rather than held forever (#478).
  if(index<state->cursor){queueLinkCopy(state,item,index);return;}
@@ -161,7 +165,13 @@ void OperationService::finishUploadCopies(Operation op,JsonReply reply) {
  // Final receipts also cover reconciliation/retry paths which made no new PUT.
  for(int index=0;index<op.items.size();++index) {
   const auto& item=op.items[index];
-  if(item.linkAvailable())uploadLinkReady(op.id,item.artifact.id,index,item.link());
+  if(item.linkAvailable())uploadLinkReady(op.id,item.artifact.id,index,item.link(),int(op.items.size()));
+ }
+ // #2127: several files of one request are this operation's own list, whatever
+ // uploadClipboardBehavior says; separate captures keep each_link.
+ if(!state->group&&(state->joined||op.items.size()>1)) {
+  auto group=std::make_shared<UploadCopyGroup>();group->epoch=state->epoch;group->revision=state->revision;group->pending=1;
+  group->members.insert(op.invocation,state);state->group=group;state->waitingForGroup=true;
  }
  state->finished=true;
  if(state->group){--state->group->pending;settleUploadGroup(state->group);}
