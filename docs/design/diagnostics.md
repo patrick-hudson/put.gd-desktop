@@ -513,13 +513,13 @@ own pixels.
 | `prompt`, `reportedFrom` | The prompt number, and `prompt` or `editor` for where **Not sensitive** was selected |
 | `build` | put.gd's build manifest: version, channel and the rest |
 | `environment` | `desktop` (each part of `XDG_CURRENT_DESKTOP` that is a known desktop name, `unknown` otherwise), `sessionType` (`x11`, `wayland`, `tty`, `mir` or `unknown`), the OS `ID` and `VERSION_ID` (`unknown` when not a plain token), kernel, architecture and `qtRuntime` |
-| `capture` | `action` (`region`, `window`, `monitor`, `desktop`, `scroll`, `clipboard` or `file_manager`), `source` (`capture`, `clipboard` or `file`), `mode` (`prompt` or `report`), `format` (`png` or `jpg`), `bytes`, `devicePixelRatio` when known and, for a file selection, `file` such as `2 of 3`. Never a file name |
+| `capture` | `action` (`region`, `window`, `monitor`, `desktop`, `scroll`, `clipboard` or `files` for the file manager's **Upload with put.gd**), `source` (`capture`, `clipboard` or `file`), `mode` (`prompt` or `report`), `format` (`png` or `jpg`), `bytes`, `devicePixelRatio` when known and, for a selection with more than one checkable image, `file` such as `2 of 3`, counted among the selection's PNG and JPEG files only. Never a file name in this field |
 | `image` | `width` and `height` |
 | `settings` | `sensitiveTextCheck` (enabled, and each kind `off`, `warn` or `redact`), `textRecognitionLanguages`, `unhingedMode`, `quickRedact` as `{terms: N, patterns: M}` counts only, `captureStyle` on or off, `keepLocalCopy`, and `destination` as `{provider}` only |
 | `check` | `found`, `covered`, `complete`, `reason`, `codes`, `categories` and `automatic` |
 | `recognition` | `engine` (`name` `tesseract`, `version`, `scale`, `bands`, `banded`), `languagesUsed`, `languagesSkipped`, `detection`, `truncated`, `engineStartMs`, `recognizeMs`, `totalMs`, `cropOffset`, and how many `candidates` and `codes` were read. `scale` is the largest scale a panel was read at, so 2 means read at twice the size. Boxes are already mapped back to the image's pixels |
 | `findings[]` | Each match: `kind`, `automatic` (covered without asking), `rule`, `text` (the recognized text of the match), `words` (indexes into `words.list`), `lines`, `box`, `marks` (the cover rectangles placed), `covered` and `confidence` as `{lowest, mean}` |
-| `words` | `total`, `listed`, `omitted` and `list[]` of `{text, box, confidence, line, second}`: every recognized word. Past 50,000 words or 8 MiB, only the words on each match's lines and two lines either side |
+| `words` | `total`, `listed`, `omitted` and `list[]` of `{text, box, confidence, line, second}`: every recognized word. Past 50,000 words, or when the helper's compact JSON would pass 8 MiB, only the words on each match's lines and two lines either side; if that is still over, only the matched words themselves. A finding's `words` index points into `list`, or is `-1` for a word left out |
 | `codes[]` | QR codes covered as secrets: `kind` (`otp`, `wifi` or `key`) and `box`, never their content |
 | `files[]` | `name`, `bytes` and `sha256` of each picture |
 
@@ -539,15 +539,21 @@ prompt, or in the editor that check opened, asked from that place, with somethin
 covered. The original is the resident's own staged input, checked against its digest on the
 bytes it saves.
 
-A report holds no destination label, bucket, address, credentials, keys, tokens or
-links, no saved Quick redact word or pattern (counts only), no QR code content and no
-file name.
+The report's own configuration fields hold no destination label, bucket, address,
+credentials, keys, tokens or links, no saved Quick redact word or pattern (counts only),
+no QR code content and no file name. The pictures and the recognized text are another
+matter: they are the screen as it was, unredacted. Whatever the capture showed (a
+credential, a link, a name, a file name, a word from the redaction list) is in
+`original.*`, in the words and in each finding's text, and a PNG or JPEG file from the
+file manager keeps whatever metadata its bytes carry, since the original is saved byte for
+byte.
 
 ### Retention of reports
 
 Reports use the settings in [Retention](#retention) and apply them to the reports
-folder on its own, apart from the log files' total. Reports last written more than
-`retention.logDays` ago go, then the oldest until the folder fits `retention.logBytes`.
+folder on its own, apart from the log files' total. Reports created more than
+`retention.logDays` ago (by the UTC time in their folder name) go, then the oldest until
+the folder fits `retention.logBytes`.
 The newest report always stays, even when it alone is over the limit. This runs after
 each save, when the resident starts, when the settings change and once a day. A report
 is saved even for a huge original. The package's allowance then decides whether it is
@@ -581,13 +587,14 @@ A report holds real screen content: the pictures, and the recognized text of eac
 finding and of the page's words. If the user marks a real secret as not sensitive, that
 secret is in the report. The exception has these bounds:
 
-- Only an explicit **Not sensitive**, once per capture, creates a report. Nothing else
+- Only an explicit **Not sensitive** (or `operation.reportFalseAlarm`), once per prompt, creates a report. Nothing else
   does.
 - Only the resident writes one, beside the logs, owner-only.
 - Log retention applies, with the newest report always kept, and **Clear logs** removes
   every report.
 - No saved list word or pattern, destination detail, credential, link, QR code content
-  or file name is in a report.
+  or file name is in a report's configuration fields. The pictures and recognized text are
+  unredacted and show whatever was on screen, and an original file keeps its own metadata.
 - A package includes reports only within their own 64 MiB allowance, and says so in one
   line in Settings. An agent can leave them out with `falseAlarmReports: false`.
 
@@ -602,7 +609,7 @@ locally first; it can then be uploaded to a working destination (see "Uploading 
 package" below).
 
 ```sh
-putgd-cli diagnostics.bundle [--operation ID] [--since 7d] [--include-names] [--output PATH] [--upload [--profile ID] [--copy-link]]
+putgd-cli diagnostics.bundle [--operation ID] [--since 7d] [--include-names] [--output PATH] [--no-false-alarm-reports] [--upload [--profile ID] [--copy-link]]
 ```
 
 The flags map to the JSON parameters `operation`, `since`, `includeNames`,
@@ -619,10 +626,12 @@ takes `operation_id`, `since`, `include_names`, `output`, `preview`, `notify`,
   with **Show in folder** after saving. Not together with `preview`.
 - **`falseAlarmReports`:** `false` leaves [false-alarm reports](#false-alarm-reports) out.
   The default is `true`. The CLI flag is `--no-false-alarm-reports` and the MCP parameter
-  is `include_false_alarm_reports`. A list of report names instead holds just those (of
+  is `include_false_alarm_reports`. A list of report names instead holds at most those (of
   the ones the window or operation would take), and an empty list none: the Settings
-  dialog sends the names its preview counted, so the package holds exactly the reports
-  its notice told the user about.
+  dialog sends the names its preview counted, so the package holds no report its notice
+  didn't count. It can hold fewer: each report is checked again when the package is saved,
+  and one that is no longer whole, no longer there (retention or Clear logs removed it) or
+  no longer fits is left out and counted.
 
 A preview writes nothing, so it takes none of `upload`, `profileId` and `copyLink`.
 
@@ -660,7 +669,7 @@ and `invalid_request`.
 | `coredumps.json` | systemd-coredump's text stack traces for put.gd executables in the window, or `available: false` (see "systemd-coredump" above); never a core file |
 | `operations.json` | Each operation's ID, action, state, phase, creation time, cancellation, copy status, provider, profile and error, and per item its ID, MIME type, category, size, name, upload name, upload/share/remote status, phase, local-copy status, error (with HTTP status, provider code and S3 request IDs), object key, direct URL and the number of upload attempts in the log window |
 | `logs/putgd.jsonl` | The log records in the window, oldest first, with the package redaction applied |
-| `false-alarms/<name>/original.png`, `covered.png`, `report.json` | Each [false-alarm report](#false-alarm-reports) in the window, or for `operation` that operation's reports. Every file is in the manifest with its size and SHA-256. `report.json` is not hashed in hashed mode: it holds no names, paths or destinations by construction |
+| `false-alarms/<name>/original.png` (or `original.jpg`), `covered.png`, `report.json` | Each [false-alarm report](#false-alarm-reports) in the window, or for `operation` that operation's reports. Every file is in the manifest with its size and SHA-256. Hashed mode doesn't sanitize reports: the pictures, the recognized text and the original's own metadata go in as saved |
 
 The package is at most 20 MiB without false-alarm reports. The other files go first;
 the log records fill the rest, newest first, so when it would go over, the oldest
@@ -671,8 +680,9 @@ still fit. Only a whole report goes in: `report.json`, `covered.png` and exactly
 original, each picture with the size and SHA-256 `report.json` records; any other is
 counted as `invalid` and left out. `manifest.json`, the reply and the preview carry
 `falseAlarmReports`: `included`, `omitted`, `invalid`, `eligible`, `bytes`, `maximumBytes`,
-`requested` and `names`. The Settings dialog's result after saving says how many reports
-the saved package holds, so a report saved after the preview isn't missed.
+`requested` and `names`. Reports are read and checked when the package is saved, not
+when it is previewed, so a saved package can hold fewer than its preview counted; the
+Settings dialog's result after saving says how many it holds.
 
 **Never included:** credentials, secrets or tokens, keychain data, signed URLs,
 artifact or preview bytes, screenshots, clipboard content, recognized text, Quick redact's
@@ -906,8 +916,9 @@ destination settings** when they were for one session only).
   `diagnostics.logging`, with the retention limits, and **Clear logs…**. The row's help
   reads "Clear logs deletes all log files and false-alarm reports, and starts a fresh
   log." The confirmation reads "Delete every put.gd log file and false-alarm report?
-  Uploads, history, settings and saved diagnostics packages stay." and the result line
-  adds "N false-alarm reports removed."
+  Uploads, history, settings and saved diagnostics packages stay." When at least one
+  report was removed, the result line adds "1 false-alarm report removed." or "N
+  false-alarm reports removed."
 - A warning while `loggingDegraded` is true, with the reason and the dropped record
   count. Uploads and captures carry on regardless.
 - **Last unclean exit**: `diagnostics.uncleanExit.last`, the version, when it started,
@@ -932,9 +943,10 @@ destination settings** when they were for one session only).
   `diagnostics.uploadTarget` for the default destination in the background (it can
   take minutes: a Test connection); the preview and **Save package** don't wait for
   it. While it runs, a line under the options says it is checking. When the
-  destination works, the checkbox appears, ticked, with the sharing `warning` under
-  it, and the button reads **Save and upload**: the save adds `upload`, `copyLink`
-  and that `profileId`. Afterwards the dialog shows the link and whether it was
+  destination works, the checkbox appears, unticked, with the sharing `warning` under
+  it; ticking it makes the button read **Save and upload**, and the save adds `upload`,
+  `copyLink` and that `profileId`. A package that holds false-alarm reports then sends
+  them to that destination too. Afterwards the dialog shows the link and whether it was
   copied, or why it wasn't uploaded, and the saved file stays either way. When the
   destination doesn't work, the checkbox stays hidden and the line says why: no
   upload destination, the last upload failed with a credential or configuration

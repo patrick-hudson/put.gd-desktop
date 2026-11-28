@@ -2032,12 +2032,13 @@ Focus starts on **Redact and upload**, or on **Cancel** when it isn't offered.
   read. It saves a [false-alarm report](diagnostics.md#false-alarm-reports) and shows one line
   under it: "Saving a report for diagnostics…", then "Report saved for diagnostics." (the button
   goes away) or "Couldn't save the report. <why>" (the button works again). The panel stays open
-  with its four choices, and nothing uploads or changes. There is no dialog, and one report per
+  with its existing choices, and nothing uploads or changes. There is no dialog, and one report per
   prompt. The editor that **Open in editor** opens shows the same button next to **Quick redact**
   in the Redact tool's panel, with the same line. Its report uses what the check found and the
-  covered image as the check left it, not later edits. When every kind found is set to **Redact
-  automatically**, no panel opens and no report can be made, because that mode doesn't keep the
-  original. Ordinary Capture region & edit, recordings and Quick redact you run yourself in the
+  covered image as the check left it, not later edits. A check that finished and found only kinds
+  set to **Redact automatically** uploads with no panel, so no report can be made for it. A check
+  that couldn't finish opens the panel even then, and offers **Not sensitive** when it covered
+  something. Ordinary Capture region & edit, recordings and Quick redact you run yourself in the
   editor are not covered.
 - **Open in editor** opens the editor on the same document, with the
   suggested marks already placed and the Redact tool chosen. Nothing is recognized a second time.
@@ -2082,20 +2083,20 @@ settles a panel that a person is looking at.
 - **Not sensitive.** `operation.reportFalseAlarm {id}` (MCP `report_false_alarm`) does what the
   button does for that capture, while its check's prompt waits (panel or report mode, phase
   `sensitive_text_found`) or in the editor that check opened. It replies `{saved: true, name, path,
-  bytes, operationId}` and waits up to 90 s (the CLI 105 s). The decision still waits afterwards:
-  answer with `operation.decide` as usual. `operation.inspect` shows it in `sensitive.falseAlarm`
-  (`state` `saving`, `saved` or `failed`, and the report's `name` once saved), for the panel and in
-  report mode alike; `editor.inspect` of the check's editor has `falseAlarm` (`offered`, `state`
-  `none`, `saving`, `saved` or `failed`, `message`, and `name`). There is one report per prompt: a
+  bytes, operationId}` and waits up to 90 s (the CLI 105 s). Nothing else changes: at a waiting
+  prompt, answer it with `operation.decide` as usual; in the check's editor, the editor's own
+  `editor.submit` or `editor.cancel` ends it. `operation.inspect` shows the report in
+  `sensitive.falseAlarm`: `{state: saving}`, then `{state: saved, name, bytes}` or `{state: failed,
+  code}`, for the panel and in report mode alike. `editor.inspect` of the check's editor has
+  `falseAlarm` with `offered` and `state` (`none`, `saving`, `saved` or `failed`), `message` while a
+  line is shown and `name` once saved. There is one report per prompt: a
   request while one is saving answers `editor_busy`, and one after it was saved answers
   `false_alarm_already_saved` (or, from a helper that stopped waiting, that report again). The report
   is prepared off the GUI thread from what the check left; a decision taken meanwhile wins, and the
   report is then dropped with `editor_finalizing`. A capture cancelled or decided while its report is
   prepared closes at once: the helper never waits for the preparation, and that report isn't saved.
   A report that timed out in the helper stays outstanding; if it saves after all, that is the report,
-  and a retry sent meanwhile is answered with it. Refusals: `false_alarm_unavailable` (nothing
-  flagged on a readable image, no prompt or check editor open, or the capture was decided),
-  `false_alarm_already_saved`, `sensitive_check_running`, `editor_busy` and `editor_finalizing`.
+  and a retry sent meanwhile is answered with it. Refusals of availability and timing: `false_alarm_unavailable` (nothing flagged on a readable image, no prompt or check editor open, or the capture was decided), `false_alarm_already_saved`, `sensitive_check_running`, `editor_busy` (a report is still being saved) and `editor_finalizing` (the capture was decided while the report was prepared). Failures saving it: `false_alarm_write_failed` (the folder couldn't be written, such as a full disk), `edit_output_invalid` (the editor's report wasn't in the expected form), `editor_io` and `image_job_io` (staging), `edit_export_failed` (the covered image couldn't be encoded) and `editor_timeout` (no answer in time; a report that saves later still counts).
 - **File selections.** A selection can ask once per file. `sensitive.prompt` numbers each prompt. Pass
   it as `prompt` when answering, so a decision never reaches a later file's prompt.
 - **Refusals.**
@@ -2130,7 +2131,9 @@ A [false-alarm report](diagnostics.md#false-alarm-reports) is the one place put.
 and the recognized text. It is saved only when the user selects **Not sensitive** (or an agent calls
 `operation.reportFalseAlarm`), it stays on disk under the log retention rules, and
 [diagnostics.md](diagnostics.md#an-exception-to-the-diagnostics-rules) records the exception and its
-bounds. **Redact automatically** is not covered, because that mode keeps no original.
+bounds. A finished check that found only **Redact automatically** kinds uploads with no panel and
+keeps no original, so it has no report.
+The report's pictures and text are unredacted: they show whatever was on screen.
 
 ### Cost
 
