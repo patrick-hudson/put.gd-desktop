@@ -558,11 +558,13 @@ Error ioError(const QString& message,const QString& path) {return {"file_manager
 
 namespace {
 // #2132 L4: the spellings of one path that name the same file: as given, canonical, and with the
-// home folder spelled either way (/home and /var/home on Atomic desktops). Only spellings that
-// resolve to the same place are kept.
-QStringList spellings(const FileManagerContext& c,const QString& path) {
+// home folder spelled either way (/home and /var/home on Atomic desktops), and as the AppImage's
+// record spelled it (`known`). Only spellings that resolve to the same place are kept.
+QStringList spellings(const FileManagerContext& c,const QString& path,const QStringList& known={}) {
  const auto canonical=canonicalPath(path);
  QStringList out{QDir::cleanPath(path),canonical};
+ // R2-3: a path the AppImage's record names, as it spelled it, when it is this same file.
+ for(const auto& recorded:known)if(canonicalPath(recorded)==canonical)out<<QDir::cleanPath(recorded);
  const auto home=QDir::cleanPath(c.home),canonicalHome=canonicalPath(c.home);
  for(const auto& [from,to]:{std::pair{home,canonicalHome},std::pair{canonicalHome,home},std::pair{QStringLiteral("/home"),QStringLiteral("/var/home")},std::pair{QStringLiteral("/var/home"),QStringLiteral("/home")}})
   for(const auto& known:QStringList(out))if(!from.isEmpty()&&known.startsWith(from+'/'))out<<to+known.mid(from.size());
@@ -573,9 +575,9 @@ QStringList spellings(const FileManagerContext& c,const QString& path) {
 // #2132: every byte-exact file put.gd has written for a per-user entry at `path`, with `launcher`
 // (the AppImage's stable launcher or the package's): each shipped template, current and earlier,
 // with only the launcher, icon and the script's own path filled in, each in any of its spellings.
-QList<QByteArray> renderings(const FileManagerContext& c,const QString& path,const QString& launcher,const MenuFormat* format,const QString& kind) {
- QStringList icons=spellings(c,QDir(ownDirectory(c)).filePath("putgd.svg"));icons<<QStringLiteral("putgd");
- const auto launchers=spellings(c,launcher),selves=spellings(c,path);
+QList<QByteArray> renderings(const FileManagerContext& c,const QString& path,const QString& launcher,const MenuFormat* format,const QString& kind,const QStringList& known={}) {
+ QStringList icons=spellings(c,QDir(ownDirectory(c)).filePath("putgd.svg"),known);icons<<QStringLiteral("putgd");
+ const auto launchers=spellings(c,launcher,known),selves=spellings(c,path,known);
  QList<QByteArray> out;
  for(const auto& spelled:launchers)for(const auto& icon:icons) {
   if(format) {
@@ -591,11 +593,11 @@ QList<QByteArray> renderings(const FileManagerContext& c,const QString& path,con
  }
  return out;
 }
-// Whether `bytes` is a file put.gd wrote at `path`: a recorded hash of it, or an exact rendering
-// with the AppImage's or the package's launcher.
-bool generated(const FileManagerContext& c,const QString& path,const QByteArray& bytes,const MenuFormat* format,const QString& kind,const QString& recordedHash={}) {
+// Whether `bytes` is a file put.gd wrote at `path` with `launcher` (the AppImage's stable launcher
+// or the package's): an exact rendering, or for the AppImage its recorded hash.
+bool generated(const FileManagerContext& c,const QString& path,const QByteArray& bytes,const MenuFormat* format,const QString& kind,const QString& launcher,const QStringList& known={},const QString& recordedHash={}) {
  if(!recordedHash.isEmpty()&&recordedHash==bytesHash(bytes))return true;
- return renderings(c,path,FileManagerIntegration::launcherPath(c),format,kind).contains(bytes)||renderings(c,path,c.systemLauncher,format,kind).contains(bytes);
+ return renderings(c,path,launcher,format,kind,known).contains(bytes);
 }
 // Where a per-user entry file lives: its root folder, the backup area named after it, the
 // relative path, and its format (null for a Scripts entry, then `kind` names the file manager).
@@ -656,10 +658,11 @@ private:
 // What retiring an entry file did (#2132 S6).
 enum class Retired {Removed,Moved,Left,Failed};
 // Retires a per-user entry file put.gd no longer keeps there (#2132 N1): one exactly as put.gd
-// wrote it (either launcher, or its recorded bytes) is removed; one changed since is moved aside
+// wrote it (with the retiring install's own launcher, or its recorded bytes) is removed; a file the
+// package wrote is never removed by the AppImage (R2-2); one changed since is moved aside
 // with a mover, never deleted, and left in place without one. A file outside the known places, or
 // not put.gd's, is left; one that should go and can't is Failed, so its record line stays.
-Retired retire(const FileManagerContext& c,const QString& path,const QString& own,Mover* mover,const QString& recordedHash={}) {
+Retired retire(const FileManagerContext& c,const QString& path,const QString& own,Mover* mover,const QString& ownLauncher,const QStringList& known,const QString& recordedHash={}) {
  if(QDir::cleanPath(path).startsWith(QDir::cleanPath(own)+'/'))return removeOwned(path,own)||!QFileInfo::exists(path)?Retired::Removed:Retired::Failed;
  const QFileInfo info(path);
  if(!info.exists()&&!info.isSymLink())return Retired::Removed;
@@ -667,7 +670,9 @@ Retired retire(const FileManagerContext& c,const QString& path,const QString& ow
  if(!place.valid()||!contained(place.root,place.relative)||!managedFile(path))return Retired::Left;
  const auto before=identity(path);bool read=false;const auto bytes=readSmall(path,&read);
  if(!read||!before.mine)return Retired::Left;
- if(generated(c,path,bytes,place.format,place.kind,recordedHash))return before.same(identity(path))&&QFile::remove(path)?Retired::Removed:Retired::Failed;
+ // R2-2: the AppImage never removes what the package wrote, whatever its record still says.
+ if(ownLauncher!=c.systemLauncher&&generated(c,path,bytes,place.format,place.kind,c.systemLauncher,known))return Retired::Left;
+ if(generated(c,path,bytes,place.format,place.kind,ownLauncher,known,recordedHash))return before.same(identity(path))&&QFile::remove(path)?Retired::Removed:Retired::Failed;
  if(!mover)return Retired::Left;
  return mover->move(path,place,before,bytes).isEmpty()?Retired::Failed:Retired::Moved;
 }
@@ -691,7 +696,7 @@ void dropFromAppImageRecord(const FileManagerContext& c,const QStringList& paths
 // The package's start moves an AppImage's per-user copy aside where the package has its own:
 // only a file whose bytes are exactly what an AppImage wrote, inside the user's folder with no
 // link on the way. The AppImage's record drops it, keeping every other line.
-void moveAsideAppImageCopies(const FileManagerContext& c,FileManagerResult& result,const std::function<void(const Error&)>& fail) {
+void moveAsideAppImageCopies(const FileManagerContext& c,FileManagerResult& result,const std::function<void(const Error&)>& fail,const QStringList& known) {
  QList<Place> candidates;
  for(const auto& format:menuFormats)
   if(systemCopy(c,format))candidates.append({c.dataHome,QStringLiteral("data"),QString::fromLatin1(format.directory)+'/'+QString::fromLatin1(format.name),&format,{}});
@@ -709,7 +714,7 @@ void moveAsideAppImageCopies(const FileManagerContext& c,FileManagerResult& resu
   const auto path=QDir(place.root).filePath(place.relative);
   if(!contained(place.root,place.relative))continue;
   const auto before=identity(path);bool read=false;const auto bytes=readSmall(path,&read);
-  if(!read||!before.mine||!renderings(c,path,FileManagerIntegration::launcherPath(c),place.format,place.kind).contains(bytes))continue;
+  if(!read||!before.mine||!renderings(c,path,FileManagerIntegration::launcherPath(c),place.format,place.kind,known).contains(bytes))continue;
   // A move that fails leaves the file where it was and reports it; the next start tries again.
   if(mover.move(path,place,before,bytes).isEmpty()) {fail(ioError("Cannot move a replaced file manager entry aside",path));continue;}
   result.removed<<path;moved<<path;
@@ -718,8 +723,62 @@ void moveAsideAppImageCopies(const FileManagerContext& c,FileManagerResult& resu
  dropFromAppImageRecord(c,moved,fail);
 }
 }
+namespace {
+// #2132 R2-1: an AppImage's stable launcher written before entries carried hashes removes any
+// marked entry when the image is gone, edited ones included. The package's start replaces one
+// that is exactly such a launcher (any shipped version, with its own values) with the current,
+// hash-aware launcher, keeping its paths, image and identity; and gives the AppImage's record a
+// hash for each entry that is still exactly what the AppImage wrote, so the new launcher still
+// removes those. A launcher that isn't an exact earlier rendering is left alone, and logged.
+void upgradeAppImageLauncher(const FileManagerContext& c,const QStringList& known,const std::function<void(const Error&)>& fail) {
+ const auto path=FileManagerIntegration::launcherPath(c);
+ if(!managedFile(path))return;
+ const auto text=QString::fromUtf8(readSmall(path));
+ // Its own values, as it holds them: each assignment's first line, already shell-quoted.
+ QHash<QString,QString> values;
+ const QList<std::pair<QString,QString>> names{{"configured","CONFIGURED"},{"update_information","UPDATE_INFORMATION"},{"script","SCRIPT"},{"record","RECORD"},
+  {"own_directory","DIRECTORY"},{"user_runtime","USER_RUNTIME"},{"cgroup","CGROUP"},{"watch_unit","WATCH_UNIT"}};
+ for(const auto& line:text.split('\n')) {
+  for(const auto& [name,key]:names)if(!values.contains(key)&&line.startsWith(name+'='))values.insert(key,line.mid(name.size()+1));
+  if(!values.contains("ID")&&line.startsWith("integration_id='")&&line.endsWith('\''))values.insert("ID",line.mid(16,line.size()-17));
+ }
+ const auto discovery=loginDiscovery();
+ const auto render=[&](const char* source){return substitute(QString::fromUtf8(source).replace("# __PUTGD_DISCOVERY__",discovery),values).toUtf8();};
+ if(!values.contains("USER_RUNTIME"))values.insert("USER_RUNTIME",shellQuoted(c.userRuntime.isEmpty()?QStringLiteral("/run/user/%1").arg(::getuid()):c.userRuntime));
+ const auto current=render(putgdFileManagerLauncher);
+ if(text.toUtf8()==current)return;
+ bool earlier=false;
+ for(const char* legacy:{putgdFileManagerLauncher987483d,putgdFileManagerLauncher2f1bc55,putgdFileManagerLauncher217621f,putgdFileManagerLauncher4631e27})earlier|=render(legacy)==text.toUtf8();
+ if(!earlier||values.size()<9||discovery.isEmpty()) {logging::info(logApp(),"Left the AppImage's file manager launcher as it is: it isn't one put.gd wrote",{{"path",path}});return;}
+ if(commit(path,current,programMode)==Write::Failed){fail(ioError("Cannot update the AppImage's file manager launcher",path));return;}
+ logging::info(logApp(),"Updated the AppImage's file manager launcher so its removal keeps edited entries",{{"path",path}});
+ // Hashes for the record's entries that are still exactly what the AppImage wrote.
+ const auto recordFile=recordPath(c,"appimage");
+ const auto record=readRecord(recordFile);
+ if(!managedFile(recordFile))return;
+ QString added;
+ for(const auto& file:record.files) {
+  if(record.hashes.contains(file)||QDir::cleanPath(file).startsWith(QDir::cleanPath(ownDirectory(c))+'/'))continue;
+  const auto place=placeOf(c,file);bool read=false;const auto bytes=readSmall(file,&read);
+  if(place.valid()&&read&&managedFile(file)&&generated(c,file,bytes,place.format,place.kind,path,known))added+="hash "+bytesHash(bytes)+' '+file+'\n';
+ }
+ if(added.isEmpty())return;
+ auto updated=readSmall(recordFile);if(!updated.endsWith('\n'))updated+='\n';
+ if(commit(recordFile,updated+added.toUtf8(),dataMode)==Write::Failed)fail(ioError("Cannot update the AppImage's file manager record",recordFile));
+}
+}
 QString FileManagerIntegration::label() {return QStringLiteral("Upload with put.gd");}
 QString FileManagerIntegration::encryptedLabel() {return QStringLiteral("Upload encrypted with put.gd");}
+QByteArray FileManagerIntegration::earlierLauncherForTesting(const FileManagerContext& c) {
+ const auto text=QString::fromUtf8(readSmall(launcherPath(c)));QHash<QString,QString> values;
+ const QList<std::pair<QString,QString>> names{{"configured","CONFIGURED"},{"update_information","UPDATE_INFORMATION"},{"script","SCRIPT"},{"record","RECORD"},
+  {"own_directory","DIRECTORY"},{"user_runtime","USER_RUNTIME"},{"cgroup","CGROUP"},{"watch_unit","WATCH_UNIT"}};
+ for(const auto& line:text.split('\n')) {
+  for(const auto& [name,key]:names)if(!values.contains(key)&&line.startsWith(name+'='))values.insert(key,line.mid(name.size()+1));
+  if(!values.contains("ID")&&line.startsWith("integration_id='")&&line.endsWith('\''))values.insert("ID",line.mid(16,line.size()-17));
+ }
+ return substitute(QString::fromUtf8(putgdFileManagerLauncher4631e27).replace("# __PUTGD_DISCOVERY__",loginDiscovery()),values).toUtf8();
+}
 QByteArray FileManagerIntegration::packagedMenu(const QString& relative) {
  for(const auto& format:menuFormats)if(relative==QString::fromLatin1(format.directory)+'/'+QString::fromLatin1(format.name))return QByteArray(format.source);
  return {};
@@ -795,7 +854,9 @@ FileManagerResult FileManagerIntegration::apply(const FileManagerContext& c) {
  if(system) {
   // #2119: an AppImage's per-user copy of a menu file has the same name as the package's own, and
   // a user file shadows the system one, so an older copy hides the package's entries.
-  moveAsideAppImageCopies(c,result,fail);
+  const auto known=readRecord(recordPath(c,"appimage")).files;
+  upgradeAppImageLauncher(c,known,fail);
+  moveAsideAppImageCopies(c,result,fail,known);
   // DEB/RPM: per-user files only where a desktop needs them, at every start. A DING script that
   // isn't exactly what put.gd wrote (an edited copy) is moved aside before the package's
   // replaces it (#2132 S1); the AppImage's record stops naming the scripts the package now
@@ -809,7 +870,8 @@ FileManagerResult FileManagerIntegration::apply(const FileManagerContext& c) {
      const auto before=identity(script);bool read=false;const auto bytes=readSmall(script,&read);
      const auto place=placeOf(c,script);
      if(!read||!place.valid()||!contained(place.root,place.relative))continue;
-     if(!generated(c,script,bytes,nullptr,QStringLiteral("nautilus"))&&mover.move(script,place,before,bytes).isEmpty()) {fail(ioError("Cannot move a changed file manager script aside",script));continue;}
+     const auto exact=generated(c,script,bytes,nullptr,QStringLiteral("nautilus"),launcherPath(c),known)||generated(c,script,bytes,nullptr,QStringLiteral("nautilus"),c.systemLauncher,known);
+     if(!exact&&mover.move(script,place,before,bytes).isEmpty()) {fail(ioError("Cannot move a changed file manager script aside",script));continue;}
     }
     keep(script,wanted,programMode);
     if(next.files.contains(script))taken<<script;
@@ -884,7 +946,7 @@ FileManagerResult FileManagerIntegration::apply(const FileManagerContext& c) {
   for(const auto& path:previous.files) {
    const auto canonical=canonicalPath(path);
    if(next.files.contains(path)||kept.contains(canonical)||shared.contains(canonical))continue;
-   switch(retire(c,path,own,&mover,previous.hashes.value(path))) {
+   switch(retire(c,path,own,&mover,appImage?launcherPath(c):c.systemLauncher,previous.files,previous.hashes.value(path))) {
    case Retired::Removed:case Retired::Moved:result.removed<<path;break;
    case Retired::Left:break;
    // Kept in the record, so the next pass tries again (#2132 S6).
@@ -992,7 +1054,7 @@ Error FileManagerIntegration::cleanupIfMissing(const FileManagerContext& c) {
   if(auto change=mergeCosmic(record.cosmic,launcherPath(c),false,true);change.error&&!error)error=change.error;
  }
  // Only files still exactly as put.gd wrote them go; anything changed stays where it is (#2132 S2).
- for(const auto& path:record.files)if(retire(c,path,own,nullptr,record.hashes.value(path))==Retired::Failed&&!error)error=ioError("Cannot remove a file manager entry",path);
+ for(const auto& path:record.files)if(retire(c,path,own,nullptr,launcherPath(c),record.files,record.hashes.value(path))==Retired::Failed&&!error)error=ioError("Cannot remove a file manager entry",path);
  if(!QFile::remove(ownedPath)&&QFileInfo::exists(ownedPath)&&!error)error=ioError("Cannot remove the file manager record",ownedPath);
  return error;
 }

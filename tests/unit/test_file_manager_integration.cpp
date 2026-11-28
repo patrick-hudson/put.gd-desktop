@@ -718,17 +718,68 @@ private slots:
  }
  // #2132 L4: an entry written under one spelling of the home folder (/home) is recognized under
  // another (/var/home): here a link to the same home.
+ void entriesWrittenUnderAnotherHomeSpellingAreRecognized_data() {
+  QTest::addColumn<bool>("imageUnderAlias");QTest::newRow("package under the alias")<<false;QTest::newRow("AppImage under the alias")<<true;
+ }
  void entriesWrittenUnderAnotherHomeSpellingAreRecognized() {
+  QFETCH(bool,imageUnderAlias);
   Fixture f;
   const auto real=f.path("real home"),alias=f.path("aliased home");QVERIFY(QDir().mkpath(real));QVERIFY(QFile::link(real,alias));
-  auto image=f.context;image.installation="appimage";image.home=real;image.dataHome=real+"/.local/share";image.configHome=real+"/.config";image.dataRoot=real+"/.local/share/putgd";
+  const auto at=[&](FileManagerContext c,const QString& home){c.home=home;c.dataHome=home+"/.local/share";c.configHome=home+"/.config";c.dataRoot=home+"/.local/share/putgd";return c;};
+  auto image=at(f.context,imageUnderAlias?alias:real);image.installation="appimage";
   QVERIFY(!FileManagerIntegration::apply(image).error);
   const auto nemo=QStringLiteral("nemo/actions/putgd-upload.nemo_action");
   f.package(nemo);
-  auto system=image;system.installation="system";system.home=alias;system.dataHome=alias+"/.local/share";system.configHome=alias+"/.config";system.dataRoot=alias+"/.local/share/putgd";system.replacedStamp="alias";
+  auto system=at(f.context,imageUnderAlias?real:alias);system.installation="system";system.replacedStamp="alias";
   const auto result=FileManagerIntegration::apply(system);
   QVERIFY2(!result.error,qPrintable(result.error.message));
   QVERIFY(!QFileInfo::exists(real+"/.local/share/"+nemo));QVERIFY(QFileInfo::exists(QDir(f.context.stateRoot).filePath("file-manager-replaced/alias/data/"+nemo)));
+ }
+
+ // #2132 R2-1: a launcher an earlier AppImage wrote, before entries carried hashes, would remove an
+ // edited entry when the image goes. The package's start upgrades an exact one, keeping its paths.
+ void anEarlierLauncherIsUpgradedSoItsRemovalKeepsEditedEntries() {
+  Fixture f;auto& c=f.context;c.installation="appimage";
+  const SearchPath tools(c.searchPath);
+  QVERIFY(!FileManagerIntegration::apply(c).error);
+  const auto launcher=FileManagerIntegration::launcherPath(c),recordFile=QDir(c.dataRoot).filePath("file-manager/appimage.owned");
+  const auto current=readAll(launcher);const auto earlier=FileManagerIntegration::earlierLauncherForTesting(c);
+  QVERIFY(earlier!=current);QVERIFY(!earlier.contains("remove_exact"));
+  write(launcher,earlier,programMode);
+  QStringList lines;for(const auto& line:QString::fromUtf8(readAll(recordFile)).split('\n'))if(!line.startsWith("hash "))lines<<line;
+  write(recordFile,lines.join('\n').toUtf8());
+  const auto nemo=QStringLiteral("nemo/actions/putgd-upload.nemo_action");const auto edited=readAll(f.menu(nemo))+"Quote=single\n";write(f.menu(nemo),edited);
+  auto system=c;system.installation="system";QVERIFY(!FileManagerIntegration::apply(system).error);
+  QCOMPARE(readAll(launcher),current);QCOMPARE(mode(launcher),programMode);
+  const auto record=QString::fromUtf8(readAll(recordFile));
+  // A hash for the entry that is still exactly the AppImage's, none for the edited one.
+  bool kioHashed=false,nemoHashed=false;
+  for(const auto& line:record.split('\n'))if(line.startsWith("hash ")){kioHashed|=line.endsWith(' '+f.menu("kio/servicemenus/putgd-upload.desktop"));nemoHashed|=line.endsWith(' '+f.menu(nemo));}
+  QVERIFY(kioHashed);QVERIFY(!nemoHashed);
+  QVERIFY(QFile::remove(c.appImage));
+  QCOMPARE(f.run(launcher,{"--cleanup-if-missing"}),0);
+  QCOMPARE(readAll(f.menu(nemo)),edited);QVERIFY(!QFileInfo::exists(f.menu("kio/servicemenus/putgd-upload.desktop")));
+ }
+ // A launcher that isn't exactly one put.gd wrote is left as it is.
+ void aChangedLauncherIsLeftAlone() {
+  Fixture f;auto& c=f.context;c.installation="appimage";QVERIFY(!FileManagerIntegration::apply(c).error);
+  const auto launcher=FileManagerIntegration::launcherPath(c);const auto changed=FileManagerIntegration::earlierLauncherForTesting(c)+"# mine\n";
+  write(launcher,changed,programMode);
+  auto system=c;system.installation="system";QVERIFY(!FileManagerIntegration::apply(system).error);
+  QCOMPARE(readAll(launcher),changed);
+ }
+ // #2132 R2-2: even when the AppImage's record still names the package's DING script (its update
+ // failed), the AppImage's removal and passes never delete what the package wrote.
+ void theAppImageNeverRemovesThePackagesScripts() {
+  Fixture f;auto& c=f.context;c.installation="appimage";f.installDing();
+  const SearchPath tools(c.searchPath);
+  QVERIFY(!FileManagerIntegration::apply(c).error);
+  const auto recordFile=QDir(c.dataRoot).filePath("file-manager/appimage.owned");const auto before=readAll(recordFile);
+  auto system=c;system.installation="system";QVERIFY(!FileManagerIntegration::apply(system).error);
+  write(recordFile,before);
+  QVERIFY(QFile::remove(c.appImage));
+  QVERIFY(!FileManagerIntegration::cleanupIfMissing(c));
+  for(const auto& name:{script,encryptedScript})QVERIFY(readAll(f.ding(name)).contains("launcher='"+c.systemLauncher.toUtf8()+"'\n"));
  }
  // DING's scripts are the package's own: one reached through another name for the same folder isn't moved (#2119).
  void dingScriptComparedCanonically() {
