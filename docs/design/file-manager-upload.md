@@ -150,25 +150,15 @@ removes itself the next time it runs, and the COSMIC entry's command fails
 harmlessly.
 
 When a DEB/RPM and the AppImage are both installed, the AppImage skips each
-per-user file whose system counterpart exists, so there is one entry. A user
-file of the same name would hide the package's, so the package's own start also
-moves the AppImage's per-user menu files, and its Files and Caja scripts, out of
-the way wherever the package has its own copy (#2119). A file moves only when
-all of these hold:
+per-user file whose system counterpart exists, so there is one entry.
 
-- its bytes are exactly what an AppImage wrote, from any template it has shipped,
-  with only its launcher and icon filled in; an edited copy stays;
-- no folder between the user's data or config folder and the file is a link;
-- it is still the same file as when it was read;
-- the package's own copy is a regular file in an `XDG_DATA_DIRS` folder that isn't
-  the user's own folder under another name, and runs `/usr/bin/putgd-launcher`.
-
-The AppImage uses the same test to skip writing its copy. A moved file goes to
-`$XDG_STATE_HOME/putgd/file-manager-replaced/<UTC time>/data/<path>` (or
-`config/<path>` for a Caja script), keeping its mode, so it can be put back.
-The resident log names both paths, and the AppImage's record drops only those
-lines. The GNOME desktop icons script is the package's own and is rewritten in
-place.
+Known limit (#2132): the package doesn't clean up an AppImage's per-user files.
+If the AppImage ran before the DEB or RPM was installed, its per-user files have
+the same names as the package's and hide them. Dolphin, Nemo, Thunar, PCManFM
+and Pantheon Files may then show only the AppImage's old **Upload with put.gd**,
+and no **Upload encrypted with put.gd**, until the AppImage starts again and
+skips them. Deleting the AppImage's files brings the package's entries back.
+They are listed in the per-user files table above.
 
 ## What happens
 
