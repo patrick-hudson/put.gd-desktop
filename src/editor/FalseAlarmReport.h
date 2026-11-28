@@ -35,9 +35,11 @@ struct Input {
 };
 // The most words a report lists. Past it, or past maximumBytes of compact JSON, only the words on a match's lines
 // and the two lines either side are kept, and `words.omitted` counts the rest; if that is still over, only the
-// matched words, halved until the report fits. A finding's index of a word left out is -1. Findings themselves are
-// never cut, so a page whose findings alone pass maximumBytes still gives a larger report, which the resident's
-// own limit (EditorJob::maximumReportJsonBytes) then refuses.
+// matched words, halved until the report fits. A finding's index of a word left out is -1.
+// maximumBytes (8 MiB) is this builder's trimming target. The hard limit is the transport's:
+// EditorJob::maximumReportJsonBytes (9 MiB), past which the resident refuses the report. Findings themselves are
+// never cut, so a page whose findings alone pass the target still gives a larger report, saved if it is under the
+// hard limit and refused (edit_output_invalid) if not.
 inline constexpr int maximumWords=50000;
 inline constexpr qint64 maximumBytes=8LL*1024*1024;
 // {reportedFrom, image, check, recognition, findings, words, codes}; see docs/design/diagnostics.md.

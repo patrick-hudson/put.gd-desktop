@@ -290,6 +290,13 @@ private slots:
   auto files=unzip(result["path"].toString());
   for(const auto* name:{"original.png","covered.png","report.json"})QVERIFY2(files.contains("false-alarms/"+newest.name+"/"+name),name);
   QCOMPARE(QJsonDocument::fromJson(files["manifest.json"].toString().toUtf8()).object()["falseAlarmReports"].toObject()["names"].toArray(),(QJsonArray{newest.name}));
+  // The privacy guarantee: a package built from an untouched, default request (History's, the tray's and the error
+  // log's Save diagnostics send no falseAlarmReports) holds no report, though one exists in its window.
+  {BundleRequest untouched;untouched.output=dir_.filePath("false-alarms-default.zip");
+   const auto plain=build(bundle,untouched,error);QVERIFY2(!error,qPrintable(error.message));
+   QCOMPARE(plain["falseAlarmReports"].toObject()["included"].toInt(),0);QCOMPARE(plain["falseAlarmReports"].toObject()["requested"].toBool(),false);
+   const auto held=unzip(plain["path"].toString());for(auto it=held.begin();it!=held.end();++it)QVERIFY2(!it.key().startsWith("false-alarms/"),qPrintable(it.key()));
+   QVERIFY(!held["manifest.json"].toString().contains(newest.name));}
   // A preview counts them without reading them.
   request.preview=true;request.output.clear();
   QCOMPARE(build(bundle,request,error)["falseAlarmReports"].toObject()["included"].toInt(),1);
