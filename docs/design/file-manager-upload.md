@@ -9,6 +9,10 @@ alone. The usual finished or failure notification appears unless **Show
 desktop notifications** is off. History manages the uploads afterwards.
 There is no confirmation step and no extra "uploading" notice.
 
+**Upload encrypted with put.gd** sits right below it in every menu that has the
+entry and uploads the same selection as encrypted links ([Encrypted
+uploads](#encrypted-uploads), #2119).
+
 The design, its council review and the decisions behind it are in
 [GitHub issue #1105](https://github.com/patrick-hudson/put.gd-desktop/issues/1105).
 
@@ -96,15 +100,18 @@ Per-user files:
 
 | Format | Path |
 |---|---|
-| KIO (mode 0755) | `$XDG_DATA_HOME/kio/servicemenus/putgd-upload.desktop` |
-| Nemo | `$XDG_DATA_HOME/nemo/actions/putgd-upload.nemo_action` |
-| Thunar | `$XDG_DATA_HOME/Thunar/sendto/putgd-upload.desktop` |
-| FileManager-Actions | `$XDG_DATA_HOME/file-manager/actions/putgd-upload.desktop` |
-| Contractor | `$XDG_DATA_HOME/contractor/putgd-upload.contract` |
-| Nautilus | `$XDG_DATA_HOME/nautilus/scripts/Upload with put.gd` |
-| DING | `$HOME/.local/share/nautilus/scripts/Upload with put.gd` |
-| Caja | `$XDG_CONFIG_HOME/caja/scripts/Upload with put.gd` |
-| COSMIC | `$XDG_CONFIG_HOME/cosmic/com.system76.CosmicFiles/v1/context_actions`, backup `context_actions.putgd-backup` |
+| KIO (mode 0755) | `$XDG_DATA_HOME/kio/servicemenus/putgd-upload.desktop`, both entries as two actions |
+| Nemo | `$XDG_DATA_HOME/nemo/actions/putgd-upload.nemo_action` and `putgd-upload-encrypted.nemo_action` |
+| Thunar | `$XDG_DATA_HOME/Thunar/sendto/putgd-upload.desktop` and `putgd-upload-encrypted.desktop` |
+| FileManager-Actions | `$XDG_DATA_HOME/file-manager/actions/putgd-upload.desktop` and `putgd-upload-encrypted.desktop` |
+| Contractor | `$XDG_DATA_HOME/contractor/putgd-upload.contract` and `putgd-upload-encrypted.contract` |
+| Nautilus | `$XDG_DATA_HOME/nautilus/scripts/Upload with put.gd` and `Upload encrypted with put.gd` |
+| DING | `$HOME/.local/share/nautilus/scripts/Upload with put.gd` and `Upload encrypted with put.gd` |
+| Caja | `$XDG_CONFIG_HOME/caja/scripts/Upload with put.gd` and `Upload encrypted with put.gd` |
+| COSMIC | `$XDG_CONFIG_HOME/cosmic/com.system76.CosmicFiles/v1/context_actions`, one entry each, backup `context_actions.putgd-backup` |
+
+The DEB and RPM install the same menu files under `/usr/share`, and their
+Nautilus, Caja and Peony plugins return both items.
 
 The AppImage's stable launcher (`putgd-upload`), icon copy (`putgd.svg`),
 ownership record (`<installation>.owned`), version stamp
@@ -147,7 +154,7 @@ per-user file whose system counterpart exists, so there is one entry.
 
 ## What happens
 
-The entry runs `putgd --upload -- <paths or URIs>` (DEB/RPM through
+The entry runs `putgd --upload -- <paths or URIs>` (the encrypted entry `putgd --upload --encrypt -- ...`) (DEB/RPM through
 `/usr/bin/putgd-launcher`; the AppImage through its stable launcher, then
 AppRun's `--upload` fast path). That short-lived client:
 
@@ -248,6 +255,38 @@ capture.
 Mixed selections of files and folders follow these rules per item, in one
 upload.
 
+## Encrypted uploads
+
+**Upload encrypted with put.gd** (#2119) sends `upload.files` with
+`encrypt: {enabled: true}`, the way `putgd-cli upload --encrypt` does. It goes
+to the same destination as **Upload with put.gd** ([Destination](#destination))
+and uses that destination's **Encrypted links** passphrase setting. Folders
+follow **Folders**: one encrypted `.zip`, or one encrypted link per file. The
+[encrypted links design](encrypted-links.md) covers the pages, keys and limits.
+
+Nothing asked to be encrypted is ever uploaded unencrypted:
+
+- A destination that hasn't passed **Test upload and link**, failed it, or
+  changed since is refused before anything is accepted (`encrypt_check_required`,
+  for every `upload.files` caller). The client's "Upload didn't start" notice
+  gives the reason. Because a menu entry's request names its installation, the
+  resident also opens that destination's **Encrypted links** card
+  (`encryptedLinks:<profile id>`), the same place the tray's
+  **Capture region (encrypted)** opens. A request from another installation's
+  entry is refused with `installation_mismatch` first, so a DEB's entry never
+  opens a running AppImage's Settings.
+- Proton Drive and Nextcloud (`encrypt_unavailable`), a private route
+  (`encrypt_needs_link`), a saved passphrase that isn't loaded and a file over a
+  size limit (`encrypt_too_large`, `encrypt_split_unavailable`) fail each item
+  before it is sent. The resident's failure notice says why, and History keeps
+  the upload.
+- A build from before the encrypted entry has no `--encrypt` option, so an old
+  client refuses that command line with a usage error and uploads nothing. A
+  resident from before encrypted uploads refuses the `encrypt` field as
+  `invalid_request`. The client then reads `capabilities`, finds no
+  `uploadFiles.encrypt`, and says "put.gd was updated. Quit put.gd and open it
+  again, then try again." It never asks again without `encrypt`.
+
 ## Notifications without a tray
 
 Notifications go to `org.freedesktop.Notifications` whether or not a
@@ -260,9 +299,14 @@ dialog from the host's `zenity`, `kdialog` or `xmessage`, whichever comes first.
 
 ## Agents and the CLI
 
-`upload.files` `{paths, profileId?, installation?}` takes absolute paths. The
+`upload.files` `{paths, profileId?, installation?, encrypt?}` takes absolute paths;
+`encrypt` is `{enabled, passphrase?}`. The
 CLI form is `putgd-cli upload.files '{"paths":["/abs/a.png","/abs/folder"]}'`,
-and the MCP tool is `upload_files(paths, profile_id?)`. Without `installation`
+and the MCP tool is `upload_files(paths, profile_id?, encrypt?)`. An agent drives
+the encrypted entry exactly as a menu does with
+`putgd-cli upload.files '{"paths":[...],"installation":"system","encrypt":{"enabled":true}}'`
+(or `"appimage"`), and `operation.inspect` reports `encrypt.requested` and each
+item's `encrypt`. Without `installation`
 there is no identity check. Poll `operation.inspect` with the returned
 `operationId`. Both settings take `settings.patch` and MCP
 `patch_configuration` like any other.
