@@ -369,14 +369,21 @@ Nothing asked to be encrypted is ever uploaded unencrypted:
   **Capture region (encrypted)** opens. A request from another installation's
   entry is refused with `installation_mismatch` first, so a DEB's entry never
   opens a running AppImage's Settings.
-- Proton Drive, Nextcloud and SFTP without a **Link address**
-  (`encrypt_unavailable`) and a private route (`encrypt_needs_link`) are also
-  refused before anything is accepted (#2136). The menu entry's notice gives the
+- A destination that can't encrypt at all (Proton Drive, Nextcloud, SFTP
+  without a **Link address**, or one whose provider this build doesn't have:
+  `encrypt_unavailable`) and a private route (`encrypt_needs_link`) are also
+  refused before anything is accepted (#2136), with the destination in
+  `details.profileId`. From a menu entry, `encrypt_unavailable` gives the
   destination's reason, then "Select Upload with put.gd instead." while the
-  destination's **Encrypted links** is off. While it is on, **Upload with
-  put.gd** would encrypt too, so the notice says to turn off **Encrypted links**
-  for this destination (or, for private sharing, to change **Sharing**).
-  putgd-cli and MCP get "Or upload it without encryption." A saved passphrase that isn't loaded
+  destination's **Encrypted links** is off, or "Turn off Encrypted links for
+  this destination." while it is on, since **Upload with put.gd** would then
+  encrypt too. `encrypt_needs_link` says "Encrypted files open only from their
+  link, and Sharing is set to Private upload. Change Sharing in Settings →
+  Capture, or select Upload with put.gd instead." (Encrypted links off) or "…,
+  or turn off Encrypted links for this destination." (on). A request without an
+  installation (putgd-cli, MCP) gets `encrypt_unavailable` ending "Or upload it
+  without encryption." and `encrypt_needs_link` with its general message,
+  ending "or turn off Encrypt to upload it privately." A saved passphrase that isn't loaded
   and a file over a size limit (`encrypt_too_large`, `encrypt_split_unavailable`)
   fail each item before it is sent. The resident's failure notice says why, and
   History keeps the upload.
@@ -393,10 +400,13 @@ Nothing asked to be encrypted is ever uploaded unencrypted:
 **Upload encrypted with put.gd** disappears where it could never work (#2136):
 when the destination **Upload with put.gd** goes to ([Destination](#destination))
 can't serve an encrypted page whatever is tested (Proton Drive, Nextcloud, SFTP
-without a **Link address**), or when no destination is set up. It stays for a
-destination that hasn't passed **Test upload and link** yet, since choosing it
-opens that test, for **Private upload** sharing, and for several destinations
-with no capture default; choosing it there says what to change.
+without a **Link address**, or a destination whose provider this build doesn't
+have, "This destination is unavailable."), or when no destination is set up.
+Neither a destination that hasn't passed **Test upload and link** nor **Private
+upload** sharing hides it by itself, as long as the destination's type can
+encrypt: choosing it then opens the test, or says to change **Sharing**.
+Several destinations with no capture default show it too, and choosing it asks
+for a default as **Upload with put.gd** does.
 
 The resident keeps a marker for it, `encrypted-entry-hidden` in
 `putgd/file-manager/` under the data home: `$XDG_DATA_HOME` when it is an
@@ -409,23 +419,24 @@ changes. File managers read it at every menu and never call the resident:
 
 | File manager | How it hides | Cost per menu |
 |---|---|---|
-| Nautilus, Caja, Peony (DEB/RPM plugins) | The plugin leaves the item out | one `access()` |
+| Files (Nautilus), Caja, Peony, native packages' plugins (DEB, RPM and Arch, Peony on the DEBs only) | The plugin leaves the item out | one `access()` |
 | Nemo (packaged and AppImage entries) | `Conditions=exec /bin/sh -c 'test ! -e …'` | one `/bin/sh`, about 2 ms |
 | PCManFM-Qt | `ShowIfTrue=` with the same test | one `/bin/sh` |
-| Dolphin and Konqueror on KF6, DEB/RPM (Ubuntu 26.04, Debian 13, Fedora 44 and 45, Arch) | The `putgd` KFileItemAction plugin, `kf6/kfileitemaction/putgd.so`, leaves its action out | one `access()` |
+| Dolphin and Konqueror on KF6, native packages (Ubuntu 26.04 and Debian 13 DEB, Fedora 44 and 45 RPM, Arch) | The `putgd` KFileItemAction plugin, `kf6/kfileitemaction/putgd.so`, leaves its action out | one `access()` |
 
 A change needs no file manager restart. Nemo, PCManFM-Qt and Dolphin check the
 marker at every menu; Files and Caja ask their plugins again when the selection
 changes, so a menu reopened on the same selection still shows the earlier
 answer until another item is selected. Everywhere else
 the entry stays, and choosing it is refused before anything is copied with the
-destination's reason: Dolphin on Ubuntu 24.04 and with the AppImage (KF6
-service menus have no condition), Thunar's Send To (read once, no variables),
-Pantheon's Contractor, COSMIC, PCManFM (libfm ignores `ShowIfTrue`), and the
-Nautilus, Caja and DING scripts.
+destination's reason: Dolphin with the Ubuntu 24.04 DEB and with the AppImage
+(service menus have no condition), Files and Caja with the AppImage (their
+Scripts entries), Thunar's Send To (read once, no variables), Pantheon's
+Contractor, COSMIC, PCManFM (libfm ignores `ShowIfTrue`), and the DING script.
 
-On KF6 the DEB and RPM split Dolphin's two entries: **Upload with put.gd** stays
-in the KIO service menu, which they install without its encrypted action, and
+On KF6 the native packages (DEB, RPM, Arch) split Dolphin's two entries:
+**Upload with put.gd** stays in the KIO service menu, which they install
+without its encrypted action, and
 the plugin offers **Upload encrypted with put.gd**. Its name, icon and command
 come from that service menu's `putgdUploadEncrypted` action at build time, and
 KIO runs the command as it runs service menus, so remote items get KIOFuse or
@@ -435,8 +446,9 @@ files, folders and a selection of both (checked with KIO 6.13, 6.24 and 6.31),
 and in Plasma's desktop icons too. The plugin links KF6 KIO like any Dolphin
 plugin, because Plasma's desktop loads KIO with local symbols, but the packages
 don't depend on KDE: the RPM leaves the KF6 libraries out of its requirements,
-and the DEB's dependency scan reads a `shlibs.local`, written at build time,
-that names them with no dependency. Where KIO isn't installed the plugin is
+the DEB's dependency scan reads a `shlibs.local`, written at build time, that
+names them with no dependency, and the Arch package lists Dolphin only as an
+optional dependency. Where KIO isn't installed the plugin is
 simply unused. When the package moves an AppImage's old menu copies aside
 (#2132), this plain service menu together with the package's plugin counts as
 the package offering both entries. The plugin must then be a regular file
@@ -447,8 +459,12 @@ as **Upload encrypted with put.gd**.
 `capabilities.uploadFiles.encryptedEntry` and
 `diagnostics.fileManagerMenu.encryptedEntry` report the state as
 `{shown, reason?, message?, provider?, profileId?}`. `reason` is
-`encrypt_unavailable` (with the provider's `message`) or `no_destination`, and
-diagnostics adds the marker's path.
+`encrypt_unavailable` (with the provider's `message`) or `no_destination`.
+`shown` is what put.gd intends. Diagnostics adds the marker's path, and an
+`error` (`file_manager_io`, with the path) when the marker couldn't be written
+or removed, for example because a folder or link stands in its place. The
+resident logs that failure and tries again at its next start or settings change,
+and until then the menus follow the marker as it is.
 
 ## Notifications without a tray
 
