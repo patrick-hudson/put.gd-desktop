@@ -6,6 +6,12 @@
 #include <QFormLayout>
 #include <QHBoxLayout>
 #include <QLineEdit>
+#include <QComboBox>
+#include <QLabel>
+#include <QPushButton>
+#include <QSignalSpy>
+#include <QStandardItemModel>
+#include <QVBoxLayout>
 // Secrets typed, stored or revealed in Settings never reach the configuration,
 // saved view state, a credential hint reply or another destination.
 class SettingsGui:public SettingsGuiFixture {
@@ -73,6 +79,75 @@ private slots:
   UiSessionFixture fixture(service,secrets);MainWindow window(fixture.session);window.navigate("destinations");window.show();
   auto* field=window.findChild<QLineEdit*>("encryptedLinksPassphrase");QVERIFY(field);field->setText("typed but never saved");
   window.settings()->close();QVERIFY(field->text().isEmpty());
+ }
+ // #2118: until Test upload and link passed the encrypted-page check, the card says beside the
+ // choice what On needs and why, and offers the test there; a destination whose uploads already
+ // worked (one set up before the check existed) is told it needs one more test. On comes in place
+ // once the check passes.
+ void encryptedLinksSayWhatOnNeeds_data(){
+  QTest::addColumn<QJsonObject>("status");QTest::addColumn<QString>("mode");QTest::addColumn<QString>("says");QTest::addColumn<bool>("available");
+  QTest::newRow("untested")<<QJsonObject{{"state","untested"},{"encrypt",QJsonObject{{"state","untested"}}}}<<"off"<<"Needs one passed Test upload and link first. The test checks that this destination opens encrypted pages in a browser over https."<<false;
+  QTest::newRow("tested before the check existed")<<QJsonObject{{"state","passed"},{"source","test"},{"encrypt",QJsonObject{{"state","untested"}}}}<<"off"<<"Needs one more Test upload and link. Uploads work here, but the test hasn't checked that encrypted pages open in a browser over https."<<false;
+  QTest::newRow("failed")<<QJsonObject{{"state","passed"},{"encrypt",QJsonObject{{"state","failed"},{"reason","The destination serves .html files as application/octet-stream, so browsers won't open an encrypted page."}}}}<<"off"<<"The destination serves .html files as application/octet-stream, so browsers won't open an encrypted page. Fix that, then select Test upload and link again."<<false;
+  QTest::newRow("changed since the test, encrypting by default")<<QJsonObject{{"state","untested"},{"encrypt",QJsonObject{{"state","changed"}}}}<<"on"<<"Needs Test upload and link again. The destination changed after its last encrypted-page check. Encrypted uploads here fail until it passes."<<false;
+  QTest::newRow("passed")<<QJsonObject{{"state","passed"},{"encrypt",QJsonObject{{"state","passed"}}}}<<"off"<<"Test upload and link showed this destination opens encrypted pages."<<true;
+ }
+ void encryptedLinksSayWhatOnNeeds(){
+  QFETCH(QJsonObject,status);QFETCH(QString,mode);QFETCH(QString,says);QFETCH(bool,available);
+  QWidget host;auto* form=new QFormLayout(&host);EncryptedLinksPanel panel(&host);
+  panel.build(form,[](QFormLayout* rows,const QString& label,QWidget* control,const QString&){auto* row=new QWidget;auto* line=new QVBoxLayout(row);line->addWidget(control);rows->addRow(label,row);return row;});
+  host.show();
+  const QJsonObject profile{{"id","p"},{"label","Team bucket"},{"provider","s3"},{"credentials",QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}},{"encrypt",QJsonObject{{"mode",mode}}}};
+  panel.load(profile,status,false,false);
+  auto* state=host.findChild<QLabel*>("encryptedLinksState");auto* test=host.findChild<QPushButton*>("encryptedLinksTest");auto* choice=host.findChild<QComboBox*>("encryptedLinksMode");
+  QVERIFY(state&&test&&choice);
+  // Shown beside the choice, without hovering, and read by a screen reader with the button.
+  QCOMPARE(state->text(),says);QVERIFY(state->isVisible());
+  QCOMPARE(test->isVisible(),!available);QCOMPARE(test->text(),QString("Test upload and link"));
+  if(!available)QCOMPARE(test->accessibleDescription(),says);
+  auto* model=qobject_cast<QStandardItemModel*>(choice->model());QVERIFY(model);
+  QCOMPARE(model->item(1)->isEnabled(),available||mode=="on");QCOMPARE(model->item(2)->isEnabled(),available);
+  auto view=panel.viewState();QCOMPARE(view["reason"].toString(),says);QCOMPARE(view["available"].toBool(),available);QCOMPARE(view["testOffered"].toBool(),!available);QCOMPARE(view["testEnabled"].toBool(),!available);
+  // An agent asking for On is told the same words a person reads.
+  QString refusal;
+  if(!available){QVERIFY(!panel.drive({{"action","mode"},{"mode","passphrase"}},&refusal));QCOMPARE(refusal,says);}
+  // The card's own Test upload and link asks for the destination's test, by click or by ui.encryptedLinks.
+  QSignalSpy asked(&panel,&EncryptedLinksPanel::testRequested);
+  if(available){QVERIFY(!panel.drive({{"action","test"}},&refusal));return;}
+  test->click();QCOMPARE(asked.size(),1);
+  QVERIFY(panel.drive({{"action","test"}},&refusal));QCOMPARE(asked.size(),2);
+  // While it runs, the card says so and can't start a second one.
+  panel.setTesting(true,false);QCOMPARE(state->text(),QString("Testing upload, link and encrypted page…"));QVERIFY(!test->isEnabled());
+  QVERIFY(!panel.drive({{"action","test"}},&refusal));QCOMPARE(refusal,QString("Test upload and link is already running."));
+  test->click();QCOMPARE(asked.size(),2);
+  // A pass reaches the card as a status refresh: On is offered in place and the test goes.
+  panel.setTesting(false,true);panel.load(profile,{{"state","passed"},{"encrypt",QJsonObject{{"state","passed"}}}},false,true);
+  QVERIFY(!test->isVisible());QVERIFY(model->item(1)->isEnabled());QVERIFY(model->item(2)->isEnabled());QVERIFY(choice->isEnabled());
+  QVERIFY(panel.drive({{"action","mode"},{"mode","on"}},&refusal));QCOMPARE(panel.mode(),QString("on"));
+ }
+ // #2118: in the window, the card follows the resident's check: untested until a check passes,
+ // changed once the connection differs from the one checked, and its Test button is the
+ // destination's own test.
+ void encryptedLinksCardFollowsTheCheck(){
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
+  UiSessionFixture fixture(service,secrets);DestinationStatus checks(dir.filePath("destination-status.json"),service);fixture.server.setDestinationStatus(&checks);
+  const auto saved=[&]{return service.document()["profiles"].toArray().first().toObject();};
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();auto* settings=window.settings();
+  const auto inspect=[&]{auto state=std::make_shared<QJsonObject>();settings->encryptedLinksCommand({{"action","inspect"}},[state](Error,QJsonObject s){*state=s;});(void)waitFor([&]{return !state->isEmpty();});return *state;};
+  QVERIFY(waitFor([&]{return inspect()["check"]=="untested";}));
+  auto state=inspect();QVERIFY(state["testOffered"].toBool());QVERIFY(!state["available"].toBool());QVERIFY(state["reason"].toString().startsWith("Needs one passed Test upload and link first."));
+  auto* card=window.findChild<QPushButton*>("encryptedLinksTest");auto* header=window.findChild<QPushButton*>("testDestination");QVERIFY(card&&header);QVERIFY(card->isVisibleTo(&window));
+  QSignalSpy started(header,&QPushButton::clicked);card->click();QCOMPARE(started.size(),1);
+  QVERIFY(waitFor([&]{return header->isEnabled();},10000));
+  checks.encryptChecked(saved()["id"].toString(),destinationcheck::fingerprint(saved()),true,{});fixture.session.invalidate();
+  QVERIFY(waitFor([&]{return inspect()["available"].toBool();}));QVERIFY(!inspect()["testOffered"].toBool());QVERIFY(!card->isVisibleTo(&window));
+  // The connection changes outside the window: the earlier pass no longer counts, and the card says why.
+  auto doc=service.document();auto profiles=doc["profiles"].toArray();auto profile=profiles.first().toObject();auto values=profile["settings"].toObject();values["bucket"]="another-bucket";profile["settings"]=values;profiles[0]=profile;doc["profiles"]=profiles;
+  QVERIFY(service.save(doc,service.revision()));fixture.session.invalidate();
+  QVERIFY(waitFor([&]{return inspect()["check"]=="changed";}));
+  state=inspect();QVERIFY(state["testOffered"].toBool());QVERIFY(!state["available"].toBool());QVERIFY(state["reason"].toString().startsWith("Needs Test upload and link again."));
+  checks.encryptChecked(saved()["id"].toString(),destinationcheck::fingerprint(saved()),false,"The link address isn't https.");fixture.session.invalidate();
+  QVERIFY(waitFor([&]{return inspect()["check"]=="failed";}));QCOMPARE(inspect()["reason"].toString(),QString("The link address isn't https. Fix that, then select Test upload and link again."));
  }
  // #2103: ui.encryptedLinks answers a mode change only once the file has it, so an agent's next
  // call (setup.storeEncryptPassphrase reads the saved mode) never races the save. Two Capture

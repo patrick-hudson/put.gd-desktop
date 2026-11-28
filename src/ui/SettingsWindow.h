@@ -36,6 +36,8 @@ public:
  void showCaptureSettings(const QStringList& affectedActions={});void showLocalCopySettings();
  // General → Updates (#293), scrolled into view.
  void showUpdates();
+ // #2118: the shown destination's Encrypted links card, its Test upload and link focused when offered.
+ void showEncryptedLinks();
  QWidget* destinationsPage()const{return destinationPage_;}
  void clearCredentialInputs();
  void retryProtonBrowser();

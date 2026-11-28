@@ -589,7 +589,9 @@ void TrayController::refreshMenu() {
  // The words the window's status band and output popup use (commandtext::outputSummary).
  const auto output=commandtext::outputSummary(settings.document);state.output=output.tray;state.outputRows=output.rows;
  state.delay=settings.captureDelaySeconds;state.hotkeysDelay=settings.captureDelayShortcuts;state.update=updateLabel_;
- state.encryptedRegion=operations_.encryptAvailableFor("region");
+ // #2118: the row also shows when the destination encrypts by default but its check no longer passes;
+ // selecting it then opens that destination's Encrypted links card instead of capturing.
+ {const auto encrypt=operations_.encryptStateFor("region");state.encryptedRegion=encrypt["available"].toBool()||(encrypt["checkRequired"].toBool()&&encrypt["setting"].toString("off")!="off");}
 #ifdef Q_OS_LINUX
  if(native_){native_->setMenu(state);return;}
 #endif
@@ -757,7 +759,13 @@ void TrayController::runCommand(const QString& action) {
  else if (action == "failed-uploads") acknowledgeFailures();
  else if (action == "edit-clipboard") invokeAction("edit", false, {{"source", "clipboard"}});
  // #2079: Capture region, encrypted whatever the destination's default; no dialog.
- else if (action == "region-encrypted") invokeAction("region", false, {{"encrypt", true}});
+ // #2118: until the destination passed its encrypted-page check, it opens that destination's
+ // Encrypted links card, which says why and offers Test upload and link; no capture starts.
+ else if (action == "region-encrypted") {
+  const auto encrypt = operations_.encryptStateFor("region");
+  if (encrypt["checkRequired"].toBool() && !encrypt["profileId"].toString().isEmpty()) showView("encryptedLinks:" + encrypt["profileId"].toString());
+  else invokeAction("region", false, {{"encrypt", true}});
+ }
  else if (action == "edit-file") showView("editFile");
  else if (action == "capture-settings") showView("captureSettings");
  else if (action == "settings") showSettings();

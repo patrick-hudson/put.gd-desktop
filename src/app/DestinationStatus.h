@@ -52,7 +52,9 @@ public:
  // like a test; the Encrypted links setting and per-upload Encrypt are available only while it
  // passed. reason is one sentence when it failed.
  void encryptChecked(const QString& profileId,const QString& fingerprint,bool passed,const QString& reason);
- // {state: passed|failed|untested, reason?} against the destination's current settings.
+ // {state: passed|failed|changed|untested, reason?} against the destination's current settings:
+ // changed when the check ran on an earlier connection (#2118), untested when it never ran on
+ // these keys (also every destination set up before the check existed).
  QJsonObject encryptCheck(const QString& profileId) const;
  // The same for a connection fingerprint the caller computed (an accepted upload's own
  // settings); safe from any thread.

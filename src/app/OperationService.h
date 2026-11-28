@@ -121,6 +121,14 @@ public:
  QJsonObject encryptOptions(const Operation&) const;
  // Whether an upload of this action, as Settings routes it now, could be encrypted (the tray's row).
  bool encryptAvailableFor(const QString& action) const;
+ // The same as encryptOptions, with the route's profileId; checkRequired when only the destination's
+ // encrypted-page check stands in the way (#2118).
+ QJsonObject encryptStateFor(const QString& action) const;
+ // #2118: an upload request that asks to encrypt (putgd-cli upload --encrypt, MCP encrypt true) on a
+ // destination whose encrypted-page check hasn't passed is refused before anything is captured or
+ // sent, saying why and what to do; empty otherwise. action is an action name, or the file
+ // manager's for upload.files with its profileId.
+ Error encryptRefusal(const QString& action,const QString& profileId={}) const;
  // Tests may point encrypting at another putgd-cli.
  void setEncryptHelperForTesting(const QString& path) {encryptHelper_=path;}
  // Tests may lower the encrypting size limits (64 MiB for one page, 2 GiB in all).

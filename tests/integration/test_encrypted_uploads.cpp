@@ -185,6 +185,26 @@ private slots:
   HistoryStore journal(f.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(op.id).items.first().uploadStatus,QString("uploaded"));
   const auto item=journal.operation(op.id).items.first();QVERIFY(item.encrypted());QCOMPARE(f.provider->count(),1);QVERIFY(f.provider->file(item.candidate).startsWith("<!doctype html>"));
  }
+ // #2118: an upload that can't encrypt because the destination's check hasn't passed names the
+ // destination, says why, and points at Test upload and link; one that asks to encrypt from
+ // putgd-cli or MCP is refused before anything is sent, and none is once the check passed.
+ void checkRequiredSaysWhyAndWhatToDo_data() {
+  QTest::addColumn<QString>("check");QTest::addColumn<QString>("says");
+  QTest::newRow("untested")<<"untested"<<"needs one passed Test upload and link before it can encrypt. It checks that encrypted pages open over https. Select it in Settings → Destinations.";
+  QTest::newRow("changed")<<"changed"<<"changed after its encrypted-page check. Select Test upload and link in Settings → Destinations again.";
+  QTest::newRow("failed")<<"failed"<<"didn't pass the encrypted-page check: Synthetic check refusal. Fix that, then select Test upload and link in Settings → Destinations.";
+ }
+ void checkRequiredSaysWhyAndWhatToDo() {
+  QFETCH(QString,check);QFETCH(QString,says);
+  Fixture f({{"mode","on"}});f.checkState=check;PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto label=f.settings->snapshot().profiles.value("test").value("label").toString();QVERIFY(!label.isEmpty());
+  const auto refusal=f.operations->encryptRefusal(QString::fromLatin1(OperationService::fileManagerAction),"test");
+  QCOMPARE(refusal.code,QString("encrypt_check_required"));QCOMPARE(refusal.message,label+" "+says+" Or upload it without encryption.");
+  const auto op=f.upload("must stay home","w.txt");
+  QCOMPARE(op.items.first().error.code,QString("encrypt_check_required"));QCOMPARE(op.items.first().error.message,label+" "+says+" Or turn off Encrypt to upload it as an ordinary link.");
+  QCOMPARE(f.provider->count(),0);
+  f.checkState="passed";QVERIFY(!f.operations->encryptRefusal(QString::fromLatin1(OperationService::fileManagerAction),"test"));
+ }
  // A private upload gets no link, and an encrypted file opens only from its link: it is refused
  // before encrypting, never sent, and the editor's toggle says why.
  void privateUploadIsNeverEncrypted() {

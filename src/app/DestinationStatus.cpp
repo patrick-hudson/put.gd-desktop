@@ -194,12 +194,15 @@ void DestinationStatus::encryptChecked(const QString& profileId,const QString& f
 }
 QJsonObject DestinationStatus::encryptCheckFor(const QString& profileId,const QString& fingerprint) const {
  std::lock_guard lock(encryptMutex_);const auto record=encryptRecords_.constFind(profileId);
- if(record==encryptRecords_.cend()||record->fingerprint!=fingerprint)return {{"state","untested"}};
+ if(record==encryptRecords_.cend())return {{"state","untested"}};
+ // #2118: a check of an earlier connection is said as such, so the call-out can say test again.
+ if(record->fingerprint!=fingerprint)return {{"state","changed"}};
  QJsonObject out{{"state",record->passed?"passed":"failed"}};if(!record->reason.isEmpty())out["reason"]=record->reason;return out;
 }
 QJsonObject DestinationStatus::encryptCheck(const QString& profileId) const {
  const auto profiles=settings_.snapshot().profiles;const auto found=profiles.constFind(profileId);const auto record=encryptRecords_.constFind(profileId);
- if(found==profiles.cend()||record==encryptRecords_.cend()||record->fingerprint!=destinationcheck::fingerprint(*found))return {{"state","untested"}};
+ if(found==profiles.cend()||record==encryptRecords_.cend())return {{"state","untested"}};
+ if(record->fingerprint!=destinationcheck::fingerprint(*found))return {{"state","changed"}};
  // The connection it checked, so a window editing the destination can tell it no longer applies.
  QJsonObject out{{"state",record->passed?"passed":"failed"},{"fingerprint",record->fingerprint}};if(!record->reason.isEmpty())out["reason"]=record->reason;return out;
 }

@@ -401,7 +401,11 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  cancel_=new QPushButton("Cancel",footer);cancel_->setObjectName("editorCancel");Ui::role(cancel_,"quiet");footerGrid_->addWidget(cancel_,2,3);
  // #2079: Encrypt, beside Upload: this upload only, starting from the destination's Encrypted links setting.
  encrypt_=new QPushButton("Encrypt",uploadGroup);encrypt_->setObjectName("editorEncrypt");encrypt_->setCheckable(true);encrypt_->setIcon(Ui::icon("lock"));encrypt_->setProperty("uiIconBase",QSize(20,20));encrypt_->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));Ui::role(encrypt_,"quiet");encrypt_->setAutoDefault(false);encrypt_->hide();uploadRow->addWidget(encrypt_);
- connect(encrypt_,&QPushButton::toggled,this,[this](bool on){encrypt_->setAccessibleDescription(on?QStringLiteral("On"):QStringLiteral("Off"));if(!encryptAvailable_&&!on)encrypt_->setEnabled(false);emit encryptToggled(on);});
+ // #2118: where encrypting isn't available, Encrypt stays clickable and a click shows why and what to
+ // do in the feedback line instead of turning on; a disabled button would say nothing.
+ connect(encrypt_,&QPushButton::toggled,this,[this](bool on){
+  if(on&&!encryptAvailable_){{const QSignalBlocker block(encrypt_);encrypt_->setChecked(false);}showEncryptReason();return;}
+  describeEncrypt();emit encryptToggled(on);});
  upload_=new QPushButton("Upload",uploadGroup);upload_->setObjectName("editorUpload");upload_->setIcon(Ui::icon("upload"));upload_->setProperty("uiIconBase",QSize(20,20));upload_->setIconSize(QSize(Ui::scaled(20),Ui::scaled(20)));Ui::role(upload_,"primary");upload_->setToolTip("Upload edited image (Ctrl+Enter)");upload_->setAutoDefault(false);uploadRow->addWidget(upload_);footerGrid_->addWidget(uploadGroup,2,4);
  root->addWidget(footer);
 
@@ -890,7 +894,7 @@ bool EditorWindow::exportForCopy(ExportDone done,std::function<QString(const QBy
 }
 void EditorWindow::showCopied(){
  copying_=false;lastCopy_={{"status","copied"}};
- for(auto* button:{save_,saveInstead_,chooseAnother_,upload_,cancel_,copyImage_})button->setEnabled(!busy_);encrypt_->setEnabled(!busy_&&(encryptAvailable_||encrypt_->isChecked()));
+ for(auto* button:{save_,saveInstead_,chooseAnother_,upload_,cancel_,copyImage_})button->setEnabled(!busy_);encrypt_->setEnabled(!busy_);
  // Brief confirmation on the button itself; its width holds still.
  copyImage_->setText("Image copied");copyImage_->setAccessibleName("Image copied");
  QAccessibleEvent event(copyImage_,QAccessible::NameChanged);QAccessible::updateAccessibility(&event);
@@ -899,7 +903,7 @@ void EditorWindow::showCopied(){
 }
 void EditorWindow::showCopyFailed(const QString& reason){
  copying_=false;lastCopy_={{"status","failed"},{"reason",reason}};++copyFeedback_;
- for(auto* button:{save_,saveInstead_,chooseAnother_,upload_,cancel_,copyImage_})button->setEnabled(!busy_);encrypt_->setEnabled(!busy_&&(encryptAvailable_||encrypt_->isChecked()));
+ for(auto* button:{save_,saveInstead_,chooseAnother_,upload_,cancel_,copyImage_})button->setEnabled(!busy_);encrypt_->setEnabled(!busy_);
  copyImage_->setText("Copy image");copyImage_->setAccessibleName("Copy image");
  setFailure("Couldn't copy the image: "+reason);
 }
@@ -991,8 +995,9 @@ void EditorWindow::setFailure(const QString& message){saveFeedbackTimer_->stop()
 void EditorWindow::showPreparationFailed(const QString& reason){
  // Nothing was handed off: the draft and its controls come back as they were.
  busy_=false;for(auto* widget:actionable())widget->setEnabled(true);unsetCursor();
- // Encrypt keeps its own rule: On only where the destination can encrypt, Off always.
- encrypt_->setEnabled(encryptAvailable_||encrypt_->isChecked());
+ // Encrypt keeps its own rule: On only where the destination can encrypt, Off always; a click
+ // where it can't says why (#2118).
+ encrypt_->setEnabled(true);
  message_->hide();destination_->setVisible(!destination_->text().isEmpty());
  setNotice(reason);refresh();keepEditing_->setFocus();
 }
@@ -1005,19 +1010,28 @@ void EditorWindow::setEncrypt(const QJsonObject& encrypt) {
  if(encrypt.isEmpty()){encrypt_->hide();return;}
  encryptAvailable_=encrypt.value("available").toBool();encryptReason_=encrypt.value("reason").toString();
  {const QSignalBlocker block(encrypt_);encrypt_->setChecked(encrypt.value("on").toBool());}
- // Off is always possible; On only where the destination passed its encrypted-link check.
- encrypt_->setEnabled(encryptAvailable_||encrypt_->isChecked());
+ // Off is always possible; On only where the destination passed its encrypted-page check, and a
+ // click where it didn't shows why (#2118).
+ encrypt_->setEnabled(true);
  encrypt_->setToolTip(encryptAvailable_?QStringLiteral("Encrypt this upload. Only someone with the full link can open it"):encryptReason_);
- encrypt_->setAccessibleDescription(encrypt_->isChecked()?QStringLiteral("On"):QStringLiteral("Off"));
+ describeEncrypt();
  encrypt_->show();
+}
+void EditorWindow::describeEncrypt() {
+ const auto state=encrypt_->isChecked()?QStringLiteral("On"):QStringLiteral("Off");
+ encrypt_->setAccessibleDescription(encryptAvailable_||encryptReason_.isEmpty()?state:state+". "+encryptReason_);
+}
+void EditorWindow::showEncryptReason() {
+ if(encryptReason_.isEmpty()||busy_||savingCopy_)return;
+ saveFeedbackTimer_->stop();message_->setText(encryptReason_);message_->setWordWrap(true);Ui::role(message_,"secondary");message_->show();placeDestination();saveFeedback_->announce(encryptReason_);
 }
 bool EditorWindow::setEncryptOn(bool on,QString* refusal) {
  if(encrypt_->isHidden()){*refusal=QStringLiteral("This edit has no upload destination.");return false;}
- if(on&&!encryptAvailable_){*refusal=encryptReason_;return false;}
+ if(on&&!encryptAvailable_){*refusal=encryptReason_;showEncryptReason();return false;}
  // Asking for the state it already has changes nothing and succeeds.
  if(on==encrypt_->isChecked())return true;
  if(!encrypt_->isEnabled()){*refusal=QStringLiteral("Encrypt can't be changed right now.");return false;}
- encrypt_->setChecked(on);if(!encryptAvailable_)encrypt_->setEnabled(false);return true;
+ encrypt_->setChecked(on);return true;
 }
 QJsonObject EditorWindow::encryptState() const {
  QJsonObject out{{"shown",!encrypt_->isHidden()},{"on",encrypt_->isChecked()},{"available",encryptAvailable_},{"enabled",encrypt_->isEnabled()}};

@@ -200,9 +200,9 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  }
  // #1872: the Nextcloud and WebDAV forms in the open Destinations page, edited and signed in as a
  // user does. Settings values and button presses only, never a credential.
- // #2079: Destinations → Encrypted links as a user drives it: inspect, mode {mode} or unlock.
+ // #2079: Destinations → Encrypted links as a user drives it: inspect, mode {mode}, unlock or (#2118) test.
  if(method=="ui.encryptedLinks") {
-  if(!fields(p,{"action"},{"profileId","mode"})||!QStringList{"inspect","mode","unlock"}.contains(p["action"].toString())||(p["action"]=="mode")!=p.contains("mode")||(p.contains("mode")&&!QStringList{"off","on","passphrase"}.contains(p["mode"].toString()))||(p.contains("profileId")&&!string(p,"profileId",64))){reply(invalid(),{});return;}
+  if(!fields(p,{"action"},{"profileId","mode"})||!QStringList{"inspect","mode","unlock","test"}.contains(p["action"].toString())||(p["action"]=="mode")!=p.contains("mode")||(p.contains("mode")&&!QStringList{"off","on","passphrase"}.contains(p["mode"].toString()))||(p.contains("profileId")&&!string(p,"profileId",64))){reply(invalid(),{});return;}
   if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
   uiCommand_("encryptedLinks",p,std::move(reply));return;
  }
@@ -223,6 +223,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  }
  if(method=="action.invoke") {
   if(!fields(p,{"action"},{"source","path","mode","delaySeconds","sensitiveText","captureStyle","person","encrypt"})||(p.contains("encrypt")&&!p["encrypt"].isBool())||(p.contains("person")&&!string(p,"person",128))||(p.contains("captureStyle")&&(p["action"]!="edit"||!p["captureStyle"].isBool()))||!string(p,"action")||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))||(p.contains("mode")&&(p["action"]!="record"||!string(p,"mode",16)))){reply(invalid(),{});return;}
+  // #2118: encrypt true where the destination's encrypted-page check hasn't passed captures nothing.
+  if(p["encrypt"].toBool())if(auto refusal=operations_.encryptRefusal(p["action"].toString())){reply(refusal,{});return;}
   auto options=p;options.remove("action");options.remove("person");operations_.invoke(p["action"].toString(),reply,options,!fromPerson(p));return;
  }
  // "Upload with put.gd" from a file manager (#1105): absolute paths only; the
@@ -237,6 +239,8 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   QStringList paths;for(const auto& value:p["paths"].toArray()){if(!value.isString()||value.toString().isEmpty()||value.toString().size()>4096||!QDir::isAbsolutePath(value.toString())){reply(invalid(),{});return;}paths.append(value.toString());}
   // #1804: put.gd's own menu entry (it names its installation) asks a person; the CLI and MCP get operation.decide.
   const auto sensitive=p["sensitiveText"].toString(p.contains("installation")?QStringLiteral("prompt"):QStringLiteral("report"));
+  // #2118: putgd-cli upload --encrypt where the encrypted-page check hasn't passed sends nothing and says why.
+  if(encrypt["enabled"].toBool())if(auto refusal=operations_.encryptRefusal(QString::fromLatin1(OperationService::fileManagerAction),p["profileId"].toString())){reply(refusal,{});return;}
   operations_.uploadFiles(paths,p["profileId"].toString(),p["installation"].toString(),std::move(reply),sensitive,encrypt);return;
  }
  if(method=="editor.open") {
