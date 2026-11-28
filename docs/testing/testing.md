@@ -359,9 +359,10 @@ design is in [scrolling capture](../design/scroll-capture.md).
   kept up. On every build, a fallback must end at 30 frames a second, give a reason past its
   threshold (the source sent at most 48.0 frames a second as the reason rounds it, or the loop missed
   25 to 100% of the frames), and report more than 0 and at most 62 delivered. That is enough on a
-  sanitizer build. On any other build the times of the threads that fell behind must also show a busy
-  host (#2099). Those are the loop for a loop fallback, and the source's grab and copy threads for a
-  source fallback:
+  sanitizer build. On any other build the times of the threads that fell behind, over the two pace
+  windows that made the source go down (`fallbackWindows`, not the whole session), must also show a
+  busy host (#2099). Those are the loop for a loop fallback, and the source's grab and copy threads
+  for a source fallback:
   - each of them used less CPU a frame than a 60 fps interval. The loop gets twice that in
     unoptimized code (the dev preset); the grab and copy threads run GStreamer's optimized code and
     take under 1 ms a frame in any build;
