@@ -606,7 +606,7 @@ ask for encryption says so in plain words with the next step (#2118). A disabled
   hasn't passed the encrypted-page check, is refused with `encrypt_check_required` before
   anything is captured or sent (`OperationService::encryptRefusal`). The order: the request's
   own parameter validation first, then another installation's `installation_mismatch` (for
-  `upload.files`), or an open editor or running recording (for `action.invoke`); then this
+  `upload.files`), or, for the `edit` action only, an open editor or a running recording; then this
   refusal; then the later admission checks, such as the files' existence and size, the queue
   limit and an output being chosen. A destination whose own setting encrypts still fails per
   item, so **Retry upload** works once the check passes.
