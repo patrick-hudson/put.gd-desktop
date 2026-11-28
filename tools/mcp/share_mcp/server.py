@@ -110,6 +110,8 @@ DESKTOP_SETUP_RECHECK_TIMEOUT = 100
 TEXT_SOURCES = {'region', 'window', 'monitor', 'desktop', 'clipboard', 'file', 'history'}
 TEXT_SCREEN_SOURCES = {'region', 'window', 'monitor', 'desktop'}
 TEXT_LANGUAGE = re.compile(r'[a-z]{3,4}(_[a-z0-9]+){0,2}')
+# #2134: a false-alarm report's name, as the resident writes it.
+FALSE_ALARM_NAME = re.compile(r'putgd-false-alarm-\d{8}T\d{9}Z-[0-9a-f]{8}')
 REDACT_CATEGORIES = {'email', 'phone', 'ip', 'card', 'key', 'name', 'list'}
 # Quick redact terms and patterns (#1618): the editor checks each pattern compiles.
 REDACT_TERMS_MAX, REDACT_TERM_LENGTH = 200, 100
@@ -1060,8 +1062,8 @@ def create_server(adapter: CliAdapter) -> MCPServer:
                                         include_names: bool = False, output: str | None = None,
                                         preview: bool = False, notify: bool = False,
                                         upload: bool = False, profile_id: str | None = None,
-                                        copy_link: bool = False, include_false_alarm_reports: bool = True) -> Json:
-        """Save a diagnostics package (.zip) locally for a maintainer: manifest with SHA-256s, environment, diagnostics, redacted configuration, failed/partial/interrupted operations with HTTP/provider codes and S3 request IDs, coredumpctl stack traces where available, and log records, at most 20 MiB. operation_id packages one operation and the log around it; otherwise since (1m-365d, default 7d) picks failures and logs. File names, object keys and URLs are hashed unless include_names; outside the false-alarm reports described below, credentials, tokens, signed URLs, file bytes, clipboard and the raw history database are never included; a false-alarm report holds a checked image, its covered copy and the text recognized on it, which show whatever was on screen, credentials and links included. output is an absolute .zip path (never overwritten) or folder; the default <archive>/diagnostics keeps only the newest 10 packages for 30 days. The local copy is always saved first. preview returns the files, redaction, operations, log record count and folder without writing or uploading anything; notify makes the resident show a "diagnostics saved" notification with Show in folder. upload then sends the saved package to a working destination (profile_id, default the capture destination; skipped with uploadError when its last upload failed with a credential or configuration error or Test connection fails) as putgd-diagnostics-<uuid>.zip, recorded in history as a diagnostics upload; on a public-read bucket anyone with the link can download it, and a Proton Drive link expires after 7 days. copy_link also copies the link. False-alarm reports (#2134) in the window (or of that operation) are included whole, newest first, up to 64 MiB on top of the rest, under false-alarms/<name>/: they hold real screen content (the original image, the covered image and the recognized text of each finding), so include_false_alarm_reports false leaves them out; falseAlarmReports in the reply and the preview counts what is included and omitted. Returns path, bytes, sha256, counts, and with upload: upload (destination, warning, operationId, historyId), link or uploadError."""
+                                        copy_link: bool = False, include_false_alarm_reports: bool | list[str] = True) -> Json:
+        """Save a diagnostics package (.zip) locally for a maintainer: manifest with SHA-256s, environment, diagnostics, redacted configuration, failed/partial/interrupted operations with HTTP/provider codes and S3 request IDs, coredumpctl stack traces where available, and log records, at most 20 MiB. operation_id packages one operation and the log around it; otherwise since (1m-365d, default 7d) picks failures and logs. File names, object keys and URLs are hashed unless include_names; outside the false-alarm reports described below, credentials, tokens, signed URLs, file bytes, clipboard and the raw history database are never included; a false-alarm report holds a checked image, its covered copy and the text recognized on it, which show whatever was on screen, credentials and links included. output is an absolute .zip path (never overwritten) or folder; the default <archive>/diagnostics keeps only the newest 10 packages for 30 days. The local copy is always saved first. preview returns the files, redaction, operations, log record count and folder without writing or uploading anything; notify makes the resident show a "diagnostics saved" notification with Show in folder. upload then sends the saved package to a working destination (profile_id, default the capture destination; skipped with uploadError when its last upload failed with a credential or configuration error or Test connection fails) as putgd-diagnostics-<uuid>.zip, recorded in history as a diagnostics upload; on a public-read bucket anyone with the link can download it, and a Proton Drive link expires after 7 days. copy_link also copies the link. False-alarm reports (#2134) in the window (or of that operation) are included whole, newest first, up to 64 MiB on top of the rest, under false-alarms/<name>/: they hold real screen content (the original image, the covered image and the recognized text of each finding), so include_false_alarm_reports false leaves them out, and a list of report names (as list_false_alarm_reports or a preview's falseAlarmReports.names give them) holds just those, an empty list none; falseAlarmReports in the reply and the preview counts what is included and omitted. Returns path, bytes, sha256, counts, and with upload: upload (destination, warning, operationId, historyId), link or uploadError."""
         if operation_id is not None and not identifier(operation_id, 128):
             return invalid()
         if since is not None and not (isinstance(since, str) and 2 <= len(since) <= 8):
@@ -1072,7 +1074,11 @@ def create_server(adapter: CliAdapter) -> MCPServer:
             return invalid()
         if type(upload) is not bool or type(copy_link) is not bool or (profile_id is not None and not identifier(profile_id, 64)):
             return invalid()
-        if type(include_false_alarm_reports) is not bool:
+        if type(include_false_alarm_reports) is list:
+            if (len(include_false_alarm_reports) > 10000 or
+                    not all(type(name) is str and FALSE_ALARM_NAME.fullmatch(name) for name in include_false_alarm_reports)):
+                return invalid()
+        elif type(include_false_alarm_reports) is not bool:
             return invalid()
         # A preview writes and uploads nothing.
         if (profile_id is not None or copy_link) and not upload or (preview and upload):
@@ -1090,7 +1096,9 @@ def create_server(adapter: CliAdapter) -> MCPServer:
             params['preview'] = True
         if notify:
             params['notify'] = True
-        if not include_false_alarm_reports:
+        if type(include_false_alarm_reports) is list:
+            params['falseAlarmReports'] = list(include_false_alarm_reports)
+        elif not include_false_alarm_reports:
             params['falseAlarmReports'] = False
         if upload:
             params['upload'] = True

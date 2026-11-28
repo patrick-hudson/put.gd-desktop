@@ -255,6 +255,9 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     return reply.structured_content
                 for name, args in [
                     ('perform_action', {'action': 'clipboard', 'shell': 'extra'}),
+                    # #2134: only report names put.gd writes.
+                    ('create_diagnostics_bundle', {'include_false_alarm_reports': ['../escape']}),
+                    ('create_diagnostics_bundle', {'include_false_alarm_reports': [7]}),
                     ('delete_history_uploads', {'ids': ['synthetic-entry'], 'acknowledgement': False}),
                 ]:
                     rejected = await call(name, args)
@@ -298,6 +301,9 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     ('report_false_alarm', {'id': 'synthetic-operation'}, 'operation.reportFalseAlarm', {'id': 'synthetic-operation'}),
                     ('list_false_alarm_reports', {}, 'diagnostics.falseAlarms', {}),
                     ('create_diagnostics_bundle', {'preview': True, 'include_false_alarm_reports': False}, 'diagnostics.bundle', {'preview': True, 'falseAlarmReports': False}),
+                    ('create_diagnostics_bundle', {'include_false_alarm_reports': ['putgd-false-alarm-20261128T045729017Z-9b5224a9']},
+                     'diagnostics.bundle', {'falseAlarmReports': ['putgd-false-alarm-20261128T045729017Z-9b5224a9']}),
+                    ('create_diagnostics_bundle', {'include_false_alarm_reports': []}, 'diagnostics.bundle', {'falseAlarmReports': []}),
                     ('copy_history_text', {'id': 'synthetic-entry', 'keep_result': True}, 'history.copyText', {'id': 'synthetic-entry', 'keepResult': True}),
                     ('history_qr_code', {'id': 'synthetic-entry', 'mode': 'save', 'path': '/tmp/synthetic-qr.png', 'overwrite': True},
                      'history.qr', {'id': 'synthetic-entry', 'mode': 'save', 'path': '/tmp/synthetic-qr.png', 'overwrite': True}),
