@@ -295,7 +295,9 @@ private slots:
   {BundleRequest untouched;untouched.output=dir_.filePath("false-alarms-default.zip");
    const auto plain=build(bundle,untouched,error);QVERIFY2(!error,qPrintable(error.message));
    QCOMPARE(plain["falseAlarmReports"].toObject()["included"].toInt(),0);QCOMPARE(plain["falseAlarmReports"].toObject()["requested"].toBool(),false);
-   const auto held=unzip(plain["path"].toString());for(auto it=held.begin();it!=held.end();++it)QVERIFY2(!it.key().startsWith("false-alarms/"),qPrintable(it.key()));
+   // The archive opened and is a package, so an unreadable one can't pass for one without reports.
+   const auto held=unzip(plain["path"].toString());QVERIFY(held.contains("manifest.json"));QVERIFY(held.contains("logs/putgd.jsonl"));
+   for(auto it=held.begin();it!=held.end();++it)QVERIFY2(!it.key().startsWith("false-alarms/"),qPrintable(it.key()));
    QVERIFY(!held["manifest.json"].toString().contains(newest.name));}
   // A preview counts them without reading them.
   request.preview=true;request.output.clear();

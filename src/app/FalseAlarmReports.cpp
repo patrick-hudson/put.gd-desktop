@@ -84,6 +84,9 @@ QStringList partialFolders(const QString& directory){
  return out;
 }
 struct Entry {QString name,path;QDateTime created;qint64 bytes=0;};
+// What a report folder still holds on disk, by its known files: after a removal that failed part-way, the bytes
+// left, so retention's total stays true.
+qint64 measured(const QString& path){qint64 bytes=0;for(const auto& file:reportFiles()){const QFileInfo part(QDir(path).filePath(file));if(part.isFile()&&!part.isSymLink())bytes+=part.size();}return bytes;}
 QList<Entry> entries(const QString& directory){
  QList<Entry> out;
  QDir dir(directory);
@@ -267,11 +270,11 @@ FalseAlarmReports::Saved FalseAlarmReports::save(const QByteArray& original,cons
   const int days=days_.load();const qint64 budget=bytes_.load();int removed=0;
   auto list=entries(directory_);
   // A report counts as removed only once its folder is gone.
-  const auto drop=[&](const Entry& entry){bool gone=false;removeReport(entry.path,&gone);if(gone)++removed;return gone;};
+  const auto drop=[&](Entry& entry){bool gone=false;removeReport(entry.path,&gone);if(gone)++removed;else entry.bytes=measured(entry.path);return gone;};
   // One that couldn't be removed stays in the list, so its bytes still count against logBytes below.
   for(auto it=list.begin();it!=list.end();){if(it->name!=name&&it->created<now.addDays(-days)&&drop(*it))it=list.erase(it);else ++it;}
   qint64 total=0;for(const auto& entry:list)total+=entry.bytes;
-  for(auto it=list.begin();it!=list.end()&&total>budget;){if(it->name==name){++it;continue;}if(drop(*it))total-=it->bytes;it=list.erase(it);}
+  for(auto it=list.begin();it!=list.end()&&total>budget;){if(it->name==name){++it;continue;}const auto before=it->bytes;total-=drop(*it)?before:before-it->bytes;it=list.erase(it);}
   return removed;
  }();
  return saved;
@@ -284,11 +287,11 @@ int FalseAlarmReports::prune(const QDateTime& now,const QString& keep) const {
  // The newest report always stays, like the log file being written.
  const auto newest=keep.isEmpty()&&!list.isEmpty()?list.last().name:keep;
  // A report counts as removed only once its folder is gone.
- const auto drop=[&](const Entry& entry){bool gone=false;removeReport(entry.path,&gone);if(gone)++removed;return gone;};
+ const auto drop=[&](Entry& entry){bool gone=false;removeReport(entry.path,&gone);if(gone)++removed;else entry.bytes=measured(entry.path);return gone;};
  // One that couldn't be removed stays in the list, so its bytes still count against logBytes below.
  for(auto it=list.begin();it!=list.end();){if(it->name!=newest&&it->created<now.addDays(-days)&&drop(*it))it=list.erase(it);else ++it;}
  qint64 total=0;for(const auto& entry:list)total+=entry.bytes;
- for(auto it=list.begin();it!=list.end()&&total>budget;){if(it->name==newest){++it;continue;}if(drop(*it))total-=it->bytes;it=list.erase(it);}
+ for(auto it=list.begin();it!=list.end()&&total>budget;){if(it->name==newest){++it;continue;}const auto before=it->bytes;total-=drop(*it)?before:before-it->bytes;it=list.erase(it);}
  // A hidden folder left by a write that never finished (a crash), after an hour.
  for(const auto& path:partialFolders(directory_))if(QFileInfo(path).lastModified().toUTC()<now.addSecs(-3600))removeReport(path);
  return removed;
