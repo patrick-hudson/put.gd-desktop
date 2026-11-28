@@ -205,6 +205,15 @@ private slots:
   QCOMPARE(f.provider->count(),0);
   f.checkState="passed";QVERIFY(!f.operations->encryptRefusal(QString::fromLatin1(OperationService::fileManagerAction),"test"));
  }
+ // Another installation's file-manager entry is refused as installation_mismatch before anything
+ // about this resident's destinations, so it never learns or opens them.
+ void anotherInstallationIsRefusedBeforeTheCheck() {
+  Fixture f({{"mode","on"}});f.checkState="untested";f.operations->setInstallation("appimage");PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto files=QString::fromLatin1(OperationService::fileManagerAction);
+  QCOMPARE(f.operations->encryptRefusal(files,"test","system").code,QString("installation_mismatch"));
+  QCOMPARE(f.operations->encryptRefusal(files,"test","appimage").code,QString("encrypt_check_required"));
+  QCOMPARE(f.operations->encryptRefusal(files,"test").code,QString("encrypt_check_required"));
+ }
  // A private upload gets no link, and an encrypted file opens only from its link: it is refused
  // before encrypting, never sent, and the editor's toggle says why.
  void privateUploadIsNeverEncrypted() {

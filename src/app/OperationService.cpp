@@ -1379,9 +1379,12 @@ void OperationService::pump() {
  while(!queue_.isEmpty()&&running_<queue_.head().op.settings.limits.concurrentUploads&&!stopping_) {auto job=queue_.dequeue();++running_;if(!job.op.destination.profileId.isEmpty())emit uploadStarting(job.op);background([this,job=std::move(job)](Error&) mutable {return run(std::move(job)).toJson();},[this](Error,QJsonObject doc) {--running_;auto op=Operation::fromJson(doc);finish(op);pump();});}
 }
 bool OperationService::encryptAvailableFor(const QString& action) const {return encryptStateFor(action)["available"].toBool();}
-Error OperationService::encryptRefusal(const QString& action,const QString& profileId) const {
+Error OperationService::encryptRefusal(const QString& action,const QString& profileId,const QString& installation) const {
  QJsonObject state;
  if(action==fileManagerAction) {
+  // Another installation's menu entry is refused for that first, as uploadFiles refuses it,
+  // whatever this resident's destinations would say.
+  if(!installation.isEmpty())if(auto error=FileUploads::matchInstallation(installation,installation_))return error;
   // The route upload.files takes: its profileId, else the file manager's destination.
   Operation op;op.action=fileManagerAction;const auto snapshot=settings_.snapshot();const auto route=FileUploads::resolve(snapshot,profileId);if(route.error)return {};
   op.settings=Settings::fromValidated(FileUploads::routedDocument(snapshot,route));const auto profile=snapshot.profiles.value(route.profileId);

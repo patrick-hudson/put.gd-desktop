@@ -247,7 +247,7 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   // #1804: put.gd's own menu entry (it names its installation) asks a person; the CLI and MCP get operation.decide.
   const auto sensitive=p["sensitiveText"].toString(p.contains("installation")?QStringLiteral("prompt"):QStringLiteral("report"));
   // #2118: putgd-cli upload --encrypt where the encrypted-page check hasn't passed sends nothing and says why.
-  if(encrypt["enabled"].toBool())if(auto refusal=operations_.encryptRefusal(QString::fromLatin1(OperationService::fileManagerAction),p["profileId"].toString())){reply(refusal,{});return;}
+  if(encrypt["enabled"].toBool())if(auto refusal=operations_.encryptRefusal(QString::fromLatin1(OperationService::fileManagerAction),p["profileId"].toString(),p["installation"].toString())){reply(refusal,{});return;}
   operations_.uploadFiles(paths,p["profileId"].toString(),p["installation"].toString(),std::move(reply),sensitive,encrypt);return;
  }
  if(method=="editor.open") {
