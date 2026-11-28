@@ -284,8 +284,11 @@ Encryption sits in the shared pipeline between the immutable artifact and naming
    the destination can encrypt (`available`); Off always is. Asking for the state the toggle
    already has succeeds and changes nothing, even while the toggle is disabled. Turning it on
    where encryption is unavailable answers `encrypt_unavailable` with the reason before any other
-   refusal, an export in review included. After a failed upload preparation the editor gives
-   back its controls with the same rule, so Encrypt stays disabled where it can't be turned on.
+   refusal, an export in review included. Where encryption is unavailable the toggle stays
+   clickable (#2118): a click leaves it off and shows the reason in the editor's message line
+   or the review's status band, and its tooltip and accessible description carry the reason
+   too. A disabled toggle would say nothing. After a failed upload preparation the editor gives
+   back its controls with the same rule.
    Recording review shows the toggle whenever the capture's route is an upload with a
    destination (`uploadReviewOptions`), whatever that destination is called, and disables it
    while an export runs. `recording.upload`'s own `encrypt` decides that upload alone and
@@ -341,7 +344,7 @@ Encryption sits in the shared pipeline between the immutable artifact and naming
    The order is `encrypt_unavailable`, `encrypt_needs_link`, `encrypt_check_required`,
    `encrypt_passphrase_missing`, `encrypt_passphrase_locked`, then the size refusals. The editor's
    and review's **Encrypt** toggle (`OperationService::encryptOptions`) is offered as On only when
-   none of the first three applies, and its tooltip gives the first that does. `operation.encrypt`
+   none of the first three applies, and a click on it shows the first that does. `operation.encrypt`
    failures are written to the error log under the `upload` kind.
 
    An encrypted request reaches its destination only once its file is encrypted. It skips the
@@ -512,10 +515,12 @@ credentials stored for the destination, or for one that shares its keychain entr
 records nothing and is reported `untested` with "New credentials were stored during the
 check. Test again." A cancelled check records nothing. A cancel stops the page fetch at once and still deletes the
 test page. Each
-entry of `destinationStatus` carries it as `encrypt` (`{state: passed|failed|untested, reason?,
-fingerprint?}`). `fingerprint` is the connection a passed or failed check ran on. Settings
-compares it with the destination as edited, so an edited connection shows `untested` and
-**On** isn't offered until a Test of that connection passes.
+entry of `destinationStatus` carries it as `encrypt` (`{state: passed|failed|changed|untested,
+reason?, fingerprint?}`). `fingerprint` is the connection a passed or failed check ran on.
+`changed` means a check ran on an earlier connection of this destination; `untested` means none
+ran on its current keys, which includes every destination set up before the check existed
+(#2118). Settings compares the fingerprint with the destination as edited, so an edited
+connection shows `changed` and **On** isn't offered until a Test of that connection passes.
 
 ## Where it works
 
@@ -551,18 +556,49 @@ A destination's default is its profile's `encrypt` key, `{mode, passphraseCreden
 ([configuration](configuration.md#encrypted-links-setting)). Settings → Destinations shows it as
 **Encrypted links**: **Off**, **On** or **On with a passphrase**. Changing it affects new uploads
 only. **On** stays offered only after a passed check of the connection as shown; **Off**
-always is. Editing any connection setting marks the check untested in the window until the
+always is. Editing any connection setting marks the check changed in the window until the
 edited destination passes a Test. A typed passphrase is cleared once Settings accepts the
 store, stays typed when it is refused, and is cleared with the other typed secrets when
 Settings closes. Saving a destination whose **Encrypted links** mode didn't change leaves its
 `encrypt` object exactly as saved, `passphraseCredentials` included. Agents drive it with
-`ui.encryptedLinks` (MCP `drive_encrypted_links`): `inspect`, `mode` and `unlock`. Its `available` says
+`ui.encryptedLinks` (MCP `drive_encrypted_links`): `inspect`, `mode`, `unlock` and `test`. Its `available` says
 whether encryption can be turned on there, `modeEnabled` whether the choice can change and
 `saved` whether the file has the mode shown, with nothing for this
 destination still waiting to save. `mode` answers only once the file has the new
 mode and a fresh read from the resident confirms it, or with `settings_not_saved` when it isn't
 saved or can't be confirmed (#2103): until then an agent's next
 `setup.storeEncryptPassphrase` could read the old mode. A passphrase is typed in the window only.
+
+### Saying what On needs
+
+**On** waits for one passed Test, and every place that can ask for encryption says so in plain
+words with the next step (#2118). A disabled choice with nothing beside it read as broken.
+
+- **Settings.** Under the choice, the **Encrypted links** card says what **On** needs and why,
+  and shows its own **Test upload and link**, which starts the destination's own test as the
+  header button does. While it runs the card says "Testing upload, link and encrypted page…".
+  When the check passes, the card's status refresh offers **On** in place and the button goes.
+  The words depend on the check: never run ("Needs one passed Test upload and link first. The
+  test checks that this destination opens encrypted pages in a browser over https."), never run
+  on a destination whose uploads already passed, such as one set up before the check existed
+  ("Needs one more Test upload and link. Uploads work here, but the test hasn't checked that
+  encrypted pages open in a browser over https."), changed ("Needs Test upload and link again.
+  The destination changed after its last encrypted-page check."), and failed (the check's
+  reason, then "Fix that, then select Test upload and link again."). With **On** saved and the
+  check no longer passing, the card adds "Encrypted uploads here fail until it passes."
+  `ui.encryptedLinks` answers the card's words as `reason` and drives its button with `test`.
+- **Per upload.** `OperationService::encryptOptions` words the reason for the editor, recording
+  review and the upload's own failure. It names the destination and points at **Test upload and
+  link** in Settings → Destinations, with the check's reason when it failed.
+- **Requests.** `upload.files` (`putgd-cli upload --encrypt`) and `action.invoke` with `encrypt`
+  true are refused with `encrypt_check_required` before anything is captured or sent
+  (`OperationService::encryptRefusal`). A destination whose own setting encrypts still fails per
+  item, so **Retry upload** works once the check passes.
+- **Tray.** **Capture region (encrypted)** stays where it is. It shows when the region's
+  destination can encrypt, and also when that destination encrypts by default but its check
+  no longer passes. Selecting it then opens Settings at that destination's **Encrypted links**
+  card, with **Test upload and link** focused, and captures nothing. No new tray row and no
+  dialog.
 
 The passphrase is kept like any other secret, in its own keychain entry or for this session
 only, never in `config.json` ([credentials](credentials.md)). `setup.storeEncryptPassphrase`
@@ -621,7 +657,13 @@ has a passphrase and the page size, and the Test check's HTTP status, content ty
   `cancelLeavesAFileThatTookAnOutputPath`); a Cancel during the Test's check cancels the Test
   and keeps the connection's pass (`cancelDuringTheEncryptCheckCancelsTheTest`);
   Forget key leaves no link, and a writer that
-  read the operation earlier can't put the key back.
+  read the operation earlier can't put the key back; an upload the check stops names the
+  destination and the next step, and a request that asks to encrypt there is refused before it
+  sends (`checkRequiredSaysWhyAndWhatToDo`).
+- `tests/gui/test_settings_credentials.cpp`: the **Encrypted links** card's words, Test button
+  and choice for untested, tested before the check existed, failed, changed and passed
+  (`encryptedLinksSayWhatOnNeeds`), and the card following the resident's check in the window
+  (`encryptedLinksCardFollowsTheCheck`).
 - `tests/encrypt/browser_vectors.py` serves the pinned viewer on 127.0.0.1 and opens
   `tests/encrypt/harness.html` in headless Firefox and Chromium. WebCrypto encrypts every vector to
   the same bytes as C++, and each page opens as a recipient would: one page and two files, a
