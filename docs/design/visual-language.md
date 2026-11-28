@@ -156,14 +156,16 @@ November (#2117), when new code built its dropdowns straight from Qt.
   why in a `wheel-input:` comment.
 
 `tests/ci/test_wheel_input.py` reads `src/` and fails on four things:
+
 - a Qt control of these kinds constructed directly;
 - `Ui::wheelSafe<QComboBox>()`, where `Ui::choiceBox()` belongs;
 - a class derived from one of these controls that doesn't guard itself;
 - a `wheelEvent` override.
 
 A `wheel-input:` comment on the same line marks a deliberate exception to any of
-them. It reads source text, so it can't catch every way to build a control;
-review still matters. Two widget tests send wheel events through Qt's normal event delivery:
+them. The test reads source text, so it can't catch every way to build a
+control, and review still matters. Two widget tests send wheel events through
+Qt's normal event delivery:
 
 - **Settings:** the values don't change over the guarded controls, and the page
   scrolls over **Encrypted links**.
