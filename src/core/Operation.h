@@ -68,6 +68,9 @@ struct Operation {
  QJsonObject style;
  // #2079: the upload's own Encrypt choice ({requested: bool}); empty: the destination's Encrypted links setting.
  QJsonObject encrypt;
+ // #2127: the automatic copy's links ({links, copied, encrypted}): how many it was to copy, how many the
+ // successful clipboard commits held, and whether those were all encrypted links. Empty before it is recorded.
+ QJsonObject copy;
  std::optional<int> requestTimeoutMs; // Explicit retry budget, separate from immutable settings.
  Error error;
  QJsonObject toJson() const;

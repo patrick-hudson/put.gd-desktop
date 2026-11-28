@@ -4,6 +4,10 @@
 #include <QPointer>
 
 namespace putgd {
+namespace {
+// An encrypted item's link carries its key after "#v1." (#2079).
+bool encryptedLink(const QString& url) {return url.contains(QStringLiteral("#v1."));}
+}
 struct OperationService::PendingCopy {
  std::function<CopyPayload()> payload;
  std::function<void(Error)> reply;
@@ -26,6 +30,8 @@ struct OperationService::UploadCopy {
  // #2127: one request with several files (a folder uploaded file by file, a multi-file
  // selection) copies its links once, as one ordered list, when it finishes.
  bool joined=false;
+ // What the successful clipboard commits held, for the notice (#2127).
+ int copiedLinks=0;bool copiedEncrypted=true;
  // Why the automatic copy was refused, for the log record (copyGuard).
  QJsonObject suppression;
  Error error;
@@ -128,9 +134,9 @@ void OperationService::queueLinkCopy(const std::shared_ptr<UploadCopy>& state,co
  ++state->pending;
  auto payload=std::make_shared<CopyPayload>();payload->kind="text";
  const auto path=databasePath();const auto id=state->operation.id;
- queueCopy([payload]{return *payload;},[this,state,index](Error error) {
+ queueCopy([payload]{return *payload;},[this,state,index,payload](Error error) {
   --state->pending;
-  if(!error)state->copied=true;
+  if(!error){state->copied=true;++state->copiedLinks;state->copiedEncrypted&=encryptedLink(payload->text);}
   else if(error.code=="copy_suppressed"){state->suppressed=true;if(state->suppression.isEmpty())state->suppression=nativeCopyGuard(error);}
   else if(error.code=="copy_no_result")state->links.remove(index);
   else state->error=error;
@@ -196,7 +202,7 @@ void OperationService::settleUploadGroup(const std::shared_ptr<UploadCopyGroup>&
   for(const auto& state:members) {
    state->waitingForGroup=false;
    if(included->contains(state->operation.id)) {
-    if(!error)state->copied=true;
+    if(!error){state->copied=true;state->copiedLinks+=int(state->links.size());for(const auto& url:std::as_const(state->links))state->copiedEncrypted&=encryptedLink(url);}
     else if(error.code=="copy_suppressed")state->suppressed=true;
     else if(error.code!="copy_no_result")state->error=error;
    }else if(error.code=="copy_suppressed"&&!state->links.isEmpty()&&!state->cancellation->load())state->suppressed=true;
@@ -242,6 +248,7 @@ void OperationService::recordUploadCopy(const std::shared_ptr<UploadCopy>& state
   logging::warning(logOperation(),"Automatic copy not attempted",{{"operationId",op.id},{"action",op.action},{"behavior",op.settings.uploadClipboardBehavior},{"links",state->links.size()},{"held",state->held.size()},{"cursor",state->cursor}});
  }
  if(state->error)op.error=state->error;
+ op.copy={{"links",int(state->links.size())},{"copied",state->copiedLinks},{"encrypted",state->copiedLinks>0&&state->copiedEncrypted}};
  {
   // One record per upload (#473): the outcome the notification and Activity
   // show, and for a suppressed copy which guard refused it and the revisions

@@ -453,7 +453,11 @@ QString TrayController::completionTitle(const QJsonObject& operation) {
  for(const auto& value:items){const auto item=value.toObject();const auto local=item["local"].toObject();localOnly&=item["uploadStatus"]=="local_only";localFailed|=local["status"]=="failed"||meaningfulError(local["error"].toObject());problem|=item["uploadStatus"]=="failed"||meaningfulError(item["error"].toObject())||localFailed;}
  // #2079: an encrypted link copied says so in the title, as the design words it.
  bool encrypted=!items.isEmpty();for(const auto& value:items)encrypted&=value.toObject()["encrypt"].toObject()["status"]=="encrypted";
- if(!problem)return localOnly?QString("Saved locally"):encrypted&&operation["copyStatus"]=="copied"?QString(items.size()>1?"Encrypted links copied":"Encrypted link copied"):QString("Upload complete");
+ // #2127: what the clipboard commit held, when recorded; else the items' own state.
+ const auto copyInfo=operation["copy"].toObject();
+ const bool copiedEncrypted=copyInfo.contains("encrypted")?copyInfo["encrypted"].toBool():encrypted;
+ const int copiedLinks=copyInfo.contains("copied")?copyInfo["copied"].toInt():int(items.size());
+ if(!problem)return localOnly?QString("Saved locally"):copiedEncrypted&&operation["copyStatus"]=="copied"?QString(copiedLinks>1?"Encrypted links copied":"Encrypted link copied"):QString("Upload complete");
  if((localFailed&&localOnly)||operation["error"].toObject()["code"]=="archive_failed")return "Local save failed";
  return "Finished with errors";
 }
@@ -468,10 +472,13 @@ QString TrayController::completionMessage(const QJsonObject& operation,bool hasL
  // the link still is.
  bool encrypted=!items.isEmpty(),passphrase=false;
  for(const auto& value:items){const auto encrypt=value.toObject()["encrypt"].toObject();encrypted&=encrypt["status"]=="encrypted";passphrase|=encrypt["passphrase"].toBool();}
- // #2127: one request's several links are copied once, as one list; the notice gives their count.
- int links=0;for(const auto& value:items)links+=!value.toObject()["receipt"].toObject()["directUrl"].toString().isEmpty();
- const QString copied=copy=="copied"?(localOnly?"Result copied to clipboard.":encrypted?(links>1?QStringLiteral("%1 encrypted links copied to clipboard.").arg(links):QStringLiteral("Encrypted link copied to clipboard."))+(passphrase?QStringLiteral(" Send the passphrase separately."):QString()):links>1?QStringLiteral("%1 links copied to clipboard.").arg(links):QStringLiteral("Link copied to clipboard.")):copy=="failed"?(localOnly?"Couldn't copy the result.":"Couldn't copy the link."):
-  copy=="suppressed"?(localOnly?"Result not copied because your clipboard changed. Copy it from History.":"Link not copied because your clipboard changed. Copy it from History."):QString{};
+ // #2127: one request's several links are copied once, as one list. The notice counts the links the
+ // clipboard commit actually held (a removed or failed one isn't among them), and what was to be copied.
+ const auto copyInfo=operation["copy"].toObject();
+ const int links=copyInfo.contains("copied")?copyInfo["copied"].toInt():1,wanted=copyInfo.contains("links")?copyInfo["links"].toInt():1;
+ const bool copiedEncrypted=copyInfo.contains("encrypted")?copyInfo["encrypted"].toBool():encrypted;
+ const QString copied=copy=="copied"?(localOnly?"Result copied to clipboard.":copiedEncrypted?(links>1?QStringLiteral("%1 encrypted links copied to clipboard.").arg(links):QStringLiteral("Encrypted link copied to clipboard."))+(passphrase?QStringLiteral(" Send the passphrase separately."):QString()):links>1?QStringLiteral("%1 links copied to clipboard.").arg(links):QStringLiteral("Link copied to clipboard.")):copy=="failed"?(localOnly?"Couldn't copy the result.":wanted>1?"Couldn't copy the links.":"Couldn't copy the link."):
+  copy=="suppressed"?(localOnly?"Result not copied because your clipboard changed. Copy it from History.":wanted>1?"Links not copied because your clipboard changed. Copy them from History.":"Link not copied because your clipboard changed. Copy it from History."):QString{};
  // #1820: a covered upload whose original, before covering, couldn't be kept locally says so, whatever the upload's outcome.
  const QString originalNote=operation["sensitive"].toObject()["original"].toObject()["status"]=="failed"?QStringLiteral("Couldn't save the unredacted original locally."):QString();
  if(!QStringList{"failed","partial","interrupted"}.contains(state)) {

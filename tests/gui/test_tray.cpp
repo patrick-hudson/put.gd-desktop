@@ -138,13 +138,25 @@ private slots:
  // #2127: one request's several links are copied as one list; the notice says how many.
  void severalLinksCopiedSayHowMany() {
   const auto item=[](const QString& url,bool encrypted){QJsonObject value{{"uploadStatus","uploaded"},{"shareStatus","shared"},{"receipt",QJsonObject{{"directUrl",url}}}};if(encrypted)value["encrypt"]=QJsonObject{{"status","encrypted"}};return value;};
-  QJsonObject operation{{"state","completed"},{"copyStatus","copied"},{"items",QJsonArray{item("https://a",false),item("https://b",false),item("https://c",false)}}};
+  const auto copy=[](int links,int copied,bool encrypted){return QJsonObject{{"links",links},{"copied",copied},{"encrypted",encrypted}};};
+  QJsonObject operation{{"state","completed"},{"copyStatus","copied"},{"items",QJsonArray{item("https://a",false),item("https://b",false),item("https://c",false)}},{"copy",copy(3,3,false)}};
   QCOMPARE(TrayController::completionMessage(operation,false),QString("3 files uploaded. 3 links copied to clipboard."));
-  operation["items"]=QJsonArray{item("https://a",true),item("https://b",true)};
+  // The count is what the clipboard held: a link removed before the copy isn't counted.
+  operation["copy"]=copy(2,2,false);
+  QCOMPARE(TrayController::completionMessage(operation,false),QString("3 files uploaded. 2 links copied to clipboard."));
+  operation["items"]=QJsonArray{item("https://a#v1.k",true),item("https://b#v1.k",true)};operation["copy"]=copy(2,2,true);
   QCOMPARE(TrayController::completionTitle(operation),QString("Encrypted links copied"));
-  QVERIFY2(TrayController::completionMessage(operation,false).startsWith("2 files uploaded. 2 encrypted links copied to clipboard."),qPrintable(TrayController::completionMessage(operation,false)));
-  operation["items"]=QJsonArray{item("https://a",false)};
-  QVERIFY(TrayController::completionMessage(operation,false).startsWith("Uploaded. Link copied to clipboard."));
+  QCOMPARE(TrayController::completionMessage(operation,false),QString("2 files uploaded. 2 encrypted links copied to clipboard."));
+  operation["copy"]=copy(2,1,true);
+  QCOMPARE(TrayController::completionTitle(operation),QString("Encrypted link copied"));
+  QCOMPARE(TrayController::completionMessage(operation,false),QString("2 files uploaded. Encrypted link copied to clipboard."));
+  // Several links that weren't copied are spoken of in the plural.
+  operation["copyStatus"]="suppressed";operation["copy"]=copy(2,0,false);
+  QVERIFY2(TrayController::completionMessage(operation,false).contains("Links not copied because your clipboard changed. Copy them from History."),qPrintable(TrayController::completionMessage(operation,false)));
+  operation["copyStatus"]="failed";
+  QVERIFY2(TrayController::completionMessage(operation,false).contains("Couldn't copy the links."),qPrintable(TrayController::completionMessage(operation,false)));
+  operation=QJsonObject{{"state","completed"},{"copyStatus","copied"},{"items",QJsonArray{item("https://a",false)}},{"copy",copy(1,1,false)}};
+  QCOMPARE(TrayController::completionMessage(operation,false),QString("Uploaded. Link copied to clipboard."));
  }
  // #1820: an upload the sensitive text check covered says what it covered, never after a check that couldn't finish.
  void aCoveredUploadSaysWhatWasCovered() {
