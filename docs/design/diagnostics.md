@@ -239,7 +239,12 @@ reports' size is not part of the log files' total (see
 `clear_logs`) and the **Clear logs…** button in Settings → Advanced → Diagnostics,
 which asks first. It deletes every log file, starts a new one with a `Logs cleared`
 record and returns `removedFiles` and `removedBytes`. It also deletes every
-false-alarm report and adds `removedReports` and `removedReportBytes` to its reply.
+false-alarm report, including folders a write left half-made, and adds `removedReports` and
+`removedReportBytes` to its reply. It checks each removal: when a report folder is still there
+afterwards (one holding a file put.gd didn't write), or the reports folder is a link or isn't the
+user's own and so isn't touched, it fails with `false_alarm_clear_incomplete`. Its message says the
+logs were cleared and the reports were not all removed, and its details carry the counts and
+`reportsLeft`.
 
 ## Diagnostics fields
 
@@ -483,7 +488,10 @@ Reports are in `$XDG_STATE_HOME/putgd/false-alarms/`, which is
 beside `logs/`. Each report is one folder named
 `putgd-false-alarm-<UTC yyyyMMddTHHmmsszzz>Z-<8 hex>/`, so name order is time order. The
 folder is 0700 and its files are 0600. The resident writes it under a hidden name and
-renames it whole, so a half-written report never shows up. Only the resident writes
+renames it whole, so a half-written report never shows up. The reports folder must be a
+directory of the user's own and not a link; it is checked before it is made owner-only,
+and a folder that fails the check is never followed for saving, retention, Clear logs,
+listing or packaging. Only the resident writes
 there. The editor helper hands the files over through its private staging, the way
 **Copy image** does. The code is `src/app/FalseAlarmReports.*` and
 `src/editor/FalseAlarmReport.*`.
@@ -504,7 +512,7 @@ own pixels.
 | `name`, `created`, `operationId` | The folder name, the UTC creation time and the capture's operation |
 | `prompt`, `reportedFrom` | The prompt number, and `prompt` or `editor` for where **Not sensitive** was selected |
 | `build` | put.gd's build manifest: version, channel and the rest |
-| `environment` | `desktop`, `sessionType`, the OS `ID` and `VERSION_ID`, kernel, architecture and `qtRuntime` |
+| `environment` | `desktop` (each part of `XDG_CURRENT_DESKTOP` that is a known desktop name, `unknown` otherwise), `sessionType` (`x11`, `wayland`, `tty`, `mir` or `unknown`), the OS `ID` and `VERSION_ID` (`unknown` when not a plain token), kernel, architecture and `qtRuntime` |
 | `capture` | `action` (`region`, `window`, `monitor`, `desktop`, `scroll`, `clipboard` or `file_manager`), `source` (`capture`, `clipboard` or `file`), `mode` (`prompt` or `report`), `format` (`png` or `jpg`), `bytes`, `devicePixelRatio` when known and, for a file selection, `file` such as `2 of 3`. Never a file name |
 | `image` | `width` and `height` |
 | `settings` | `sensitiveTextCheck` (enabled, and each kind `off`, `warn` or `redact`), `textRecognitionLanguages`, `unhingedMode`, `quickRedact` as `{terms: N, patterns: M}` counts only, `captureStyle` on or off, `keepLocalCopy`, and `destination` as `{provider}` only |
@@ -521,6 +529,15 @@ pattern, never the word or pattern itself), and for keys `key.<source>`, several
 joined with commas: `key.pem`, `key.jwt`, `key.prefix.<n>` (the index of the known token
 prefix), `key.run` (an unbroken hex or base64 run), `key.structural`, `key.labelled`,
 `key.command` and `key.two_factor`.
+
+The resident never stores the helper's JSON as it came: it rebuilds `report.json` field
+by field from the schema above, each value of its type and within its length (a finding's
+text 4,096 characters, a word's 512), and drops anything else. The check's `found`,
+`covered`, `complete` and `reason` are the resident's own, as the check reported them, and
+so are the counts its log records carry. It takes a report only from a check waiting at its
+prompt, or in the editor that check opened, asked from that place, with something found or
+covered. The original is the resident's own staged input, checked against its digest on the
+bytes it saves.
 
 A report holds no destination label, bucket, address, credentials, keys, tokens or
 links, no saved Quick redact word or pattern (counts only), no QR code content and no
@@ -647,8 +664,12 @@ the log records fill the rest, newest first, so when it would go over, the oldes
 records are dropped and counted in `droppedRecords`. False-alarm reports have their own
 allowance of 64 MiB on top, so they never push out log records. Whole reports go in,
 newest first. One that doesn't fit is counted as omitted, and an older, smaller one may
-still fit. `manifest.json`, the reply and the preview carry `falseAlarmReports`:
-`included`, `omitted`, `eligible`, `bytes`, `maximumBytes`, `requested` and `names`.
+still fit. Only a whole report goes in: `report.json`, `covered.png` and exactly one
+original, each picture with the size and SHA-256 `report.json` records; any other is
+counted as `invalid` and left out. `manifest.json`, the reply and the preview carry
+`falseAlarmReports`: `included`, `omitted`, `invalid`, `eligible`, `bytes`, `maximumBytes`,
+`requested` and `names`. The Settings dialog's result after saving says how many reports
+the saved package holds, so a report saved after the preview isn't missed.
 
 **Never included:** credentials, secrets or tokens, keychain data, signed URLs,
 artifact or preview bytes, screenshots, clipboard content, recognized text, Quick redact's

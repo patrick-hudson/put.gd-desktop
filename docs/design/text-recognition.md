@@ -2083,11 +2083,16 @@ settles a panel that a person is looking at.
   button does for that capture, while its check's prompt waits (panel or report mode, phase
   `sensitive_text_found`) or in the editor that check opened. It replies `{saved: true, name, path,
   bytes, operationId}` and waits up to 90 s (the CLI 105 s). The decision still waits afterwards:
-  answer with `operation.decide` as usual. `editor.inspect` of the check's editor has `falseAlarm`
-  (`offered`, `state` `none`, `saving`, `saved` or `failed`, and `message`), and the panel's state
-  is the same. Refusals: `false_alarm_unavailable` (nothing flagged on a readable image, no prompt
-  or check editor open, or the capture was decided), `false_alarm_already_saved`,
-  `sensitive_check_running`, `editor_busy` (a report is still being saved) and `editor_finalizing`.
+  answer with `operation.decide` as usual. `operation.inspect` shows it in `sensitive.falseAlarm`
+  (`state` `saving`, `saved` or `failed`, and the report's `name` once saved), for the panel and in
+  report mode alike; `editor.inspect` of the check's editor has `falseAlarm` (`offered`, `state`
+  `none`, `saving`, `saved` or `failed`, `message`, and `name`). There is one report per prompt: a
+  request while one is saving answers `editor_busy`, and one after it was saved answers
+  `false_alarm_already_saved` (or, from a helper that stopped waiting, that report again). The report
+  is prepared off the GUI thread from what the check left; a decision taken meanwhile wins, and the
+  report is then dropped with `editor_finalizing`. Refusals: `false_alarm_unavailable` (nothing
+  flagged on a readable image, no prompt or check editor open, or the capture was decided),
+  `false_alarm_already_saved`, `sensitive_check_running`, `editor_busy` and `editor_finalizing`.
 - **File selections.** A selection can ask once per file. `sensitive.prompt` numbers each prompt. Pass
   it as `prompt` when answering, so a decision never reaches a later file's prompt.
 - **Refusals.**
