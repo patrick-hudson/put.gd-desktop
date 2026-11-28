@@ -4,10 +4,6 @@
 #include <QPointer>
 
 namespace putgd {
-namespace {
-// An encrypted item's link carries its key after "#v1." (#2079).
-bool encryptedLink(const QString& url) {return url.contains(QStringLiteral("#v1."));}
-}
 struct OperationService::PendingCopy {
  std::function<CopyPayload()> payload;
  std::function<void(Error)> reply;
@@ -133,10 +129,12 @@ void OperationService::flushUploadLinks(const std::shared_ptr<UploadCopy>& state
 void OperationService::queueLinkCopy(const std::shared_ptr<UploadCopy>& state,const QString& item,int index) {
  ++state->pending;
  auto payload=std::make_shared<CopyPayload>();payload->kind="text";
+ // Whether the durable item resolved at dispatch is an encrypted one (#2127), for the notice.
+ auto encrypted=std::make_shared<bool>(false);
  const auto path=databasePath();const auto id=state->operation.id;
- queueCopy([payload]{return *payload;},[this,state,index,payload](Error error) {
+ queueCopy([payload]{return *payload;},[this,state,index,encrypted](Error error) {
   --state->pending;
-  if(!error){state->copied=true;++state->copiedLinks;state->copiedEncrypted&=encryptedLink(payload->text);}
+  if(!error){state->copied=true;++state->copiedLinks;state->copiedEncrypted&=*encrypted;}
   else if(error.code=="copy_suppressed"){state->suppressed=true;if(state->suppression.isEmpty())state->suppression=nativeCopyGuard(error);}
   else if(error.code=="copy_no_result")state->links.remove(index);
   else state->error=error;
@@ -146,13 +144,13 @@ void OperationService::queueLinkCopy(const std::shared_ptr<UploadCopy>& state,co
   const auto guard=copyGuard(stopping_,state->cancellation->load(),"superseded",state->epoch,uploadCopyEpoch_,state->revision,source_.clipboardRevision());
   if(!guard.isEmpty())state->suppression=guard;return guard.isEmpty();
  },true,
- [this,path,id,item,payload](auto ready) {
+ [this,path,id,item,payload,encrypted](auto ready) {
   // Resolve the durable item again at dispatch, including every resumed copy.
   background([path,id,item](Error& error) {
-   HistoryStore store(path);const auto op=store.operation(id,&error);QString url;
-   for(const auto& value:op.items)if(value.artifact.id==item&&value.linkAvailable())url=value.link();
-   return QJsonObject{{"url",url}};
-  },[payload,ready](Error error,QJsonObject value){payload->text=value["url"].toString();ready(error);});
+   HistoryStore store(path);const auto op=store.operation(id,&error);QString url;bool sealed=false;
+   for(const auto& value:op.items)if(value.artifact.id==item&&value.linkAvailable()){url=value.link();sealed=value.encrypted();}
+   return QJsonObject{{"url",url},{"encrypted",sealed}};
+  },[payload,encrypted,ready](Error error,QJsonObject value){payload->text=value["url"].toString();*encrypted=value["encrypted"].toBool();ready(error);});
  },{id});
 }
 void OperationService::refreshUploadLinks(UploadCopy& state,const Operation& op) {
@@ -202,7 +200,9 @@ void OperationService::settleUploadGroup(const std::shared_ptr<UploadCopyGroup>&
   for(const auto& state:members) {
    state->waitingForGroup=false;
    if(included->contains(state->operation.id)) {
-    if(!error){state->copied=true;state->copiedLinks+=int(state->links.size());for(const auto& url:std::as_const(state->links))state->copiedEncrypted&=encryptedLink(url);}
+    if(!error){state->copied=true;state->copiedLinks+=int(state->links.size());
+     // The durable items the list was built from at dispatch say which links are encrypted.
+     for(auto it=state->links.cbegin();it!=state->links.cend();++it)state->copiedEncrypted&=it.key()<state->operation.items.size()&&state->operation.items[it.key()].encrypted();}
     else if(error.code=="copy_suppressed")state->suppressed=true;
     else if(error.code!="copy_no_result")state->error=error;
    }else if(error.code=="copy_suppressed"&&!state->links.isEmpty()&&!state->cancellation->load())state->suppressed=true;

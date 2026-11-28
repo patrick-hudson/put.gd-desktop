@@ -2160,7 +2160,7 @@ void OperationService::retry(const QString& id,JsonReply reply,bool sharingOnly)
   if(!pending) {active_.remove(id);performCopy(op,true,reply);return;}
   if(provider)if(auto timeout=provider->retryRequestTimeout(op.destination,settings_.snapshot().profiles.value(op.destination.profileId)))op.requestTimeoutMs=std::max(op.requestTimeoutMs.value_or(0),*timeout);
   if(!op.advance(OperationState::Stored)){active_.remove(id);reply({"operation_busy","This upload is already running.",{}},{});return;}
-  op.cancelled=reserved->load();op.error={};op.phase="queued";op.invocation=++invocation_;op.clipboardRevision=source_.clipboardRevision();op.copyStatus="pending";beginUploadCopies(op);
+  op.cancelled=reserved->load();op.error={};op.phase="queued";op.invocation=++invocation_;op.clipboardRevision=source_.clipboardRevision();op.copyStatus="pending";op.copy={};beginUploadCopies(op);
   background([path,op](Error& error){HistoryStore store(path);error=store.saveOperation(op);return QJsonObject{};},[this,reply,op,reserved,sharingOnly](Error error,QJsonObject)mutable{
    if(error){abandonUploadCopies(op.id);releaseActive(op.id);reply(error,{});return;}
    op.cancelled=reserved->load();Job job{op,{},false,reserved,{}};job.sharingOnly=sharingOnly;enqueue(std::move(job));reply({},{{"operationId",op.id},{"retryAccepted",true}});
