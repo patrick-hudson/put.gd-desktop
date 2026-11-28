@@ -93,7 +93,24 @@ Right-click files or folders in your file manager and choose **Upload with put.g
 
 **File manager menu** switches both entries.
 
-If you used the AppImage before installing the DEB or RPM, the AppImage's old menu entries would hide the package's. When the package's put.gd starts, it moves them to `~/.local/state/putgd/file-manager-replaced/` (under `$XDG_STATE_HOME` if you set it), so both entries show. To undo that, move a file back to where it was. It only moves files exactly as put.gd wrote them. If you edited one of these files, it stays, and Dolphin and some other file managers keep showing only its **Upload with put.gd**. To bring back both entries then, delete whichever of these files you no longer want: `~/.local/share/kio/servicemenus/putgd-upload.desktop` (Dolphin), `~/.local/share/nemo/actions/putgd-upload.nemo_action` (Nemo), `~/.local/share/Thunar/sendto/putgd-upload.desktop` (Thunar), `~/.local/share/file-manager/actions/putgd-upload.desktop` (PCManFM) and `~/.local/share/contractor/putgd-upload.contract` (Pantheon Files). If you set `$XDG_DATA_HOME`, look there instead of `~/.local/share`. Then reopen the file manager. PCManFM keeps running for the desktop, so log out and back in, or restart it.
+If you used the AppImage before installing the DEB or RPM, its old menu entries can hide the package's. Dolphin and some other file managers may then show only **Upload with put.gd**, or entries that still run the AppImage.
+
+When the package's put.gd starts, it moves those old entries out of the way, so both entries show:
+
+- It only moves files exactly as put.gd wrote them. A file you edited stays.
+- Each file goes to `~/.local/state/putgd/file-manager-replaced/<time>/data/<path>`, with a folder per start named by its UTC time (under `$XDG_STATE_HOME/putgd` if you set it). The resident log names the old and the new path.
+- A file moved back is moved aside again the next time put.gd starts.
+
+To clear entries you edited yourself:
+
+1. Open your data folder: `~/.local/share`, or `$XDG_DATA_HOME` if you set it.
+2. Move whichever of these files exist somewhere safe, rather than deleting them:
+   - Dolphin: `kio/servicemenus/putgd-upload.desktop`
+   - Nemo: `nemo/actions/putgd-upload.nemo_action` and `nemo/actions/putgd-upload-encrypted.nemo_action`
+   - Thunar: `Thunar/sendto/putgd-upload.desktop` and `Thunar/sendto/putgd-upload-encrypted.desktop`
+   - PCManFM: `file-manager/actions/putgd-upload.desktop` and `file-manager/actions/putgd-upload-encrypted.desktop`
+   - Pantheon Files: `contractor/putgd-upload.contract` and `contractor/putgd-upload-encrypted.contract`
+3. Reopen the file manager. PCManFM keeps running for the desktop, so log out and back in, or restart it.
 
 The entry is added to Files (**Scripts**), Dolphin, Nemo, Thunar (**Send To**), Caja (**Scripts**), PCManFM, Pantheon Files and COSMIC Files. On an AppImage, turning off **File manager menu** removes only the entries that AppImage created. With **Folders** set to **Upload as a .zip**, put.gd makes one `<folder name>.zip` with everything inside the folder and copies one link. With **Upload each file**, it uploads every file in the folder and its subfolders with one link each, and skips symbolic links. Every file counts toward **Files in a batch** (default 100, up to 10,000, under **Settings → Advanced → Resource limits → Uploads**), so a large folder needs a `.zip` or a higher limit.
 

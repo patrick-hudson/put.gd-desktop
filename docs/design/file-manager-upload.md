@@ -153,42 +153,86 @@ harmlessly.
 When a DEB/RPM and the AppImage are both installed, the AppImage skips each
 per-user file whose system counterpart exists, so there is one entry.
 
-If the AppImage ran before the DEB or RPM was installed, its per-user files have
-the same names as the package's and would hide them, so Dolphin, Nemo, Thunar,
-PCManFM and Pantheon Files would show only the AppImage's old **Upload with
-put.gd**. At every start, the package's resident moves those copies out of the
-way (#2132), but only where the package has its own copy. A file moves only when
-all of these hold:
+### An AppImage used before the package (#2132)
 
-- its bytes are exactly what an AppImage wrote, from any template put.gd has
-  shipped, with only the launcher, icon and script path filled in (each in any
-  spelling of the same folder, such as `/home` and `/var/home`);
-- the highest-priority `XDG_DATA_DIRS` folder that has that file is a root-owned
-  system folder, not the user's own under another name, and holds a packaged
-  put.gd file that offers both entries;
-- no folder between the user's data or config folder and the file is a link;
-- it is the user's file, and still the one that was read.
+If the AppImage ran before the DEB or RPM was installed, its per-user menu files
+have the same names as the package's, and a per-user file hides the system one.
+An AppImage from before encrypted uploads (#2119) wrote only **Upload with
+put.gd**, so those file managers lose **Upload encrypted with put.gd**. A newer
+AppImage wrote both entries, so both still show, but they run the AppImage's
+launcher rather than the package's.
 
-The AppImage's own skip uses the same test. A moved file goes to
-`$XDG_STATE_HOME/putgd/file-manager-replaced/<UTC time>/data/<path>` (`config/`
-for a Caja script, `home/` for a GNOME desktop icons script), keeping its mode.
-To undo a move, move the file back. The resident log names both paths, and the
-AppImage's record drops those lines. An edited copy is never moved and stays
-where it is.
+At every start, the package's resident moves those copies out of the way. A
+per-user file moves only when all of these hold:
 
-The GNOME desktop icons scripts belong to the package once it writes them: an
-edited AppImage script is moved aside first, and the AppImage's record stops
-naming them. The owned record keeps a SHA-256 for each entry file put.gd wrote
-(`hash <sha256> <path>`). When the AppImage is gone, its removal, in the
-launcher's shell copy or in process, deletes only entries that still have those
-bytes or are an exact rendering. It never deletes a file the package wrote, and
-leaves anything changed in place. When the AppImage stops keeping an entry (a
-package arrived, or the menu was turned off), a changed copy is moved aside
-rather than deleted. A launcher written by an earlier build, before entries
-carried hashes, is upgraded by the package's start when it is exactly one of
-those earlier launchers. It keeps its paths and mode, and the record gains
-hashes for the entries that are still the AppImage's. Coexistence edge cases
-kept from #1105 are in #2138.
+- **The package has its own copy.**
+  - For a menu file (Dolphin, Nemo, Thunar, PCManFM, Pantheon Files), the
+    highest-priority `XDG_DATA_DIRS` folder that has that file decides. It must
+    be root-owned, and so must the file. It must not be the user's own folder
+    under another name. The file must be a packaged put.gd file that offers both
+    entries, either in itself (Dolphin's service menu) or together with its
+    plain or encrypted sibling beside it.
+  - For a Files or Caja script, the package's plugin must be installed: a regular
+    `libputgd-nautilus.so` or `libputgd-caja.so` in that file manager's extension
+    folder.
+  - The GNOME desktop icons (DING) scripts are the exception, because the package
+    writes its own scripts there (below).
+- **It is exactly what an AppImage wrote.** Its bytes match a template put.gd has
+  shipped, with only the launcher, icon and script path filled in, each in any
+  spelling of the same folder (such as `/home` and `/var/home`). An edited copy
+  doesn't match and stays where it is.
+- **It is a plain file in the user's folder.** It is not a link, no folder
+  between the user's data or config folder and it is a link, it is the user's
+  own file, and it is still the one that was read.
+
+The AppImage's own skip uses the same tests: its menu copy is skipped for such a
+package copy, and its Files or Caja script for such a plugin.
+
+A moved file goes under put.gd's state folder: `$XDG_STATE_HOME/putgd` when
+`XDG_STATE_HOME` is an absolute path, otherwise `~/.local/state/putgd`. It lands
+at `file-manager-replaced/<UTC time>/<area>/<path>` and keeps its mode. The
+area is one of:
+
+- `data`, for a file in the user's data folder (`$XDG_DATA_HOME`, by default
+  `~/.local/share`), including the GNOME desktop icons scripts in the usual
+  setup;
+- `config`, for a Caja script;
+- `home`, for a desktop icons script, which always lives in
+  `~/.local/share/nautilus/scripts`, only when `$XDG_DATA_HOME` points elsewhere.
+
+The resident log line "Moved aside an AppImage file manager entry that the
+installed package replaces" gives both paths (`path` and `movedTo`). The
+AppImage's record drops those lines.
+
+Moving a file back isn't a lasting undo: an exact copy is moved aside again at
+the package's next start. Restoring an edited desktop icons script over the
+package's script replaces the package's script. To keep both, move the package's
+script aside first; the package then moves the edited one aside again at its next
+start, as below.
+
+### Desktop icons scripts and removals
+
+- **Desktop icons scripts.** These belong to the package once it writes them. An
+  AppImage script that isn't exactly what put.gd wrote is moved aside first,
+  under the same backup folder, and the AppImage's record stops naming the
+  scripts.
+- **Hashes in the record.** The owned record keeps a SHA-256 for each entry file
+  put.gd wrote outside its own folder (`hash <sha256> <path>`).
+- **When the AppImage is gone,** its removal never deletes a file the package
+  wrote, and leaves anything changed in place:
+  - the launcher's shell copy deletes an entry only when its bytes match the
+    recorded hash;
+  - the in-process cleanup also accepts an exact rendering.
+- **When the AppImage stops keeping an entry** (a package arrived, or the menu was
+  turned off), a changed copy is moved aside rather than deleted.
+- **Earlier launchers.** A launcher written by an earlier build, before entries
+  carried hashes, is upgraded by the package's start when it is exactly one of
+  those earlier launchers. It keeps its paths and mode, and the record gains
+  hashes for the entries that are still the AppImage's. A launcher that was
+  edited, or isn't otherwise an exact earlier one, is left as it is and keeps
+  that build's removal, which deletes any marked entry.
+
+Coexistence edge cases kept from #1105 are in #2138.
 
 ## What happens
 
