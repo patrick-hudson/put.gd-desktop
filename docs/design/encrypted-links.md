@@ -509,7 +509,8 @@ of at most 300 characters, the connection fingerprint and the credential revisio
 fingerprint matches the destination as saved, and it is forgotten with the destination. At
 load a record whose revision isn't the destination's current one is dropped, so a check never
 outlives the keys it ran with across a restart. A check made with session-only credentials (keys,
-or an SFTP password or passphrase, `DestinationStatus::storesKeys`) is
+`SetupService::storesKeys`, or an SFTP password or key passphrase stored for the session; an SFTP
+destination that signs in with the SSH agent or a key file keeps its check) is
 never written, so like the destination's own Test it ends with the session. New
 credentials stored for the destination, or for one that shares its keychain entry, clear it
 (`DestinationStatus::credentialsChanged`). A check that ran while new keys were stored
