@@ -157,10 +157,17 @@ per-user file whose system counterpart exists, so there is one entry.
 
 If the AppImage ran before the DEB or RPM was installed, its per-user menu files
 have the same names as the package's, and a per-user file hides the system one.
-An AppImage from before encrypted uploads (#2119) wrote only **Upload with
-put.gd**, so those file managers lose **Upload encrypted with put.gd**. A newer
-AppImage wrote both entries, so both still show, but they run the AppImage's
-launcher rather than the package's.
+What that looks like depends on the AppImage's age and the file manager:
+
+- **Dolphin** keeps both actions in one service menu file. An AppImage from before
+  encrypted uploads (#2119) wrote that file with only **Upload with put.gd**, so
+  **Upload encrypted with put.gd** disappears.
+- **Nemo, Thunar, PCManFM and Pantheon Files** use a separate file per entry. An
+  AppImage from before #2119 wrote only the plain file. Its **Upload with put.gd**
+  replaces the package's, while the package's **Upload encrypted with put.gd**
+  still shows, so the two entries run different installs.
+- **A newer AppImage** wrote both entries, so both still show everywhere, but they
+  run the AppImage's launcher rather than the package's.
 
 At every start, the package's resident moves those copies out of the way. A
 per-user file moves only when all of these hold:
@@ -213,9 +220,10 @@ start, as below.
 ### Desktop icons scripts and removals
 
 - **Desktop icons scripts.** These belong to the package once it writes them. An
-  AppImage script that isn't exactly what put.gd wrote is moved aside first,
-  under the same backup folder, and the AppImage's record stops naming the
-  scripts.
+  AppImage script that carries put.gd's managed marker (`X-putgd-Managed=true`)
+  but isn't exactly what put.gd wrote is moved aside first, under the same backup
+  folder, and the AppImage's record stops naming the scripts. A script without
+  the marker isn't put.gd's: it is left in place and not replaced.
 - **Hashes in the record.** The owned record keeps a SHA-256 for each entry file
   put.gd wrote outside its own folder (`hash <sha256> <path>`).
 - **When the AppImage is gone,** its removal never deletes a file the package
@@ -224,7 +232,9 @@ start, as below.
     recorded hash;
   - the in-process cleanup also accepts an exact rendering.
 - **When the AppImage stops keeping an entry** (a package arrived, or the menu was
-  turned off), a changed copy is moved aside rather than deleted.
+  turned off), a changed copy that still carries the managed marker is moved
+  aside rather than deleted. One without the marker is left in place, and it is
+  not backed up.
 - **Earlier launchers.** A launcher written by an earlier build, before entries
   carried hashes, is upgraded by the package's start when it is exactly one of
   those earlier launchers. It keeps its paths and mode, and the record gains
