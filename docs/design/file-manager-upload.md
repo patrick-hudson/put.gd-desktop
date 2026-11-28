@@ -150,7 +150,14 @@ removes itself the next time it runs, and the COSMIC entry's command fails
 harmlessly.
 
 When a DEB/RPM and the AppImage are both installed, the AppImage skips each
-per-user file whose system counterpart exists, so there is one entry.
+per-user file whose system counterpart exists, so there is one entry. A user
+file of the same name would hide the package's, so the package's own start also
+removes the AppImage's per-user menu files and Files and Caja scripts wherever
+the package has its own copy (#2119). A file counts as the AppImage's when its
+record lists it, or when it runs the AppImage's stable launcher (a copy whose
+record went with an old image). Each removal is logged, and the AppImage's
+record drops it. Files put.gd doesn't manage, and the AppImage's entries for
+file managers the package doesn't cover, stay.
 
 ## What happens
 
