@@ -117,12 +117,13 @@ public:
  // The choice itself, from the editor's toggle or setEncrypt.
  void recordEncrypt(const QString& id,bool enabled);
  // What an upload of this operation would do about encrypting: {on, setting, available,
- // reason?, passphrase}. `on` is the operation's own choice, else the destination's.
+ // reason?, passphrase, checkRequired?}. `on` is the operation's own choice, else the destination's.
+ // checkRequired (#2118) is true when only the destination's encrypted-page check stands in the way.
  QJsonObject encryptOptions(const Operation&) const;
  // Whether an upload of this action, as Settings routes it now, could be encrypted (the tray's row).
  bool encryptAvailableFor(const QString& action) const;
- // The same as encryptOptions, with the route's profileId; checkRequired when only the destination's
- // encrypted-page check stands in the way (#2118).
+ // The same as encryptOptions, with the route's profileId. For an action that doesn't upload (a
+ // local route, or no destination) it is only {available: false}: no profileId, no checkRequired.
  QJsonObject encryptStateFor(const QString& action) const;
  // #2118: an upload request that asks to encrypt (putgd-cli upload --encrypt, MCP encrypt true) on a
  // destination whose encrypted-page check hasn't passed is refused before anything is captured or

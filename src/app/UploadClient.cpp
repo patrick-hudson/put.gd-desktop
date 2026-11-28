@@ -383,8 +383,16 @@ int firstPath(int argc,char** argv,bool& encrypt){
  const int separator=encrypt?3:2;
  return argc>separator&&std::strcmp(argv[separator],"--")==0?separator+1:-1;
 }
-bool residentLacksEncrypt(const QString& code,const std::function<QJsonObject()>& capabilities){
- return code=="invalid_request"&&!capabilities()["uploadFiles"].toObject()["encrypt"].toBool();
+QJsonObject sendUpload(const Requester& send,const QJsonObject& params,Error& error){
+ error={};
+ if(params.contains("encrypt")) {
+  const auto capabilities=send("capabilities",{},error);
+  // Nothing was uploaded whatever happened to this question, so it is a definite "didn't start".
+  if(error){error.details.remove("outcomeUnknown");return {};}
+  // Only a resident that says it takes encrypt (and refuses an untested destination up front) gets the files.
+  if(!capabilities["uploadFiles"].toObject()["encrypt"].toBool()){error={"resident_outdated",QStringLiteral("put.gd was updated. Quit put.gd and open it again, then try again."),{}};return {};}
+ }
+ return send("upload.files",params,error);
 }
 
 bool leafUnitIsService(const QByteArray& cgroup){
@@ -566,15 +574,15 @@ int run(int argc,char** argv){
  const QDeadlineTimer ready(startDeadlineMs);
  Error error;QJsonObject accepted;
  for(;;){
-  error={};accepted=request("upload.files",params,error);
+  accepted=sendUpload([](const QString& method,const QJsonObject& body,Error& e){return request(method,body,e);},params,error);
   if(error.code!="initializing"||ready.hasExpired())break;
   sleepMs(pollIntervalMs);
  }
  if(error){
   const auto fuseGone=unreachableOverFuse(error.details["files"].toArray(),qEnvironmentVariable("XDG_RUNTIME_DIR"));
   if(residentLacksUpload(error.code,[]{Error probe;request("upload.files",{},probe);return probe.code;}))refuse(QStringLiteral("put.gd was just updated. Select Quit put.gd in the tray menu or the main window, or log out and back in, then try again."));
-  // A resident from before encrypted uploads refuses the encrypt field as a malformed request.
-  else if(encrypt&&residentLacksEncrypt(error.code,[]{Error probe;return request("capabilities",{},probe);}))refuse(QStringLiteral("put.gd was updated. Quit put.gd and open it again, then try again."));
+  // #2119: a resident without capabilities.uploadFiles.encrypt never receives an encrypted upload.
+  else if(error.code=="resident_outdated")refuse(error.message);
   else if(!fuseGone.isEmpty()){
    // The resident's own list still reports whatever else this selection had wrong.
    const bool others=error.details["files"].toArray().size()>fuseGone.size();

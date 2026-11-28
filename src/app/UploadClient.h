@@ -62,10 +62,13 @@ QString noticeName(const QString& argument);
 // parameters: a resident that doesn't know the method then says unknown_method,
 // and one that does repeats invalid_request. `codeWithoutParameters` makes that call.
 bool residentLacksUpload(const QString& code,const std::function<QString()>& codeWithoutParameters);
-// Whether a resident that refused an encrypted upload as invalid_request predates
-// encrypted uploads (#2119): its `capabilities` (asked through the callback) lack
-// uploadFiles.encrypt. The client then never asks again without encrypt.
-bool residentLacksEncrypt(const QString& code,const std::function<QJsonObject()>& capabilities);
+// Sends upload.files through `send`. An encrypted request (#2119) first asks for `capabilities`,
+// and goes out only when the resident says uploadFiles.encrypt: an older resident would refuse
+// the field or skip the up-front encrypted-link check. Otherwise nothing is sent and the error
+// is resident_outdated, with the notice to restart put.gd. A failed capabilities request is
+// never an unknown outcome: no upload was sent.
+using Requester=std::function<QJsonObject(const QString& method,const QJsonObject& params,Error& error)>;
+QJsonObject sendUpload(const Requester& send,const QJsonObject& params,Error& error);
 // The names of the files the resident reported missing (`details.files` of its
 // refusal) whose whole GVfs FUSE mount can't be seen: the share was disconnected or
 // gvfsd-fuse stopped, and the files themselves may be fine. A missing file on a

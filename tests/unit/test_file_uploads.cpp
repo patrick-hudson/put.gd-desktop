@@ -284,15 +284,31 @@ private slots:
   QCOMPARE(first({"putgd","--upload","--encrypted","--","/a"},encrypt),-1);
   QCOMPARE(first({"putgd","--upload"},encrypt),-1);
  }
- // A resident from before encrypted uploads refuses the encrypt field as malformed; its
- // capabilities say so, and the client never asks again without encrypt (#2119).
- void residentBeforeEncryptedUploads() {
-  int asked=0;
-  const auto answering=[&](const QJsonObject& capabilities){return [&asked,capabilities]{++asked;return capabilities;};};
-  QVERIFY(UploadClient::residentLacksEncrypt("invalid_request",answering({{"schemaVersion",1}})));QCOMPARE(asked,1);
-  QVERIFY(UploadClient::residentLacksEncrypt("invalid_request",answering({})));QCOMPARE(asked,2);
-  QVERIFY(!UploadClient::residentLacksEncrypt("invalid_request",answering({{"uploadFiles",QJsonObject{{"encrypt",true}}}})));QCOMPARE(asked,3);
-  QVERIFY(!UploadClient::residentLacksEncrypt("encrypt_check_required",answering({})));QCOMPARE(asked,3);
+ // #2119: an encrypted request asks for capabilities first. A resident without
+ // uploadFiles.encrypt (before #2079, or before the up-front check) gets no upload request at all.
+ void residentWithoutEncryptGetsNoUpload() {
+  QStringList asked;QJsonObject capabilities,sent;
+  const UploadClient::Requester send=[&](const QString& method,const QJsonObject& params,Error& error){error={};asked<<method;if(method=="upload.files")sent=params;return method=="capabilities"?capabilities:QJsonObject{{"operationId","synthetic"}};};
+  const QJsonObject encrypted{{"paths",QJsonArray{"/a"}},{"installation","system"},{"encrypt",QJsonObject{{"enabled",true}}}};
+  Error error;
+  for(const auto& older:{QJsonObject{},QJsonObject{{"schemaVersion",1}},QJsonObject{{"uploadFiles",QJsonObject{{"encrypt",false}}}}}) {
+   asked.clear();capabilities=older;
+   QVERIFY(UploadClient::sendUpload(send,encrypted,error).isEmpty());
+   QCOMPARE(asked,QStringList{"capabilities"});QCOMPARE(error.code,QString("resident_outdated"));
+   QCOMPARE(error.message,QString("put.gd was updated. Quit put.gd and open it again, then try again."));
+  }
+  // A resident that says yes gets the request exactly as built: encryption on, and a passphrase when one was given.
+  asked.clear();capabilities={{"uploadFiles",QJsonObject{{"encrypt",true}}}};
+  QCOMPARE(UploadClient::sendUpload(send,encrypted,error)["operationId"].toString(),QString("synthetic"));QVERIFY(!error);
+  QCOMPARE(asked,(QStringList{"capabilities","upload.files"}));QCOMPARE(sent,encrypted);QVERIFY(sent["encrypt"].toObject()["enabled"].toBool());
+  auto withPassphrase=encrypted;withPassphrase["encrypt"]=QJsonObject{{"enabled",true},{"passphrase","synthetic phrase"}};
+  UploadClient::sendUpload(send,withPassphrase,error);QCOMPARE(sent["encrypt"].toObject()["passphrase"].toString(),QString("synthetic phrase"));QVERIFY(sent["encrypt"].toObject()["enabled"].toBool());
+  // A plain upload asks nothing first.
+  asked.clear();UploadClient::sendUpload(send,{{"paths",QJsonArray{"/a"}}},error);QCOMPARE(asked,QStringList{"upload.files"});
+  // A capabilities request that fails, even after it was sent, sends nothing and is no unknown outcome.
+  asked.clear();
+  const UploadClient::Requester down=[&](const QString& method,const QJsonObject&,Error& e){asked<<method;e={"client_timeout","synthetic",{{"outcomeUnknown",true}}};return QJsonObject{};};
+  UploadClient::sendUpload(down,encrypted,error);QCOMPARE(asked,QStringList{"capabilities"});QCOMPARE(error.code,QString("client_timeout"));QVERIFY(!error.details.contains("outcomeUnknown"));
   QCOMPARE(operations_->capabilities()["uploadFiles"].toObject()["encrypt"].toBool(),true);
  }
  // #2118, #2119: an encrypted upload.files to a destination that hasn't passed its encrypted-page
