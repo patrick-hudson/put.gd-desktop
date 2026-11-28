@@ -153,18 +153,42 @@ harmlessly.
 When a DEB/RPM and the AppImage are both installed, the AppImage skips each
 per-user file whose system counterpart exists, so there is one entry.
 
-Known limit (#2132): the package doesn't clean up an AppImage's per-user files.
 If the AppImage ran before the DEB or RPM was installed, its per-user files have
-the same names as the package's and hide them. Dolphin, Nemo, Thunar, PCManFM
-and Pantheon Files may then show only the AppImage's old **Upload with put.gd**,
-and no **Upload encrypted with put.gd**, until the AppImage starts again and
-skips them. Deleting those five menu files from the user's data folder
-(`$XDG_DATA_HOME`, by default `~/.local/share`) brings the package's entries back:
-`kio/servicemenus/putgd-upload.desktop`, `nemo/actions/putgd-upload.nemo_action`,
-`Thunar/sendto/putgd-upload.desktop`, `file-manager/actions/putgd-upload.desktop`
-and `contractor/putgd-upload.contract`. Nothing else in the per-user table is
-deleted by hand. COSMIC's `context_actions` in particular is a shared list
-holding the user's own actions too.
+the same names as the package's and would hide them, so Dolphin, Nemo, Thunar,
+PCManFM and Pantheon Files would show only the AppImage's old **Upload with
+put.gd**. At every start, the package's resident moves those copies out of the
+way (#2132), but only where the package has its own copy. A file moves only when
+all of these hold:
+
+- its bytes are exactly what an AppImage wrote, from any template put.gd has
+  shipped, with only the launcher, icon and script path filled in (each in any
+  spelling of the same folder, such as `/home` and `/var/home`);
+- the highest-priority `XDG_DATA_DIRS` folder that has that file is a root-owned
+  system folder, not the user's own under another name, and holds a packaged
+  put.gd file that offers both entries;
+- no folder between the user's data or config folder and the file is a link;
+- it is the user's file, and still the one that was read.
+
+The AppImage's own skip uses the same test. A moved file goes to
+`$XDG_STATE_HOME/putgd/file-manager-replaced/<UTC time>/data/<path>` (`config/`
+for a Caja script, `home/` for a GNOME desktop icons script), keeping its mode.
+To undo a move, move the file back. The resident log names both paths, and the
+AppImage's record drops those lines. An edited copy is never moved and stays
+where it is.
+
+The GNOME desktop icons scripts belong to the package once it writes them: an
+edited AppImage script is moved aside first, and the AppImage's record stops
+naming them. The owned record keeps a SHA-256 for each entry file put.gd wrote
+(`hash <sha256> <path>`). When the AppImage is gone, its removal, in the
+launcher's shell copy or in process, deletes only entries that still have those
+bytes or are an exact rendering. It never deletes a file the package wrote, and
+leaves anything changed in place. When the AppImage stops keeping an entry (a
+package arrived, or the menu was turned off), a changed copy is moved aside
+rather than deleted. A launcher written by an earlier build, before entries
+carried hashes, is upgraded by the package's start when it is exactly one of
+those earlier launchers. It keeps its paths and mode, and the record gains
+hashes for the entries that are still the AppImage's. Coexistence edge cases
+kept from #1105 are in #2138.
 
 ## What happens
 
