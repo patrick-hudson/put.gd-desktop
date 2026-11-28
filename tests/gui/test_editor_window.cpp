@@ -68,7 +68,7 @@ private slots:
   QSignalSpy view(&window.canvas(),&EditorCanvas::viewChanged);
   const auto sweep=putgd::test::sweepClosedControls(&window);
   QVERIFY2(sweep.changed.isEmpty(),qPrintable(sweep.changed.join(", ")));
-  for(const auto* name:{"stepNumber","textFont","textSize","geometryWidth","Blur radius"})QVERIFY2(sweep.checked.contains(name),name);
+  for(const auto* name:{"stepNumber","textFont","textSize","geometryWidth","blurStrength","blurStrengthValue"})QVERIFY2(sweep.checked.contains(name),name);
   QCOMPARE(view.size(),0);
  }
  void keyboardContractNeverUploadsOnPlainEnter(){

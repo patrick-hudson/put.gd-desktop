@@ -29,12 +29,13 @@ inline QString controlValue(QWidget* w){
  return {};
 }
 struct WheelSweep{QStringList changed,checked,scrolled;};
-// Every dropdown, spin box, slider and tab bar under root, shown or not, gets one wheel step
-// each way. A shown one in a pane that can scroll must scroll that pane.
+// Every dropdown, spin box, slider and tab bar in root's window, shown or not, gets one wheel
+// step each way. A shown one in a pane that can scroll must scroll that pane.
 inline WheelSweep sweepClosedControls(QWidget* root){
  WheelSweep sweep;
  for(auto* control:root->findChildren<QWidget*>()){
-  if(controlValue(control).isNull()||qobject_cast<QScrollBar*>(control))continue;
+  // An open popup (a calendar's year field, a dropdown's list) keeps its own wheel.
+  if(controlValue(control).isNull()||qobject_cast<QScrollBar*>(control)||control->window()!=root->window())continue;
   auto name=control->objectName();if(name.isEmpty())name=control->accessibleName();if(name.isEmpty())name=control->metaObject()->className();
   QScrollBar* bar=nullptr;
   if(control->isVisible())for(auto* p=control->parentWidget();p&&!bar;p=p->parentWidget())if(auto* area=qobject_cast<QAbstractScrollArea*>(p);area&&area->verticalScrollBar()->maximum()>0)bar=area->verticalScrollBar();
@@ -42,8 +43,10 @@ inline WheelSweep sweepClosedControls(QWidget* root){
   const auto before=controlValue(control);
   wheelOver(control,-120);
   if(bar&&bar->value()>bar->minimum())sweep.scrolled.append(name);
+  const auto down=controlValue(control);
   wheelOver(control,120);
-  if(controlValue(control)!=before)sweep.changed.append(name+" ("+before+" -> "+controlValue(control)+")");
+  // Each step is checked: a step down then up can land back on the starting value.
+  if(down!=before||controlValue(control)!=before)sweep.changed.append(name+" ("+before+" -> "+down+" -> "+controlValue(control)+")");
   sweep.checked.append(name);
  }
  return sweep;
