@@ -42,10 +42,13 @@ constexpr bool sanitizerBuild = false;
 #else
 constexpr bool sanitizerBuild = false;
 #endif
-// A busy host: the helper's loop or grab thread waited for a CPU at least
-// this share of the time it ran at 60 frames a second.
+// A busy host: a thread that fell behind (the loop, or the source's grab or
+// copy thread) waited for a CPU at least this share of the time the source
+// ran at 60 frames a second. The waits come from the kernel's scheduler
+// accounting (/proc/thread-self/schedstat), on in CI's and the lab's
+// kernels; with it off they read 0, and a fallback there fails.
 constexpr double busyHostWaitShare = 0.1;
-// The CPU a frame may take, in frame intervals at 60 a second. On an idle
+// The CPU a frame the loop may take, in frame intervals at 60 a second. On an idle
 // aurora-amd core (Ryzen 5 8500GE) the loop takes about 1 ms a frame
 // optimized and 6 ms unoptimized (the dev preset), and a busy SMT sibling
 // doubles that; a shared runner's slower core adds more. Unoptimized code
@@ -332,7 +335,8 @@ private slots:
             const auto source = QRegularExpression(QStringLiteral("^the source sent (\\d+\\.\\d) frames a second$")).match(why);
             const auto loop = QRegularExpression(QStringLiteral("^the loop missed (\\d+)% of the frames$")).match(why);
             QVERIFY2(rate["atEnd"].toInt() == 30, rateText.constData());
-            QVERIFY2((source.hasMatch() && source.captured(1).toDouble() < 48) ||
+            // The reason's rate is rounded to a tenth: a fall at 47.95 reads 48.0.
+            QVERIFY2((source.hasMatch() && source.captured(1).toDouble() <= 48) ||
                          (loop.hasMatch() && loop.captured(1).toInt() >= 25 && loop.captured(1).toInt() <= 100),
                      rateText.constData());
             // Over both rates: up to 60 a second, and some delivered.
@@ -342,17 +346,26 @@ private slots:
                 const QString text = QString::fromUtf8(rateText);
                 QVERIFY2(at.contains("loopCpuMsPerFrame"), qPrintable("no thread times, so a busy host cannot be told from the capture's own work: " + text));
                 const double interval = 1000.0 / 60;
-                const QString part = loop.hasMatch() ? QStringLiteral("loop") : QStringLiteral("grab");
-                const double cpu = at[part + "CpuMsPerFrame"].toDouble();
-                QVERIFY2(cpu < cpuBudgetFrames * interval, qPrintable(QStringLiteral("the %1 needs %2 ms of CPU a frame, too much for 60 frames a second: %3").arg(part).arg(cpu).arg(text)));
+                // The threads that fell behind: the loop, or the source's
+                // grab and copy threads. Each is judged on its own CPU and wait.
+                const QStringList parts = loop.hasMatch() ? QStringList{"loop"} : QStringList{"grab", "copy"};
+                double waited = 0;
+                for (const QString& part : parts) {
+                    const double cpu = at[part + "CpuMsPerFrame"].toDouble();
+                    // The grab and the copy run GStreamer's own optimized
+                    // code and a row copy, under 1 ms a frame in any build:
+                    // one interval whatever this build's optimization.
+                    const double budget = part == "loop" ? cpuBudgetFrames * interval : interval;
+                    QVERIFY2(cpu < budget, qPrintable(QStringLiteral("the %1 needs %2 ms of CPU a frame, too much for 60 frames a second: %3").arg(part).arg(cpu).arg(text)));
+                    waited = std::max(waited, at[part + "WaitedMs"].toDouble());
+                }
                 if (loop.hasMatch()) {
                     // A missed frame is a frame interval the loop was away
                     // from the mailbox: its CPU time and its wait for a CPU say it was.
-                    const double away = cpu + at["loopWaitedMs"].toDouble() / std::max(1.0, at["framesTaken"].toDouble());
+                    const double away = at["loopCpuMsPerFrame"].toDouble() + at["loopWaitedMs"].toDouble() / std::max(1.0, at["framesTaken"].toDouble());
                     QVERIFY2(away >= 0.6 * interval, qPrintable(QStringLiteral("the loop was away %1 ms a frame, too little to miss a quarter of the frames: %2").arg(away).arg(text)));
                 }
-                const double waited = std::max(at["loopWaitedMs"].toDouble(), at["grabWaitedMs"].toDouble());
-                QVERIFY2(waited >= busyHostWaitShare * at["ms"].toDouble(), qPrintable("it went down to 30 on a host that kept no thread waiting for a CPU: " + text));
+                QVERIFY2(waited >= busyHostWaitShare * at["ms"].toDouble(), qPrintable("it went down to 30 while the threads that fell behind never waited for a CPU: " + text));
             }
         }
         const QImage image(done.result["path"].toString());

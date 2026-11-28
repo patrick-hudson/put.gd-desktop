@@ -191,10 +191,12 @@ void FrameTap::noteBus() {
 }
 
 GstFlowReturn FrameTap::arrived(GstElement* sink, gpointer self) {
+    auto* tap = static_cast<FrameTap*>(self);
     if (GstSample* sample = gst_app_sink_pull_sample(GST_APP_SINK(sink))) {
-        static_cast<FrameTap*>(self)->take(sample);
+        tap->take(sample);
         gst_sample_unref(sample);
     }
+    tap->noteThread(tap->copy_);
     return GST_FLOW_OK;
 }
 
@@ -279,59 +281,69 @@ void FrameTap::watchPace(bool on) {
 void FrameTap::openLoad() {
     double cpu = 0, waited = 0;
     const bool known = threadTimes(cpu, waited);
-    std::lock_guard lock(mailbox_);
-    loadOpen_ = true;
+    const qint64 taken = frames_.load();
+    std::lock_guard lock(loadMutex_);
     loopKnown_ = known;
     loopCpuFrom_ = cpu;
     loopWaitedFrom_ = waited;
     loadFrom_ = nowMs();
-    takenFrom_ = frames_.load();
-    grabs_ = 0;
-    grabKnown_ = true;
+    takenFrom_ = taken;
+    grab_ = {};
+    copy_ = {};
     load_ = {};
+    loadOpen_.store(true);
 }
 
 void FrameTap::closeLoad() {
     double cpu = 0, waited = 0;
     const bool known = threadTimes(cpu, waited);
-    std::lock_guard lock(mailbox_);
-    if (!loadOpen_) return;
-    loadOpen_ = false;
+    const qint64 taken = frames_.load();
+    std::lock_guard lock(loadMutex_);
+    if (!loadOpen_.exchange(false)) return;
     load_.ms = double(nowMs() - loadFrom_);
-    load_.taken = quint64(std::max<qint64>(0, frames_.load() - takenFrom_));
-    load_.grabbed = grabs_ > 1 ? grabs_ - 1 : 0;
-    load_.known = known && loopKnown_ && grabKnown_ && load_.grabbed > 0;
+    load_.taken = quint64(std::max<qint64>(0, taken - takenFrom_));
+    load_.grabbed = grab_.frames > 1 ? grab_.frames - 1 : 0;
+    load_.copied = copy_.frames > 1 ? copy_.frames - 1 : 0;
+    load_.known = known && loopKnown_ && grab_.known && copy_.known && load_.grabbed > 0 && load_.copied > 0;
     if (!load_.known) return;
     load_.loopCpuMs = cpu - loopCpuFrom_;
     load_.loopWaitedMs = waited - loopWaitedFrom_;
-    load_.grabCpuMs = grabCpuLast_ - grabCpuFirst_;
-    load_.grabWaitedMs = grabWaitedLast_ - grabWaitedFirst_;
+    load_.grabCpuMs = grab_.cpuLast - grab_.cpuFirst;
+    load_.grabWaitedMs = grab_.waitedLast - grab_.waitedFirst;
+    load_.copyCpuMs = copy_.cpuLast - copy_.cpuFirst;
+    load_.copyWaitedMs = copy_.waitedLast - copy_.waitedFirst;
+}
+
+void FrameTap::noteThread(ThreadSpan& span) {
+    if (!loadOpen_.load(std::memory_order_relaxed)) return;
+    double cpu = 0, waited = 0;
+    const bool known = threadTimes(cpu, waited);
+    std::lock_guard lock(loadMutex_);
+    if (!loadOpen_.load(std::memory_order_relaxed)) return;
+    if (!known) span.known = false;
+    if (span.frames++ == 0) {
+        span.cpuFirst = cpu;
+        span.waitedFirst = waited;
+    }
+    span.cpuLast = cpu;
+    span.waitedLast = waited;
 }
 
 GstPadProbeReturn FrameTap::grabbed(GstPad*, GstPadProbeInfo*, gpointer self) {
     auto* tap = static_cast<FrameTap*>(self);
-    { std::lock_guard lock(tap->mailbox_); if (!tap->loadOpen_) return GST_PAD_PROBE_OK; }
-    double cpu = 0, waited = 0;
-    const bool known = threadTimes(cpu, waited);
-    std::lock_guard lock(tap->mailbox_);
-    if (!tap->loadOpen_) return GST_PAD_PROBE_OK;
-    if (!known) tap->grabKnown_ = false;
-    if (tap->grabs_++ == 0) {
-        tap->grabCpuFirst_ = cpu;
-        tap->grabWaitedFirst_ = waited;
-    }
-    tap->grabCpuLast_ = cpu;
-    tap->grabWaitedLast_ = waited;
+    tap->noteThread(tap->grab_);
     return GST_PAD_PROBE_OK;
 }
 
 FrameTap::Rate FrameTap::rate() const {
-    std::lock_guard lock(mailbox_);
+    std::unique_lock lock(mailbox_);
     Rate rate;
     rate.asked = askedFps_;
     rate.now = askedFps_ ? source_.fps : 0;
     if (watchedFrames_ > 1 && watchedLast_ > watchedFirst_) rate.delivered = double(watchedFrames_ - 1) * 1000.0 / double(watchedLast_ - watchedFirst_);
     rate.fallback = fallback_;
+    lock.unlock();
+    std::lock_guard loadLock(loadMutex_);
     rate.load = load_;
     return rate;
 }
