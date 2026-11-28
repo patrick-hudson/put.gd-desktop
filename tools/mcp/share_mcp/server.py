@@ -111,7 +111,7 @@ TEXT_SOURCES = {'region', 'window', 'monitor', 'desktop', 'clipboard', 'file', '
 TEXT_SCREEN_SOURCES = {'region', 'window', 'monitor', 'desktop'}
 TEXT_LANGUAGE = re.compile(r'[a-z]{3,4}(_[a-z0-9]+){0,2}')
 # #2134: a false-alarm report's name, as the resident writes it.
-FALSE_ALARM_NAME = re.compile(r'putgd-false-alarm-\d{8}T\d{9}Z-[0-9a-f]{8}')
+FALSE_ALARM_NAME = re.compile(r'putgd-false-alarm-[0-9]{8}T[0-9]{9}Z-[0-9a-f]{8}')
 REDACT_CATEGORIES = {'email', 'phone', 'ip', 'card', 'key', 'name', 'list'}
 # Quick redact terms and patterns (#1618): the editor checks each pattern compiles.
 REDACT_TERMS_MAX, REDACT_TERM_LENGTH = 200, 100
