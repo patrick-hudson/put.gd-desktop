@@ -372,8 +372,11 @@ Nothing asked to be encrypted is ever uploaded unencrypted:
 - Proton Drive, Nextcloud and SFTP without a **Link address**
   (`encrypt_unavailable`) and a private route (`encrypt_needs_link`) are also
   refused before anything is accepted (#2136). The menu entry's notice gives the
-  destination's reason, then "Select Upload with put.gd instead."; putgd-cli and
-  MCP get "Or upload it without encryption." A saved passphrase that isn't loaded
+  destination's reason, then "Select Upload with put.gd instead." while the
+  destination's **Encrypted links** is off. While it is on, **Upload with
+  put.gd** would encrypt too, so the notice says to turn off **Encrypted links**
+  for this destination (or, for private sharing, to change **Sharing**).
+  putgd-cli and MCP get "Or upload it without encryption." A saved passphrase that isn't loaded
   and a file over a size limit (`encrypt_too_large`, `encrypt_split_unavailable`)
   fail each item before it is sent. The resident's failure notice says why, and
   History keeps the upload.
