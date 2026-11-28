@@ -151,7 +151,11 @@ to 650 MiB against 362 to 645). On a 3840 × 2160 Xvfb the tracker cannot take 6
 and the tap went down to 30 after two seconds, at the same cost as a capture that asked for 30. In
 the recheck of the final change at 1920 × 922, one brisk Stack Overflow capture fell back too (the
 loop missed 31% of the frames); the other seven stayed at 60. The result's `stats.sourceRate` says
-what was asked, what ran at the end, what was delivered and why it went down.
+what was asked, what ran at the end, what was delivered and why it went down. Its `atAsked` says how
+the helper's two threads fared while the source ran at the rate asked for: the loop's and the grab's
+CPU time a frame, and how long each was ready to run but waited for a CPU (the kernel's
+`/proc/thread-self/schedstat`). Long waits with work that fits a frame interval mean a busy host;
+work over a frame interval means the capture's own work is too heavy for 60 (#2099).
 
 The frame size is the logical rectangle at the output's scale. Lab runs at 125% on Plasma
 and GNOME and at 150% on Cinnamon X11 gave exact images; a compositor that resamples a
@@ -493,7 +497,7 @@ helper exit until the resident has admitted them.
 | `note` | Why, for `lost_track`, `top_not_reached`, the idle bound and auto-scroll stopped at a blank stretch |
 | `hiddenCells`, `hiddenRows` | Cells of the page that only the bar inside the region ever covered (filled with their column's plain colour), and the rows that hold them. `hiddenRows` also counts rows that no placed frame covered (since a frame is placed on the hint only where it overlaps the image, none should occur). Absent when there are none |
 | `foundAgain` | Times the tracker lost the page while the user scrolled and found it again; included in the helper result, `scroll.inspect`, `putgd-cli` and MCP `get_scroll_capture` |
-| `stats` | `steps`, `pixelsPerNotch` (auto-scroll's), `lowConfidenceSteps` (frames placed by expectation or on the hint), `elapsedMs`, `frames`, `recovered`, `pinnedRegions`, `framesPerSecond`, `rowsAtDone` (rows that Done's fresh frame added), and for X11 `sourceRate`: `asked` and `atEnd` (frames a second), `delivered` (the source's average frames a second while the session read, over both rates when it fell back; frames the tracker took are `framesPerSecond`) and `fallback` (why it went down to 30, only when it did) |
+| `stats` | `steps`, `pixelsPerNotch` (auto-scroll's), `lowConfidenceSteps` (frames placed by expectation or on the hint), `elapsedMs`, `frames`, `recovered`, `pinnedRegions`, `framesPerSecond`, `rowsAtDone` (rows that Done's fresh frame added), and for X11 `sourceRate`: `asked` and `atEnd` (frames a second), `delivered` (the source's average frames a second while the session read, over both rates when it fell back; frames the tracker took are `framesPerSecond`), `fallback` (why it went down to 30, only when it did) and `atAsked` (while it ran at the rate asked for: `ms` and `framesTaken`, and, where the kernel gives thread times, `loopCpuMsPerFrame`, `loopWaitedMs`, `grabCpuMsPerFrame` and `grabWaitedMs`, the waits being time ready to run without a CPU) |
 
 | `endReason` | `truncated` | Meaning |
 | --- | --- | --- |

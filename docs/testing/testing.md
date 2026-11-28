@@ -354,7 +354,13 @@ design is in [scrolling capture](../design/scroll-capture.md).
   capture that never ended, its last progress), the helper's `scroll: ended` line and every time
   auto-scroll let go of the wheel, from a debug log it turns on; that under auto-scroll only wheel steps and pointer motion are injected, nothing after the
   Done or Cancel reply, and, with the test's pointer warp repeated until the capture reports paused, nothing injected from then until auto-scroll is on again,
-  and the pointer is put back; the end of the control pipe stops injection at once. There is no
+  and the pointer is put back; the end of the control pipe stops injection at once. The user-scroll
+  capture also checks its own source rate: asked for 60, and still 60 with 48 to 62 delivered when it
+  kept up. A fallback to 30 must give a reason past its threshold. It passes on a sanitizer build, and on
+  any other build only when the helper's thread times show a busy host: the thread that fell behind
+  used less CPU a frame than a 60 fps interval (twice that for unoptimized code, the dev preset), the
+  loop's CPU and wait times account for the frames it missed, and a thread waited for a CPU for at least a tenth of
+  the time (#2099). A fallback on an idle host fails. There is no
   compositor or window manager, so it does not establish Cinnamon behaviour.
 - `tests/releases/test_appimage_notices.py`: the native LGPL 2.1 copy is owned by the real AppImage
   component spec.
