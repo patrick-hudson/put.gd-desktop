@@ -62,8 +62,20 @@ public:
  using EncryptHandler=std::function<void(bool on)>;
  void setEncryptHandler(EncryptHandler);
  EncryptHandler encryptHandler() const;
+ // #2134: Not sensitive in a check's prompt or its editor. The worker hands over the original image as it was
+ // staged (byte for byte, `suffix` png or jpg), the covered PNG and the helper's report JSON (checked against the
+ // digests it announced), `from` prompt or editor. The resident saves the report and calls `done` once, from any
+ // thread, with {name, bytes} or an error; the worker relays it as reportResult.
+ struct Report {QByteArray original;QString suffix;QByteArray covered;QByteArray json;QString from;};
+ using ReportHandler=std::function<void(Report,std::function<void(Error,QJsonObject)> done)>;
+ void setReportHandler(ReportHandler);
+ ReportHandler reportHandler() const;
+ void finishReport(const QString& reportId,Error,QJsonObject);
+ struct ReportResult {QString reportId;Error error;QJsonObject saved;};
+ QList<ReportResult> takeReportResults();
 private:
  PhaseHandler phaseHandler_;int prompts_=0;EncryptHandler encryptHandler_;
+ ReportHandler reportHandler_;QList<ReportResult> reportResults_;
  mutable std::mutex mutex_;
  QList<Pending> queue_;
  CopyHandler copyHandler_;std::optional<Error> copyResult_;
@@ -85,6 +97,8 @@ public:
  static constexpr int maximumQueuedCommands=16;
  // The largest edited PNG the editor hands to the clipboard.
  static constexpr qint64 maximumCopyBytes=128LL*1024*1024;
+ // #2134: the largest report JSON a helper may hand over with a false-alarm report.
+ static constexpr qint64 maximumReportJsonBytes=9LL*1024*1024;
  // The longest text the editor hands to the clipboard, and how many such copies may wait.
  static constexpr qsizetype maximumTextCopyCharacters=4*1024*1024;
  static constexpr int maximumTextCopies=4;

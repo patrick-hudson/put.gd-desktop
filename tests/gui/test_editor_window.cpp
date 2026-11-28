@@ -246,6 +246,29 @@ private slots:
    QCOMPARE(prompt.choices(),(QStringList{"edit","upload","cancel"}));QVERIFY(!prompt.choose("redact_upload"));
   }
  }
+ // #2134: Not sensitive asks for a false-alarm report and leaves every choice where it was; its line says how it went,
+ // and the panel grows to show it. Only offered when asked for.
+ void sensitivePromptNotSensitiveKeepsTheChoices(){
+  SensitivePrompt::Model model;model.findings.found={{"phone",1}};model.preview=canvasImage();model.destination="Upload to Project archive · Shared link";
+  {SensitivePrompt plain(model);QVERIFY(!plain.findChild<QPushButton*>("sensitiveFalseAlarm"));QCOMPARE(plain.state()["falseAlarm"].toObject()["offered"].toBool(),false);}
+  model.falseAlarmAllowed=true;
+  SensitivePrompt prompt(model);prompt.show();QVERIFY(putgd::test::waitForWindowExposed(&prompt));
+  auto* button=prompt.findChild<QPushButton*>("sensitiveFalseAlarm");QVERIFY(button&&button->isVisible()&&button->isEnabled());
+  QCOMPARE(button->text(),QString("Not sensitive"));QVERIFY(button->width()>=button->sizeHint().width());
+  QSignalSpy asked(&prompt,&SensitivePrompt::falseAlarmRequested);QSignalSpy chosen(&prompt,&SensitivePrompt::chosen);
+  button->click();QCOMPARE(asked.size(),1);QCOMPARE(chosen.size(),0);
+  const int before=prompt.height();
+  prompt.showFalseAlarm("saving","Saving a report for diagnostics…");QVERIFY(!button->isEnabled());button->click();QCOMPARE(asked.size(),1);
+  prompt.showFalseAlarm("failed","Couldn't save the report. Check free disk space and try again.");QVERIFY(button->isEnabled());
+  prompt.showFalseAlarm("saved","Report saved for diagnostics.");
+  auto* line=prompt.findChild<QLabel*>("sensitiveFalseAlarmLine");QVERIFY(line&&line->isVisible());QCOMPARE(line->text(),QString("Report saved for diagnostics."));
+  QVERIFY(!button->isVisible());QVERIFY(prompt.height()>before);
+  QCOMPARE(prompt.state()["falseAlarm"].toObject()["state"].toString(),QString("saved"));
+  // Every choice is still there and still works.
+  QCOMPARE(prompt.choices(),(QStringList{"redact_upload","edit","upload","cancel"}));
+  for(const auto* name:{"sensitiveRedact","sensitiveEdit","sensitiveUpload","sensitiveCancel"})QVERIFY2(prompt.findChild<QPushButton*>(name)->isEnabled(),name);
+  prompt.findChild<QPushButton*>("sensitiveUpload")->click();QCOMPARE(chosen.size(),1);QCOMPARE(chosen.first().first().toString(),QString("upload"));
+ }
  // #1941: QR codes Keys and tokens found are named by their kind, apart from the other keys, never by content.
  void sensitivePromptNamesSecretCodesByKind(){
   SensitivePrompt::Model model;model.findings.found={{"card",1},{"key",3}};model.codes={{"otp",1},{"wifi",1}};

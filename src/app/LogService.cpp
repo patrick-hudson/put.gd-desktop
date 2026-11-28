@@ -1,18 +1,21 @@
 #include "LogService.h"
 #include "core/Log.h"
+#include "FalseAlarmReports.h"
+#include <QThreadPool>
 #include <QFile>
 #include <QJsonDocument>
 #include <QSaveFile>
 #include <climits>
 namespace putgd {
 LogService::LogService(SettingsService& settings,QString stateRoot,QObject* parent):QObject(parent),settings_(settings),statePath_(stateRoot+"/debug-logging.json"),daily_(this),expiry_(this) {
- daily_.setInterval(cleanupIntervalMs);connect(&daily_,&QTimer::timeout,this,[]{logging::cleanup();});daily_.start();
+ daily_.setInterval(cleanupIntervalMs);connect(&daily_,&QTimer::timeout,this,[this]{logging::cleanup();pruneReports();});daily_.start();
  expiry_.setSingleShot(true);connect(&expiry_,&QTimer::timeout,this,&LogService::expire);
  connect(&settings_,&SettingsService::accepted,this,&LogService::apply);
 }
 void LogService::apply() {
  const auto snapshot=settings_.snapshot();
  logging::setRetention({snapshot.logDays,snapshot.logBytes});
+ if(reports_){reports_->setRetention(snapshot.logDays,snapshot.logBytes);pruneReports();}
  if(!snapshot.debugLogging) {
   if(active_)logging::info(logApp(),"Debug logging turned off");
   QFile::remove(statePath_);enabledAt_={};active_=false;expiry_.stop();logging::setDebug(false);
@@ -45,6 +48,12 @@ void LogService::expire() {
  // next accepted change.
  if(settings_.snapshot().debugLogging&&settings_.metadata()["validation"].toObject()["ok"].toBool())
   settings_.patchAsync({{"preferences",QJsonObject{{"diagnostics",QJsonObject{{"debugLogging",false}}}}}},settings_.revision(),[](Result){});
+}
+void LogService::pruneReports() {
+ // Off the session thread: removing a large report's files can take a moment on a slow disk.
+ if(auto* reports=reports_)QThreadPool::globalInstance()->start([reports,now=now()]{
+  if(const int removed=reports->prune(now))logging::info(logApp(),"False alarm reports removed by retention",{{"reports",removed}});
+ });
 }
 QJsonObject LogService::debugStatus() const {
  return {{"enabled",active_},{"enabledAt",enabledAt_.isValid()?QJsonValue(enabledAt_.toString(Qt::ISODateWithMs)):QJsonValue()},

@@ -281,9 +281,14 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
   menu->addSeparator();quickRedactRemove_=menu->addAction("Remove suggestions");quickRedactRemove_->setObjectName("quickRedact_remove");quickRedactRemove_->setToolTip("Clear Quick redact suggestions, keeping marks you drew");connect(quickRedactRemove_,&QAction::triggered,this,[this]{removeSuggestions();});
   setRedactList({},{});
   quickRedact_->setMenu(menu);
-  auto* row=new QHBoxLayout;row->setContentsMargins(0,0,0,0);row->addWidget(quickRedact_);row->addStretch(1);layout->addLayout(row);
+  // #2134: Not sensitive, in the editor the sensitive text check opened: saves a false-alarm report.
+  falseAlarm_=new QPushButton("Not sensitive",quickRedactRow_);falseAlarm_->setObjectName("editorFalseAlarm");Ui::role(falseAlarm_,"quiet");falseAlarm_->setAutoDefault(false);
+  falseAlarm_->setToolTip("Save a report for diagnostics that the check found something that isn't sensitive");falseAlarm_->setAccessibleDescription(falseAlarm_->toolTip());falseAlarm_->hide();
+  connect(falseAlarm_,&QPushButton::clicked,this,[this]{if(falseAlarmState_!="saving"&&falseAlarmState_!="saved")emit falseAlarmRequested();});
+  auto* row=new QHBoxLayout;row->setContentsMargins(0,0,0,0);row->addWidget(quickRedact_);row->addWidget(falseAlarm_);row->addStretch(1);layout->addLayout(row);
   auto* caution=Ui::label("Check the image before uploading. Detection can miss text.","secondary",quickRedactRow_);caution->setObjectName("quickRedactCaution");caution->setWordWrap(true);layout->addWidget(caution);
   quickRedactResult_=new QLabel(quickRedactRow_);quickRedactResult_->setObjectName("quickRedactResult");quickRedactResult_->setWordWrap(true);Ui::role(quickRedactResult_,"body");quickRedactResult_->hide();layout->addWidget(quickRedactResult_);
+  falseAlarmResult_=Ui::label({},"secondary",quickRedactRow_);falseAlarmResult_->setObjectName("editorFalseAlarmResult");falseAlarmResult_->setWordWrap(true);falseAlarmResult_->hide();layout->addWidget(falseAlarmResult_);
  }
  properties->addWidget(quickRedactRow_);
  connect(text_,&EditorTextRecognition::changed,this,[this]{canvas_->update();refresh();});
@@ -1304,6 +1309,21 @@ void EditorWindow::setRedactList(QStringList terms,QStringList patterns){
  const bool empty=redactTerms_.isEmpty()&&redactPatterns_.isEmpty();
  if(quickRedactList_){quickRedactList_->setEnabled(!empty);quickRedactList_->setToolTip(empty?QStringLiteral("Add words or patterns in Settings → Capture → Text recognition"):QStringLiteral("Use words and patterns from Settings → Capture → Text recognition"));}
 }
+void EditorWindow::offerFalseAlarm(bool offered){
+ falseAlarmOffered_=offered;falseAlarm_->setVisible(offered);
+ if(!offered){falseAlarmResult_->hide();falseAlarmState_=QStringLiteral("none");}
+}
+void EditorWindow::showFalseAlarm(const QString& state,const QString& text){
+ falseAlarmState_=state;falseAlarm_->setEnabled(state=="failed");
+ // Saved once: the button goes, and the line says where the report went.
+ falseAlarm_->setVisible(falseAlarmOffered_&&state!="saved");
+ falseAlarmResult_->setText(text);Ui::role(falseAlarmResult_,state=="failed"?"danger":"secondary");falseAlarmResult_->setVisible(!text.isEmpty());
+}
+QJsonObject EditorWindow::falseAlarmState() const {
+ QJsonObject state{{"offered",falseAlarmOffered_},{"state",falseAlarmState_}};
+ if(!falseAlarmResult_->text().isEmpty())state["message"]=falseAlarmResult_->text();
+ return state;
+}
 int EditorWindow::removeSuggestions(){
  if(busy_)return 0;
  const auto removed=doc_.removeSuggested();
@@ -1355,13 +1375,14 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
     // Every match is ordinary Redact marks, all added as one undo step. A mark the user deleted from an earlier run is not added back.
     QJsonObject counts;for(const auto& category:categories)counts[category]=0;QJsonArray created;
     g->doc_.beginGesture();
+    QList<QList<QRect>> placedByMatch;
     for(const auto& match:found.matches){
-     bool any=false;
+     bool any=false;placedByMatch.append(QList<QRect>{});
      // Each padded mark comes with the recognized words' own box it was built from: that, never the padded mark, is what a
     // deleted suggestion is remembered by (padding makes two neighbouring one-character words look like one suggestion).
     for(const auto& [rect,words]:markedWords(candidates,match,g->doc_.imageRect(),g->doc_.base())){
       if(g->doc_.dismissed(words,match.category))continue;
-      editor::Shape shape;shape.kind=editor::Shape::Kind::Redact;shape.rect=rect;shape.suggested=match.category;shape.suggestedAt=words;created.append(double(g->doc_.add(shape)));any=true;
+      editor::Shape shape;shape.kind=editor::Shape::Kind::Redact;shape.rect=rect;shape.suggested=match.category;shape.suggestedAt=words;created.append(double(g->doc_.add(shape)));any=true;placedByMatch.last().append(rect);
      }
      if(any)counts[match.category]=counts[match.category].toInt()+1;
     }
@@ -1379,6 +1400,11 @@ void EditorWindow::quickRedact(const QStringList& categories,TextDone done,QStri
      counts["key"]=counts["key"].toInt()+1;codeKinds[kind]=codeKinds[kind].toInt()+1;
     }
     g->doc_.commitGesture();
+    // #2134: what this run matched and covered, kept for a false-alarm report.
+    {QuickRedactRun run;run.candidates=candidates;run.matches=found.matches;run.categories=categories;run.recognition=g->text_->details();run.valid=true;
+     run.marks=std::move(placedByMatch);
+     if(categories.contains(QLatin1String("key")))for(const auto& code:codes)run.codes.append({code.kind,code.quad.boundingRect()});
+     g->lastQuickRedact_=std::move(run);}
     const auto added=created.size();
     QStringList lines{added?QString("Added %1 suggested %2").arg(added).arg(added==1?"redaction":"redactions"):QStringLiteral("No matches found. Check the image manually.")};
     QJsonArray skipped;for(const int index:found.skippedPatterns){skipped.append(index);lines<<QString("Pattern %1 didn't finish and was skipped.").arg(index+1);}

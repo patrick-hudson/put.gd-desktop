@@ -1,4 +1,5 @@
 #include "EditorWindow.h"
+#include <QJsonArray>
 #include <QCoreApplication>
 #include <QDir>
 #include <QLocale>
@@ -119,6 +120,11 @@ void EditorTextRecognition::finished(quint64 revision,Error error,std::shared_pt
  QList<editor::RecognizedCode> none;
  editor::TextLayer::exclude(found,codes,redactions);editor::TextLayer::exclude(every,none,redactions);
  layer_.set(nextIdentity_++,std::move(found),std::move(codes));candidates_=std::move(every);truncated_=result->truncated;languagesSkipped_=result->languagesSkipped;detection_=textjob::detectionJson(*result);
+ {QJsonArray used,skipped;for(const auto& language:result->languagesUsed)used.append(language);for(const auto& language:result->languagesSkipped)skipped.append(language);
+  QJsonObject engine{{"name","tesseract"},{"version",result->engineVersion},{"scale",result->engineScale},{"bands",result->engineBands},{"banded",result->banded}};
+  details_={{"engine",engine},{"languagesUsed",used},{"languagesSkipped",skipped},{"detection",detection_},{"truncated",result->truncated},
+   {"engineStartMs",double(result->engineStartMs)},{"recognizeMs",double(result->recognizeMs)},{"totalMs",double(result->totalMs)},
+   {"cropOffset",QJsonArray{offset.x(),offset.y()}},{"candidates",double(candidates_.size())},{"codes",double(layer_.codes().size())}};}
  lineTops_.clear();for(const auto& word:layer_.words()){if(word.line>=lineTops_.size())lineTops_.append(word.rect.top());else lineTops_[word.line]=qMin(lineTops_[word.line],word.rect.top());}
  state_="completed";error_={};
  for(auto& done:std::exchange(waiting_,{}))done({});

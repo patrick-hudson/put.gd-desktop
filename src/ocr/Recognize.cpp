@@ -1111,6 +1111,7 @@ TextResult toTextResult(const JobResult& job,const JobOptions& options){
  TextResult out;out.text=job.text;out.lineTops=job.lineTops;out.truncated=job.truncated;out.banded=job.recognition.banded;
  out.languagesUsed=job.used;out.languagesSkipped=job.skipped;
  out.detectedScript=job.script.script;out.detectedLanguage=job.script.language;out.detectionOutcome=job.script.outcome;
+ out.engineVersion=TextEngine::version();out.engineScale=job.recognition.scale;out.engineBands=job.recognition.bands;
  out.engineStartMs=job.timings.engineStartMs;out.recognizeMs=job.timings.codesMs+job.timings.recognitionMs+job.timings.emojiWaitMs;
  const auto word=[](const Word& w){return TextWord{w.text,w.rect,int(std::lround(w.confidence)),w.second};};
  // A second read's word that the contract's bounds would cut (too long, or past

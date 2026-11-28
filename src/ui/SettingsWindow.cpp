@@ -691,7 +691,11 @@ private:
   QStringList files;
   const QHash<QString,QString> about{{"manifest.json","contents and checksums"},{"environment.json","system, desktop and Qt versions"},{"diagnostics.json","put.gd's current state"},
    {"config.redacted.json","settings without credentials"},{"coredumps.json","system crash reports, stack traces only"},{"operations.json",(count==1?QString("1 upload"):QString("%1 uploads").arg(count))},{"logs/putgd.jsonl",QString("%1 log records").arg(records)+(preview_["droppedLogRecords"].toInt()?QString(", %1 older ones left out to stay under 20 MB").arg(preview_["droppedLogRecords"].toInt()):QString{})}};
-  for(const auto& name:preview_["files"].toArray())files.append(QString(R"(<span style="font-family: '%1'; font-size: %2px">%3</span>: %4)").arg(Ui::monoFamily().toHtmlEscaped()).arg(Ui::scaled(Ui::Type::metadata)).arg(name.toString().toHtmlEscaped(),about.value(name.toString()).toHtmlEscaped()));
+  const auto fileLine=[](const QString& name,const QString& text){return QString(R"(<span style="font-family: '%1'; font-size: %2px">%3</span>: %4)").arg(Ui::monoFamily().toHtmlEscaped()).arg(Ui::scaled(Ui::Type::metadata)).arg(name.toHtmlEscaped(),text.toHtmlEscaped());};
+  for(const auto& name:preview_["files"].toArray())files.append(fileLine(name.toString(),about.value(name.toString())));
+  // #2134: false-alarm reports hold real screen content, and the package says so in one line.
+  if(const int reports=preview_["falseAlarmReports"].toObject()["included"].toInt();reports>0)
+   files.append(fileLine("false-alarms/",(reports==1?QString("1 false-alarm report"):QString("%1 false-alarm reports").arg(reports))+", with pictures of your screen and the text read from them"));
   contents_->setText(files.join("<br>"));
   QStringList lines;const auto list=preview_["operationList"].toArray();
   for(int i=0;i<list.size()&&i<5;++i)lines.append(operationLine(list[i].toObject()));
@@ -794,7 +798,7 @@ QString settingHelp(const QString& path,const QString& objectName){
   {"updateInstall","Downloads the new AppImage, verifies it against SHA256SUMS, and replaces the current file in place. Keeps a hidden backup until the new version starts, and asks before installing an older version."},
   {"otherChannel","Commands to switch your system's apt or dnf repository to the other channel and install its package. Run them in a terminal yourself."},
   {"debugLogging","Writes detailed troubleshooting logs locally and turns off automatically after 24 hours. Never logs credentials, tokens, or file contents."},
-  {"logSummary","Local activity logs, kept for up to 14 days and 50 MB by default. Clear logs deletes all log files and starts a fresh one."},
+  {"logSummary","Local activity logs, kept for up to 14 days and 50 MB by default. Clear logs deletes all log files and false-alarm reports, and starts a fresh log."},
   {"uncleanExit","Most recent unexpected exit detected on startup, such as a logout signal, crash, or power loss. Included in diagnostics packages."},
   {"unhingedMode","Uses all CPU cores at normal priority for text recognition, recording, and thumbnails (default: off). Heavy work finishes faster, but other apps may slow down. Memory limits still apply."},
   {"fileManagerMenu","Adds Upload with put.gd to supported file managers' right-click menus (default: on). Turning it off removes only the entries this AppImage created."},
@@ -1251,7 +1255,7 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  uncleanExit_=new QLabel;uncleanExit_->setObjectName("uncleanExit");uncleanExit_->setWordWrap(true);uncleanExit_->setAccessibleName("Last unclean exit");Ui::role(uncleanExit_,"secondary");auto* exitRow=PreferenceRows::action(diagnosticsForm,"Last unclean exit",{},uncleanExit_);auto* exitLine=qobject_cast<QBoxLayout*>(exitRow->layout()->itemAt(0)->layout());exitLine->setAlignment(uncleanExit_,Qt::AlignRight|Qt::AlignBaseline);exitLine->setAlignment(exitLine->itemAt(0)->layout(),Qt::AlignBaseline);uncleanExit_->setAlignment(Qt::AlignRight);
  for(auto* value:{logSummary_,uncleanExit_}){const auto help=settingHelp({},value->objectName());value->setToolTip(help);value->setAccessibleDescription(help);value->setProperty("settingDescription",help);}
  auto* createPackage=new QPushButton("Create…");createPackage->setObjectName("createDiagnosticsPackage");createPackage->setAccessibleName("Create diagnostics package");createPackage->setToolTip("Preview and save a redacted .zip of recent failures, settings, and logs");Ui::role(createPackage,"secondary");PreferenceRows::action(diagnosticsForm,"Diagnostics package","A redacted .zip you can send to a maintainer.",createPackage);
- connect(clearLogs_,&QPushButton::clicked,this,[this]{if(!Ui::confirm(this,"Clear logs — put.gd","Delete every put.gd log file? Uploads, history, settings and saved diagnostics packages stay.","Clear logs",true))return;clearLogs({});});
+ connect(clearLogs_,&QPushButton::clicked,this,[this]{if(!Ui::confirm(this,"Clear logs — put.gd","Delete every put.gd log file and false-alarm report? Uploads, history, settings and saved diagnostics packages stay.","Clear logs",true))return;clearLogs({});});
  connect(createPackage,&QPushButton::clicked,this,[this]{openDiagnosticsPackage();});
 
  auto* supportToggle=new QToolButton;supportToggle->setObjectName("desktopSupportDetailsToggle");supportToggle->setText("Desktop support details");Ui::disclosure(supportToggle);supportToggle->setProperty("uiFlush",true);diagnosticsForm->addRow(supportToggle);
@@ -2392,7 +2396,10 @@ void SettingsWindow::clearLogs(std::function<void(Error,QJsonObject)> done){
  settings_.request("logs.clear",{},this,[g=QPointer<SettingsWindow>(this),done](Error error,QJsonObject result){
   if(g){
    g->clearLogs_->setEnabled(true);
-   if(error)g->status(error);else Ui::feedback(plain(g->status_),QString("Logs cleared: %1 files, %2 removed.").arg(result["removedFiles"].toInt()).arg(ByteSize::summary(result["removedBytes"].toInteger())));
+   if(error)g->status(error);else{
+    const int reports=result["removedReports"].toInt();
+    Ui::feedback(plain(g->status_),QString("Logs cleared: %1 files, %2 removed.").arg(result["removedFiles"].toInt()).arg(ByteSize::summary(result["removedBytes"].toInteger()))+(reports==1?QString(" 1 false-alarm report removed."):reports>1?QString(" %1 false-alarm reports removed.").arg(reports):QString()));
+   }
    // The log's new figures come with the next snapshot.
    g->settings_.refreshSnapshot([g,done,error,result](Error){if(g)g->refreshLoggingStatus();if(done)done(error,result);});return;
   }

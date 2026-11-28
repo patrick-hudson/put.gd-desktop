@@ -21,6 +21,7 @@
 #include "core/EncryptJob.h"
 #include "core/HostEnvironment.h"
 #include "FileUploads.h"
+#include "FalseAlarmReports.h"
 #include "core/ImageJob.h"
 #include "core/ImageFormat.h"
 #include <QCoreApplication>
@@ -680,6 +681,24 @@ void OperationService::runCheck(Job job) {
    owner->copyEditedText(id,std::move(text),std::move(done));
   },Qt::QueuedConnection);
  });
+ // #2134: Not sensitive: the report the helper handed over, saved off this thread with the capture's details.
+ // Which file of a selection was being checked is set by the check's worker below.
+ auto checkPlace=std::make_shared<std::atomic_int>(0),checkPlaces=std::make_shared<std::atomic_int>(0);
+ {
+  const auto& checked=job.op;
+  QJsonObject capture{{"action",checked.action},{"source",checked.action=="clipboard"?QStringLiteral("clipboard"):checked.action==fileManagerAction?QStringLiteral("file"):QStringLiteral("capture")},{"mode",prompt?"prompt":"report"}};
+  if(job.payload.kind=="image"&&!job.payload.image.isNull())capture["devicePixelRatio"]=job.payload.image.devicePixelRatio();
+  const auto summary=FalseAlarmReports::settingsSummary(checked.settings,checked.destination.providerId);
+  session->setReportHandler([owner,id,capture,summary,checkPlace,checkPlaces](EditorSession::Report report,std::function<void(Error,QJsonObject)> done){
+   auto shown=capture;
+   // A selection names the file by its place only, never its name.
+   if(checkPlaces->load()>1)shown["file"]=QStringLiteral("%1 of %2").arg(checkPlace->load()+1).arg(checkPlaces->load());
+   QMetaObject::invokeMethod(QCoreApplication::instance(),[owner,id,report=std::move(report),resident=QJsonObject{{"capture",shown},{"settings",summary}},done=std::move(done)]() mutable {
+    if(!owner||owner->stopping_){done({"editor_closed","put.gd is closing, so the report wasn't saved.",{}},{});return;}
+    owner->saveFalseAlarm(id,std::move(report),std::move(resident),std::move(done));
+   },Qt::QueuedConnection);
+  });
+ }
  session->setAppearance(editorAppearance_);
  const auto& op=job.op;
  const auto staging=root_+"/editing",destination=editorDestination(op),appearance=editorAppearance_;
@@ -717,6 +736,7 @@ void OperationService::runCheck(Job job) {
   for(qsizetype index=0;index<images.size();++index){
    if(session->cancelled()){outcome->error={"cancelled","Capture cancelled",{}};break;}
    EditorJob::Check check{categories,prompt,single,{},cover};
+   checkPlace->store(int(index));checkPlaces->store(int(images.size()));
    if(!single)check.file=QStringLiteral("File %1 of %2: %3").arg(index+1).arg(images.size()).arg(QFileInfo(images[index]).fileName());
    // A file chosen twice that changed between its checks matches neither: its uncovered place fails as changed (#1898).
    const auto identity=fileIdentity(images[index]);
@@ -985,6 +1005,48 @@ void OperationService::decideSensitive(const QString& id,const QString& choice,J
    if(!error)result["operationId"]=id;
    reply(error,result);
   },Qt::QueuedConnection);
+ });
+}
+void OperationService::reportFalseAlarm(const QString& id,JsonReply reply) {
+ const auto session=checkSessions_.value(id);
+ const bool queued=std::any_of(checkQueue_.cbegin(),checkQueue_.cend(),[&](const Job& job){return job.op.id==id;});
+ if(queued||(session&&(session->phase()=="checking"||session->phase()=="starting"))){reply({"sensitive_check_running","The capture is still being checked for sensitive text",{{"operationId",id}}},{});return;}
+ if(!session||(session->phase()!="prompt"&&session->phase()!="editing")){reply({"false_alarm_unavailable","This operation has no sensitive text warning waiting, and no editor that check opened",{{"operationId",id}}},{});return;}
+ if(!falseAlarms_){reply({"false_alarm_unavailable","Reports can't be saved here",{{"operationId",id}}},{});return;}
+ QPointer<OperationService> owner(this);const auto directory=falseAlarms_->directory();
+ session->request("reportFalseAlarm",{},[owner,id,reply,directory](Error error,QJsonObject result){
+  QMetaObject::invokeMethod(QCoreApplication::instance(),[owner,id,reply,error,result,directory]() mutable {
+   if(!owner||owner->stopping_)return;
+   if(!error){
+    result["operationId"]=id;const auto name=result.value("name").toString();
+    if(FalseAlarmReports::reportName(name))result["path"]=QDir(directory).filePath(name);
+    result["bytes"]=double(result.value("bytes").toString().toLongLong());
+   }
+   reply(error,result);
+  },Qt::QueuedConnection);
+ });
+}
+void OperationService::saveFalseAlarm(const QString& id,EditorSession::Report report,QJsonObject resident,std::function<void(Error,QJsonObject)> done) {
+ if(!falseAlarms_){done({"false_alarm_unavailable","Couldn't save the report: reports aren't available here.",{}},{});return;}
+ resident["schemaVersion"]=1;resident["kind"]="false_alarm";resident["operationId"]=id;
+ resident["prompt"]=checkOperations_.value(id).sensitive.value("prompt").toInt();
+ resident["build"]=QJsonDocument::fromJson(buildManifestJson()).object();
+ resident["environment"]=FalseAlarmReports::environment();
+ {auto capture=resident.value("capture").toObject();capture["format"]=report.suffix;capture["bytes"]=double(report.original.size());resident["capture"]=capture;}
+ auto* reports=falseAlarms_;
+ background([reports,report=std::move(report),resident](Error& error) mutable {
+  const auto now=QDateTime::currentDateTimeUtc();
+  resident["created"]=now.toString(Qt::ISODateWithMs);
+  // The helper's part is what it recognized and matched; it is read here only to be written, never logged.
+  const auto composed=FalseAlarmReports::compose(QJsonDocument::fromJson(report.json).object(),resident,error);if(error)return QJsonObject{};
+  report.json.clear();
+  const auto saved=reports->save(report.original,report.suffix,report.covered,composed,error,now);if(error)return QJsonObject{};
+  return QJsonObject{{"name",saved.name},{"bytes",double(saved.bytes)},{"pruned",saved.pruned},{"found",composed.value("check").toObject().value("found")},{"covered",composed.value("check").toObject().value("covered")}};
+ },[id,done](Error error,QJsonObject saved){
+  if(error){logging::warning(logOperation(),"False alarm report not saved",{{"operationId",id},{"error",logging::errorFields(error)}});done(error,{});return;}
+  // Kinds and counts only, as for the check itself.
+  logging::info(logOperation(),"False alarm report saved",{{"operationId",id},{"report",saved.value("name")},{"bytes",saved.value("bytes")},{"pruned",saved.value("pruned")},{"found",saved.value("found")},{"covered",saved.value("covered")}});
+  done({},{{"name",saved.value("name")},{"bytes",saved.value("bytes")}});
  });
 }
 void OperationService::enqueue(Job job) {

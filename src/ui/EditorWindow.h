@@ -3,6 +3,7 @@
 #include "editor/EditorCommands.h"
 #include "core/Error.h"
 #include "core/TextJob.h"
+#include "editor/FalseAlarmReport.h"
 #include "editor/QuickRedact.h"
 #include "editor/TextLayer.h"
 #include <QJsonArray>
@@ -59,6 +60,9 @@ public:
  bool truncated() const {return truncated_;}
  // Languages asked for that had no data (#1804: the sensitive text check reads that as unfinished).
  QStringList languagesSkipped() const {return languagesSkipped_;}
+ // #2134: how the current result was read, for a false-alarm report: engine (name, version, scale, bands),
+ // languages used and skipped, the script check, truncated, banded, timings and the crop's offset. No text.
+ QJsonObject details() const {return details_;}
  // The Copy all text clipboard text: the words by line with each text code
  // on a line of its own (textjob::copyText's rule), rebuilt from what is left.
  // withhold (#1941): a copy an agent asked for, a secret code's content replaced by quickRedact::withheldText.
@@ -100,6 +104,7 @@ private:
  QList<int> lineTops_;
  bool truncated_=false,active_=false,restart_=false;QStringList languagesSkipped_;
  QJsonValue detection_;  // #1981: the result's script check, null when it did not run
+ QJsonObject details_;
  QString state_="idle";Error error_;
  QByteArray signature_;quint64 revision_=1,jobRevision_=0,nextIdentity_=1;
  TextJob::Cancel cancel_;
@@ -225,7 +230,18 @@ public:
  QJsonObject applyCommands(const QJsonArray& commands,QString& code,QString& message);
  // Removes every suggested mark as one undo step; hand-drawn marks stay. Returns how many.
  int removeSuggestions();
+ // #2134: the last Quick redact run whose marks were added: the words it matched on, each match with the
+ // marks it placed, and the codes covered with Keys and tokens (kind and box). In memory only, for the
+ // false-alarm report the sensitive text check's editor can save.
+ using QuickRedactRun=editor::falseAlarm::Run;
+ const QuickRedactRun& lastQuickRedact() const {return lastQuickRedact_;}
+ // #2134: Not sensitive in the Redact tool's panel, offered in the editor the sensitive text check opened.
+ // showFalseAlarm sets its line: "saving", "saved" or "failed" with the text to show.
+ void offerFalseAlarm(bool offered);
+ void showFalseAlarm(const QString& state,const QString& text);
+ QJsonObject falseAlarmState() const;
 signals:
+ void falseAlarmRequested();
  void encryptToggled(bool on);
  void uploadRequested();
  void cancelRequested();
@@ -317,6 +333,8 @@ private:
  CaptureStyle savedStyle_;bool syncingStyle_=false;
  void syncCaptureStyle();void changeCaptureStyle(const std::function<void(CaptureStyle&)>& change);
  QWidget* quickRedactRow_=nullptr;QToolButton* quickRedact_=nullptr;QLabel* quickRedactResult_=nullptr;bool quickRedacting_=false;
+ QuickRedactRun lastQuickRedact_;
+ QPushButton* falseAlarm_=nullptr;QLabel* falseAlarmResult_=nullptr;bool falseAlarmOffered_=false;QString falseAlarmState_=QStringLiteral("none");
  QStringList redactTerms_,redactPatterns_;int quickRedactGestureWaitMs_=textjob::maximumDeadlineMs;QAction *quickRedactList_=nullptr,*quickRedactRemove_=nullptr;QLabel* suggested_=nullptr;
 };
 }

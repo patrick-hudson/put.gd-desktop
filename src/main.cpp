@@ -16,6 +16,7 @@
 #include "app/LocalServer.h"
 #include "app/DiagnosticsBundle.h"
 #include "app/LogService.h"
+#include "app/FalseAlarmReports.h"
 #include "app/LoginStartup.h"
 #include "app/FileManagerIntegration.h"
 #include "app/ResidentSession.h"
@@ -391,7 +392,10 @@ int main(int argc,char* argv[]) {
  putgd::crash::setOutput(putgd::RunMarker::crashOutput());
  QTimer::singleShot(15000,&app,[]{putgd::crash::refreshModules();});
 #endif
- putgd::LogService logService(settings,stateRoot);logService.apply();
+ // #2134: false-alarm reports beside the logs, under the same retention.
+ // Static: a report still being written on a worker at exit keeps its folder object.
+ static putgd::FalseAlarmReports falseAlarms(stateRoot+"/false-alarms");operations.setFalseAlarmReports(&falseAlarms);
+ putgd::LogService logService(settings,stateRoot);logService.setFalseAlarmReports(&falseAlarms);logService.apply();
  putgd::DiagnosticsBundles bundles(operations,stateRoot);server.setDiagnosticsBundles(&bundles);
  // The daily update check runs putgd-cli as a child (#293); this process never loads TLS for it.
  putgd::UpdateService updates(settings,stateRoot,QDir(QCoreApplication::applicationDirPath()).filePath("putgd-cli"));server.setUpdateService(&updates);

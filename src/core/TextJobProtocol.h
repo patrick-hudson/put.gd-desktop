@@ -50,6 +50,10 @@ struct TextResult {
  QString detectedScript,detectedLanguage,detectionOutcome;
  // Timed by the helper; the parent adds spawnMs (start to ready) and totalMs.
  qint64 engineStartMs=0,recognizeMs=0,spawnMs=0,totalMs=0;
+ // #2134: the engine's version (Tesseract's own string) and the largest scale a panel was read at
+ // (1 is the image's size, 2 twice it), with the number of bands: what a false-alarm report records,
+ // since the boxes come back in source pixels. Empty, 0 and 0 from an engine that doesn't say.
+ QString engineVersion;double engineScale=0;int engineBands=0;
  // Codes whose content is text: what a notification counts and a copy carries.
  int textCodes() const;
 };

@@ -886,6 +886,18 @@ def create_server(adapter: CliAdapter) -> MCPServer:
             params['prompt'] = prompt
         return await adapter.call('operation.decide', params)
 
+    @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))
+    async def report_false_alarm(id: str) -> Json:
+        """Not sensitive (#2134): save a false-alarm report for a capture whose sensitive text check flagged something that isn't sensitive, while it waits in sensitive_text_found (the panel or decide_upload) or in the editor that check opened. The report goes to put.gd's diagnostics folder beside the logs, follows the log retention settings and is included in diagnostics packages: it holds the original image as checked, the image with the suggested covers, and a JSON of every finding with its recognized text, words, boxes, confidences and the rule that fired, the recognition engine and settings (Quick redact's saved words and patterns as counts only) and the capture's kind. It holds no destination details, credentials or links. The decision still waits: decide_upload afterwards as usual. Returns saved, name, path and bytes. false_alarm_unavailable: nothing was flagged, or no prompt or check editor is open; false_alarm_already_saved: this capture already has a report; sensitive_check_running: still checking."""
+        if not identifier(id):
+            return invalid()
+        return await adapter.call('operation.reportFalseAlarm', {'id': id}, timeout=105)
+
+    @server.tool(annotations=read)
+    async def list_false_alarm_reports() -> Json:
+        """The false-alarm reports (#2134) saved with report_false_alarm or the Not sensitive button, newest first: name, created, bytes, operationId, reportedFrom (prompt or editor), found and covered kinds with counts, and the folder, total bytes and the retention that applies (retention.logDays and retention.logBytes). Never their pictures or text; clear_logs removes them."""
+        return await adapter.call('diagnostics.falseAlarms', {})
+
     @server.tool(annotations=effect)
     async def cancel_operation(id: str, kind: str = 'operation', item_id: str | None = None) -> Json:
         """Cancel operation/delete work; already sent remote mutations cannot be rolled back. With item_id (an operation item's artifact.id), cancel only that file of an active upload batch; the other files continue and Retry uploads the cancelled one."""
@@ -1048,8 +1060,8 @@ def create_server(adapter: CliAdapter) -> MCPServer:
                                         include_names: bool = False, output: str | None = None,
                                         preview: bool = False, notify: bool = False,
                                         upload: bool = False, profile_id: str | None = None,
-                                        copy_link: bool = False) -> Json:
-        """Save a diagnostics package (.zip) locally for a maintainer: manifest with SHA-256s, environment, diagnostics, redacted configuration, failed/partial/interrupted operations with HTTP/provider codes and S3 request IDs, coredumpctl stack traces where available, and log records, at most 20 MiB. operation_id packages one operation and the log around it; otherwise since (1m-365d, default 7d) picks failures and logs. File names, object keys and URLs are hashed unless include_names; credentials, tokens, signed URLs, file bytes, clipboard and the raw history database are never included. output is an absolute .zip path (never overwritten) or folder; the default <archive>/diagnostics keeps only the newest 10 packages for 30 days. The local copy is always saved first. preview returns the files, redaction, operations, log record count and folder without writing or uploading anything; notify makes the resident show a "diagnostics saved" notification with Show in folder. upload then sends the saved package to a working destination (profile_id, default the capture destination; skipped with uploadError when its last upload failed with a credential or configuration error or Test connection fails) as putgd-diagnostics-<uuid>.zip, recorded in history as a diagnostics upload; on a public-read bucket anyone with the link can download it, and a Proton Drive link expires after 7 days. copy_link also copies the link. Returns path, bytes, sha256, counts, and with upload: upload (destination, warning, operationId, historyId), link or uploadError."""
+                                        copy_link: bool = False, include_false_alarm_reports: bool = True) -> Json:
+        """Save a diagnostics package (.zip) locally for a maintainer: manifest with SHA-256s, environment, diagnostics, redacted configuration, failed/partial/interrupted operations with HTTP/provider codes and S3 request IDs, coredumpctl stack traces where available, and log records, at most 20 MiB. operation_id packages one operation and the log around it; otherwise since (1m-365d, default 7d) picks failures and logs. File names, object keys and URLs are hashed unless include_names; credentials, tokens, signed URLs, file bytes, clipboard and the raw history database are never included. output is an absolute .zip path (never overwritten) or folder; the default <archive>/diagnostics keeps only the newest 10 packages for 30 days. The local copy is always saved first. preview returns the files, redaction, operations, log record count and folder without writing or uploading anything; notify makes the resident show a "diagnostics saved" notification with Show in folder. upload then sends the saved package to a working destination (profile_id, default the capture destination; skipped with uploadError when its last upload failed with a credential or configuration error or Test connection fails) as putgd-diagnostics-<uuid>.zip, recorded in history as a diagnostics upload; on a public-read bucket anyone with the link can download it, and a Proton Drive link expires after 7 days. copy_link also copies the link. False-alarm reports (#2134) in the window (or of that operation) are included whole, newest first, up to 64 MiB on top of the rest, under false-alarms/<name>/: they hold real screen content (the original image, the covered image and the recognized text of each finding), so include_false_alarm_reports false leaves them out; falseAlarmReports in the reply and the preview counts what is included and omitted. Returns path, bytes, sha256, counts, and with upload: upload (destination, warning, operationId, historyId), link or uploadError."""
         if operation_id is not None and not identifier(operation_id, 128):
             return invalid()
         if since is not None and not (isinstance(since, str) and 2 <= len(since) <= 8):
@@ -1059,6 +1071,8 @@ def create_server(adapter: CliAdapter) -> MCPServer:
         if type(preview) is not bool or type(notify) is not bool or (preview and notify):
             return invalid()
         if type(upload) is not bool or type(copy_link) is not bool or (profile_id is not None and not identifier(profile_id, 64)):
+            return invalid()
+        if type(include_false_alarm_reports) is not bool:
             return invalid()
         # A preview writes and uploads nothing.
         if (profile_id is not None or copy_link) and not upload or (preview and upload):
@@ -1076,6 +1090,8 @@ def create_server(adapter: CliAdapter) -> MCPServer:
             params['preview'] = True
         if notify:
             params['notify'] = True
+        if not include_false_alarm_reports:
+            params['falseAlarmReports'] = False
         if upload:
             params['upload'] = True
             if profile_id is not None:
@@ -1144,7 +1160,7 @@ def create_server(adapter: CliAdapter) -> MCPServer:
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=True, open_world_hint=False))
     async def clear_logs() -> Json:
-        """Delete every persistent log file in put.gd's state folder and start a new one; returns removedFiles and removedBytes. Uploads, history, settings and saved diagnostics packages are untouched. inspect shows the log folder size, file count and oldest record under diagnostics.logging."""
+        """Delete every persistent log file in put.gd's state folder and start a new one, and every false-alarm report (#2134) beside them; returns removedFiles, removedBytes, removedReports and removedReportBytes. Uploads, history, settings and saved diagnostics packages are untouched. inspect shows the log folder size, file count and oldest record under diagnostics.logging."""
         return await adapter.call('logs.clear', {})
 
     @server.tool(annotations=ToolAnnotations(read_only_hint=False, destructive_hint=False, open_world_hint=False))

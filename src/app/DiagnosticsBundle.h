@@ -16,6 +16,8 @@ struct BundleRequest {
  // the default capture destination; copyLink also puts the link on the clipboard.
  bool upload=false,copyLink=false;
  QString profileId;
+ // #2134: include the false-alarm reports of the package's window (or operation), which hold screen content.
+ bool falseAlarmReports=true;
 };
 // Replaces names, object keys, URLs and private paths in a diagnostics package
 // with stable per-package hashes (the same value always gets the same token in
@@ -58,6 +60,7 @@ public:
  static constexpr qint64 maximumSinceMs=365LL*24*60*60*1000;
  struct Context {
   QString databasePath,logsDirectory,defaultFolder,home;
+  QString falseAlarmsDirectory; // #2134; empty: none
   QHash<QString,QString> roots; // path -> placeholder
   QJsonObject settings,diagnostics,environment;
   QDateTime now=QDateTime::currentDateTimeUtc();

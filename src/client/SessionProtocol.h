@@ -22,6 +22,9 @@ inline constexpr int uploadFilesReplyMs = 120000;
 // settings.importUploader stores the file's secret values first; a locked keyring
 // shows its own unlock prompt, which a person has to answer (#1361).
 inline constexpr int uploaderImportReplyMs = 120000;
+// operation.reportFalseAlarm (#2134) answers once the editor helper has encoded the covered image and the
+// resident has saved the report.
+inline constexpr int falseAlarmReplyMs = 90000;
 namespace SessionProtocol {
 inline constexpr qsizetype maximumRequest = 1024 * 1024;
 inline constexpr qsizetype maximumResponse = 16 * 1024 * 1024;

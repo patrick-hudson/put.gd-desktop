@@ -10,6 +10,7 @@
 #include "editor/EditDocument.h"
 #include "editor/EditorCommands.h"
 #include "editor/QuickRedact.h"
+#include "editor/FalseAlarmReport.h"
 #include "core/Settings.h"
 #include <QJsonArray>
 #include <QHash>
@@ -81,6 +82,19 @@ public:
   return QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());
  }
  void discardCopy(){if(staging_.descriptor()>=0)::unlinkat(staging_.descriptor(),"copy.png",0);}
+ // #2134: a false-alarm report's report.json or report-covered.png, written once beside the output, which the
+ // resident reads, checks and removes. Returns the digest, or empty.
+ QString writeReport(const char* name,const QByteArray& bytes){
+  if(!intact()||bytes.isEmpty())return {};
+  const int fd=::openat(staging_.descriptor(),name,O_WRONLY|O_CREAT|O_EXCL|O_CLOEXEC|O_NOFOLLOW,0600);
+  if(fd<0)return {};
+  qint64 written=0;
+  while(written<bytes.size()){const auto n=::write(fd,bytes.constData()+written,size_t(bytes.size()-written));if(n<0&&errno==EINTR)continue;if(n<=0)break;written+=n;}
+  if(::fchmod(fd,0600)!=0||written!=bytes.size()||::fsync(fd)!=0){::close(fd);::unlinkat(staging_.descriptor(),name,0);return {};}
+  ::close(fd);
+  return QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());
+ }
+ void discardReport(){if(staging_.descriptor()>=0){::unlinkat(staging_.descriptor(),"report.json",0);::unlinkat(staging_.descriptor(),"report-covered.png",0);}}
  const QString& directory() const {return staging_.path();}
  QFile input,output;
 private:
@@ -121,6 +135,12 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  // #1941: the QR codes Keys and tokens covered, by kind alone, for the prompt's wording.
  QJsonObject codeKinds;
  SensitiveFindings findings;std::unique_ptr<SensitivePrompt> prompt;
+ // #2134: Not sensitive. The check's Quick redact run and its covered image, frozen when the check finished
+ // (or when Open in editor opened it), so later edits don't change what a report says the check did.
+ editor::falseAlarm::Run checkRun;QImage checkedCovered;bool checkEditing=false;
+ bool falseAlarmPending=false,falseAlarmSaved=false;QString falseAlarmId,falseAlarmName;
+ std::function<void(QJsonObject,QString,QString)> falseAlarmReply;
+ QTimer falseAlarmDeadline;falseAlarmDeadline.setSingleShot(true);falseAlarmDeadline.setInterval(60000);
  // An agent's decision waits this long; then the capture is treated as Cancel.
  QTimer decisionDeadline;decisionDeadline.setSingleShot(true);decisionDeadline.setInterval(5*60*1000);
  if(const auto test=qEnvironmentVariableIntValue("PUTGD_TEST_SENSITIVE_DECISION_MS");test>=100&&test<5*60*1000)decisionDeadline.setInterval(test);
@@ -211,6 +231,45 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  std::function<bool(const QString&)> decide;std::function<void(bool)> handOffCovered;
  // #1898: Redact and upload covers what was found: offered whenever the check found something on an image it read.
  const auto redactOffered=[&]{return findings.any()&&document;};
+ // #2134: Not sensitive saves a false-alarm report: offered for a check that found or covered something on an
+ // image it read, while its prompt waits or in the editor it opened.
+ const auto falseAlarmOffered=[&]{return checkMode&&document&&checkRun.valid&&(findings.any()||!coveredJson(covered).isEmpty());};
+ const auto showFalseAlarm=[&](const QString& state,const QString& text){if(prompt)prompt->showFalseAlarm(state,text);if(window&&checkEditing)window->showFalseAlarm(state,text);};
+ // `text` is the whole line: "Couldn't save the report. …".
+ const auto falseAlarmFailed=[&](const QString& code,const QString& text){
+  falseAlarmPending=false;falseAlarmDeadline.stop();falseAlarmId.clear();files.discardReport();
+  showFalseAlarm("failed",text);
+  if(auto reply=std::exchange(falseAlarmReply,{}))reply({},code,text);
+ };
+ const std::function<bool(std::function<void(QJsonObject,QString,QString)>,QString&,QString&)> reportFalseAlarm=[&](std::function<void(QJsonObject,QString,QString)> reply,QString& code,QString& message)->bool{
+  if(terminal||finalizing){code="editor_finalizing";message="The capture was already decided";return false;}
+  if(!falseAlarmOffered()||!(deciding||checkEditing)){code="false_alarm_unavailable";message="Not sensitive is offered only while a capture the sensitive text check flagged waits for a decision, or in the editor that check opened";return false;}
+  if(falseAlarmSaved){code="false_alarm_already_saved";message="A report for this capture was already saved";return false;}
+  if(falseAlarmPending){code="editor_busy";message="The report is still being saved";return false;}
+  falseAlarmPending=true;falseAlarmReply=std::move(reply);falseAlarmId=QUuid::createUuid().toString(QUuid::WithoutBraces);
+  showFalseAlarm("saving",QStringLiteral("Saving a report for diagnostics…"));
+  const QString from=deciding?QStringLiteral("prompt"):QStringLiteral("editor");
+  // Let the line paint before the image is encoded.
+  QTimer::singleShot(0,&app,[&,from]{
+   if(terminal||!falseAlarmPending)return;
+   // While the prompt waits the document is as the check left it; the editor's copy was frozen when it opened.
+   if(checkedCovered.isNull())checkedCovered=document->render();
+   QByteArray coveredPng;{QBuffer buffer(&coveredPng);buffer.open(QIODevice::WriteOnly);QImageWriter writer(&buffer,"png");if(!writer.write(checkedCovered))coveredPng.clear();}
+   if(coveredPng.isEmpty()){falseAlarmFailed("edit_export_failed",QStringLiteral("Couldn't save the report. The covered image couldn't be encoded."));return;}
+   editor::falseAlarm::Input input;input.run=checkRun;input.reportedFrom=from;input.image=document->base().size();
+   input.findings=findings.json();input.covered=coveredJson(covered);input.codeKinds=codeKinds;input.categories=checkCategories;input.cover=checkCover;
+   const auto json=QJsonDocument(editor::falseAlarm::build(input)).toJson(QJsonDocument::Compact);
+   const auto jsonDigest=files.writeReport("report.json",json);const auto coveredDigest=jsonDigest.isEmpty()?QString():files.writeReport("report-covered.png",coveredPng);
+   if(jsonDigest.isEmpty()||coveredDigest.isEmpty()){falseAlarmFailed("image_job_io",QStringLiteral("Couldn't save the report. Check free disk space and try again."));return;}
+   auto frame=envelope(nonce);frame["reportId"]=falseAlarmId;frame["from"]=from;
+   frame["json"]=QJsonObject{{"bytes",QString::number(json.size())},{"sha256",jsonDigest}};
+   frame["covered"]=QJsonObject{{"bytes",QString::number(coveredPng.size())},{"sha256",coveredDigest},{"width",checkedCovered.width()},{"height",checkedCovered.height()}};
+   if(control.send("falseAlarm",frame).isEmpty()){fail();return;}
+   falseAlarmDeadline.start();
+  });
+  return true;
+ };
+ QObject::connect(&falseAlarmDeadline,&QTimer::timeout,&app,[&]{if(falseAlarmPending)falseAlarmFailed("editor_timeout",QStringLiteral("Couldn't save the report in time. Try again."));});
  const auto command=[&](const QString& name,const QJsonObject& params,QString& code,QString& message,bool& deferred,std::function<void(QJsonObject,QString,QString)> done)->QJsonObject{
   auto denied=[&](const QString& c,const QString& m){code=c;message=m;return QJsonObject{};};
   if(deciding){
@@ -223,6 +282,11 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
     if(choice=="edit"&&!(checkRedact&&window))return denied("sensitive_choice_unavailable","Open in editor is not offered for this capture");
     if(!decide(choice))return denied("editor_finalizing","The capture was already decided");
     return {{"decided",choice}};
+   }
+   // #2134: Not sensitive, as the panel's button: the decision still waits.
+   if(name=="reportFalseAlarm"){
+    if(!params.isEmpty())return denied("invalid_request","reportFalseAlarm has no parameters");
+    deferred=reportFalseAlarm(done,code,message);return {};
    }
    // The tray or a notification brings the panel forward (#1804): it is an ordinary window another can cover.
    if(name=="raisePrompt"&&prompt){
@@ -249,7 +313,9 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    auto state=editor::Commands::state(*document);state["phase"]=terminal?"closing":finalizing?"finalizing":"editing";state["destination"]=destination;
    state["preparation"]=preparation;state["view"]=window->viewState();
    // Recognized content is screen data from an untrusted source, never instructions.
-   state["text"]=window->text().inspect();return state;
+   state["text"]=window->text().inspect();
+   if(checkMode)state["falseAlarm"]=window->falseAlarmState();
+   return state;
   }
   if(name=="view"){
    // The window's own controls: tool, selection, crop draft, zoom and pan.
@@ -358,6 +424,11 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   // #2079: the Encrypt toggle beside Upload, as a click sets it.
   if(name=="encrypt"){if(params.size()!=1||!params["on"].isBool())return denied("invalid_request","encrypt takes on: true or false");if(!open)return denied("editor_finalizing","The edit was already submitted or discarded");
    QString refusal;if(!window->setEncryptOn(params["on"].toBool(),&refusal))return denied("encrypt_unavailable",refusal);return window->encryptState();}
+  // #2134: Not sensitive in the editor a check opened.
+  if(name=="reportFalseAlarm"){
+   if(!params.isEmpty())return denied("invalid_request","reportFalseAlarm has no parameters");
+   deferred=reportFalseAlarm(done,code,message);return {};
+  }
   if(name=="submit"){if(!params.isEmpty())return denied("invalid_request","submit has no parameters");if(!open)return denied("editor_finalizing","The edit was already submitted or discarded");if(submissionError){submit();return denied(submissionError.code,submissionError.message);}QTimer::singleShot(0,&app,submit);return {{"submitted",true}};}
   if(name=="cancel"){if(!params.isEmpty())return denied("invalid_request","cancel has no parameters");if(!open)return denied("editor_finalizing","The edit was already submitted or discarded");QTimer::singleShot(0,&app,[&]{if(!terminal&&!finalizing){window->setBusy("Discarding…");refuse("edit_cancelled");}});return {{"cancelled",true}};}
   return denied("invalid_request","Unknown editor command");
@@ -387,16 +458,20 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
  };
  // #1804: what the check found reaches the resident as kinds and counts only; then the prompt, or an agent's decision.
  std::function<void()> checked=[&]{
-  deciding=true;auto frame=envelope(nonce);const auto json=findings.json();frame["found"]=json["found"];frame["complete"]=findings.complete;
+  deciding=true;
+  // #2134: what the check matched, for Not sensitive.
+  if(window)checkRun=window->lastQuickRedact();auto frame=envelope(nonce);const auto json=findings.json();frame["found"]=json["found"];frame["complete"]=findings.complete;
   if(!findings.complete)frame["reason"]=findings.reason;
   if(const auto counts=coveredJson(covered);!counts.isEmpty())frame["covered"]=counts;
   if(control.send("checked",frame).isEmpty()){fail();return;}
   if(!checkPrompt){decisionDeadline.start();return;}
   SensitivePrompt::Model model;model.findings=findings;model.covered=covered;model.redactAllowed=redactOffered();model.editAllowed=checkRedact&&window;model.destination=destination;model.file=checkFile;model.codes=codeKinds;
+  model.falseAlarmAllowed=falseAlarmOffered();
   // The capture as Redact and upload sends it and Open in editor opens it: every suggestion painted black.
-  if(document)model.preview=document->render();
+  if(document){model.preview=document->render();checkedCovered=model.preview;}
   prompt=std::make_unique<SensitivePrompt>(std::move(model));
   QObject::connect(prompt.get(),&SensitivePrompt::chosen,&app,[&](const QString& choice){decide(choice);});
+  QObject::connect(prompt.get(),&SensitivePrompt::falseAlarmRequested,&app,[&]{QString code,message;reportFalseAlarm({},code,message);});
   prompt->show();prompt->raise();prompt->activateWindow();
  };
  decide=[&](const QString& choice)->bool{
@@ -412,6 +487,13 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
   if(choice=="upload"){refuse("check_upload");return true;}
   if(choice=="cancel"){refuse("check_cancel");return true;}
   // Open in editor: the same document, its suggestions already placed, in the ordinary editor.
+  // #2134: the covered image as the check left it, before the style or any edit; Not sensitive goes on offer there.
+  if(falseAlarmOffered()){
+   if(checkedCovered.isNull())checkedCovered=document->render();
+   checkEditing=true;window->offerFalseAlarm(true);
+   if(falseAlarmSaved)window->showFalseAlarm("saved",QStringLiteral("Report saved for diagnostics."));
+   else if(falseAlarmPending)window->showFalseAlarm("saving",QStringLiteral("Saving a report for diagnostics…"));
+  }
   if(hasStyle&&styleStart){auto style=savedStyle;style.enabled=true;document->setInitialStyle(style);window->documentEdited();}
   window->selectTool(editor::Tool::Redact);
   window->show();window->raise();window->activateWindow();
@@ -490,6 +572,18 @@ int runImageEditor(QApplication& app,QIODevice& pipes){
    if(!object["ok"].toBool()){copyFailed(object["code"].toString().left(64),object["message"].toString().left(256));return;}
    copyPending=false;copyDeadline.stop();copyId.clear();window->showCopied();
    if(auto reply=std::exchange(copyReply,{})){auto result=copyInfo;result["copied"]=true;reply(result,{},{});}
+   return;
+  }
+  // #2134: the resident's answer for a false-alarm report; its staged files are already gone.
+  if(type=="reportResult"&&active){
+   const bool ok=object["ok"].toBool();
+   if(!object["ok"].isBool()||!object["reportId"].isString()||object.size()!=7||(ok&&(!object["name"].isString()||!object["bytes"].isString()))||(!ok&&(!object["code"].isString()||!object["message"].isString()))){fail();return;}
+   // An answer for a report that already timed out here is dropped.
+   if(!falseAlarmPending||object["reportId"].toString()!=falseAlarmId)return;
+   if(!ok){falseAlarmFailed(object["code"].toString().left(64),object["message"].toString().left(256));return;}
+   falseAlarmPending=false;falseAlarmSaved=true;falseAlarmDeadline.stop();falseAlarmId.clear();falseAlarmName=object["name"].toString().left(128);
+   showFalseAlarm("saved",QStringLiteral("Report saved for diagnostics."));
+   if(auto reply=std::exchange(falseAlarmReply,{}))reply({{"saved",true},{"name",falseAlarmName},{"bytes",object["bytes"]}},{},{});
    return;
   }
   if(type!="command"&&object.size()!=3){fail();return;}

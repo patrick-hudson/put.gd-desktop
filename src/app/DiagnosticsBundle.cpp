@@ -3,6 +3,7 @@
 #include "core/HostEnvironment.h"
 #include "core/Log.h"
 #include "core/ZipWriter.h"
+#include "FalseAlarmReports.h"
 #include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
@@ -168,8 +169,9 @@ QJsonValue PackageRedactor::json(const QJsonValue& value,const QString& key) con
 DiagnosticsBundles::DiagnosticsBundles(OperationService& operations,QString stateRoot,QObject* parent):QObject(parent),operations_(operations),stateRoot_(std::move(stateRoot)) {}
 QString DiagnosticsBundles::defaultFolder(const Settings& settings) {return QDir(settings.archive.root).filePath("diagnostics");}
 Error DiagnosticsBundles::parse(const QJsonObject& params,BundleRequest& request) {
- const Error invalid{"invalid_request","diagnostics.bundle takes operation (an ID), since (1m to 365d, such as 7d or 24h), includeNames, output (an absolute .zip path or folder), preview, and upload with profileId and copyLink",{}};
- for(auto it=params.begin();it!=params.end();++it)if(!QStringList{"operation","since","includeNames","output","preview","upload","profileId","copyLink"}.contains(it.key()))return invalid;
+ const Error invalid{"invalid_request","diagnostics.bundle takes operation (an ID), since (1m to 365d, such as 7d or 24h), includeNames, output (an absolute .zip path or folder), preview, falseAlarmReports, and upload with profileId and copyLink",{}};
+ for(auto it=params.begin();it!=params.end();++it)if(!QStringList{"operation","since","includeNames","output","preview","upload","profileId","copyLink","falseAlarmReports"}.contains(it.key()))return invalid;
+ if(params.contains("falseAlarmReports")){if(!params["falseAlarmReports"].isBool())return invalid;request.falseAlarmReports=params["falseAlarmReports"].toBool();}
  if(params.contains("upload")){if(!params["upload"].isBool())return invalid;request.upload=params["upload"].toBool();}
  if(params.contains("copyLink")){if(!params["copyLink"].isBool()||!request.upload)return invalid;request.copyLink=params["copyLink"].toBool();}
  if(params.contains("profileId")){const auto id=params["profileId"].toString();if(!params["profileId"].isString()||id.isEmpty()||id.size()>64||!request.upload)return invalid;request.profileId=id;}
@@ -192,6 +194,7 @@ void DiagnosticsBundles::create(const BundleRequest& request,JsonReply reply) {
  const auto snapshot=operations_.settingsSnapshot();
  Context context;
  context.databasePath=operations_.databasePath();context.logsDirectory=stateRoot_+"/logs";context.defaultFolder=defaultFolder(snapshot);
+ if(auto* reports=operations_.falseAlarmReports())context.falseAlarmsDirectory=reports->directory();
  context.home=QDir::homePath();context.settings=snapshot.document;
  // Each provider says what of its settings a package may carry: a custom uploader
  // keeps the names of its headers, parameters and arguments and drops every value (#1361).
@@ -512,13 +515,21 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
  QByteArray logBytes;for(const auto& line:selected)logBytes+=line.bytes;
  QList<QPair<QString,QByteArray>> entries{{"environment.json",environmentBytes},{"diagnostics.json",diagnosticsBytes},{"config.redacted.json",configBytes},
   {"operations.json",operationsBytes},{"coredumps.json",coredumpBytes},{"logs/putgd.jsonl",logBytes}};
+ // #2134: false-alarm reports, a deliberate exception to "no pixels or recognized text": whole reports, newest
+ // first, in an allowance of their own beside the 20 MiB, so they never push out log records. A preview counts
+ // them without reading them.
+ FalseAlarmReports::Selection reports;
+ if(request.falseAlarmReports&&!context.falseAlarmsDirectory.isEmpty())reports=FalseAlarmReports::select(context.falseAlarmsDirectory,from,to,request.operationId,FalseAlarmReports::bundleBytes,!request.preview);
+ QJsonArray reportNames;
+ for(const auto& report:std::as_const(reports.reports)){reportNames.append(report.name);for(const auto& [name,bytes]:report.files)entries.append({"false-alarms/"+report.name+"/"+name,bytes});}
+ const QJsonObject reportSummary{{"included",reports.reports.size()},{"omitted",reports.omitted},{"eligible",reports.eligible},{"bytes",double(reports.bytes)},{"maximumBytes",double(FalseAlarmReports::bundleBytes)},{"requested",request.falseAlarmReports},{"names",reportNames}};
  QJsonArray manifestFiles;for(const auto& [path,bytes]:entries)manifestFiles.append(QJsonObject{{"path",path},{"bytes",bytes.size()},{"sha256",sha256(bytes)}});
  QJsonObject scope{{"from",fromText},{"to",toText}};
  if(!request.operationId.isEmpty())scope["operationId"]=request.operationId;else scope["since"]=QString::number(request.sinceMs/60000)+"m";
  const QJsonObject manifest{{"schemaVersion",1},{"created",iso(now)},{"build",QJsonDocument::fromJson(buildManifestJson()).object()},
   {"redaction",request.includeNames?"names":"hashed"},{"scope",scope},{"files",manifestFiles},{"operations",operationList.size()},
   {"logs",QJsonObject{{"records",selected.size()},{"eligibleRecords",eligible},{"droppedRecords",dropped},{"sourceFiles",files.size()}}},
-  {"maximumBytes",maximumBytes}};
+  {"maximumBytes",maximumBytes},{"falseAlarmReports",reportSummary}};
  // A preview (the Settings dialog) shows what the package would hold and where it
  // would go, from the same selection, and writes nothing.
  if(request.preview) {
@@ -528,7 +539,7 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
   const auto folder=request.output.isEmpty()?context.defaultFolder:output.isDir()?output.absoluteFilePath():output.absolutePath();
   return {{"preview",true},{"files",names},{"redaction",request.includeNames?"names":"hashed"},{"scope",scope},{"operations",operationList.size()},
    {"operationList",summaries},{"logRecords",selected.size()},{"droppedLogRecords",dropped},{"folder",folder},{"defaultFolder",request.output.isEmpty()},
-   {"maximumBytes",maximumBytes}};
+   {"maximumBytes",maximumBytes},{"falseAlarmReports",reportSummary}};
  }
  ZipWriter zip(now);zip.add("manifest.json",QJsonDocument(manifest).toJson(QJsonDocument::Indented));
  for(const auto& [path,bytes]:entries)zip.add(path,bytes);
@@ -553,6 +564,6 @@ QJsonObject DiagnosticsBundles::build(const Context& context,const BundleRequest
  QJsonArray names;names.append("manifest.json");for(const auto& entry:entries)names.append(entry.first);
  return {{"path",path},{"bytes",archiveBytes.size()},{"sha256",sha256(archiveBytes)},{"redaction",request.includeNames?"names":"hashed"},
   {"files",names},{"operations",operationList.size()},{"logRecords",selected.size()},{"droppedLogRecords",dropped},
-  {"defaultFolder",inDefaultFolder},{"pruned",pruned}};
+  {"defaultFolder",inDefaultFolder},{"pruned",pruned},{"falseAlarmReports",reportSummary}};
 }
 }

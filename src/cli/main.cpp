@@ -26,7 +26,7 @@ int main(int argc,char** argv) {
  parser.addOption({"operation","diagnostics.bundle: package one operation","id"});parser.addOption({"since","diagnostics.bundle: failures and logs from this long ago (1m to 365d, default 7d)","duration"});
  parser.addOption({"include-names","diagnostics.bundle: keep file names, object keys and URLs instead of hashes"});parser.addOption({"output","diagnostics.bundle: a .zip path or an existing folder (default: <archive>/diagnostics)","path"});
  parser.addOption({"upload","diagnostics.bundle: also upload the saved package to a working destination and return its link"});parser.addOption({"profile","diagnostics.bundle --upload: the destination (default: the capture destination)","id"});
- parser.addOption({"copy-link","diagnostics.bundle --upload: also copy the link to the clipboard"});parser.addPositionalArgument("method","Versioned session method");parser.addPositionalArgument("params","JSON parameter object (default {})","[params]");parser.process(app);
+ parser.addOption({"copy-link","diagnostics.bundle --upload: also copy the link to the clipboard"});parser.addOption({"no-false-alarm-reports","diagnostics.bundle: leave out the false-alarm reports, which hold pictures of the screen"});parser.addPositionalArgument("method","Versioned session method");parser.addPositionalArgument("params","JSON parameter object (default {})","[params]");parser.process(app);
  const auto args=parser.positionalArguments();const auto id=parser.isSet("request-id")?parser.value("request-id"):QUuid::createUuid().toString(QUuid::WithoutBraces);
  auto error=[&](QString code,QString message) {return putgd::cli::fail(id,code,message);};
  if(args.size()<1||args.size()>2)return error("invalid_request","Supply a method and optional JSON parameter object");
@@ -39,9 +39,9 @@ int main(int argc,char** argv) {
  if(parser.isSet("params-stdin")){bytes.clear();char chunk[8192];while(const auto count=std::fread(chunk,1,sizeof(chunk),stdin)){bytes.append(chunk,qsizetype(count));if(bytes.size()>1024*1024)break;}if(std::ferror(stdin))return error("invalid_request","Cannot read JSON parameters from standard input");}
  if(bytes.size()>1024*1024)return error("request_too_large","Request exceeds 1 MB.");
  QJsonParseError parseError;auto params=QJsonDocument::fromJson(bytes,&parseError);if(parseError.error!=QJsonParseError::NoError||!params.isObject())return error("invalid_json","Parameters must be a JSON object");
- const bool bundleOptions=parser.isSet("operation")||parser.isSet("since")||parser.isSet("include-names")||parser.isSet("output")||parser.isSet("upload")||parser.isSet("profile")||parser.isSet("copy-link");
+ const bool bundleOptions=parser.isSet("operation")||parser.isSet("since")||parser.isSet("include-names")||parser.isSet("output")||parser.isSet("upload")||parser.isSet("profile")||parser.isSet("copy-link")||parser.isSet("no-false-alarm-reports");
  if(bundleOptions) {
-  if(args[0]!="diagnostics.bundle"||args.size()==2||parser.isSet("params-stdin"))return error("invalid_request","--operation, --since, --include-names, --output, --upload, --profile and --copy-link belong to diagnostics.bundle without a JSON parameter object");
+  if(args[0]!="diagnostics.bundle"||args.size()==2||parser.isSet("params-stdin"))return error("invalid_request","--operation, --since, --include-names, --output, --upload, --profile, --copy-link and --no-false-alarm-reports belong to diagnostics.bundle without a JSON parameter object");
   if((parser.isSet("profile")||parser.isSet("copy-link"))&&!parser.isSet("upload"))return error("invalid_request","--profile and --copy-link need --upload");
   QJsonObject options;
   if(parser.isSet("operation"))options["operation"]=parser.value("operation");
@@ -50,6 +50,7 @@ int main(int argc,char** argv) {
   if(parser.isSet("upload"))options["upload"]=true;
   if(parser.isSet("profile"))options["profileId"]=parser.value("profile");
   if(parser.isSet("copy-link"))options["copyLink"]=true;
+  if(parser.isSet("no-false-alarm-reports"))options["falseAlarmReports"]=false;
   // The resident has its own working folder: send an absolute path.
   if(parser.isSet("output"))options["output"]=QDir::cleanPath(QDir::current().absoluteFilePath(parser.value("output")));
   params=QJsonDocument(options);

@@ -104,7 +104,7 @@ target_link_libraries(putgd_ui PUBLIC putgd_core putgd_client putgd_ui_state put
 # Editing model and canvas for the on-demand editor helper; no storage or IPC.
 # #1941: Quick redact's matcher alone (Qt Core and Gui, no widgets), so the resident can withhold a decoded code
 # that holds a secret from text.inspect.
-add_library(putgd_quick_redact STATIC src/editor/QuickRedact.cpp)
+add_library(putgd_quick_redact STATIC src/editor/QuickRedact.cpp src/editor/FalseAlarmReport.cpp)
 target_include_directories(putgd_quick_redact PUBLIC src)
 target_link_libraries(putgd_quick_redact PUBLIC Qt6::Gui putgd_build_options)
 add_library(putgd_editor STATIC src/editor/EditDocument.cpp src/editor/EditorCommands.cpp src/editor/EditorCanvas.cpp src/editor/HighlightFilter.cpp src/editor/TextLayer.cpp)

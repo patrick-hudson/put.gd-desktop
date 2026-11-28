@@ -294,6 +294,10 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                      'editor.apply', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['name', 'list'], 'terms': ['Project Aurora'], 'patterns': ['\\bJIRA-\\d+\\b']}]}),
                     ('edit_image', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['email', 'phone', 'ip', 'card', 'key', 'name', 'list']}]},
                      'editor.apply', {'id': 'synthetic-operation', 'commands': [{'op': 'redactText', 'categories': ['email', 'phone', 'ip', 'card', 'key', 'name', 'list']}]}),
+                    # #2134: Not sensitive, the reports it saved, and a package without them.
+                    ('report_false_alarm', {'id': 'synthetic-operation'}, 'operation.reportFalseAlarm', {'id': 'synthetic-operation'}),
+                    ('list_false_alarm_reports', {}, 'diagnostics.falseAlarms', {}),
+                    ('create_diagnostics_bundle', {'preview': True, 'include_false_alarm_reports': False}, 'diagnostics.bundle', {'preview': True, 'falseAlarmReports': False}),
                     ('copy_history_text', {'id': 'synthetic-entry', 'keep_result': True}, 'history.copyText', {'id': 'synthetic-entry', 'keepResult': True}),
                     ('history_qr_code', {'id': 'synthetic-entry', 'mode': 'save', 'path': '/tmp/synthetic-qr.png', 'overwrite': True},
                      'history.qr', {'id': 'synthetic-entry', 'mode': 'save', 'path': '/tmp/synthetic-qr.png', 'overwrite': True}),
