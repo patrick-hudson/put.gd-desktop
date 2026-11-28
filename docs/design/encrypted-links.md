@@ -511,11 +511,12 @@ of at most 300 characters, the connection fingerprint and the credential revisio
 fingerprint matches the destination as saved, and it is forgotten with the destination. At
 load a record whose revision isn't the destination's current one is dropped, so a check never
 outlives the keys it ran with across a restart. A check made with session-only credentials is never written, so like the
-destination's own Test it ends with the session. Session-only credentials are the keys of S3,
-B2, R2, Nextcloud and WebDAV (`SetupService::storesKeys`), a custom uploader's named secret
-values, and an SFTP password or key passphrase that the session cache holds when the check is
-recorded. That is decided once, when the check is recorded, so switching the destination's
-credential storage later never writes it. An SFTP destination that signs in with the SSH agent
+destination's own Test it ends with the session. A check is made with session-only credentials
+when the destination's `credentials.mode` is `session` and it uses the keys of S3, B2, R2,
+Nextcloud or WebDAV (`SetupService::storesKeys`), a custom uploader's named secret values, or,
+for SFTP, a password or key passphrase that the session cache holds. That standing is decided
+once, when the check is recorded (`DestinationStatus::sessionOnlyNow`), and kept with the record,
+so switching the destination's credential storage later never writes it. An SFTP destination that signs in with the SSH agent
 or a key file keeps its check. New
 credentials stored for the destination, or for one that shares its keychain entry, clear it
 (`DestinationStatus::credentialsChanged`). A check that ran while new keys were stored
@@ -527,7 +528,8 @@ reason?, fingerprint?}`). `fingerprint` is the connection a passed or failed che
 `changed` means a check ran on an earlier connection of this destination; `untested` means none
 ran on its current keys, which includes every destination set up before the check existed
 (#2118). Settings compares the fingerprint with the destination as edited, so an edited
-connection shows `changed` and **On** isn't offered until a Test of that connection passes.
+connection shows `changed` when a check ran on the saved connection, and stays `untested` when
+none did. Either way **On** isn't offered until a Test of that connection passes.
 
 ## Where it works
 
@@ -602,8 +604,11 @@ ask for encryption says so in plain words with the next step (#2118). A disabled
 - **Requests.** An otherwise eligible `upload.files` with `encrypt.enabled: true` (`putgd-cli
   upload --encrypt`) or `action.invoke` with `encrypt: true`, whose destination can encrypt but
   hasn't passed the encrypted-page check, is refused with `encrypt_check_required` before
-  anything is captured or sent (`OperationService::encryptRefusal`). The request's own
-  validation, and another installation's `installation_mismatch`, come first. A destination whose own setting encrypts still fails per
+  anything is captured or sent (`OperationService::encryptRefusal`). The order: the request's
+  own parameter validation first, then another installation's `installation_mismatch` (for
+  `upload.files`), or an open editor or running recording (for `action.invoke`); then this
+  refusal; then the later admission checks, such as the files' existence and size, the queue
+  limit and an output being chosen. A destination whose own setting encrypts still fails per
   item, so **Retry upload** works once the check passes.
 - **Tray.** **Capture region (encrypted)** stays where it is. It shows when the region's
   destination can encrypt, and also when that destination encrypts by default but its check
