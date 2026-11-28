@@ -152,12 +152,23 @@ harmlessly.
 When a DEB/RPM and the AppImage are both installed, the AppImage skips each
 per-user file whose system counterpart exists, so there is one entry. A user
 file of the same name would hide the package's, so the package's own start also
-removes the AppImage's per-user menu files and Files and Caja scripts wherever
-the package has its own copy (#2119). A file counts as the AppImage's when its
-record lists it, or when it runs the AppImage's stable launcher (a copy whose
-record went with an old image). Each removal is logged, and the AppImage's
-record drops it. Files put.gd doesn't manage, and the AppImage's entries for
-file managers the package doesn't cover, stay.
+moves the AppImage's per-user menu files, and its Files and Caja scripts, out of
+the way wherever the package has its own copy (#2119). A file moves only when
+all of these hold:
+
+- its bytes are exactly what an AppImage wrote, from any template it has shipped,
+  with only its launcher and icon filled in; an edited copy stays;
+- no folder between the user's data or config folder and the file is a link;
+- it is still the same file as when it was read;
+- the package's own copy is a regular file in an `XDG_DATA_DIRS` folder that isn't
+  the user's own folder under another name, and runs `/usr/bin/putgd-launcher`.
+
+The AppImage uses the same test to skip writing its copy. A moved file goes to
+`$XDG_STATE_HOME/putgd/file-manager-replaced/<UTC time>/data/<path>` (or
+`config/<path>` for a Caja script), keeping its mode, so it can be put back.
+The resident log names both paths, and the AppImage's record drops only those
+lines. The GNOME desktop icons script is the package's own and is rewritten in
+place.
 
 ## What happens
 
