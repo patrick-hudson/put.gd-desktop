@@ -1,4 +1,8 @@
 #include "SettingsGuiFixture.h"
+#include "fixtures/WheelProbe.h"
+#include "app/DestinationStatus.h"
+#include "core/DestinationCheck.h"
+#include <QRegularExpression>
 #include "storage/s3/R2Provider.h"
 #include "storage/s3/R2Settings.h"
 #include "storage/sftp/SftpProvider.h"
@@ -15,6 +19,31 @@
 class SettingsGui:public SettingsGuiFixture {
  Q_OBJECT
 private slots:
+ // #26, #2117: the wheel over a closed control scrolls the pane under it and never changes the
+ // value. That covers every dropdown, spin box, slider and tab bar in History, Settings (Encrypted
+ // links among them) and the main navigation, shown or not.
+ void closedControlsLeaveTheWheelToThePane(){
+  QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));
+  CredentialStore secrets;UiSessionFixture fixture(service,secrets);
+  // A passed encryption check, so the Encrypted links choice is enabled as it was where #2117 was found.
+  DestinationStatus checks(dir.filePath("destination-status.json"),service);fixture.server.setDestinationStatus(&checks);
+  const auto first=service.document()["profiles"].toArray().first().toObject();
+  checks.encryptChecked(first["id"].toString(),destinationcheck::fingerprint(first),true,{});fixture.session.invalidate();
+  MainWindow window(fixture.session);window.resize(960,560);window.navigate("destinations");window.show();
+  QVERIFY(putgd::test::waitForWindowExposed(&window));
+  auto* encrypted=window.findChild<QComboBox*>("encryptedLinksMode");QVERIFY(encrypted);
+  PUTGD_TRY_VERIFY(encrypted->isEnabled());QCOMPARE(encrypted->currentData().toString(),QString("off"));
+  // First on its own: the sweep may move a Region or ACL choice before it, which ends the passed check.
+  QScrollBar* page=nullptr;for(auto* p=encrypted->parentWidget();p&&!page;p=p->parentWidget())if(auto* area=qobject_cast<QAbstractScrollArea*>(p))page=area->verticalScrollBar();
+  QVERIFY(page&&page->maximum()>0);page->setValue(page->minimum());
+  putgd::test::wheelOver(encrypted,-120);
+  QCOMPARE(encrypted->currentData().toString(),QString("off"));QVERIFY(page->value()>page->minimum());
+  const auto sweep=putgd::test::sweepClosedControls(&window);
+  QVERIFY2(sweep.changed.isEmpty(),qPrintable(sweep.changed.join(", ")));
+  for(const auto* name:{"encryptedLinksMode","historyRemoteState","historyItems","mainNavigation","b2LinkDays","scrollCaptureMaxHeight","protonExpiration"})QVERIFY2(sweep.checked.contains(name),name);
+  QVERIFY(sweep.checked.filter(QRegularExpression("^historyChoice")).size()>=2);
+  QVERIFY2(sweep.scrolled.contains("encryptedLinksMode"),qPrintable(sweep.scrolled.join(", ")));
+ }
  // Moving a destination keeps its unstored credential input and every action's route.
  void reorderingDestinationsKeepsSelectionEditsAndRouting(){
   QTemporaryDir dir;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});QVERIFY(service.save(threeDestinations(),{}));

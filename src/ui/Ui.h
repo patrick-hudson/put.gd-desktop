@@ -3,6 +3,7 @@
 #include <QUrl>
 #include <QJsonObject>
 #include <functional>
+#include <utility>
 #include "Theme.h"
 #include "IconArt.h"
 #include <QFont>
@@ -402,7 +403,20 @@ void apply(QApplication&);
 // palettes); a hidden one catches up just before it is shown.
 QString schemeScoped(const std::function<QString(Theme::Scheme)>& render);
 void followScheme(QApplication&,std::function<void()> beforeRepolish={});
+// Wheel input over a closed control scrolls the pane under it, never the
+// control's value (#26, #2117). Every dropdown is a choiceBox; every other
+// control that changes its value on the wheel (spin boxes, sliders, tab bars,
+// font choices) is built with wheelSafe, and a subclass calls
+// leaveWheelToPane(this) in its constructor. An open dropdown list still
+// scrolls, and keys, clicks and the step buttons still change the value.
+// tests/ci/test_wheel_input.py fails on a control built any other way.
 QComboBox* choiceBox(QWidget* parent);
+void leaveWheelToPane(QWidget* control);
+template<class Control,class... Args> Control* wheelSafe(Args&&... args){
+ auto* control=new Control(std::forward<Args>(args)...);
+ if constexpr(requires{control->tabBar();})leaveWheelToPane(control->tabBar());else leaveWheelToPane(control);
+ return control;
+}
 // A glyph in the active scheme's icon colours. QIcon users repaint it in the
 // new colours after a scheme switch (#60); a pixmap taken from it does not.
 QIcon icon(const QString& name);

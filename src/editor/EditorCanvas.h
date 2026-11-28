@@ -88,7 +88,7 @@ protected:
  void mouseMoveEvent(QMouseEvent*) override;
  void mouseReleaseEvent(QMouseEvent*) override;
  void mouseDoubleClickEvent(QMouseEvent*) override;
- void wheelEvent(QWheelEvent*) override;
+ void wheelEvent(QWheelEvent*) override; // wheel-input: the canvas itself pans, and zooms with Ctrl
  void keyPressEvent(QKeyEvent*) override;
  void keyReleaseEvent(QKeyEvent*) override;
  bool eventFilter(QObject*,QEvent*) override;

@@ -2,14 +2,13 @@
 #include <QComboBox>
 #include "ui/Ui.h"
 #include <QAbstractItemView>
-#include <QWheelEvent>
 #include <algorithm>
 
 namespace putgd::record {
 // The chooser and its popup use the same stable mask names.
 class MaskBox final : public QComboBox {
 public:
-    using QComboBox::QComboBox;
+    explicit MaskBox(QWidget* parent = nullptr) : QComboBox(parent) { Ui::leaveWheelToPane(this); }
     QSize sizeHint() const override {
         auto size = QComboBox::sizeHint();
         int width = fontMetrics().horizontalAdvance(placeholderText());
@@ -24,7 +23,5 @@ public:
         view()->setMinimumWidth(width + Ui::scaled(40));
         QComboBox::showPopup();
     }
-protected:
-    void wheelEvent(QWheelEvent* event) override { event->ignore(); }
 };
 }

@@ -47,6 +47,7 @@
 #include <QSignalSpy>
 #include <QTest>
 #include "fixtures/Waits.h"
+#include "fixtures/WheelProbe.h"
 using namespace putgd;using namespace putgd::editor;
 
 static QByteArray writeCopy(EditorWindow& window,const QString& path,QString& reason){
@@ -60,6 +61,16 @@ class EditorWindowTest:public QObject {
  Q_OBJECT
  static QImage canvasImage(){QImage image(400,260,QImage::Format_RGB32);image.fill(QColor("#20242c"));return image;}
 private slots:
+ // #2117: the wheel over a toolbar control changes nothing: not its value, and not the canvas
+ // beside it, which pans and zooms only under the pointer.
+ void toolbarControlsIgnoreTheWheel(){
+  EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  QSignalSpy view(&window.canvas(),&EditorCanvas::viewChanged);
+  const auto sweep=putgd::test::sweepClosedControls(&window);
+  QVERIFY2(sweep.changed.isEmpty(),qPrintable(sweep.changed.join(", ")));
+  for(const auto* name:{"stepNumber","textFont","textSize","geometryWidth","blurStrength","blurStrengthValue"})QVERIFY2(sweep.checked.contains(name),name);
+  QCOMPARE(view.size(),0);
+ }
  void keyboardContractNeverUploadsOnPlainEnter(){
   EditDocument doc(canvasImage());EditorWindow window(doc);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
   QSignalSpy uploads(&window,&EditorWindow::uploadRequested);

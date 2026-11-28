@@ -2641,6 +2641,8 @@ Segmented::Segmented(QWidget* parent) : QTabBar(parent) {
     setUsesScrollButtons(false);
     setElideMode(Qt::ElideNone);
     setFocusPolicy(Qt::StrongFocus);
+    // The wheel never switches the page under the pointer.
+    leaveWheelToPane(this);
     setMouseTracking(true);
     setAttribute(Qt::WA_Hover);
 }
@@ -3118,13 +3120,25 @@ void paintIndicators(const QString& folder, const Theme::Palette& p)
     }
 }
 class ChoiceBox final:public QComboBox {
-public:explicit ChoiceBox(QWidget* parent):QComboBox(parent){setSizeAdjustPolicy(QComboBox::AdjustToContents);}
+public:explicit ChoiceBox(QWidget* parent):QComboBox(parent){setSizeAdjustPolicy(QComboBox::AdjustToContents);leaveWheelToPane(this);}
  QSize naturalSizeHint()const{return QComboBox::sizeHint();}
  QSize sizeHint()const override{auto size=naturalSizeHint();if(const int width=property("formChoiceWidth").toInt();width>0)size.setWidth(width);return size;}
-protected:
- // Leave wheel input to the containing pane. The open popup handles its own scrolling.
- void wheelEvent(QWheelEvent* event)override {event->ignore();}
 };
+// One filter for every guarded control. An ignored wheel event travels on to
+// the parent, so the scroll area under the control scrolls. The open dropdown
+// list is its own window and never sees this filter.
+class WheelToPane final:public QObject {
+public:using QObject::QObject;
+protected:
+ bool eventFilter(QObject*,QEvent* event)override{if(event->type()!=QEvent::Wheel)return false;event->ignore();return true;}
+};
+}
+void leaveWheelToPane(QWidget* control){
+ static QPointer<WheelToPane> filter;
+ if(!filter)filter=new WheelToPane(qApp);
+ control->installEventFilter(filter);
+ // Scrolling past a control does not focus it either; Tab and clicks still do.
+ if(control->focusPolicy()==Qt::WheelFocus)control->setFocusPolicy(Qt::StrongFocus);
 }
 QComboBox* choiceBox(QWidget* parent){return new ChoiceBox(parent);}
 void role(QWidget* widget,const char* value){widget->setProperty("visualRole",value);widget->style()->unpolish(widget);widget->style()->polish(widget);}

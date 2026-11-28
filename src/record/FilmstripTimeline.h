@@ -210,7 +210,7 @@ protected:
     void mouseMoveEvent(QMouseEvent*) override;
     void mouseReleaseEvent(QMouseEvent*) override;
     void keyPressEvent(QKeyEvent*) override;
-    void wheelEvent(QWheelEvent*) override;
+    void wheelEvent(QWheelEvent*) override; // wheel-input: the timeline itself scrolls and zooms
     void leaveEvent(QEvent*) override;
     void focusOutEvent(QFocusEvent*) override;
     void resizeEvent(QResizeEvent*) override;

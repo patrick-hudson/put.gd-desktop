@@ -237,7 +237,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  properties->addWidget(blurRow_);
  // Step: the number the next click places, or the selected step's number.
  stepRow_=column(panel,layout);stepRow_->setObjectName("editorStep");stepLabel_=fieldLabel("Next number",stepRow_);layout->addWidget(stepLabel_);
- stepNumber_=new QSpinBox(stepRow_);stepNumber_->setObjectName("stepNumber");stepNumber_->setRange(1,editor::maximumStepNumber);stepNumber_->setKeyboardTracking(false);stepNumber_->setAccessibleName("Next step number");stepLabel_->setBuddy(stepNumber_);
+ stepNumber_=Ui::wheelSafe<QSpinBox>(stepRow_);stepNumber_->setObjectName("stepNumber");stepNumber_->setRange(1,editor::maximumStepNumber);stepNumber_->setKeyboardTracking(false);stepNumber_->setAccessibleName("Next step number");stepLabel_->setBuddy(stepNumber_);
  {auto* row=new QHBoxLayout;row->setContentsMargins(0,0,0,0);row->addWidget(stepNumber_);row->addStretch(1);layout->addLayout(row);}
  properties->addWidget(stepRow_);
  connect(stepNumber_,&QSpinBox::valueChanged,this,[this](int value){
@@ -246,10 +246,10 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
   canvas_->setNextStepNumber(value);refresh();
  });
  textRow_=column(panel,layout);layout->addWidget(fieldLabel("Font",textRow_));
- font_=new QFontComboBox(textRow_);font_->setObjectName("textFont");font_->setAccessibleName("Font");font_->setCurrentFont(QFont());font_->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);font_->setMinimumContentsLength(8);layout->addWidget(font_);
+ font_=Ui::wheelSafe<QFontComboBox>(textRow_);font_->setObjectName("textFont");font_->setAccessibleName("Font");font_->setCurrentFont(QFont());font_->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);font_->setMinimumContentsLength(8);layout->addWidget(font_);
  layout->addWidget(fieldLabel("Size in image pixels",textRow_));
  // Image pixels; applied when typing finishes (Enter or leaving the field) or on each step.
- textSize_=new QSpinBox(textRow_);textSize_->setObjectName("textSize");textSize_->setRange(editor::minimumFontPixels,editor::maximumFontPixels);textSize_->setValue(28);textSize_->setSuffix(" px");
+ textSize_=Ui::wheelSafe<QSpinBox>(textRow_);textSize_->setObjectName("textSize");textSize_->setRange(editor::minimumFontPixels,editor::maximumFontPixels);textSize_->setValue(28);textSize_->setSuffix(" px");
  textSize_->setKeyboardTracking(false);textSize_->setAccessibleName("Text size in image pixels");layout->addWidget(textSize_);
  properties->addWidget(textRow_);
  // Copy text (#1428): what recognition found, the two copies, what it reads, codes.
@@ -325,7 +325,7 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
  const char* names[4]={"geometryX","geometryY","geometryWidth","geometryHeight"};
  for(int i=0;i<4;++i){
   geometryLabels_[i]=fieldLabel({},geometryFields_);
-  auto* box=new QSpinBox(geometryFields_);box->setObjectName(names[i]);box->setSuffix(" px");box->setKeyboardTracking(false);box->setMinimumWidth(Ui::scaled(64));
+  auto* box=Ui::wheelSafe<QSpinBox>(geometryFields_);box->setObjectName(names[i]);box->setSuffix(" px");box->setKeyboardTracking(false);box->setMinimumWidth(Ui::scaled(64));
   geometryLabels_[i]->setBuddy(box);geometry_[i]=box;
   fields->addWidget(geometryLabels_[i],(i/2)*2,i%2);fields->addWidget(box,(i/2)*2+1,i%2);
   connect(box,&QSpinBox::valueChanged,this,&EditorWindow::applyGeometry);

@@ -3,6 +3,7 @@
 #include "Ui.h"
 #include <QAbstractItemView>
 #include <QApplication>
+#include <QComboBox>
 #include <QFile>
 #include <QFileDialog>
 #include <QGuiApplication>
@@ -239,6 +240,8 @@ void FileDialog::openFallback(const QString& reason){
  QStringList filters;for(const auto& filter:options_.filters)filters.append(QStringLiteral("%1 (%2)").arg(filter.label,filter.patterns.join(' ')));
  if(!filters.isEmpty())dialog->setNameFilters(filters);
  theme(dialog);
+ // Qt's own folder and file-type choices are closed dropdowns too: the wheel leaves them alone (#2117).
+ for(auto* box:dialog->findChildren<QComboBox*>())Ui::leaveWheelToPane(box);
  // Qt's default leaves the detail columns too narrow for their own values.
  QSize size(Ui::scaled(820),Ui::scaled(520));
  if(const auto* screen=owner_->window()->screen())size=size.boundedTo(screen->availableGeometry().size()*0.9);

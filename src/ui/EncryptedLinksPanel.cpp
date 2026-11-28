@@ -20,7 +20,7 @@ QString typeReason(const QString& provider) {
 EncryptedLinksPanel::EncryptedLinksPanel(QWidget* parent):QObject(parent) {}
 void EncryptedLinksPanel::build(QFormLayout* form,const Setting& setting) {
  form_=form;auto* parent=qobject_cast<QWidget*>(this->parent());
- mode_=new QComboBox(parent);mode_->setObjectName("encryptedLinksMode");
+ mode_=Ui::choiceBox(parent);mode_->setObjectName("encryptedLinksMode");
  mode_->addItem("Off","off");mode_->addItem("On","on");mode_->addItem("On with a passphrase","passphrase");
  const auto hint=QStringLiteral("New uploads here become encrypted pages whose link carries the key after # (default: off). Encrypted links show no preview in chat apps.");
  mode_->setToolTip(hint);mode_->setAccessibleDescription(hint);mode_->setProperty("settingDescription",hint);
