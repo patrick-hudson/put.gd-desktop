@@ -135,11 +135,15 @@ pointer took the wheel, the page would stop scrolling and a setting would change
 without anyone noticing. This was fixed in October 2026 (#26) and came back in
 November (#2117), when new code built its dropdowns straight from Qt.
 
-- Build every dropdown with `Ui::choiceBox()`.
+- Build an ordinary dropdown with `Ui::choiceBox()`.
 - Build every other control that changes its value on the wheel with
-  `Ui::wheelSafe<T>()`: spin boxes, date fields, sliders, tab widgets and tab
-  bars, and the font choice. A class derived from one of them calls
-  `Ui::leaveWheelToPane(this)` in its constructor.
+  `Ui::wheelSafe<T>()`: spin boxes, date fields, sliders, tab bars, and
+  dropdowns that need their own Qt class, such as the image editor's
+  `QFontComboBox`. For a tab widget, `wheelSafe` guards the widget's tab bar.
+- A class derived from one of these controls calls `Ui::leaveWheelToPane(this)`
+  in its constructor, as the recording window's `FormatBox` and `MaskBox` do. A
+  class derived from `QTabWidget` calls `Ui::leaveWheelToPane(tabBar())` instead,
+  because the tab bar is what takes the wheel.
 - Scrolling past such a control doesn't focus it either. Tab and a click still do.
 - An open dropdown list still scrolls. Keys, clicks and the step buttons still
   change the value.
@@ -147,9 +151,16 @@ November (#2117), when new code built its dropdowns straight from Qt.
   or the recording timeline, keeps the wheel. Its `wheelEvent` declaration says
   why in a `wheel-input:` comment.
 
-`tests/ci/test_wheel_input.py` fails when `src/` builds a control any other way.
-The Settings and image editor widget tests turn the wheel over every such control
-and check that the value stays put and the page scrolls.
+`tests/ci/test_wheel_input.py` reads `src/` and fails on three things: a Qt
+control of these kinds constructed directly, a class derived from one that
+doesn't guard itself, and a `wheelEvent` override without a `wheel-input:`
+comment. It reads source text, so it can't catch every way to build a control;
+review still matters. Two widget tests turn the real wheel:
+
+- **Settings:** the values don't change over the guarded controls, and the page
+  scrolls over **Encrypted links**.
+- **Image editor:** the toolbar values don't change, and the canvas neither zooms
+  nor pans.
 
 ## Navigation and window behavior
 
