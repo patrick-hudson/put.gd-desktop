@@ -619,7 +619,10 @@ takes `operation_id`, `since`, `include_names`, `output`, `preview`, `notify`,
   with **Show in folder** after saving. Not together with `preview`.
 - **`falseAlarmReports`:** `false` leaves [false-alarm reports](#false-alarm-reports) out.
   The default is `true`. The CLI flag is `--no-false-alarm-reports` and the MCP parameter
-  is `include_false_alarm_reports`.
+  is `include_false_alarm_reports`. A list of report names instead holds just those (of
+  the ones the window or operation would take), and an empty list none: the Settings
+  dialog sends the names its preview counted, so the package holds exactly the reports
+  its notice told the user about.
 
 A preview writes nothing, so it takes none of `upload`, `profileId` and `copyLink`.
 
@@ -913,9 +916,14 @@ destination settings** when they were for one session only).
 - **Create diagnostics package…**, a dialog that shows a `preview` first: what the
   package covers, its files with the upload and log record counts, the failed uploads
   and uploads whose link was not copied included, the redaction and the folder. When the
-  preview includes false-alarm reports, one more line sits in the file list:
-  "false-alarms/: 2 false-alarm reports, with pictures of your screen and the text read
-  from them". It has no checkbox and no confirmation. **Include file names** sets `includeNames`
+  preview includes false-alarm reports, the file list adds "false-alarms/: 2 false-alarm
+  reports", and the **Never** line, in the warning style, says so before anything is
+  saved: "This package includes 2 false-alarm reports, with pictures of your screen and
+  the text read from them, which can show anything that was on screen. Apart from those,
+  credentials, tokens, signed links, file contents, screenshots, and clipboard text are
+  never included." Without reports it reads as before. **Save package** sends the names
+  the preview counted, and the saved result says how many reports the package holds. It
+  has no checkbox and no confirmation. **Include file names** sets `includeNames`
   (off each time the dialog opens). **Choose folder…** saves the folder in
   `preferences.diagnostics.packageFolder`, so later packages go there; **Use default**
   clears it. **Save package** calls `diagnostics.bundle` with `notify`, then shows the

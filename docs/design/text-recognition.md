@@ -2090,7 +2090,10 @@ settles a panel that a person is looking at.
   request while one is saving answers `editor_busy`, and one after it was saved answers
   `false_alarm_already_saved` (or, from a helper that stopped waiting, that report again). The report
   is prepared off the GUI thread from what the check left; a decision taken meanwhile wins, and the
-  report is then dropped with `editor_finalizing`. Refusals: `false_alarm_unavailable` (nothing
+  report is then dropped with `editor_finalizing`. A capture cancelled or decided while its report is
+  prepared closes at once: the helper never waits for the preparation, and that report isn't saved.
+  A report that timed out in the helper stays outstanding; if it saves after all, that is the report,
+  and a retry sent meanwhile is answered with it. Refusals: `false_alarm_unavailable` (nothing
   flagged on a readable image, no prompt or check editor open, or the capture was decided),
   `false_alarm_already_saved`, `sensitive_check_running`, `editor_busy` and `editor_finalizing`.
 - **File selections.** A selection can ask once per file. `sensitive.prompt` numbers each prompt. Pass
