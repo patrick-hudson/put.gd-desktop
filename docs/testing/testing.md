@@ -356,11 +356,17 @@ design is in [scrolling capture](../design/scroll-capture.md).
   Done or Cancel reply, and, with the test's pointer warp repeated until the capture reports paused, nothing injected from then until auto-scroll is on again,
   and the pointer is put back; the end of the control pipe stops injection at once. The user-scroll
   capture also checks its own source rate: asked for 60, and still 60 with 48 to 62 delivered when it
-  kept up. A fallback to 30 must give a reason past its threshold. It passes on a sanitizer build, and on
-  any other build only when the helper's thread times show a busy host: the thread that fell behind
-  used less CPU a frame than a 60 fps interval (twice that for unoptimized code, the dev preset), the
-  loop's CPU and wait times account for the frames it missed, and a thread waited for a CPU for at least a tenth of
-  the time (#2099). A fallback on an idle host fails. There is no
+  kept up. On every build, a fallback must end at 30 frames a second, give a reason past its
+  threshold (the source sent under 48 frames a second, or the loop missed 25 to 100% of the frames),
+  and report more than 0 and at most 62 delivered. That is enough on a sanitizer build. On any other
+  build the helper's thread times must also show a busy host (#2099):
+  - the thread that fell behind used less CPU a frame than a 60 fps interval (twice that for
+    unoptimized code, the dev preset);
+  - when the loop caused the fallback, its CPU time plus its wait for a CPU, per frame it took, is at
+    least 60% of a 60 fps interval;
+  - the loop's or the grab's thread waited for a CPU for at least a tenth of the time.
+
+  On a non-sanitizer build, a fallback on an idle host fails. There is no
   compositor or window manager, so it does not establish Cinnamon behaviour.
 - `tests/releases/test_appimage_notices.py`: the native LGPL 2.1 copy is owned by the real AppImage
   component spec.
