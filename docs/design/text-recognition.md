@@ -2027,6 +2027,18 @@ Focus starts on **Redact and upload**, or on **Cancel** when it isn't offered.
   "Covered …", and **Keep a local copy** keeps the original. It is offered when a `warn` kind was found
   (`sensitive.found` not empty), for each file of a selection too. A check that couldn't finish and found
   only automatic covers, or nothing, doesn't offer it.
+- **Not sensitive** is a quiet button on the "Check the image before uploading. Detection can
+  miss text." line. It is offered when the check found or covered something on an image it could
+  read. It saves a [false-alarm report](diagnostics.md#false-alarm-reports) and shows one line
+  under it: "Saving a report for diagnostics…", then "Report saved for diagnostics." (the button
+  goes away) or "Couldn't save the report. <why>" (the button works again). The panel stays open
+  with its four choices, and nothing uploads or changes. There is no dialog, and one report per
+  prompt. The editor that **Open in editor** opens shows the same button next to **Quick redact**
+  in the Redact tool's panel, with the same line. Its report uses what the check found and the
+  covered image as the check left it, not later edits. When every kind found is set to **Redact
+  automatically**, no panel opens and no report can be made, because that mode doesn't keep the
+  original. Ordinary Capture region & edit, recordings and Quick redact you run yourself in the
+  editor are not covered.
 - **Open in editor** opens the editor on the same document, with the
   suggested marks already placed and the Redact tool chosen. Nothing is recognized a second time.
   From there it is an ordinary edit: its Upload sends the edited PNG, and its Cancel stores and uploads
@@ -2067,6 +2079,15 @@ settles a panel that a person is looking at.
   the last prompt's findings for a moment) and then on to the upload or the end. After `edit` the
   phase becomes `editing`, the `editor.*` methods drive the editor by the same ID, and `editor.submit`
   (MCP `submit_editor`) sends the edited image.
+- **Not sensitive.** `operation.reportFalseAlarm {id}` (MCP `report_false_alarm`) does what the
+  button does for that capture, while its check's prompt waits (panel or report mode, phase
+  `sensitive_text_found`) or in the editor that check opened. It replies `{saved: true, name, path,
+  bytes, operationId}` and waits up to 90 s (the CLI 105 s). The decision still waits afterwards:
+  answer with `operation.decide` as usual. `editor.inspect` of the check's editor has `falseAlarm`
+  (`offered`, `state` `none`, `saving`, `saved` or `failed`, and `message`), and the panel's state
+  is the same. Refusals: `false_alarm_unavailable` (nothing flagged on a readable image, no prompt
+  or check editor open, or the capture was decided), `false_alarm_already_saved`,
+  `sensitive_check_running`, `editor_busy` (a report is still being saved) and `editor_finalizing`.
 - **File selections.** A selection can ask once per file. `sensitive.prompt` numbers each prompt. Pass
   it as `prompt` when answering, so a decision never reaches a later file's prompt.
 - **Refusals.**
@@ -2096,6 +2117,12 @@ found nothing), the editor still holds the check's recognition result, and `edit
 those words to the same-user caller that asks, without another recognition run. Placing any suggested
 mark starts a new recognition revision, which clears the result. The notification says only that a capture is waiting.
 Tests and evidence use only test values.
+
+A [false-alarm report](diagnostics.md#false-alarm-reports) is the one place put.gd keeps the image
+and the recognized text. It is saved only when the user selects **Not sensitive** (or an agent calls
+`operation.reportFalseAlarm`), it stays on disk under the log retention rules, and
+[diagnostics.md](diagnostics.md#an-exception-to-the-diagnostics-rules) records the exception and its
+bounds. **Redact automatically** is not covered, because that mode keeps no original.
 
 ### Cost
 
