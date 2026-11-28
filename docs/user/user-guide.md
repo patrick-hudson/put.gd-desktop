@@ -97,7 +97,7 @@ If you used the AppImage before installing the DEB or RPM, its old menu entries 
 
 When the package's put.gd starts, it moves those old entries out of the way, so both entries show:
 
-- It only moves files exactly as put.gd wrote them. A menu file you edited stays. Two kinds of edited file are moved to the same backup folder instead of being deleted, so your change can be recovered: a GNOME desktop icons script, which the package replaces with its own, and an entry the AppImage stops using.
+- It only moves files exactly as put.gd wrote them. A menu file you edited stays. Two kinds of edited file are moved to the same backup folder instead of being deleted, so your change can be recovered: a GNOME desktop icons script, which the package replaces with its own, and an entry the AppImage stops using. That needs the file to still carry put.gd's `X-putgd-Managed=true` line. If you removed that line, put.gd leaves the file where it is.
 - Each file goes to `~/.local/state/putgd/file-manager-replaced/<time>/`, in a folder per start named by its UTC time. Inside it, a file from `~/.local/share` (or `$XDG_DATA_HOME`) is under `data/`, a Caja script under `config/`, and a desktop icons script under `home/` only when `$XDG_DATA_HOME` points elsewhere. If `$XDG_STATE_HOME` is set to an absolute path, the backups are under `$XDG_STATE_HOME/putgd` instead. The resident log names the old and the new path.
 - A file you move back exactly as put.gd wrote it is moved aside again the next time put.gd starts. An edited menu file you move back stays. An edited desktop icons script you move back is moved aside again, and the package's script takes its place.
 
