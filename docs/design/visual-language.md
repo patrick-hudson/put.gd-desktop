@@ -126,6 +126,52 @@ buttons must remain visibly checked when disabled. Menus preserve shortcuts,
 submenus, checkable state, disabled items and keyboard navigation. Literal
 ampersands must survive Qt's mnemonic escaping.
 
+### The wheel over a closed control
+
+The mouse wheel scrolls the page under the pointer. It never changes the value
+of a closed control. Someone scrolling a long Settings page or History's filters
+passes over dropdowns, number fields, sliders and tabs. If the control under the
+pointer took the wheel, the page would stop scrolling and a setting would change
+without anyone noticing. This was fixed in October 2026 (#26) and came back in
+November (#2117), when new code built its dropdowns straight from Qt.
+
+- Build an ordinary dropdown with `Ui::choiceBox()`.
+- Build every other control that changes its value on the wheel with
+  `Ui::wheelSafe<T>()`: spin boxes, date fields, sliders, tab bars, and
+  dropdowns that need their own Qt class, such as the image editor's
+  `QFontComboBox`. For a tab widget, `wheelSafe` guards the widget's tab bar.
+- A class derived from one of these controls calls `Ui::leaveWheelToPane(this)`
+  in its constructor, as the recording window's `FormatBox` and `MaskBox` do. A
+  class derived from `QTabWidget` calls `Ui::leaveWheelToPane(tabBar())` instead,
+  because the tab bar is what takes the wheel.
+- Controls that Qt creates itself inside one of its own widgets get the guard
+  after the widget is built, by calling `Ui::leaveWheelToPane()` on each. The
+  fallback file dialog does this for its folder and file-type dropdowns
+  (`src/ui/FileDialog.cpp`).
+- Scrolling past such a control doesn't focus it either. Tab and a click still do.
+- An open dropdown list still scrolls. Keys, clicks and the step buttons still
+  change the value.
+- A widget that is itself what the wheel moves, such as the image editor's canvas
+  or the recording timeline, keeps the wheel. Its `wheelEvent` declaration says
+  why in a `wheel-input:` comment.
+
+`tests/ci/test_wheel_input.py` reads `src/` and fails on four things:
+
+- a Qt control of these kinds constructed directly;
+- `Ui::wheelSafe<QComboBox>()`, where `Ui::choiceBox()` belongs;
+- a class derived from one of these controls that doesn't guard itself;
+- a `wheelEvent` override.
+
+A `wheel-input:` comment on the same line marks a deliberate exception to any of
+them. The test reads source text, so it can't catch every way to build a
+control, and review still matters. Two widget tests send wheel events through
+Qt's normal event delivery:
+
+- **Settings:** the values don't change over the guarded controls, and the page
+  scrolls over **Encrypted links**.
+- **Image editor:** the toolbar values don't change, and the canvas neither zooms
+  nor pans.
+
 ## Navigation and window behavior
 
 The main header has the application menu and name on the left, one centered

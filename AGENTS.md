@@ -152,6 +152,10 @@ The user-approved Edit & upload image editor (#51) is the still-image editing fe
 contract, privacy boundaries and agent control are in `docs/design/image-editor.md`.
 New windows reuse the app style (`putgd::Ui`, `src/ui/Ui.h`) and IconArt glyphs, and every interactive
 capability stays controllable through session methods, `putgd-cli` and the MCP helper.
+The wheel over a closed control scrolls the page and never changes the value. Build an ordinary
+dropdown with `Ui::choiceBox()` and every other control whose value would otherwise change on the
+wheel (spin box, slider, tab bar, special dropdowns) with `Ui::wheelSafe<T>()`, as
+`docs/design/visual-language.md` explains.
 
 Agent source, workflow and acceptance maps are in `docs/automation/agents.md`. The optional Python
 3.12+ official-SDK stdio helper is under `tools/mcp/`; follow `docs/automation/mcp.md` for locked
