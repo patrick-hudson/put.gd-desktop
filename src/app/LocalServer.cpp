@@ -201,8 +201,15 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  // #1872: the Nextcloud and WebDAV forms in the open Destinations page, edited and signed in as a
  // user does. Settings values and button presses only, never a credential.
  // #2079: Destinations → Encrypted links as a user drives it: inspect, mode {mode}, unlock or (#2118) test.
+ // #2118: show {profileId} opens Settings at that destination's card, as the tray's Capture region
+ // (encrypted) does while its check doesn't pass.
  if(method=="ui.encryptedLinks") {
-  if(!fields(p,{"action"},{"profileId","mode"})||!QStringList{"inspect","mode","unlock","test"}.contains(p["action"].toString())||(p["action"]=="mode")!=p.contains("mode")||(p.contains("mode")&&!QStringList{"off","on","passphrase"}.contains(p["mode"].toString()))||(p.contains("profileId")&&!string(p,"profileId",64))){reply(invalid(),{});return;}
+  if(!fields(p,{"action"},{"profileId","mode"})||!QStringList{"inspect","mode","unlock","test","show"}.contains(p["action"].toString())||(p["action"]=="mode")!=p.contains("mode")||(p.contains("mode")&&!QStringList{"off","on","passphrase"}.contains(p["mode"].toString()))||(p.contains("profileId")&&!string(p,"profileId",64))||(p["action"]=="show"&&!p.contains("profileId"))){reply(invalid(),{});return;}
+  if(p["action"]=="show"){
+   if(!uiActivation_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
+   const auto id=p["profileId"].toString();if(!settings_.snapshot().profiles.contains(id)){reply({"profile_not_found","No destination has this ID.",{}},{});return;}
+   uiActivation_("encryptedLinks:"+id,[reply=std::move(reply),id](Error error){reply(error,{{"shown","encryptedLinks"},{"profileId",id}});});return;
+  }
   if(!uiCommand_){reply({"ui_unavailable","This resident has no graphical interface",{}},{});return;}
   uiCommand_("encryptedLinks",p,std::move(reply));return;
  }
