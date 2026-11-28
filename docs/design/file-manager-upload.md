@@ -430,8 +430,8 @@ kioexec paths. KIO offers plugins only for a selection whose items share one
 type, so a selection of files and folders together shows no encrypted entry in
 Dolphin. **Upload with put.gd** still does. The plugin links KF6 KIO like any
 Dolphin plugin, but the packages don't depend on KDE: the RPM leaves the KF6
-libraries out of its requirements, and the DEB's dependency scan finds them in a
-private build folder that no package owns. Where KIO isn't installed the plugin
+libraries out of its requirements, and the DEB's dependency scan reads a
+`shlibs.local`, written at build time, that names them with no dependency. Where KIO isn't installed the plugin
 is simply unused. Plugins are on by default. Dolphin's **Configure → Context
 Menu** lists it as **Upload encrypted with put.gd**.
 
