@@ -43,12 +43,29 @@ public:
         int fps = 60;
         int fallbackFps = 30;
     };
+    // How the tap's threads fared while the source ran at the rate asked for
+    // and the session read (#2099): the loop's, the grab's (ximagesrc) and
+    // the copy's (the conversion and the copy into the mailbox, after the
+    // queue). Each one's CPU time, and the time it was ready to run but
+    // waited for a CPU (the kernel's schedstat). Work that fits a frame
+    // interval and long waits for a CPU say a fallback came from a busy
+    // host, not from the capture's own work.
+    struct Load {
+        double ms = 0;  // wall time at the rate asked for
+        // Frames the loop took; grabs and copies between the first and the last measured.
+        quint64 taken = 0, grabbed = 0, copied = 0;
+        bool known = false;  // every thread's times were read
+        double loopCpuMs = 0, loopWaitedMs = 0, grabCpuMs = 0, grabWaitedMs = 0, copyCpuMs = 0, copyWaitedMs = 0;  // totals
+    };
     // The rate a fixed-rate source was asked for and runs at now, the frames
     // a second it delivered while watched, and why it went down (empty: it did not).
+    // `load` covers the time at the rate asked for; `trigger` the two pace
+    // windows that made the source go down (empty when it did not).
     struct Rate {
         int asked = 0, now = 0;
         double delivered = 0;
         QString fallback;
+        Load load, trigger;
     };
     FrameTap() = default;
     ~FrameTap() override;
@@ -84,6 +101,37 @@ private:
     void take(GstSample* sample);
     // The loop's thread: the source again at the lower rate.
     void fallBack(FramePace::Verdict why);
+    // The loop's thread: the load at the asked rate begins, and ends (at a fallback or the end of the watch).
+    void openLoad();
+    void closeLoad();
+    // A streaming thread's times at its first and last measured frame.
+    struct ThreadSpan {
+        double cpuFirst = 0, waitedFirst = 0, cpuLast = 0, waitedLast = 0;
+        quint64 frames = 0;
+        bool known = true;
+    };
+    // Every thread's times at one moment, on the loop's thread: the loop's
+    // own, and the grab's and the copy's as of their latest frame.
+    struct Times {
+        int64_t ms = 0;
+        qint64 taken = 0;
+        bool known = false;
+        double loopCpu = 0, loopWaited = 0;
+        ThreadSpan grab, copy;
+    };
+    // On a streaming thread, after each frame: that thread's times, while the
+    // load is measured. The copy's is noted under the mailbox lock: the lock
+    // order is the mailbox's, then loadMutex_, never the other way.
+    void noteThread(ThreadSpan& span);
+    static void spanDelta(const ThreadSpan& from, const ThreadSpan& to, quint64& frames, double& cpu, double& waited, bool& known);
+    // The loop's thread, under the mailbox lock: the times now (loadMutex_ held).
+    Times timesNow(qint64 taken);
+    // The loop's thread, under the mailbox lock, after the pace counters moved:
+    // a window that closed is kept, and the next one starts now. `taking`: the
+    // loop is taking a frame, which counts in the window it closes.
+    void markWindows(bool closed, bool begun, bool taking);
+    // ximagesrc's streaming thread, after each grab.
+    static GstPadProbeReturn grabbed(GstPad*, GstPadProbeInfo*, gpointer self);
     GstElement* pipeline_ = nullptr;
     GstElement* sink_ = nullptr;
     ImageCopySource* imageCopy_ = nullptr;
@@ -104,6 +152,25 @@ private:
     int64_t watchedFirst_ = -1, watchedLast_ = -1;
     quint64 watchedFrames_ = 0;
     QString fallback_;
+    // The load at the asked rate. The streaming threads check loadOpen_
+    // alone while nothing is measured; the rest is under loadMutex_, never
+    // the mailbox lock, so a grab never waits on a frame copy. The loop's
+    // times when it began; the grab's and the copy's spans.
+    std::atomic<bool> loadOpen_{false};
+    mutable std::mutex loadMutex_;
+    bool loopKnown_ = false;
+    int64_t loadFrom_ = 0;
+    qint64 takenFrom_ = 0;
+    double loopCpuFrom_ = 0, loopWaitedFrom_ = 0;
+    ThreadSpan grab_, copy_;
+    Load load_;
+    // The pace windows at the asked rate: where the current one began, and
+    // the last two that closed with a verdict, the ones a fallback comes from.
+    Times windowFrom_;
+    Load windows_[2];
+    int windowCount_ = 0;
+    bool fallingBack_ = false;
+    Load trigger_;
     std::atomic<bool> lost_{false};
     std::atomic<int> width_{0}, height_{0};
     std::atomic<qint64> frames_{0};

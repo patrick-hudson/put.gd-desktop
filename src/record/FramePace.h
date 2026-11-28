@@ -17,7 +17,7 @@ public:
     explicit FramePace(int fps = 0) : fps_(fps) {}
     // A new window from `now` (watching began, the loop asked for a fresh
     // frame and dropped what was there, the source was restarted).
-    void begin(int64_t now) { from_ = now; arrived_ = missed_ = 0; }
+    void begin(int64_t now) { from_ = now; arrived_ = missed_ = 0; ++begun_; }
     void restart(int fps, int64_t now) { fps_ = fps; bad_ = 0; begin(now); }
     // The source sent a frame.
     void arrived() { ++arrived_; }
@@ -33,17 +33,23 @@ public:
         lastSent_ = sent;
         lastMissedShare_ = arrived_ ? double(missed_) / double(arrived_) : 0;
         bad_ = verdict == Verdict::Keep ? 0 : bad_ + 1;
+        ++closed_;
         begin(now);
         return bad_ >= slowWindows ? verdict : Verdict::Keep;
     }
     // The last whole window: frames a second the source sent, the share the loop missed.
     double lastSent() const { return lastSent_; }
     double lastMissedShare() const { return lastMissedShare_; }
+    // Windows begun, and windows closed with a verdict, so far: a caller
+    // that measures over the windows sees when one ends (#2099).
+    uint64_t begun() const { return begun_; }
+    uint64_t closed() const { return closed_; }
 private:
     int fps_ = 0;
     int64_t from_ = -1;
     uint64_t arrived_ = 0, missed_ = 0;
     int bad_ = 0;
+    uint64_t begun_ = 0, closed_ = 0;
     double lastSent_ = 0, lastMissedShare_ = 0;
 };
 }
