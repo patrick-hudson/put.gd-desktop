@@ -297,7 +297,9 @@ Encryption sits in the shared pipeline between the immutable artifact and naming
    the export request, so Try again (`retryExport`) uses the same choice, and a toggle change
    during the export applies to the next upload. An upload whose fixed choice is to encrypt,
    whether from `encrypt: true`, the toggle or a Try again, is refused before anything is
-   exported: with `encrypt_unavailable` (the toggle's reason, then "Upload it without
+   exported: with `encrypt_check_required` when only the destination's encrypted-page check is
+   missing (the destination-named reason, then "Or upload it without encryption."), with
+   `encrypt_unavailable` (the toggle's reason, then "Upload it without
    encryption."; "Encrypted links aren't available for this upload." when there is no reason),
    or with `encrypt_passphrase_locked` ("The Encrypted links passphrase isn't loaded. Unlock it
    in Destinations, then upload again.") when the destination asks for a saved passphrase that
@@ -508,10 +510,11 @@ of at most 300 characters, the connection fingerprint and the credential revisio
 ([destination checks](configuration.md#destination-checks)). It counts only while the
 fingerprint matches the destination as saved, and it is forgotten with the destination. At
 load a record whose revision isn't the destination's current one is dropped, so a check never
-outlives the keys it ran with across a restart. A check made with session-only credentials (keys,
-`SetupService::storesKeys`, or an SFTP password or key passphrase stored for the session; an SFTP
-destination that signs in with the SSH agent or a key file keeps its check) is
-never written, so like the destination's own Test it ends with the session. New
+outlives the keys it ran with across a restart. A check made with session-only credentials is never written, so like the
+destination's own Test it ends with the session. Session-only credentials are the keys of S3,
+B2, R2, Nextcloud and WebDAV (`SetupService::storesKeys`), a custom uploader's named secret
+values, and an SFTP password or key passphrase that the session cache holds when the status is
+saved. An SFTP destination that signs in with the SSH agent or a key file keeps its check. New
 credentials stored for the destination, or for one that shares its keychain entry, clear it
 (`DestinationStatus::credentialsChanged`). A check that ran while new keys were stored
 records nothing and is reported `untested` with "New credentials were stored during the
@@ -558,8 +561,9 @@ A destination's default is its profile's `encrypt` key, `{mode, passphraseCreden
 ([configuration](configuration.md#encrypted-links-setting)). Settings → Destinations shows it as
 **Encrypted links**: **Off**, **On** or **On with a passphrase**. Changing it affects new uploads
 only. **On** stays offered only after a passed check of the connection as shown; **Off**
-always is. Editing any connection setting marks the check changed in the window until the
-edited destination passes a Test. A typed passphrase is cleared once Settings accepts the
+always is. Editing any connection setting marks a check that ran on the saved connection `changed` in the
+window until the edited destination passes a Test; a destination with no check stays
+`untested`. A typed passphrase is cleared once Settings accepts the
 store, stays typed when it is refused, and is cleared with the other typed secrets when
 Settings closes. Saving a destination whose **Encrypted links** mode didn't change leaves its
 `encrypt` object exactly as saved, `passphraseCredentials` included. Agents drive it with
@@ -573,8 +577,9 @@ saved or can't be confirmed (#2103): until then an agent's next
 
 ### Saying what On needs
 
-**On** waits for one passed Test, and every place that can ask for encryption says so in plain
-words with the next step (#2118). A disabled choice with nothing beside it read as broken.
+On a destination that offers encrypted links (not Proton Drive or Nextcloud, whose card says
+why instead and has no Test button), **On** waits for one passed Test, and every place that can
+ask for encryption says so in plain words with the next step (#2118). A disabled choice with nothing beside it read as broken.
 
 - **Settings.** Under the choice, the **Encrypted links** card says what **On** needs and why,
   and shows its own **Test upload and link**, which starts the destination's own test as the
@@ -592,15 +597,18 @@ words with the next step (#2118). A disabled choice with nothing beside it read 
 - **Per upload.** `OperationService::encryptOptions` words the reason for the editor, recording
   review and the upload's own failure. It names the destination and points at **Test upload and
   link** in Settings → Destinations, with the check's reason when it failed.
-- **Requests.** `upload.files` (`putgd-cli upload --encrypt`) and `action.invoke` with `encrypt`
-  true are refused with `encrypt_check_required` before anything is captured or sent
-  (`OperationService::encryptRefusal`). A destination whose own setting encrypts still fails per
+- **Requests.** An otherwise eligible `upload.files` with `encrypt.enabled: true` (`putgd-cli
+  upload --encrypt`) or `action.invoke` with `encrypt: true`, whose destination can encrypt but
+  hasn't passed the encrypted-page check, is refused with `encrypt_check_required` before
+  anything is captured or sent (`OperationService::encryptRefusal`). The request's own
+  validation, and another installation's `installation_mismatch`, come first. A destination whose own setting encrypts still fails per
   item, so **Retry upload** works once the check passes.
 - **Tray.** **Capture region (encrypted)** stays where it is. It shows when the region's
   destination can encrypt, and also when that destination encrypts by default but its check
   no longer passes. Selecting it then opens Settings at that destination's **Encrypted links**
-  card, with **Test upload and link** focused, and captures nothing. No new tray row and no
-  dialog. `ui.encryptedLinks` `show` opens the same place for agents.
+  card (the UI's `encryptedLinks:<profileId>` view), with **Test upload and link** focused, and
+  captures nothing. No new tray row and no dialog. `ui.encryptedLinks` `show` opens the same
+  `encryptedLinks:<profileId>` target for agents.
 
 The passphrase is kept like any other secret, in its own keychain entry or for this session
 only, never in `config.json` ([credentials](credentials.md)). `setup.storeEncryptPassphrase`
