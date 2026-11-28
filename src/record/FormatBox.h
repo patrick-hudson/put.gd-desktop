@@ -9,7 +9,6 @@
 #include <QPainter>
 #include <QStyleOptionComboBox>
 #include <QStyledItemDelegate>
-#include <QWheelEvent>
 
 namespace putgd::record {
 class FormatDelegate final : public QStyledItemDelegate {
@@ -41,6 +40,7 @@ public:
 class FormatBox final : public QComboBox {
 public:
     explicit FormatBox(QWidget* parent = nullptr) : QComboBox(parent) {
+        Ui::leaveWheelToPane(this);
         setItemDelegate(new FormatDelegate(this));
         const auto describe = [this] { setToolTip(currentData(Qt::ToolTipRole).toString()); setAccessibleDescription(currentText() + "\n" + toolTip()); };
         connect(this, &QComboBox::currentIndexChanged, this, describe);
@@ -84,7 +84,6 @@ protected:
         style()->drawComplexControl(QStyle::CC_ComboBox, &option, &painter, this);
         style()->drawControl(QStyle::CE_ComboBoxLabel, &option, &painter, this);
     }
-    void wheelEvent(QWheelEvent* event) override { event->ignore(); }
 private:
     static QString compactLabel(const QStringList& value) {
         const auto format = value.value(0), codec = value.value(1);

@@ -297,7 +297,7 @@ void CustomUploaderPanel::build(const RowBuilder& row) {
     acceptsLine->addStretch(1);
     row(requestForm_, "Uploads", accepts, "What this destination takes. Files covers everything, recordings included.");
     const auto seconds = [this](const char* name, int maximum) {
-        auto* spin = new QSpinBox(this);
+        auto* spin = Ui::wheelSafe<QSpinBox>(this);
         spin->setObjectName(name);
         spin->setRange(1, maximum);
         spin->setSuffix(" seconds");

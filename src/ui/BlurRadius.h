@@ -22,7 +22,7 @@ public:
         Ui::role(label_, "meta");
         if (compact) { row->addWidget(label_); row->addStretch(1); }
         else layout->addWidget(label_);
-        value_ = new QSpinBox(this);
+        value_ = Ui::wheelSafe<QSpinBox>(this);
         value_->setRange(minimum, maximum);
         value_->setProperty("hasUnit", true);
         value_->setValue(value);
@@ -46,7 +46,7 @@ public:
         if (!compact) row->addStretch(1);
         layout->addLayout(row);
         if (!compact) {
-            slider_ = new QSlider(Qt::Horizontal, this);
+            slider_ = Ui::wheelSafe<QSlider>(Qt::Horizontal, this);
             slider_->setRange(minimum, maximum);
             slider_->setValue(value);
             slider_->setAccessibleName("Blur radius");
