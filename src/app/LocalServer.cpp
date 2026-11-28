@@ -2,6 +2,7 @@
 #include "LocalServer.h"
 #include "RecordingBackend.h"
 #include "ScrollBackend.h"
+#include "FalseAlarmReports.h"
 #include "client/SessionProtocol.h"
 #include "core/BuildInfo.h"
 #include "core/Log.h"
@@ -87,6 +88,7 @@ int LocalServer::replyDeadlineMs(const QString& method) {
  // Checking a large folder over GVfs or KIOFuse stats every file before the reply.
  if(method=="upload.files")return uploadFilesReplyMs;
  if(method=="settings.importUploader")return uploaderImportReplyMs;
+ if(method=="operation.reportFalseAlarm")return falseAlarmReplyMs;
  // Setup runs gsettings and waits for the Shell, each with its own bound.
  if(method=="desktop.setup.recheck")return desktopSetupRecheckReplyMs;
  // The checker child has 40 s of its own (#293).
@@ -379,6 +381,11 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   if(!fields(p,{"id","choice"},{"prompt"})||!string(p,"id")||!string(p,"choice",16)||(p.contains("prompt")&&(!p["prompt"].isDouble()||p["prompt"].toDouble()!=p["prompt"].toInt()||p["prompt"].toInt()<1))){reply(invalid(),{});return;}
   operations_.decideSensitive(p["id"].toString(),p["choice"].toString(),reply,p["prompt"].toInt());return;
  }
+ // #2134: Not sensitive for a capture's sensitive text warning, or in the editor it opened: a false-alarm report.
+ if(method=="operation.reportFalseAlarm") {
+  if(!fields(p,{"id"})||!string(p,"id")){reply(invalid(),{});return;}
+  operations_.reportFalseAlarm(p["id"].toString(),reply);return;
+ }
  if(method=="operation.cancel"&&p.contains("itemId")) {if(!fields(p,{"id","itemId"})||!string(p,"id")||!string(p,"itemId")) {reply(invalid(),{});return;}operations_.cancel(p["id"].toString(),reply,p["itemId"].toString());return;}
  if(method.startsWith("operation.")) {
   // operation.retry alone takes scope "sharing": finish wanted share links only (#1496).
@@ -657,7 +664,29 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  else if(method=="history.clear")history_.clear(reply);
  else if(method=="cache.clear")operations_.cleanup(reply);
  // Removes every persistent log file and starts a new one (#74).
- else if(method=="logs.clear")operations_.background([](Error& error){return logging::clear(error);},reply);
+ else if(method=="logs.clear")operations_.background([reports=operations_.falseAlarmReports()](Error& error){
+  // #2134: Clear logs removes the false-alarm reports too: they live beside the logs and hold screen content. They go
+  // even when clearing the logs fails, and the answer says how both went.
+  Error logsError;auto result=logging::clear(logsError);
+  const auto removed=reports?reports->clear():FalseAlarmReports::Removed{};
+  result["removedReports"]=removed.reports;result["removedReportBytes"]=double(removed.bytes);
+  if(removed.reports)logging::info(logApp(),"False alarm reports cleared",{{"reports",removed.reports},{"bytes",double(removed.bytes)}});
+  if(logsError){
+   auto details=logsError.details;details["removedReports"]=removed.reports;details["removedReportBytes"]=double(removed.bytes);if(removed.left)details["reportsLeft"]=removed.left;
+   const auto reportsLine=removed.left?QStringLiteral(" The false-alarm reports weren't all deleted either."):removed.reports==1?QStringLiteral(" 1 false-alarm report was deleted."):removed.reports>1?QStringLiteral(" %1 false-alarm reports were deleted.").arg(removed.reports):QString();
+   error={logsError.code,logsError.message+reportsLine,details};
+   return QJsonObject{};
+  }
+  // A report still there afterwards is said, never passed over: the logs are cleared, the reports are not all gone.
+  if(removed.left){
+   auto details=result;details["reportsLeft"]=removed.left;
+   error={"false_alarm_clear_incomplete",removed.left<0?QStringLiteral("Logs cleared, but the false-alarm reports folder isn't put.gd's own folder, so its reports weren't deleted."):QStringLiteral("Logs cleared, but %1 false-alarm report folder(s) couldn't be deleted.").arg(removed.left),details};
+   logging::warning(logApp(),"False alarm reports not all cleared",{{"left",removed.left}});
+   return QJsonObject{};
+  }
+  return result;},reply);
+ // #2134: the saved false-alarm reports, without their contents.
+ else if(method=="diagnostics.falseAlarms"){if(!p.isEmpty()){reply(invalid(),{});return;}auto* reports=operations_.falseAlarmReports();if(!reports){reply({"false_alarm_unavailable","Reports can't be saved here",{}},{});return;}operations_.background([reports](Error&){return reports->list();},reply);}
  else reply({"unknown_method","Unknown session method",{}},{});
 }
 
@@ -675,7 +704,7 @@ void LocalServer::noteOutcome(const QString& method,const QJsonObject& p,Error& 
   {"delete.prepare","deletion"},{"delete.confirm","deletion"},{"delete.retry","deletion"},{"delete.cancel","deletion"},
   {"operation.retry","upload"},{"operation.retryLocalSave","local_save"},{"operation.cancel","upload"},{"operation.encrypt","upload"},{"upload.files","upload"},
   {"recording.start","recording"},{"recording.stop","recording"},{"recording.upload","recording"},{"recording.saveCopy","recording"},
-  {"diagnostics.bundle","diagnostics"},{"settings.save","settings_save"},{"settings.patch","settings_save"},{"settings.reorderProfiles","settings_save"},{"settings.importUploader","settings_save"},
+  {"diagnostics.bundle","diagnostics"},{"operation.reportFalseAlarm","diagnostics"},{"settings.save","settings_save"},{"settings.patch","settings_save"},{"settings.reorderProfiles","settings_save"},{"settings.importUploader","settings_save"},
   {"history.clear","history"},{"history.forget","history"},{"cache.clear","history"},{"action.invoke",""}};
  if(!kinds.contains(method))return;
  // A diagnostics preview writes nothing; its refusal is the dialog's own message.

@@ -45,6 +45,7 @@
 #include <QTimer>
 #include <QFontComboBox>
 #include <QSignalSpy>
+#include <cstdlib>
 #include <QTest>
 #include "fixtures/Waits.h"
 #include "fixtures/WheelProbe.h"
@@ -245,6 +246,50 @@ private slots:
    auto partial=model;partial.findings.found={};partial.findings.complete=false;partial.findings.reason="truncated";SensitivePrompt prompt(partial);
    QCOMPARE(prompt.choices(),(QStringList{"edit","upload","cancel"}));QVERIFY(!prompt.choose("redact_upload"));
   }
+ }
+ // #2134: Not sensitive asks for a false-alarm report and leaves every choice where it was; its line says how it went,
+ // and the panel grows to show it. Only offered when asked for.
+ void sensitivePromptNotSensitiveKeepsTheChoices(){
+  SensitivePrompt::Model model;model.findings.found={{"phone",1}};model.preview=canvasImage();model.destination="Upload to Project archive · Shared link";
+  {SensitivePrompt plain(model);QVERIFY(!plain.findChild<QPushButton*>("sensitiveFalseAlarm"));QCOMPARE(plain.state()["falseAlarm"].toObject()["offered"].toBool(),false);}
+  model.falseAlarmAllowed=true;
+  SensitivePrompt prompt(model);prompt.show();QVERIFY(putgd::test::waitForWindowExposed(&prompt));
+  auto* button=prompt.findChild<QPushButton*>("sensitiveFalseAlarm");QVERIFY(button&&button->isVisible()&&button->isEnabled());
+  QCOMPARE(button->text(),QString("Not sensitive"));QVERIFY(button->width()>=button->sizeHint().width());
+  QSignalSpy asked(&prompt,&SensitivePrompt::falseAlarmRequested);QSignalSpy chosen(&prompt,&SensitivePrompt::chosen);
+  button->click();QCOMPARE(asked.size(),1);QCOMPARE(chosen.size(),0);
+  const int before=prompt.height();
+  prompt.showFalseAlarm("saving","Saving a report for diagnostics…");QVERIFY(!button->isEnabled());button->click();QCOMPARE(asked.size(),1);
+  prompt.showFalseAlarm("failed","Couldn't save the report. Check free disk space and try again.");QVERIFY(button->isEnabled());
+  prompt.showFalseAlarm("saved","Report saved for diagnostics.");
+  auto* line=prompt.findChild<QLabel*>("sensitiveFalseAlarmLine");QVERIFY(line&&line->isVisible());QCOMPARE(line->text(),QString("Report saved for diagnostics."));
+  QVERIFY(!button->isVisible());QVERIFY(prompt.height()>before);
+  QCOMPARE(prompt.state()["falseAlarm"].toObject()["state"].toString(),QString("saved"));
+  // Every choice is still there and still works.
+  QCOMPARE(prompt.choices(),(QStringList{"redact_upload","edit","upload","cancel"}));
+  for(const auto* name:{"sensitiveRedact","sensitiveEdit","sensitiveUpload","sensitiveCancel"})QVERIFY2(prompt.findChild<QPushButton*>(name)->isEnabled(),name);
+  prompt.findChild<QPushButton*>("sensitiveUpload")->click();QCOMPARE(chosen.size(),1);QCOMPARE(chosen.first().first().toString(),QString("upload"));
+ }
+ // #2134 F2, F5: the editor's Not sensitive asks for a report from its own button, and never clips: beside Quick redact
+ // where the pane has room, under it where it hasn't.
+ void editorNotSensitiveButtonAsksAndFits(){
+  editor::EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1180,820);window.selectTool(editor::Tool::Redact);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  auto* button=window.findChild<QPushButton*>("editorFalseAlarm");QVERIFY(button);QVERIFY(!button->isVisible());
+  window.offerFalseAlarm(true);PUTGD_TRY_VERIFY(button->isVisible());
+  QSignalSpy asked(&window,&EditorWindow::falseAlarmRequested);button->click();QCOMPARE(asked.size(),1);
+  auto* quick=window.findChild<QToolButton*>("quickRedact");
+  PUTGD_TRY_VERIFY(button->width()>=button->sizeHint().width()&&quick->width()>=quick->sizeHint().width());
+  // A wide side pane: side by side on one row. The default narrow pane: stacked, Not sensitive under Quick redact,
+  // neither clipped.
+  const auto at=[&](QWidget* w){return QRect(w->mapTo(&window,QPoint(0,0)),w->size());};
+  auto* splitter=window.findChild<QSplitter*>();QVERIFY(splitter);const auto sizes=splitter->sizes();
+  splitter->setSizes({600,560});
+  PUTGD_TRY_VERIFY(at(button).left()>=at(quick).right()&&std::abs(at(button).center().y()-at(quick).center().y())<at(quick).height());
+  splitter->setSizes(sizes);
+  PUTGD_TRY_VERIFY(at(button).top()>=at(quick).bottom()&&button->width()>=button->sizeHint().width()&&quick->width()>=quick->sizeHint().width());
+  window.showFalseAlarm("saved","Report saved for diagnostics.","putgd-false-alarm-20261128T000000000Z-0123abcd");
+  QCOMPARE(window.falseAlarmState()["name"].toString(),QString("putgd-false-alarm-20261128T000000000Z-0123abcd"));PUTGD_TRY_VERIFY(!button->isVisible());
+  window.allowClose();window.close();
  }
  // #1941: QR codes Keys and tokens found are named by their kind, apart from the other keys, never by content.
  void sensitivePromptNamesSecretCodesByKind(){

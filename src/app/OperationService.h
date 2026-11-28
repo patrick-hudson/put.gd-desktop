@@ -21,6 +21,7 @@
 #include <optional>
 namespace putgd {
 using JsonReply=std::function<void(Error,QJsonObject)>;
+class FalseAlarmReports;
 class UnavailableSource final:public SourceAdapter {
 public:
  quint64 clipboardRevision() const override {return 0;}
@@ -55,6 +56,12 @@ public:
  int sensitivePromptNumber(const QString& id) const;
  // Relays one editor.* command to the open editor for this operation.
  void editorCommand(const QString& id,const QString& command,const QJsonObject& params,JsonReply);
+ // #2134: Not sensitive for this capture's check, while its prompt (a panel, or report mode) waits or in the
+ // editor it opened: saves a false-alarm report. Replies {saved, name, path, bytes}.
+ void reportFalseAlarm(const QString& id,JsonReply);
+ // Where reports are saved; unset, Not sensitive answers false_alarm_unavailable.
+ void setFalseAlarmReports(FalseAlarmReports* reports) {falseAlarms_=reports;}
+ FalseAlarmReports* falseAlarmReports() const {return falseAlarms_;}
  QString editingOperation() const {return editingId_;}
  // Relays one recording.* command to the shared recording service.
  void recordingCommand(const QString& command,const QJsonObject& params,JsonReply);
@@ -503,6 +510,9 @@ private:
  QSet<QString> held_;
  // A request's passphrase while its sensitive text check runs; enqueue() takes it. Memory only.
  QHash<QString,QString> checkPassphrases_;
+ FalseAlarmReports* falseAlarms_=nullptr;
+ // #2134: saves one report the check's helper handed over, then answers it.
+ void saveFalseAlarm(const QString& id,EditorSession::Report,QJsonObject resident,std::function<void(Error,QJsonObject)> done);
  // Encrypts the items of an upload that are to be encrypted and not yet (#2079). False when the
  // journal write failed; items that can't be encrypted fail with their own error.
  // Whether this upload is to be encrypted: its own choice, else its destination's setting.

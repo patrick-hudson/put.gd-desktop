@@ -42,14 +42,21 @@ public:
   QString file; // "File 2 of 3: notes.png" for a file-manager selection, or empty
   // #1941: QR codes Keys and tokens covered, by kind (otp, wifi, key), named apart from the key count.
   QJsonObject codes;
+  // #2134: Not sensitive saves a false-alarm report for diagnostics; offered when anything was found or covered.
+  bool falseAlarmAllowed=false;
  };
  explicit SensitivePrompt(Model,QWidget* parent=nullptr);
  QJsonObject state() const;
  // What an agent's operation.decide or a button chose: redact_upload, edit, upload or cancel.
  QStringList choices() const;
  bool choose(const QString& choice);
+ // #2134: Not sensitive's line: "saving" (the button waits), "saved" (the button goes, the line says so) or
+ // "failed" (the line says why, the button works again). The panel stays open with its choices either way.
+ void showFalseAlarm(const QString& state,const QString& text,const QString& name={});
+ QJsonObject falseAlarmState() const;
 signals:
  void chosen(const QString& choice);
+ void falseAlarmRequested();
 protected:
  void closeEvent(QCloseEvent*) override;
  void keyPressEvent(QKeyEvent*) override;
@@ -57,7 +64,9 @@ protected:
  void mousePressEvent(QMouseEvent*) override;
  void showEvent(QShowEvent*) override;
 private:
- Model model_;bool decided_=false;int rows_=1;
- QPushButton *redact_=nullptr,*edit_=nullptr,*upload_=nullptr,*cancel_=nullptr;
+ void fit();
+ Model model_;bool decided_=false;int rows_=1,room_=0;
+ QPushButton *redact_=nullptr,*edit_=nullptr,*upload_=nullptr,*cancel_=nullptr,*falseAlarm_=nullptr;
+ QLabel* falseAlarmLine_=nullptr;QString falseAlarmState_=QStringLiteral("none"),falseAlarmName_;
 };
 }

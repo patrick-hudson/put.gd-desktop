@@ -471,7 +471,7 @@ int main(int argc,char** argv){
    // #1898: the sensitive text prompt's four choices at enlarged text: one row where the screen has room, else two.
    QImage capture(960,540,QImage::Format_RGB32);capture.fill(QColor("#1e1e1e"));
    {QPainter painter(&capture);painter.setFont(Ui::monoFont(28));painter.setPen(QColor("#e6e6e6"));painter.drawText(40,120,"$ pay --card");painter.fillRect(QRect(240,150,420,44),Qt::black);}
-   SensitivePrompt::Model found;found.findings.found={{"card",1},{"key",1}};found.preview=capture;found.destination="Upload to Project archive · Shared link";
+   SensitivePrompt::Model found;found.findings.found={{"card",1},{"key",1}};found.preview=capture;found.destination="Upload to Project archive · Shared link";found.falseAlarmAllowed=true;
    SensitivePrompt prompt(std::move(found));prompt.show();putgd::test::settle(300);app.processEvents();
    const auto image=steadyGrab(prompt);if(!image.save(QDir(output).filePath("70e-sensitive-prompt-large-text.png")))return 2;
    captures.append(QJsonObject{{"file","70e-sensitive-prompt-large-text.png"},{"width",image.width()},{"height",image.height()}});prompt.hide();
@@ -1017,14 +1017,21 @@ int main(int argc,char** argv){
    SensitivePrompt window(std::move(model));window.show();putgd::test::settle(300);app.processEvents();
    const auto image=steadyGrab(window);if(!image.save(QDir(output).filePath(name+".png"))||!writeInventory(output,name,window))return false;
    captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",image.width()},{"height",image.height()}});window.hide();return true;};
-  SensitivePrompt::Model found;found.findings.found={{"card",1},{"key",1}};found.preview=capture;found.destination="Upload to Project archive · Shared link";
+  // #2134: a finding offers Not sensitive, as the editor helper offers it.
+  SensitivePrompt::Model found;found.findings.found={{"card",1},{"key",1}};found.preview=capture;found.destination="Upload to Project archive · Shared link";found.falseAlarmAllowed=true;
   if(!prompt("70a-sensitive-prompt",found))return 2;
+  {
+   // #2134: after Not sensitive, the report's line under it; the choices stay.
+   SensitivePrompt window(found);window.show();putgd::test::settle(300);window.showFalseAlarm("saved","Report saved for diagnostics.");putgd::test::settle(200);app.processEvents();
+   const auto image=steadyGrab(window);if(!image.save(QDir(output).filePath("70f-sensitive-prompt-report-saved.png"))||!writeInventory(output,"70f-sensitive-prompt-report-saved",window))return 2;
+   captures.append(QJsonObject{{"file","70f-sensitive-prompt-report-saved.png"},{"controls","70f-sensitive-prompt-report-saved.controls.json"},{"width",image.width()},{"height",image.height()}});window.hide();
+  }
   SensitivePrompt::Model partial;partial.findings.complete=false;partial.findings.reason="truncated";partial.preview=capture;partial.destination=found.destination;
   if(!prompt("70b-sensitive-prompt-incomplete",partial))return 2;
-  SensitivePrompt::Model files;files.findings.found={{"card",2}};files.editAllowed=false;files.file="File 2 of 3: receipt.png";files.preview=capture;files.destination=found.destination;
+  SensitivePrompt::Model files;files.findings.found={{"card",2}};files.editAllowed=false;files.file="File 2 of 3: receipt.png";files.preview=capture;files.destination=found.destination;files.falseAlarmAllowed=true;
   if(!prompt("70c-sensitive-prompt-files",files))return 2;
   // #1820: card numbers on Redact automatically, email on Warn: the card is covered already, the prompt asks about the email.
-  SensitivePrompt::Model mixed;mixed.findings.found={{"email",1}};mixed.covered={{"card",1}};mixed.preview=capture;mixed.destination=found.destination;
+  SensitivePrompt::Model mixed;mixed.findings.found={{"email",1}};mixed.covered={{"card",1}};mixed.preview=capture;mixed.destination=found.destination;mixed.falseAlarmAllowed=true;
   if(!prompt("70d-sensitive-prompt-mixed",mixed))return 2;
  }
  {
@@ -1034,6 +1041,17 @@ int main(int argc,char** argv){
   editor::EditDocument doc(image);EditorWindow editor(doc);editor.setDestination("Private upload to Project archive",false);editor.resize(1180,820);editor.selectTool(editor::Tool::Select);editor.show();putgd::test::settle(450);
   const auto captured=steadyGrab(editor);if(!captured.save(QDir(output).filePath("26l-editor-dark-content.png")))return 2;
   captures.append(QJsonObject{{"file","26l-editor-dark-content.png"},{"width",captured.width()},{"height",captured.height()}});editor.allowClose();editor.close();
+ }
+ {
+  // #2134: the editor the sensitive text check opened, in the Redact tool, with Not sensitive beside Quick redact; in a
+  // narrow window the two stack instead of clipping.
+  QImage image(960,600,QImage::Format_RGB32);image.fill(QColor("#f4f4f2"));
+  QPainter painter(&image);painter.setFont(Ui::monoFont(26));painter.setPen(QColor("#202020"));painter.drawText(40,120,"GET /api/v2/orders   200 63292");painter.fillRect(QRect(330,96,190,34),Qt::black);painter.end();
+  for(const auto& [name,size]:{std::pair{QStringLiteral("26m-editor-not-sensitive"),QSize(1180,820)},std::pair{QStringLiteral("26n-editor-not-sensitive-narrow"),QSize(760,700)}}){
+   editor::EditDocument doc(image);EditorWindow editor(doc);editor.setDestination("Upload to Project archive",false);editor.resize(size);editor.selectTool(editor::Tool::Redact);editor.offerFalseAlarm(true);editor.show();putgd::test::settle(450);
+   const auto captured=steadyGrab(editor);if(!captured.save(QDir(output).filePath(name+".png"))||!writeInventory(output,name,editor))return 2;
+   captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",captured.width()},{"height",captured.height()}});editor.allowClose();editor.close();
+  }
  }
  }
 #ifdef PUTGD_CATALOG_REVIEW

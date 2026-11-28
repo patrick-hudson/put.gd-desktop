@@ -5,6 +5,7 @@
 #include <QTimer>
 #include <functional>
 namespace putgd {
+class FalseAlarmReports;
 // Applies the logging settings to the resident log (#74): retention limits,
 // cleanup once a day, and debug logging, which turns itself off 24 hours after
 // it was turned on. When it was turned on is kept in the state folder, so a
@@ -16,6 +17,8 @@ public:
  static constexpr int cleanupIntervalMs=24*60*60*1000;
  LogService(SettingsService&,QString stateRoot,QObject* parent=nullptr);
  void apply();
+ // #2134: false-alarm reports follow the same retention: applied with it and cleaned up with it.
+ void setFalseAlarmReports(FalseAlarmReports* reports) {reports_=reports;}
  // {enabled, enabledAt, expiresAt} for diagnostics.
  QJsonObject debugStatus() const;
  // Test seam: the current UTC time.
@@ -32,5 +35,7 @@ private:
  QDateTime enabledAt_;
  bool active_=false;
  std::function<QDateTime()> clock_;
+ FalseAlarmReports* reports_=nullptr;
+ void pruneReports();
 };
 }

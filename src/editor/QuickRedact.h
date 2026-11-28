@@ -33,7 +33,12 @@ QStringList keyShapes();
 struct Match {
  QString category;
  QList<int> words; // indexes into the candidates, in reading order
- bool operator==(const Match&) const=default;
+ // #2134: the rule that found it, for a false-alarm report: email, card, ip.v4, ip.v6, phone,
+ // name.account, name.prompt, list.word, list.pattern.<n> (1-based), or for keys key.<source> joined
+ // with commas (key.pem, key.jwt, key.prefix.<n>, key.run, key.structural, key.labelled, key.command,
+ // key.two_factor). Never the words or pattern themselves. Not compared: a match is its kind and words.
+ QString rule={};
+ bool operator==(const Match& other) const {return category==other.category&&words==other.words;}
 };
 // #1618: what the name and list categories match. The editor fills `login` and
 // `realName` from the account (src/ui/AccountName.h), `terms` and `patterns`

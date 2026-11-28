@@ -1,6 +1,7 @@
 #pragma once
 #include "OperationService.h"
 #include <QDateTime>
+#include <optional>
 #include <QDir>
 #include <QSet>
 #include <QRegularExpression>
@@ -16,6 +17,13 @@ struct BundleRequest {
  // the default capture destination; copyLink also puts the link on the clipboard.
  bool upload=false,copyLink=false;
  QString profileId;
+ // #2134: include the false-alarm reports of the package's window (or operation), which hold screen content. Off
+ // unless asked for: History's, the tray's and the error log's saves announce nothing, so they never hold reports.
+ // Settings' dialog asks with the names its notice counted; the CLI and MCP ask explicitly.
+ bool falseAlarmReports=false;
+ // With names (falseAlarmReports given as a list): only these reports, as a preview listed them, so a package
+ // holds no report its notice didn't count (Settings' dialog).
+ std::optional<QStringList> falseAlarmNames;
 };
 // Replaces names, object keys, URLs and private paths in a diagnostics package
 // with stable per-package hashes (the same value always gets the same token in
@@ -58,6 +66,7 @@ public:
  static constexpr qint64 maximumSinceMs=365LL*24*60*60*1000;
  struct Context {
   QString databasePath,logsDirectory,defaultFolder,home;
+  QString falseAlarmsDirectory; // #2134; empty: none
   QHash<QString,QString> roots; // path -> placeholder
   QJsonObject settings,diagnostics,environment;
   QDateTime now=QDateTime::currentDateTimeUtc();

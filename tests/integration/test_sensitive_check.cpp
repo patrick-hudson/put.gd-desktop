@@ -7,8 +7,11 @@
 #include "core/AllocatorPolicy.h"
 #include "core/QrImage.h"
 #include "core/TextJob.h"
+#include "app/FalseAlarmReports.h"
 #include <QDirIterator>
 #include <QUuid>
+#include <QElapsedTimer>
+#include <QScopeGuard>
 #include "fixtures/Waits.h"
 #include <QCoreApplication>
 #include <algorithm>
@@ -170,6 +173,91 @@ private slots:
   PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["state"].toString(),QString("completed"),20000);
   QCOMPARE(f.provider->uploads.load(),1);
   QCOMPARE(call([&](JsonReply r){f.operations->decideSensitive(id,"upload",r);}).error.code,QString("sensitive_decision_unavailable"));
+ }
+ // #2134: Not sensitive saves a false-alarm report, the original as captured, the covered image and the findings,
+ // and the decision still waits; a second report is refused, and none once the capture was decided. A saved Quick
+ // redact word is counted, never written.
+ void notSensitiveSavesAReportAndTheDecisionStillWaits(){
+  Fixture f(page(card),true,false,{},{"eng"},{"synthetic-private-term"});PUTGD_TRY_VERIFY(f.operations->ready());
+  FalseAlarmReports reports(f.dir.filePath("state/false-alarms"));f.operations->setFalseAlarmReports(&reports);
+  const auto id=f.start();
+  QVERIFY(f.reaches(id,"sensitive_text_found"));
+  const auto saved=call([&](JsonReply r){f.operations->reportFalseAlarm(id,r);});QVERIFY2(!saved.error,qPrintable(saved.error.code+": "+saved.error.message));
+  QVERIFY(saved.result["saved"].toBool());const auto path=saved.result["path"].toString();QVERIFY(FalseAlarmReports::reportName(saved.result["name"].toString()));
+  QCOMPARE(QFileInfo(path).absolutePath(),QFileInfo(f.dir.filePath("state/false-alarms")).absoluteFilePath());
+  // The original exactly as checked, and the covered image as the panel previews it.
+  QCOMPARE(QImage(QDir(path).filePath("original.png")).convertToFormat(QImage::Format_RGB32),page(card).convertToFormat(QImage::Format_RGB32));
+  const QImage coveredImage(QDir(path).filePath("covered.png"));QVERIFY(!coveredImage.isNull());QVERIFY(blackShare(coveredImage,digits(0))>0.8);
+  QFile json(QDir(path).filePath("report.json"));QVERIFY(json.open(QIODevice::ReadOnly));const auto bytes=json.readAll();const auto report=QJsonDocument::fromJson(bytes).object();
+  QCOMPARE(report["operationId"].toString(),id);QCOMPARE(report["reportedFrom"].toString(),QString("prompt"));
+  QCOMPARE(report["capture"].toObject()["action"].toString(),QString("region"));QCOMPARE(report["capture"].toObject()["source"].toString(),QString("capture"));
+  QCOMPARE(report["check"].toObject()["found"].toObject()["card"].toInt(),1);
+  const auto finding=report["findings"].toArray().first().toObject();
+  QCOMPARE(finding["kind"].toString(),QString("card"));QCOMPARE(finding["rule"].toString(),QString("card"));QVERIFY2(finding["text"].toString().contains("4111"),qPrintable(finding["text"].toString()));
+  QVERIFY(report["words"].toObject()["list"].toArray().size()>=4);
+  const auto engine=report["recognition"].toObject()["engine"].toObject();QCOMPARE(engine["name"].toString(),QString("tesseract"));QVERIFY(!engine["version"].toString().isEmpty());QVERIFY(engine["scale"].toDouble()>=1);
+  QCOMPARE(report["settings"].toObject()["quickRedact"].toObject()["terms"].toInt(),1);QVERIFY(!bytes.contains("synthetic-private-term"));
+  // The panel's choices are all still there: the capture waits, and only one report is saved.
+  QCOMPARE(f.inspect(id)["phase"].toString(),QString("sensitive_text_found"));QCOMPARE(f.provider->uploads.load(),0);
+  // F4: the operation says so, with the report's name.
+  PUTGD_TRY_COMPARE(f.inspect(id)["sensitive"].toObject()["falseAlarm"].toObject()["state"].toString(),QString("saved"));
+  QCOMPARE(f.inspect(id)["sensitive"].toObject()["falseAlarm"].toObject()["name"].toString(),saved.result["name"].toString());
+  QCOMPARE(call([&](JsonReply r){f.operations->reportFalseAlarm(id,r);}).error.code,QString("false_alarm_already_saved"));
+  QVERIFY(!call([&](JsonReply r){f.operations->decideSensitive(id,"upload",r);}).error);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["state"].toString(),QString("completed"),20000);QCOMPARE(f.provider->uploads.load(),1);
+  QCOMPARE(call([&](JsonReply r){f.operations->reportFalseAlarm(id,r);}).error.code,QString("false_alarm_unavailable"));
+  QCOMPARE(reports.list()["count"].toInt(),1);
+ }
+ // #2134 F1: Redact and upload right after Not sensitive uploads as chosen: the report either was saved first or
+ // is dropped, and the session never fails.
+ void redactAndUploadRightAfterNotSensitiveStillUploads(){
+  Fixture f(page(card));PUTGD_TRY_VERIFY(f.operations->ready());
+  FalseAlarmReports reports(f.dir.filePath("state/false-alarms"));f.operations->setFalseAlarmReports(&reports);
+  const auto id=f.start();
+  QVERIFY(f.reaches(id,"sensitive_text_found"));
+  Call report;f.operations->reportFalseAlarm(id,[&](Error e,QJsonObject r){report={e,r,true};});
+  QVERIFY(!call([&](JsonReply r){f.operations->decideSensitive(id,"redact_upload",r);}).error);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["state"].toString(),QString("completed"),20000);
+  QCOMPARE(f.provider->uploads.load(),1);
+  PUTGD_TRY_VERIFY(report.done);
+  QVERIFY2(!report.error||QStringList({"editor_finalizing","editor_closed"}).contains(report.error.code),qPrintable(report.error.code+": "+report.error.message));
+  QCOMPARE(reports.list()["count"].toInt(),report.error?0:1);
+ }
+ // #2134 N5: Cancel while a report is still being prepared closes the capture at once: the report is simply not saved,
+ // and the helper's exit never waits for it.
+ void cancelWhileAReportIsPreparedClosesCleanly(){
+  qputenv("PUTGD_TEST_FALSE_ALARM_DELAY_MS","9000");const auto restore=qScopeGuard([]{qunsetenv("PUTGD_TEST_FALSE_ALARM_DELAY_MS");});
+  Fixture f(page(card));PUTGD_TRY_VERIFY(f.operations->ready());
+  FalseAlarmReports reports(f.dir.filePath("state/false-alarms"));f.operations->setFalseAlarmReports(&reports);
+  const auto id=f.start();
+  QVERIFY(f.reaches(id,"sensitive_text_found"));
+  Call report;f.operations->reportFalseAlarm(id,[&](Error e,QJsonObject r){report={e,r,true};});
+  QElapsedTimer clock;clock.start();
+  QVERIFY(!call([&](JsonReply r){f.operations->decideSensitive(id,"cancel",r);}).error);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["state"].toString(),QString("cancelled"),8000);
+  QVERIFY2(clock.elapsed()<8000,qPrintable(QString::number(clock.elapsed())));
+  {const auto error=f.inspect(id)["error"].toObject();QVERIFY2(error["code"].toString().isEmpty()||error["code"]=="cancelled",QJsonDocument(error).toJson().constData());}
+  PUTGD_TRY_VERIFY(report.done);QVERIFY(report.error);QCOMPARE(reports.list()["count"].toInt(),0);
+ }
+ // #2134: the editor the check opened offers Not sensitive too, with the check's findings and covers, not the edit.
+ void notSensitiveInTheEditorTheCheckOpened(){
+  Fixture f(page(card));PUTGD_TRY_VERIFY(f.operations->ready());
+  FalseAlarmReports reports(f.dir.filePath("state/false-alarms"));f.operations->setFalseAlarmReports(&reports);
+  const auto id=f.start();
+  QVERIFY(f.reaches(id,"sensitive_text_found"));
+  QVERIFY(!call([&](JsonReply r){f.operations->decideSensitive(id,"edit",r);}).error);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["phase"].toString(),QString("editing"),20000);
+  Call state;PUTGD_TRY_VERIFY((state=call([&](JsonReply r){f.operations->editorCommand(id,"inspect",{},r);}),!state.error));
+  QCOMPARE(state.result["falseAlarm"].toObject()["offered"].toBool(),true);
+  // An edit after opening changes nothing the report says the check did.
+  QVERIFY(!call([&](JsonReply r){f.operations->editorCommand(id,"view",{{"action","removeSuggestions"}},r);}).error);
+  const auto saved=call([&](JsonReply r){f.operations->reportFalseAlarm(id,r);});QVERIFY2(!saved.error,qPrintable(saved.error.code+": "+saved.error.message));
+  QFile json(QDir(saved.result["path"].toString()).filePath("report.json"));QVERIFY(json.open(QIODevice::ReadOnly));const auto report=QJsonDocument::fromJson(json.readAll()).object();
+  QCOMPARE(report["reportedFrom"].toString(),QString("editor"));QCOMPARE(report["findings"].toArray().size(),1);
+  QVERIFY(blackShare(QImage(QDir(saved.result["path"].toString()).filePath("covered.png")),digits(0))>0.8);
+  PUTGD_TRY_VERIFY((state=call([&](JsonReply r){f.operations->editorCommand(id,"inspect",{},r);}),state.result["falseAlarm"].toObject()["state"].toString()=="saved"));
+  QVERIFY(!call([&](JsonReply r){f.operations->editorCommand(id,"cancel",{},r);}).error);
+  PUTGD_TRY_VERIFY(!Operation::activeState(f.inspect(id)["state"].toString()));QCOMPARE(f.provider->uploads.load(),0);
  }
  // Cancel uploads nothing; with Keep a local copy on, the capture stays as a local item.
  void cancelKeepsOnlyALocalCopy_data(){QTest::addColumn<bool>("keep");QTest::newRow("kept")<<true;QTest::newRow("discarded")<<false;}

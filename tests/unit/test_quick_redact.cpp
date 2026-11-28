@@ -2,6 +2,9 @@
 // row is recognized words in reading order ("|" starts a new line), the
 // categories asked for, and every match expected as "category: words".
 #include "editor/QuickRedact.h"
+#include "editor/FalseAlarmReport.h"
+#include <QJsonArray>
+#include <QJsonDocument>
 #include "fixtures/Waits.h"
 #include <QCryptographicHash>
 #include <QElapsedTimer>
@@ -47,6 +50,55 @@ Q_DECLARE_METATYPE(putgd::editor::quickRedact::Sources)
 class QuickRedactTest final:public QObject {
  Q_OBJECT
 private slots:
+ // #2134: each match names the rule that fired, for a false-alarm report: its kind and form, and for the
+ // user's own list only "list.word" or the pattern's number, never the word or pattern.
+ void eachMatchNamesItsRule() {
+  const auto token="ghp_"+hexOf("rule2134",36);
+  const auto page=words("mail jane@example.com | call +1 415 555 0100 | host 10.0.0.12 | card 4111 1111 1111 1111 | token "+token);
+  QHash<QString,QString> rules;for(const auto& match:quickRedact::find(page,all))rules[match.category]=match.rule;
+  QCOMPARE(rules.value("email"),QString("email"));QCOMPARE(rules.value("phone"),QString("phone"));QCOMPARE(rules.value("ip"),QString("ip.v4"));
+  QCOMPARE(rules.value("card"),QString("card"));QVERIFY2(rules.value("key").startsWith("key.prefix."),qPrintable(rules.value("key")));
+  const auto listed=words("Project Aurora ticket JIRA-42");
+  quickRedact::Sources sources;sources.terms={"Project Aurora"};sources.patterns={"\\bJIRA-\\d+\\b"};
+  QStringList seen;for(const auto& match:quickRedact::find(listed,{"list"},sources,2000).matches)seen.append(match.rule);
+  QCOMPARE(seen,(QStringList{"list.word","list.pattern.1"}));
+  // A match is still its kind and words: the rule takes no part in comparing two.
+  QCOMPARE((quickRedact::Match{"card",{1,2},"card"}),(quickRedact::Match{"card",{1,2}}));
+ }
+ // #2134: the helper's part of a false-alarm report: each finding's recognized text, words, lines, boxes, marks
+ // and rule, every recognized word, how recognition read the page, and nothing of the user's saved patterns.
+ // Past its size, only the lines around each match are listed.
+ void aFalseAlarmReportListsEachFindingAndItsWords() {
+  falseAlarm::Input input;
+  input.run.candidates=words("Ticket JIRA-42 | call +1 415 555 0100 | Thanks");
+  quickRedact::Sources sources;sources.patterns={"\\bJIRA-\\d+\\b"};
+  input.run.matches=quickRedact::find(input.run.candidates,{"phone","list"},sources,2000).matches;QCOMPARE(input.run.matches.size(),2);
+  for(const auto& match:std::as_const(input.run.matches)){QRect box;for(const int w:match.words)box|=input.run.candidates.at(w).rect;input.run.marks.append({box});}
+  input.run.recognition={{"engine",QJsonObject{{"name","tesseract"},{"version","5.5.0"},{"scale",2.0}}}};input.run.valid=true;
+  input.reportedFrom="prompt";input.image=QSize(800,100);input.findings={{"found",QJsonObject{{"phone",1}}},{"complete",true}};
+  input.covered={{"list",1}};input.categories={"phone","list"};input.cover={"list"};
+  const auto report=falseAlarm::build(input);
+  QCOMPARE(report["reportedFrom"].toString(),QString("prompt"));QCOMPARE(report["recognition"].toObject()["engine"].toObject()["scale"].toDouble(),2.0);
+  const auto findings=report["findings"].toArray();QCOMPARE(findings.size(),2);
+  QHash<QString,QJsonObject> byKind;for(const auto& value:findings)byKind.insert(value.toObject()["kind"].toString(),value.toObject());
+  QCOMPARE(byKind["phone"]["text"].toString(),QString("+1 415 555 0100"));QCOMPARE(byKind["phone"]["rule"].toString(),QString("phone"));
+  QCOMPARE(byKind["phone"]["automatic"].toBool(),false);QCOMPARE(byKind["phone"]["lines"].toArray(),(QJsonArray{1}));QVERIFY(byKind["phone"]["covered"].toBool());
+  QCOMPARE(byKind["list"]["rule"].toString(),QString("list.pattern.1"));QVERIFY(byKind["list"]["automatic"].toBool());
+  const auto listed=report["words"].toObject();QCOMPARE(listed["total"].toInt(),int(input.run.candidates.size()));QCOMPARE(listed["omitted"].toInt(),0);
+  const auto first=byKind["phone"]["words"].toArray().first().toInt();
+  QCOMPARE(listed["list"].toArray().at(first).toObject()["text"].toString(),QString("+1"));
+  QCOMPARE(report["check"].toObject()["automatic"].toArray(),(QJsonArray{"list"}));
+  QVERIFY(!QJsonDocument(report).toJson().contains("\\\\d"));
+  // A page past the word limit lists the lines around each match, and indexes still point into that list.
+  falseAlarm::Input large=input;QString page;
+  for(int line=0;line<falseAlarm::maximumWords/4+10;++line)page+=QStringLiteral("alpha beta gamma delta | ");
+  page+="call +1 415 555 0100";
+  large.run.candidates=words(page);large.run.matches=quickRedact::find(large.run.candidates,{"phone"});QCOMPARE(large.run.matches.size(),1);large.run.marks={{}};
+  const auto trimmed=falseAlarm::build(large);const auto kept=trimmed["words"].toObject();
+  QVERIFY(kept["omitted"].toInt()>0);QVERIFY(kept["listed"].toInt()<=13);
+  const auto index=trimmed["findings"].toArray().first().toObject()["words"].toArray().first().toInt();
+  QVERIFY(index>=0);QCOMPARE(kept["list"].toArray().at(index).toObject()["text"].toString(),QString("+1"));
+ }
  // #1911: the second read of an uncertain token's line is matched apart from
  // the first. Side by side on one row the two readings would be one line:
  // SHORT_SHA=... read twice became a key. A token only the second read got

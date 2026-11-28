@@ -8,6 +8,7 @@
 #include <QTextBoundaryFinder>
 #include <QtEndian>
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 
 namespace putgd {
@@ -57,6 +58,8 @@ QByteArray serialize(const TextResult& result){
   {"timings",QJsonObject{{"engineStartMs",double(result.engineStartMs)},{"recognizeMs",double(result.recognizeMs)}}}};
  // #1981: only when the script check ran.
  if(!result.detectionOutcome.isEmpty())object["detection"]=detectionJson(result);
+ // #2134: only from an engine that says.
+ if(!result.engineVersion.isEmpty())object["engine"]=QJsonObject{{"version",result.engineVersion.left(64)},{"scale",result.engineScale},{"bands",result.engineBands}};
  return QJsonDocument(object).toJson(QJsonDocument::Compact);
 }
 void boundWords(QList<TextWord>& words,bool& cut){
@@ -266,8 +269,10 @@ QByteArray encodeResult(TextResult result,const Options& options){
 bool decodeResult(const QByteArray& json,const InputHeader& input,const Options& options,TextResult& result){
  result={};if(json.size()>maximumOutputBytes)return false;
  QJsonParseError parse;const auto document=QJsonDocument::fromJson(json,&parse);const auto object=document.object();
- if(parse.error!=QJsonParseError::NoError||!document.isObject()||!keys(object,object.contains("detection")?QStringList{"text","lineTops","words","candidates","codes","truncated","banded","languagesUsed","languagesSkipped","timings","detection"}
-                                            :QStringList{"text","lineTops","words","candidates","codes","truncated","banded","languagesUsed","languagesSkipped","timings"})
+ QStringList expected{"text","lineTops","words","candidates","codes","truncated","banded","languagesUsed","languagesSkipped","timings"};
+ if(object.contains("detection"))expected<<"detection";
+ if(object.contains("engine"))expected<<"engine";
+ if(parse.error!=QJsonParseError::NoError||!document.isObject()||!keys(object,expected)
     ||!object["text"].isString()||object["text"].toString().toUtf8().size()>maximumTextBytes||!object["lineTops"].isArray()||!object["truncated"].isBool()||!object["banded"].isBool()
     ||!languageList(object["languagesUsed"],0,result.languagesUsed)||!languageList(object["languagesSkipped"],0,result.languagesSkipped)||(options.languagesRequired&&!result.languagesSkipped.isEmpty()))return false;
  // #1981: the script check, only for a job that asked for it.
@@ -278,6 +283,15 @@ bool decodeResult(const QByteArray& json,const InputHeader& input,const Options&
      ||((outcome=="kept"||outcome=="discarded"||outcome=="language_missing")&&(script.isEmpty()||language.isEmpty()))
      ||(outcome=="kept"&&!result.languagesUsed.contains(language)))return false;
   result.detectedScript=script;result.detectedLanguage=language;result.detectionOutcome=outcome;
+ }
+ // #2134: the engine's version and scale, for a false-alarm report.
+ if(object.contains("engine")){
+  const auto engine=object["engine"].toObject();qint64 bands=0;
+  const auto version=engine["version"].toString();const double scale=engine["scale"].toDouble();
+  if(!object["engine"].isObject()||!keys(engine,{"version","scale","bands"})||!engine["version"].isString()||version.isEmpty()||version.size()>64
+     ||std::any_of(version.cbegin(),version.cend(),[](QChar c){return c.unicode()<0x20||c.unicode()>0x7e;})
+     ||!engine["scale"].isDouble()||!std::isfinite(scale)||scale<0||scale>64||!integer(engine["bands"],0,100000,bands))return false;
+  result.engineVersion=version;result.engineScale=scale;result.engineBands=int(bands);
  }
  const auto timings=object["timings"].toObject();
  if(!keys(timings,{"engineStartMs","recognizeMs"})||!integer(timings["engineStartMs"],0,3600000,result.engineStartMs)||!integer(timings["recognizeMs"],0,3600000,result.recognizeMs))return false;

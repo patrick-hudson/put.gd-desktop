@@ -17,6 +17,8 @@ bool knownType(const QString& type){
   "checked",
   // Image editor Encrypt toggle (#2079): the window's choice, which the resident applies at upload.
   "encrypt",
+  // Image editor Not sensitive (#2134): the helper staged a false-alarm report; the resident answers.
+  "falseAlarm","reportResult",
   // Recording helper: unsolicited progress/stop/failure notifications, and
   // the interface scheme its overlays follow while it runs (#198).
   "event","appearance",

@@ -73,7 +73,16 @@ SensitivePrompt::SensitivePrompt(Model model,QWidget* parent)
   const auto dpr=devicePixelRatioF();auto pixmap=QPixmap::fromImage(model_.preview.scaled(QSize(std::min(Ui::scaled(480),inner),Ui::scaled(300))*dpr,Qt::KeepAspectRatio,Qt::SmoothTransformation));pixmap.setDevicePixelRatio(dpr);
   preview->setPixmap(pixmap);preview->setAccessibleName(any?QStringLiteral("The capture with the suggested redactions"):QStringLiteral("The capture"));box->addWidget(preview,1);
  }
- auto* caution=Ui::label(QStringLiteral("Check the image before uploading. Detection can miss text."),"secondary",this);caution->setObjectName("sensitiveCaution");caution->setWordWrap(true);box->addWidget(caution);
+ auto* caution=Ui::label(QStringLiteral("Check the image before uploading. Detection can miss text."),"secondary",this);caution->setObjectName("sensitiveCaution");caution->setWordWrap(true);
+ if(model_.falseAlarmAllowed){
+  // #2134: a quiet way to say the check was wrong. It saves a report for diagnostics and leaves the choices as they are.
+  auto* line=new QHBoxLayout;line->setSpacing(space(Space::s));line->addWidget(caution,1);
+  falseAlarm_=new QPushButton(QStringLiteral("Not sensitive"),this);falseAlarm_->setObjectName("sensitiveFalseAlarm");Ui::role(falseAlarm_,"quiet");falseAlarm_->setAutoDefault(false);
+  falseAlarm_->setToolTip(QStringLiteral("Save a report for diagnostics that this isn't sensitive. The upload still waits for your choice."));falseAlarm_->setAccessibleDescription(falseAlarm_->toolTip());
+  connect(falseAlarm_,&QPushButton::clicked,this,[this]{if(!decided_&&falseAlarmState_!="saving"&&falseAlarmState_!="saved")emit falseAlarmRequested();});
+  line->addWidget(falseAlarm_,0,Qt::AlignVCenter);box->addLayout(line);
+  falseAlarmLine_=Ui::label(QString(),"secondary",this);falseAlarmLine_->setObjectName("sensitiveFalseAlarmLine");falseAlarmLine_->setTextFormat(Qt::PlainText);falseAlarmLine_->setWordWrap(true);falseAlarmLine_->hide();box->addWidget(falseAlarmLine_);
+ }else box->addWidget(caution);
  if(!model_.destination.isEmpty()){auto* where=Ui::label(QString(),"meta",this);where->ensurePolished();where->setText(where->fontMetrics().elidedText(model_.destination,Qt::ElideMiddle,inner));where->setTextFormat(Qt::PlainText);where->setObjectName("sensitiveDestination");where->setWordWrap(true);box->addWidget(where);}
  // #1898: four choices. Cancel and Open in editor on the left, Upload anyway and the primary Redact and upload on
  // the right: one row where it fits the screen, else the right pair on a row of its own under the left pair, else
@@ -107,11 +116,29 @@ SensitivePrompt::SensitivePrompt(Model model,QWidget* parent)
   // Not even a pair fits (a narrow screen at large text): one button a row, the primary last.
   else{rows_=0;for(auto* button:{cancel_,edit_,upload_,redact_})if(button){++rows_;box->addLayout(row({},{button}));}}
  }
- setMinimumWidth(std::min(Ui::scaled(460),room));
+ setMinimumWidth(std::min(Ui::scaled(460),room));room_=room;
+ fit();
+}
+void SensitivePrompt::fit(){
  // A fixed size: tiling compositors (Hyprland, Budgie's labwc) float such a window instead of tiling it.
  // Never wider than the room; wrapped text takes the height it needs at that width.
- adjustSize();const int width=std::min(sizeHint().expandedTo(minimumSize()).width(),room);
+ setMinimumSize(std::min(Ui::scaled(460),room_),0);setMaximumSize(QWIDGETSIZE_MAX,QWIDGETSIZE_MAX);
+ adjustSize();const int width=std::min(sizeHint().expandedTo(minimumSize()).width(),room_);
  setFixedSize(width,hasHeightForWidth()?heightForWidth(width):sizeHint().height());
+}
+void SensitivePrompt::showFalseAlarm(const QString& state,const QString& text,const QString& name){
+ if(!falseAlarm_)return;
+ falseAlarmState_=state;if(!name.isEmpty())falseAlarmName_=name;falseAlarm_->setEnabled(state=="failed"&&!decided_);falseAlarm_->setVisible(state!="saved");
+ falseAlarmLine_->setText(text);Ui::role(falseAlarmLine_,state=="failed"?"danger":"secondary");falseAlarmLine_->setVisible(!text.isEmpty());
+ // The width stays; the panel grows by the line.
+ const int width=this->width();setMinimumSize(0,0);setMaximumSize(QWIDGETSIZE_MAX,QWIDGETSIZE_MAX);
+ setFixedSize(width,hasHeightForWidth()?heightForWidth(width):sizeHint().height());
+}
+QJsonObject SensitivePrompt::falseAlarmState() const {
+ QJsonObject state{{"offered",falseAlarm_!=nullptr},{"state",falseAlarmState_}};
+ if(falseAlarmLine_&&!falseAlarmLine_->text().isEmpty())state["message"]=falseAlarmLine_->text();
+ if(!falseAlarmName_.isEmpty())state["name"]=falseAlarmName_;
+ return state;
 }
 void SensitivePrompt::paintEvent(QPaintEvent*){
  const auto& tokens=Theme::current();QPainter painter(this);painter.setRenderHint(QPainter::Antialiasing);
@@ -137,7 +164,7 @@ void SensitivePrompt::showEvent(QShowEvent* event){
 QJsonObject SensitivePrompt::state() const {
  const auto choices=QJsonArray::fromStringList(this->choices());
  auto out=model_.findings.json();out["shown"]=isVisible();
- {QJsonObject covers;for(const auto& [category,count]:model_.covered)if(count>0)covers[category]=count;if(!covers.isEmpty())out["covered"]=covers;}out["choices"]=choices;out["buttonRows"]=rows_;if(!model_.file.isEmpty())out["file"]=model_.file;return out;
+ {QJsonObject covers;for(const auto& [category,count]:model_.covered)if(count>0)covers[category]=count;if(!covers.isEmpty())out["covered"]=covers;}out["choices"]=choices;out["buttonRows"]=rows_;if(!model_.file.isEmpty())out["file"]=model_.file;out["falseAlarm"]=falseAlarmState();return out;
 }
 QStringList SensitivePrompt::choices() const {
  QStringList out;if(redact_)out<<QStringLiteral("redact_upload");if(edit_)out<<QStringLiteral("edit");
@@ -145,7 +172,7 @@ QStringList SensitivePrompt::choices() const {
 }
 bool SensitivePrompt::choose(const QString& choice){
  if(decided_||!choices().contains(choice))return false;
- decided_=true;for(auto* button:{redact_,edit_,upload_,cancel_})if(button)button->setEnabled(false);
+ decided_=true;for(auto* button:{redact_,edit_,upload_,cancel_,falseAlarm_})if(button)button->setEnabled(false);
  emit chosen(choice);return true;
 }
 void SensitivePrompt::closeEvent(QCloseEvent* event){if(!decided_)choose("cancel");event->accept();}

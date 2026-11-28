@@ -73,6 +73,24 @@ private slots:
   marked.remove("second");inWords["words"]=QJsonArray{marked};
   TextResult plainWord;QVERIFY(decodeResult(QJsonDocument(inWords).toJson(QJsonDocument::Compact),input,both,plainWord));
  }
+ // #2134: the engine's version, scale and bands travel in the output, are read back, and every member the
+ // output carries is one schemas/text-recognition.schema.json names for it, so the published schema keeps up.
+ void engineTravelsAndTheSchemaNamesIt() {
+  Options options;options.languages={"eng"};const InputHeader input{200,100,200,600};
+  TextResult result;result.languagesUsed={"eng"};result.engineVersion=QStringLiteral("5.5.0");result.engineScale=2;result.engineBands=3;result.detectionOutcome.clear();
+  const auto json=encodeResult(result,options);const auto object=QJsonDocument::fromJson(json).object();
+  QCOMPARE(object.value("engine").toObject(),(QJsonObject{{"version","5.5.0"},{"scale",2},{"bands",3}}));
+  TextResult back;QVERIFY(decodeResult(json,input,options,back));
+  QCOMPARE(back.engineVersion,QStringLiteral("5.5.0"));QCOMPARE(back.engineScale,2.0);QCOMPARE(back.engineBands,3);
+  auto bad=object;auto engine=bad.value("engine").toObject();engine["path"]=QStringLiteral("/usr/lib");bad["engine"]=engine;
+  TextResult refused;QVERIFY(!decodeResult(QJsonDocument(bad).toJson(QJsonDocument::Compact),input,options,refused));
+  QFile file(QStringLiteral(PUTGD_SOURCE_DIR "/schemas/text-recognition.schema.json"));QVERIFY(file.open(QIODevice::ReadOnly));
+  const auto output=QJsonDocument::fromJson(file.readAll()).object().value("$defs").toObject().value("helper").toObject().value("$defs").toObject().value("output").toObject();
+  const auto properties=output.value("properties").toObject();QCOMPARE(output.value("additionalProperties"),QJsonValue(false));
+  for(const auto& key:object.keys())QVERIFY2(properties.contains(key),qPrintable(key));
+  const auto engineSchema=properties.value("engine").toObject().value("properties").toObject();
+  for(const auto& key:object.value("engine").toObject().keys())QVERIFY2(engineSchema.contains(key),qPrintable(key));
+ }
  // #1981: the script check travels only for a job that asked for it, only
  // when nobody chose the languages, and its result names a known outcome, a
  // script and language of the right shape, and a kept language the job used.

@@ -510,7 +510,8 @@ void findHeads(const Segment& segment);
 // A mark in a segment, by piece; a prefixed token also keeps where its prefix
 // starts in the segment's text and its nominal length (0 for a hex or base64 run).
 // payload: a JSON web token found by its payload, its header misread or on the line above.
-struct Found {int from=0;int to=0;int prefix=-1;int length=0;bool dotted=false;bool payload=false;};
+// kind (#2134): the index of the prefix that found it, or -1 for a hex or base64 run; for false-alarm reports.
+struct Found {int from=0;int to=0;int prefix=-1;int length=0;bool dotted=false;bool payload=false;int kind=-1;};
 // The token segments of one line: maximal runs of token pieces, joined.
 // #1895: a gap of more than six characters between two pieces ends a segment. Recognition splits a
 // token with gaps of a word space, or a few characters where it dropped some (a JWT on the corpus:
@@ -728,7 +729,7 @@ void segmentMatches(const Segment& segment,int first,int last,QList<Found>& foun
   }
   segmentMatches(segment,first,start-1,found);const int at=base+int(match.capturedStart());
   const bool payload=prefix.dotted&&at>0&&(segment.text.at(at-1)=='.'||segment.text.at(at-1)==',');
-  found.append({start,end,at,prefix.length,prefix.dotted,payload});segmentMatches(segment,end+1,last,found);return;
+  found.append({start,end,at,prefix.length,prefix.dotted,payload,index});segmentMatches(segment,end+1,last,found);return;
  }
  // Runs of up to 256 characters are tried, so a long line costs little on the
  // interface thread; a longer blob passes on a part of it and is marked whole.
@@ -2253,11 +2254,14 @@ QList<QList<int>> twoFactorMatches(const QMap<int,QList<int>>& lines,const QList
   close(int(keys.size()));}
  return out;
 }
-QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList<QString>& plain) {
+// #2134: each match with the rules that found it (KeyMatch::rules), for false-alarm reports.
+struct KeyMatch {QList<int> words;QStringList rules;};
+QList<KeyMatch> keyMatches(const QList<RecognizedWord>& candidates,const QList<QString>& plain) {
  QMap<int,QList<int>> lines;for(int i=0;i<candidates.size();++i)lines[candidates.at(i).line].append(i);
  const auto lineText=[&](const QList<int>& line){QStringList words;for(const int i:line)words.append(plain.at(i));return words.join(' ');};
  static const QRegularExpression begin(QStringLiteral("[-—–~_=.]{2,} ?BEGIN\\b[A-Z0-9 ]*PRIVATE ?KEY")),end(QStringLiteral("[-—–~_=.]{2,} ?END\\b[A-Z0-9 ]*PRIVATE ?KEY"));
- QList<QList<int>> out;
+ QList<QList<int>> out;QStringList why;
+ const auto add=[&](QList<QList<int>> more,const QString& rule){for(auto& words:more){out.append(std::move(words));why.append(rule);}};
  const auto shown=publicWords(lines,plain,candidates);
  // #1897: what a line gives the wrap checks is the same whichever token above reaches it, so it is
  // worked out once: its segments, whether its first holds a card or an address, and that segment's
@@ -2333,7 +2337,7 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
    // #1894: with its END line found below (within 100 lines), the block is every line in between,
    // whatever recognition made of a body line ("MIIEow…" read with a stray mark kept the first one bare).
    int closingAt=-1;for(int j=k+1;j<keys.size()&&j<=k+100&&closingAt<0;++j)if(end.match(lineText(lines[keys.at(j)])).hasMatch())closingAt=j;
-   if(closingAt>0){for(int j=k+1;j<=closingAt;++j)block+=lines[keys.at(j)];k=closingAt;out.append(block);continue;}
+   if(closingAt>0){for(int j=k+1;j<=closingAt;++j)block+=lines[keys.at(j)];k=closingAt;out.append(block);why.append(QStringLiteral("pem"));continue;}
    while(k+1<keys.size()){
     const auto& next=lines[keys.at(k+1)];const auto text=lineText(next);
     const bool closing=end.match(text).hasMatch();
@@ -2341,9 +2345,9 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
     if(!closing&&!(pieces&&joined.size()>=16))break;
     block+=next;++k;if(closing)break;
    }
-   out.append(block);continue;
+   out.append(block);why.append(QStringLiteral("pem"));continue;
   }
-  if(end.match(lineText(line)).hasMatch()){out.append(line);continue;}
+  if(end.match(lineText(line)).hasMatch()){out.append(line);why.append(QStringLiteral("pem"));continue;}
   // #1894: a certificate or a public key block is public: its lines stay visible up to its END line.
   {static const QRegularExpression publicBegin(QStringLiteral("[-\u2014\u2013~_=.]{2,} ?BEGIN\\b[A-Z0-9 ]*(?:CERTIFICATE|PUBLIC ?KEY)[A-Z0-9 ]*")),publicEnd(QStringLiteral("[-\u2014\u2013~_=.]{2,} ?END\\b[A-Z0-9 ]*(?:CERTIFICATE|PUBLIC ?KEY)[A-Z0-9 ]*"));
    // Its own END (CERTIFICATE with CERTIFICATE), and no BEGIN of any block between: otherwise it is
@@ -2362,10 +2366,10 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
     }
     if(closed){k=j;continue;}
    }}
-  for(const auto& segment:segments(line,plain,candidates,true))out+=structuralMatches(segment,plain,candidates);
+  for(const auto& segment:segments(line,plain,candidates,true))add(structuralMatches(segment,plain,candidates),QStringLiteral("structural"));
   // #1941: labelled values beside or below their label, command-line flags and cookies.
-  out+=labelledMatches(line,k+1<keys.size()?lines[keys.at(k+1)]:QList<int>{},plain,candidates);
-  out+=commandMatches(line,plain,candidates);
+  add(labelledMatches(line,k+1<keys.size()?lines[keys.at(k+1)]:QList<int>{},plain,candidates),QStringLiteral("labelled"));
+  add(commandMatches(line,plain,candidates),QStringLiteral("command"));
   const auto lineSegments=segments(line,plain,candidates,false,&shown);
   // Whether the row names a digest at all, worked out once; where each word sits on it, for the label
   // beside a run (below).
@@ -2578,23 +2582,24 @@ QList<QList<int>> keyMatches(const QList<RecognizedWord>& candidates,const QList
      if(next.first().words.last()!=nextLine.last())break;
     }
     out.append(words);
+    {QStringList rules;for(const auto& f:std::as_const(found))rules.append(f.payload||(f.dotted&&f.kind>=0)?QStringLiteral("jwt"):f.kind>=0?QStringLiteral("prefix.%1").arg(f.kind):QStringLiteral("run"));
+     rules.removeDuplicates();why.append(rules.join(','));}
    }
   }
  }
  // #1941: 2FA setup keys, recovery codes and numbered seed phrases, read over rows.
- out+=twoFactorMatches(lines,plain,candidates);
+ add(twoFactorMatches(lines,plain,candidates),QStringLiteral("two_factor"));
  // #1894: matches that share a word are one secret (a token and the assignment it is the value of),
  // joined in one pass over their words (#1897: overlapping wrap chains make many such matches).
  {QList<int> parent(out.size());std::iota(parent.begin(),parent.end(),0);
   const auto root=[&](int i){while(parent[i]!=i){parent[i]=parent[parent[i]];i=parent[i];}return i;};
   QHash<int,int> owner;
   for(int i=0;i<out.size();++i)for(const int w:out.at(i)){const auto it=owner.constFind(w);if(it==owner.cend())owner.insert(w,i);else parent[root(i)]=root(it.value());}
-  QMap<int,QList<int>> merged;
-  for(int i=0;i<out.size();++i){auto& words=merged[root(i)];words+=out.at(i);}
-  QList<QList<int>> joined;
-  for(auto words:std::as_const(merged)){std::sort(words.begin(),words.end());words.erase(std::unique(words.begin(),words.end()),words.end());joined.append(words);}
-  out=joined;}
- return out;
+  QMap<int,KeyMatch> merged;
+  for(int i=0;i<out.size();++i){auto& match=merged[root(i)];match.words+=out.at(i);for(const auto& rule:why.at(i).split(','))if(!match.rules.contains(rule))match.rules.append(rule);}
+  QList<KeyMatch> joined;
+  for(auto match:std::as_const(merged)){std::sort(match.words.begin(),match.words.end());match.words.erase(std::unique(match.words.begin(),match.words.end()),match.words.end());joined.append(match);}
+  return joined;}
 }
 struct Rule {QString category;QRegularExpression pattern;std::function<bool(const QString&)> valid;int view=0;};
 // Grouped as a card is printed (4-4-4-4, with an optional short fifth group, or 4-6-5), with one separator
@@ -2816,6 +2821,11 @@ const QList<Rule>& rules() {
     const int count=digits(m);return count>=7&&count<=15&&!date.match(m).hasMatch()&&!dotted.match(m).hasMatch();},1},
  };
  return list;
+}
+// #2134: a rule's name in a false-alarm report: its kind, and for addresses which form.
+QString ruleName(const Rule& rule){
+ if(rule.category=="ip")return rule.view==2?QStringLiteral("ip.v6"):QStringLiteral("ip.v4");
+ return rule.category;
 }
 // #1856: words that hold a card number or an address of their own, read as the
 // card and email rules read them (an address's lost dot restored, #1840).
@@ -3062,12 +3072,12 @@ QList<Form> nameForms(const QString& login,const QString& realName) {
 }
 // A hit keeps the words no earlier match claimed, as for keys: dropping it
 // would leave a name bare because a neighbour took one of its words.
-void claim(const QString& category,QList<int> words,QSet<int>& taken,QList<Match>& matches) {
+void claim(const QString& category,QList<int> words,QSet<int>& taken,QList<Match>& matches,const QString& rule={}) {
  words.erase(std::remove_if(words.begin(),words.end(),[&](int w){return taken.contains(w);}),words.end());
  if(words.isEmpty())return;
  std::sort(words.begin(),words.end());words.erase(std::unique(words.begin(),words.end()),words.end());
  for(const int w:words)taken.insert(w);
- matches.append({category,words});
+ matches.append({category,words,rule.isEmpty()?category:rule});
 }
 // Decision 6: the subjects a pattern sees (QuickRedact.h): every line, then
 // every pair of consecutive lines in reading order, joined with "\n". A pair's
@@ -3275,21 +3285,21 @@ Result findRead(const QList<RecognizedWord>& candidates,const QStringList& chose
   QList<QString> plain,literal;for(const auto& word:ordered){plain.append(normalized(word.text));literal.append(literalView(word.text));}
   if(name&&!cancelled()){
    const auto joined=join(literal,ordered,false,QStringLiteral("name"),full);
-   for(const auto& f:nameForms(sources.login,sources.realName))for(const auto& words:formHits(joined,f))claim("name",words,taken,result.matches);
+   for(const auto& f:nameForms(sources.login,sources.realName))for(const auto& words:formHits(joined,f))claim("name",words,taken,result.matches,QStringLiteral("name.account"));
    // #1942: a shell prompt whose "@" recognition read as a letter or two, or lost
    // ("mriveraPmint:~$", "hsatofinova:~$", "ychenorion:~$"), runs the login into the host,
    // so no word edge ends it. A prompt-shaped word (host, ":", then "~" or "/") that starts
    // with the login, after at most two characters of window edge or caret ("|lsoconnor@…"),
    // is the login's.
    if(const auto login=promptLogin(sources.login);!login.isEmpty())
-    for(int w=0;w<ordered.size();++w)if(!taken.contains(w)&&promptHolds(literal.at(w),login))claim("name",{w},taken,result.matches);
+    for(int w=0;w<ordered.size();++w)if(!taken.contains(w)&&promptHolds(literal.at(w),login))claim("name",{w},taken,result.matches,QStringLiteral("name.prompt"));
   }
   if(list&&!cancelled()){
    // A list entry matches only whole, with the variations above.
    const auto joined=join(literal,ordered,false,QStringLiteral("list"),full);
    QList<Form> forms;for(const auto& term:sources.terms){auto f=form(termParts(term));if(!f.parts.isEmpty())forms.append(f);}
    std::stable_sort(forms.begin(),forms.end(),[](const Form& a,const Form& b){return a.weight>b.weight;});
-   for(const auto& f:std::as_const(forms)){if(cancelled())break;for(const auto& words:formHits(joined,f))claim("list",words,taken,result.matches);}
+   for(const auto& f:std::as_const(forms)){if(cancelled())break;for(const auto& words:formHits(joined,f))claim("list",words,taken,result.matches,QStringLiteral("list.word"));}
   }
   if(cancelled()){skipRest(0);return mapped(std::move(result),original);}
   publish(false);
@@ -3320,7 +3330,7 @@ Result findRead(const QList<RecognizedWord>& candidates,const QStringList& chose
      if(hit.start<0||hit.length<=0||hit.start+hit.length>subject.text.text.size())continue;
      // A pair's hit only when it crosses the line break.
      if(subject.lineBreak>=0&&!(hit.start<=subject.lineBreak&&hit.start+hit.length>subject.lineBreak))continue;
-     claim("list",owners(subject.text,hit.start,hit.length),taken,result.matches);
+     claim("list",owners(subject.text,hit.start,hit.length),taken,result.matches,QStringLiteral("list.pattern.%1").arg(p+1));
     }
    }
    publish(true);
@@ -3402,10 +3412,10 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
  // Keys and tokens first: the most specific kind, matched line by line.
  // A key match that overlaps an earlier one keeps its other words: dropping it
  // would leave a token bare because a neighbour claimed one of its words.
- if(chosen.contains("key"))for(auto words:keyMatches(candidates,plain)){
+ if(chosen.contains("key"))for(auto [words,rules]:keyMatches(candidates,plain)){
   words.erase(std::remove_if(words.begin(),words.end(),[&](int w){return taken.contains(w);}),words.end());
   if(words.isEmpty())continue;
-  for(int w:words){taken.insert(w);keyTaken.insert(w);}matches.append({"key",words});
+  for(int w:words){taken.insert(w);keyTaken.insert(w);}matches.append({"key",words,"key."+rules.join(QStringLiteral(",key."))});
  }
  // The rules run in order of specificity; a word belongs to the first match.
  for(const auto& rule:rules()){
@@ -3759,7 +3769,7 @@ QList<Match> findOrdered(const QList<RecognizedWord>& candidates,const QStringLi
        &&std::all_of(words.cbegin(),words.cend(),[&](int w){return !taken.contains(w)||released(w);}))
      words.erase(std::remove_if(words.begin(),words.end(),released),words.end());}
    if(words.isEmpty()||std::any_of(words.cbegin(),words.cend(),[&](int w){return taken.contains(w);}))continue;
-   for(int w:words)taken.insert(w);matches.append({rule.category,words});
+   for(int w:words)taken.insert(w);matches.append({rule.category,words,ruleName(rule)});
    if(!joined.isEmpty())soft.append({int(matches.size())-1,joined});
   }
  }

@@ -65,6 +65,10 @@ void EditorSession::setTextCopyHandler(TextCopyHandler handler){std::lock_guard 
 EditorSession::TextCopyHandler EditorSession::textCopyHandler() const {std::lock_guard lock(mutex_);return textCopyHandler_;}
 void EditorSession::finishTextCopy(const QString& copyId,Error error){std::lock_guard lock(mutex_);textCopyResults_.append({copyId,std::move(error)});}
 QList<std::pair<QString,Error>> EditorSession::takeTextCopyResults(){std::lock_guard lock(mutex_);return std::exchange(textCopyResults_,{});}
+void EditorSession::setReportHandler(ReportHandler handler){std::lock_guard lock(mutex_);reportHandler_=std::move(handler);}
+EditorSession::ReportHandler EditorSession::reportHandler() const {std::lock_guard lock(mutex_);return reportHandler_;}
+void EditorSession::finishReport(const QString& reportId,Error error,QJsonObject saved){std::lock_guard lock(mutex_);reportResults_.append({reportId,std::move(error),std::move(saved)});}
+QList<EditorSession::ReportResult> EditorSession::takeReportResults(){std::lock_guard lock(mutex_);return std::exchange(reportResults_,{});}
 void EditorSession::setPhaseHandler(PhaseHandler handler){std::lock_guard lock(mutex_);phaseHandler_=std::move(handler);}
 EditorSession::PhaseHandler EditorSession::phaseHandler() const {std::lock_guard lock(mutex_);return phaseHandler_;}
 
@@ -207,7 +211,7 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
  }
  QProcess process;process.setProcessChannelMode(QProcess::SeparateChannels);process.setReadChannel(QProcess::StandardOutput);
  UiControl control(process);
- bool ready=false,editing=false,finalizing=false,checkpoint=false,lingered=false,protocolFailed=false,copying=false,prompting=false,covering=false,redacting=false;const bool checking=bool(check_);QString copyId;QJsonObject reply;QSet<QString> textCopies;
+ bool ready=false,editing=false,finalizing=false,checkpoint=false,lingered=false,protocolFailed=false,copying=false,prompting=false,covering=false,redacting=false;QString reportId;const bool checking=bool(check_);QString copyId;QJsonObject reply;QSet<QString> textCopies;
  // Copy image: the helper staged copy.png in this private directory. Read it
  // through the pinned identities, check it is the sanitized PNG it announced,
  // remove it, then hand the bytes to the clipboard. Never kept or uploaded.
@@ -289,6 +293,52 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
    if(id==decideRequest&&!payload["ok"].toBool()){decideRequest.clear();decided.clear();}
    if(payload["ok"].toBool()){if(payload.size()!=6||!payload["result"].isObject()){protocolFailed=true;return;}callback({},payload["result"].toObject());}
    else{if(payload.size()!=7||!payload["code"].isString()||!payload["message"].isString()){protocolFailed=true;return;}callback({payload["code"].toString().left(64),payload["message"].toString().left(512),{}},{});}
+   return;
+  }
+  // #2134: Not sensitive: the helper staged report.json and report-covered.png beside the input. Both are read
+  // through the pinned directory and checked against their digests, then removed; the original is the input
+  // this worker staged, read back through its own pinned descriptor and checked against its digest.
+  if(type=="falseAlarm"&&checking&&(prompting||editing)&&!finalizing&&!checkpoint){
+   const auto id=payload["reportId"].toString();const auto from=payload["from"].toString();
+   // `from` names where the report was asked for, and must be where this check is: its prompt, or the editor it opened.
+   if(payload.size()!=7||id.isEmpty()||id.size()>64||from!=(editing?QStringLiteral("editor"):QStringLiteral("prompt"))||!payload["json"].isObject()||!payload["covered"].isObject()){protocolFailed=true;return;}
+   const auto answer=[&](const Error& error,const QJsonObject& saved){
+    auto frame=envelope(nonce);frame["reportId"]=id;frame["ok"]=!error;
+    if(error){frame["code"]=error.code.left(64);frame["message"]=error.message.left(256);}else{frame["name"]=saved.value("name").toString().left(128);frame["bytes"]=QString::number(saved.value("bytes").toInteger());}
+    if(control.send("reportResult",frame).isEmpty())protocolFailed=true;
+   };
+   const auto discard=[&]{if(stagingPinned){::unlinkat(stagingFd,"report.json",0);::unlinkat(stagingFd,"report-covered.png",0);}};
+   if(!reportId.isEmpty()){discard();answer({"editor_busy","The previous report is still being saved",{}},{});return;}
+   const auto take=[&](const char* name,const QJsonObject& announced,qint64 most,QByteArray& bytes)->bool{
+    if(!stagingPinned)return false;
+    const int fd=::openat(stagingFd,name,O_RDONLY|O_CLOEXEC|O_NOFOLLOW|O_NONBLOCK);::unlinkat(stagingFd,name,0);
+    if(fd<0)return false;
+    QFile file;if(!file.open(fd,QIODevice::ReadOnly,QFileDevice::AutoCloseHandle)){::close(fd);return false;}
+    struct stat identity{};qint64 count=0;const auto hash=announced["sha256"].toString();
+    if(::fstat(fd,&identity)||!S_ISREG(identity.st_mode)||identity.st_uid!=getuid()||(identity.st_mode&0777)!=0600||!number(announced["bytes"],count)||count<1||count>most||identity.st_size!=count)return false;
+    bytes=file.read(count+1);
+    return bytes.size()==count&&QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex())==hash;
+   };
+   const auto json=payload["json"].toObject(),coveredInfo=payload["covered"].toObject();
+   EditorSession::Report report;report.from=from;
+   QSize size;
+   const bool taken=json.size()==2&&take("report.json",json,maximumReportJsonBytes,report.json)
+    &&coveredInfo.size()==4&&take("report-covered.png",coveredInfo,qMax<qint64>(outputBytes,maximumCopyBytes),report.covered)
+    &&!inspectSanitizedPng(report.covered,&size)&&size.width()==coveredInfo["width"].toInt()&&size.height()==coveredInfo["height"].toInt()&&qint64(size.width())*size.height()<=admissionPixels
+    &&QJsonDocument::fromJson(report.json).isObject();
+   discard();
+   if(!taken){answer({"edit_output_invalid","The editor's report could not be read",{}},{});return;}
+   // The input as staged, unchanged: its digest still matches.
+   struct stat current{};
+   if(::fstat(input.handle(),&current)||!sameFile(inputIdentity,current)||current.st_size!=inputIdentity.st_size||digest(input,inputIdentity.st_size)!=inputHash||!input.seek(0)){answer({"editor_io","The original image is no longer available",{}},{});return;}
+   report.original=input.read(inputIdentity.st_size+1);
+   // The bytes saved are the bytes staged: their own digest, not only the file's a moment before.
+   if(report.original.size()!=inputIdentity.st_size||QString::fromLatin1(QCryptographicHash::hash(report.original,QCryptographicHash::Sha256).toHex())!=inputHash){answer({"editor_io","The original image is no longer available",{}},{});return;}
+   report.suffix=report.original.startsWith("\xff\xd8\xff")?QStringLiteral("jpg"):QStringLiteral("png");
+   const auto handler=session->reportHandler();
+   if(!handler){answer({"false_alarm_unavailable","Reports can't be saved here",{}},{});return;}
+   reportId=id;
+   handler(std::move(report),[session,id](Error error,QJsonObject saved){session->finishReport(id,std::move(error),std::move(saved));});
    return;
   }
   if(type=="copyImage"&&editing&&!finalizing&&!checkpoint){
@@ -384,6 +434,15 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
    if(*copied){frame["code"]=copied->code.left(64);frame["message"]=copied->message.left(256);}
    if(!checkpoint&&control.send("copyResult",frame).isEmpty()){protocolFailed=true;break;}
   }
+  for(const auto& saved:session->takeReportResults()){
+   if(saved.reportId!=reportId)continue;
+   reportId.clear();
+   if(checkpoint)continue;
+   auto frame=envelope(nonce);frame["reportId"]=saved.reportId;frame["ok"]=!saved.error;
+   if(saved.error){frame["code"]=saved.error.code.left(64);frame["message"]=saved.error.message.left(256);}
+   else{frame["name"]=saved.saved.value("name").toString().left(128);frame["bytes"]=QString::number(saved.saved.value("bytes").toInteger());}
+   if(control.send("reportResult",frame).isEmpty()){protocolFailed=true;break;}
+  }
   for(const auto& [id,copied]:session->takeTextCopyResults()){
    if(!textCopies.remove(id))continue;
    auto frame=envelope(nonce);frame["copyId"]=id;frame["ok"]=!copied;
@@ -402,7 +461,8 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
    if(control.send("command",frame).isEmpty()){protocolFailed=true;pending.reply(failure("editor_protocol"),{});break;}
    // Quick redact (#1428) answers when recognition is done, under the recognition deadline.
    bool recognizing=false;for(const auto& entry:pending.params["commands"].toArray())recognizing=recognizing||entry.toObject()["op"]=="redactText";
-   const qint64 limit=pending.command=="apply"&&recognizing?qMax<qint64>(commandTimeoutMs_,textjob::maximumDeadlineMs+5000):commandTimeoutMs_;
+   // #2134: a false-alarm report encodes the covered image and waits for the resident to save it.
+   const qint64 limit=pending.command=="apply"&&recognizing?qMax<qint64>(commandTimeoutMs_,textjob::maximumDeadlineMs+5000):pending.command=="reportFalseAlarm"?qMax<qint64>(commandTimeoutMs_,65000):commandTimeoutMs_;
    outstanding.insert(id,{std::move(pending.reply),clock.elapsed()+limit});
   }
   for(auto it=outstanding.begin();it!=outstanding.end();){if(clock.elapsed()>it->deadline){it->reply({"editor_timeout","The editor did not answer this command in time",{}},{});if(expired.size()<256)expired.insert(it.key());it=outstanding.erase(it);}else ++it;}

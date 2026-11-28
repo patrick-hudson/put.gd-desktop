@@ -1,4 +1,5 @@
 #include "app/DiagnosticsBundle.h"
+#include "app/FalseAlarmReports.h"
 #include "app/LocalServer.h"
 #include "core/Log.h"
 #include "core/ZipWriter.h"
@@ -14,6 +15,7 @@
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QScopeGuard>
 #include "fixtures/Waits.h"
 using namespace putgd;
 namespace {
@@ -246,11 +248,150 @@ private slots:
   QCOMPARE(QDir(folder.path()).entryList({"putgd-diagnostics-*.zip"}).size(),10);QVERIFY(QFile::exists(folder.filePath("my-notes.zip")));
   QVERIFY(!QFile::exists(folder.filePath("putgd-diagnostics-20261010-000000Z.zip")));
  }
+ // #2134: false-alarm reports are saved whole and private, kept within the log retention with the newest always
+ // kept, packaged whole in their own allowance (or left out on request), and removed by Clear logs.
+ void falseAlarmReportsFollowRetentionAndPackages() {
+  const auto folder=dir_.filePath("state/false-alarms");
+  FalseAlarmReports reports(folder);reports.setRetention(14,52428800);
+  // A few seconds back, so every report below is inside the package's window, which ends when it is built.
+  const auto now=QDateTime::currentDateTimeUtc().addSecs(-5);
+  const QByteArray png=QByteArray("\x89PNG\r\n\x1a\n",8),original=png+QByteArray(3000,'o'),covered=png+QByteArray(2000,'c');
+  const QJsonObject helper{{"reportedFrom","prompt"},{"image",QJsonObject{{"width",10},{"height",10}}},{"check",QJsonObject{{"found",QJsonObject{{"phone",1}}}}},
+   {"recognition",QJsonObject{}},{"findings",QJsonArray{}},{"words",QJsonObject{}},{"codes",QJsonArray{}}};
+  Error error;
+  // The helper's part has one shape; anything else is refused.
+  (void)FalseAlarmReports::compose(QJsonObject{{"reportedFrom","prompt"}},{},error);QCOMPARE(error.code,QString("edit_output_invalid"));error={};
+  (void)FalseAlarmReports::compose([&]{auto extra=helper;extra["settings"]=QJsonObject{};return extra;}(),{},error);QCOMPARE(error.code,QString("edit_output_invalid"));error={};
+  auto report=FalseAlarmReports::compose(helper,{{"operationId","synthetic-op-old"}},error);QVERIFY(!error);
+  const auto old=reports.save(original,"png",covered,report,error,now.addDays(-20));QVERIFY2(!error,qPrintable(error.message));
+  QVERIFY(FalseAlarmReports::reportName(old.name));
+  // Older than logDays: the next save removes it.
+  report["operationId"]="synthetic-op-new";
+  const auto fresh=reports.save(original,"jpg",covered,report,error,now);QVERIFY2(!error,qPrintable(error.message));
+  QCOMPARE(fresh.pruned,1);QVERIFY(!QFileInfo::exists(old.path));
+  for(const auto* name:{"original.jpg","covered.png","report.json"}){
+   const QFileInfo file(QDir(fresh.path).filePath(name));QVERIFY2(file.isFile(),name);
+   QCOMPARE(file.permissions()&(QFile::ReadGroup|QFile::WriteGroup|QFile::ReadOther|QFile::WriteOther|QFile::ExeOther),QFileDevice::Permissions{});
+  }
+  {QFile json(QDir(fresh.path).filePath("report.json"));QVERIFY(json.open(QIODevice::ReadOnly));const auto saved=QJsonDocument::fromJson(json.readAll()).object();
+   QCOMPARE(saved["operationId"].toString(),QString("synthetic-op-new"));QCOMPARE(saved["name"].toString(),fresh.name);
+   QCOMPARE(saved["files"].toArray().first().toObject()["sha256"].toString(),QString::fromLatin1(QCryptographicHash::hash(original,QCryptographicHash::Sha256).toHex()));}
+  // Over logBytes: the oldest go first, and the newest stays even alone over the limit.
+  reports.setRetention(14,1);
+  const auto newest=reports.save(original,"png",covered,report,error,now.addSecs(1));QVERIFY(!error);
+  QCOMPARE(newest.pruned,1);QCOMPARE(reports.list()["count"].toInt(),1);QCOMPARE(reports.prune(now.addSecs(2)),0);
+  QCOMPARE(reports.list()["reports"].toArray().first().toObject()["name"].toString(),newest.name);
+  // A package takes whole reports in its own allowance: one that doesn't fit is counted, not cut.
+  QCOMPARE(FalseAlarmReports::select(folder,now.addDays(-1),now.addDays(1),{},100).omitted,1);
+  auto bundle=context();bundle.falseAlarmsDirectory=folder;
+  BundleRequest request;request.output=dir_.filePath("false-alarms-in.zip");request.falseAlarmReports=true;
+  auto result=build(bundle,request,error);QVERIFY2(!error,qPrintable(error.message));
+  QCOMPARE(result["falseAlarmReports"].toObject()["included"].toInt(),1);
+  auto files=unzip(result["path"].toString());
+  for(const auto* name:{"original.png","covered.png","report.json"})QVERIFY2(files.contains("false-alarms/"+newest.name+"/"+name),name);
+  QCOMPARE(QJsonDocument::fromJson(files["manifest.json"].toString().toUtf8()).object()["falseAlarmReports"].toObject()["names"].toArray(),(QJsonArray{newest.name}));
+  // The privacy guarantee: a package built from an untouched, default request (History's, the tray's and the error
+  // log's Save diagnostics send no falseAlarmReports) holds no report, though one exists in its window.
+  {BundleRequest untouched;untouched.output=dir_.filePath("false-alarms-default.zip");
+   const auto plain=build(bundle,untouched,error);QVERIFY2(!error,qPrintable(error.message));
+   QCOMPARE(plain["falseAlarmReports"].toObject()["included"].toInt(),0);QCOMPARE(plain["falseAlarmReports"].toObject()["requested"].toBool(),false);
+   // The archive opened and is a package, so an unreadable one can't pass for one without reports.
+   const auto held=unzip(plain["path"].toString());QVERIFY(held.contains("manifest.json"));QVERIFY(held.contains("logs/putgd.jsonl"));
+   for(auto it=held.begin();it!=held.end();++it)QVERIFY2(!it.key().startsWith("false-alarms/"),qPrintable(it.key()));
+   QVERIFY(!held["manifest.json"].toString().contains(newest.name));}
+  // A preview counts them without reading them.
+  request.preview=true;request.output.clear();
+  QCOMPARE(build(bundle,request,error)["falseAlarmReports"].toObject()["included"].toInt(),1);
+  // Left out on request, and not part of another operation's package.
+  request.preview=false;request.output=dir_.filePath("false-alarms-out.zip");request.falseAlarmReports=false;
+  result=build(bundle,request,error);QVERIFY(!error);
+  files=unzip(result["path"].toString());for(auto it=files.begin();it!=files.end();++it)QVERIFY2(!it.key().startsWith("false-alarms/"),qPrintable(it.key()));
+  request.falseAlarmReports=true;request.output=dir_.filePath("false-alarms-other.zip");request.operationId=failedId_;
+  {const auto other=build(bundle,request,error);QVERIFY2(!error,qPrintable(error.message));QVERIFY(QFileInfo::exists(other["path"].toString()));
+   QCOMPARE(other["falseAlarmReports"].toObject()["requested"].toBool(),true);QCOMPARE(other["falseAlarmReports"].toObject()["included"].toInt(),0);}
+  const auto removed=reports.clear();QCOMPARE(removed.reports,1);QCOMPARE(reports.list()["count"].toInt(),0);
+ }
+ // #2134 P1b: report.json is rebuilt from its schema: the helper's unknown fields, wrong types and oversize values
+ // never reach the disk, and the check's counts are the resident's own.
+ void falseAlarmReportIsRebuiltFromItsSchema() {
+  const QJsonObject word{{"text","4111"},{"box",QJsonArray{1,2,3,4}},{"confidence",90},{"line",0},{"planted","synthetic-private-planted"}};
+  const QJsonObject helper{{"reportedFrom","prompt"},{"image",QJsonObject{{"width",10},{"height",10},{"path","/synthetic-private-path"}}},
+   {"check",QJsonObject{{"found",QJsonObject{{"phone",9}}},{"categories",QJsonArray{"phone","synthetic-private-kind"}},{"automatic",QJsonArray{}}}},
+   {"recognition",QJsonObject{{"engine",QJsonObject{{"name","other"},{"version","5.5.0"},{"scale",2}}},{"environment","synthetic-private-env"}}},
+   {"findings",QJsonArray{QJsonObject{{"kind","card"},{"rule","card"},{"text",QString(5000,'x')},{"words",QJsonArray{0,7}},{"box",QJsonArray{1,2,3,4}},{"token","synthetic-private-token"}},
+                          QJsonObject{{"kind","synthetic-private-kind"},{"text","dropped"}},
+                          // N4: a bad box goes, never kept as null; the finding stays without one.
+                          QJsonObject{{"kind","phone"},{"rule","phone"},{"text","200 63292"},{"box",QJsonArray{1,2,"x",4}},{"marks",QJsonArray{QJsonArray{1,2,3},QJsonArray{0,0,5,5}}}}}},
+   {"words",QJsonObject{{"total",1},{"list",QJsonArray{word,QJsonObject{{"text",3}}}}}},{"codes",QJsonArray{QJsonObject{{"kind","otp"},{"box",QJsonArray{0,0,5,5}},{"text","synthetic-private-code"}}}}};
+  Error error;const auto report=FalseAlarmReports::compose(helper,{{"check",QJsonObject{{"found",QJsonObject{{"card",1}}},{"complete",true}}}},error);QVERIFY(!error);
+  const auto bytes=QJsonDocument(report).toJson();QVERIFY2(!bytes.contains("synthetic-private"),bytes.constData());
+  QCOMPARE(report["check"].toObject()["found"].toObject(),(QJsonObject{{"card",1}}));QCOMPARE(report["check"].toObject()["categories"].toArray(),(QJsonArray{"phone"}));
+  QCOMPARE(report["recognition"].toObject()["engine"].toObject()["name"].toString(),QString("tesseract"));
+  const auto findings=report["findings"].toArray();QCOMPARE(findings.size(),2);
+  QVERIFY(!findings.at(1).toObject().contains("box"));QCOMPARE(findings.at(1).toObject()["marks"].toArray(),(QJsonArray{QJsonArray{0,0,5,5}}));
+  QVERIFY(!bytes.contains("null"));
+  QCOMPARE(findings.first().toObject()["text"].toString().size(),4096);QCOMPARE(findings.first().toObject()["words"].toArray(),(QJsonArray{0}));
+  QCOMPARE(report["words"].toObject()["list"].toArray().size(),1);QCOMPARE(report["codes"].toArray().first().toObject().keys(),(QStringList{"box","kind"}));
+  QCOMPARE(report["image"].toObject().keys(),(QStringList{"height","width"}));
+  // A malformed word the rebuild drops doesn't shift the others: each finding still points at its own word.
+  auto shifted=helper;
+  shifted["words"]=QJsonObject{{"total",3},{"list",QJsonArray{QJsonObject{{"text",3}},word,QJsonObject{{"text","5000"},{"box",QJsonArray{9,9,9,9}},{"confidence",80},{"line",1}}}}};
+  shifted["findings"]=QJsonArray{QJsonObject{{"kind","card"},{"rule","card"},{"text","4111 5000"},{"words",QJsonArray{1,2,0,-1,9}}}};
+  const auto rebuilt=FalseAlarmReports::compose(shifted,{},error);QVERIFY(!error);
+  QCOMPARE(rebuilt["words"].toObject()["list"].toArray().size(),2);
+  QCOMPARE(rebuilt["findings"].toArray().first().toObject()["words"].toArray(),(QJsonArray{0,1,-1,-1}));
+  const auto list=rebuilt["words"].toObject()["list"].toArray();
+  QCOMPARE(list.at(0).toObject()["text"].toString(),QString("4111"));QCOMPARE(list.at(1).toObject()["text"].toString(),QString("5000"));
+ }
+ // #2134 P1d, P2a: Clear logs removes half-written folders too and says what it couldn't remove; a package takes only a
+ // whole report whose files are as report.json records them.
+ void falseAlarmClearAndPackageNeedWholeReports() {
+  QTemporaryDir root;const auto folder=root.filePath("false-alarms");FalseAlarmReports reports(folder);
+  const QByteArray png=QByteArray("\x89PNG\r\n\x1a\n",8)+QByteArray(300,'o');
+  const QJsonObject helper{{"reportedFrom","prompt"},{"image",QJsonObject{{"width",10},{"height",10}}},{"check",QJsonObject{}},{"recognition",QJsonObject{}},{"findings",QJsonArray{}},{"words",QJsonObject{}},{"codes",QJsonArray{}}};
+  Error error;const auto report=FalseAlarmReports::compose(helper,{},error);
+  const auto now=QDateTime::currentDateTimeUtc().addSecs(-10);
+  const auto good=reports.save(png,"png",png,report,error,now);const auto bad=reports.save(png,"png",png,report,error,now.addSecs(1));QVERIFY(!error);
+  {QFile tampered(QDir(bad.path).filePath("covered.png"));QVERIFY(tampered.open(QIODevice::Append));tampered.write("x");}
+  const auto selection=FalseAlarmReports::select(folder,now.addDays(-1),now.addDays(1),{},FalseAlarmReports::bundleBytes);
+  QCOMPARE(selection.reports.size(),1);QCOMPARE(selection.reports.first().name,good.name);QCOMPARE(selection.invalid,1);
+  QCOMPARE(selection.reports.first().files.size(),3);QCOMPARE(selection.eligible,selection.reports.size()+selection.omitted+selection.invalid);
+  // N1: a package bound to a preview's names holds just those.
+  const QStringList none,onlyGood{good.name};
+  QCOMPARE(FalseAlarmReports::select(folder,now.addDays(-1),now.addDays(1),{},FalseAlarmReports::bundleBytes,true,&none).reports.size(),0);
+  QCOMPARE(FalseAlarmReports::select(folder,now.addDays(-1),now.addDays(1),{},FalseAlarmReports::bundleBytes,true,&onlyGood).invalid,0);
+  {BundleRequest named;QVERIFY(!DiagnosticsBundles::parse({{"falseAlarmReports",QJsonArray{good.name}}},named));QCOMPARE(named.falseAlarmNames,std::optional<QStringList>(onlyGood));
+   QCOMPARE(DiagnosticsBundles::parse({{"falseAlarmReports",QJsonArray{"../escape"}}},named).code,QString("invalid_request"));}
+  // A half-written folder goes with Clear logs; a report folder holding a file put.gd didn't write stays, and is counted.
+  QVERIFY(QDir().mkpath(QDir(folder).filePath(".putgd-false-alarm-20260101T000000000Z-0123abcd")));
+  {QFile stray(QDir(good.path).filePath("notes.txt"));QVERIFY(stray.open(QIODevice::WriteOnly));stray.write("kept");}
+  const auto removed=reports.clear();
+  QCOMPARE(removed.reports,1);QCOMPARE(removed.left,1);QVERIFY(QFileInfo::exists(good.path));QVERIFY(!QFileInfo::exists(bad.path));
+  QVERIFY(!QFileInfo::exists(QDir(folder).filePath(".putgd-false-alarm-20260101T000000000Z-0123abcd")));
+  // A reports folder that is a link is never followed.
+  QTemporaryDir elsewhere;const auto linked=root.filePath("linked");QVERIFY(QFile::link(elsewhere.path(),linked));
+  FalseAlarmReports through(linked);(void)through.save(png,"png",png,report,error);QCOMPARE(error.code,QString("false_alarm_unavailable"));
+  QCOMPARE(through.clear().left,-1);QCOMPARE(through.list()["count"].toInt(),0);
+ }
+ // #2134: a report's settings name the user's own Quick redact words and patterns by count only, and the
+ // destination by its provider.
+ void falseAlarmSettingsAreCountsOnly() {
+  Settings settings;settings.quickRedactTerms={"synthetic-private-term"};settings.quickRedactPatterns={"synthetic-private-\\d+","x"};
+  settings.sensitiveTextCheck=true;settings.sensitiveTextCategories={"phone","card"};settings.sensitiveTextCover={"card"};
+  const auto summary=FalseAlarmReports::settingsSummary(settings,"s3");
+  QVERIFY(!QJsonDocument(summary).toJson().contains("synthetic-private"));
+  QCOMPARE(summary["quickRedact"].toObject(),(QJsonObject{{"terms",1},{"patterns",2}}));
+  QCOMPARE(summary["destination"].toObject(),(QJsonObject{{"provider","s3"}}));
+  const auto kinds=summary["sensitiveTextCheck"].toObject()["kinds"].toObject();
+  QCOMPARE(kinds["phone"].toString(),QString("warn"));QCOMPARE(kinds["card"].toString(),QString("redact"));QCOMPARE(kinds["email"].toString(),QString("off"));
+ }
  void requestsAreValidated() {
   BundleRequest request;QVERIFY(!DiagnosticsBundles::parse({},request));QCOMPARE(request.sinceMs,7LL*86400000);
   QVERIFY(!DiagnosticsBundles::parse({{"operation","x"},{"since","24h"},{"includeNames",true},{"output","/tmp/a.zip"}},request));
   QCOMPARE(request.sinceMs,24LL*3600000);QVERIFY(request.includeNames);
-  for(const auto& params:QList<QJsonObject>{{{"since","0d"}},{{"since","366d"}},{{"since","7"}},{{"since",7}},{{"output","relative.zip"}},{{"includeNames","yes"}},{{"operation",""}},{{"extra",1}},{{"profileId","x"}},{{"copyLink",true}},{{"upload",1}}})
+  // #2134: reports only when asked for: History's, the tray's and the error log's saves send nothing and get none.
+  QVERIFY(!request.falseAlarmReports);QVERIFY(!DiagnosticsBundles::parse({{"falseAlarmReports",true}},request));QVERIFY(request.falseAlarmReports);
+  for(const auto& params:QList<QJsonObject>{{{"since","0d"}},{{"since","366d"}},{{"since","7"}},{{"since",7}},{{"output","relative.zip"}},{{"includeNames","yes"}},{{"operation",""}},{{"extra",1}},{{"profileId","x"}},{{"copyLink",true}},{{"upload",1}},{{"falseAlarmReports","no"}}})
    QCOMPARE(DiagnosticsBundles::parse(params,request).code,QString("invalid_request"));
  }
  void cliFlagsBecomeParameters() {
@@ -268,6 +409,10 @@ private slots:
   PUTGD_TRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,10000);QCOMPARE(client.exitCode(),0);
   QCOMPARE(received["method"].toString(),QString("diagnostics.bundle"));
   QCOMPARE(received["params"].toObject(),(QJsonObject{{"operation","synthetic-op"},{"since","24h"},{"includeNames",true},{"output",QDir(d.path()).absoluteFilePath("relative.zip")}}));
+  // #2134: --false-alarm-reports asks for the reports.
+  received={};client.start(PUTGD_CLI_PATH,{"--socket",server.fullServerName(),"diagnostics.bundle","--false-alarm-reports"});
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,10000);QCOMPARE(client.exitCode(),0);
+  QCOMPARE(received["params"].toObject(),(QJsonObject{{"falseAlarmReports",true}}));
   // --upload [--profile ID] [--copy-link] (#123).
   received={};client.start(PUTGD_CLI_PATH,{"--socket",server.fullServerName(),"diagnostics.bundle","--upload","--profile","synthetic-s3","--copy-link"});
   PUTGD_TRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,10000);QCOMPARE(client.exitCode(),0);
@@ -295,6 +440,18 @@ private slots:
   QVERIFY(bundles.saved(custom));QVERIFY(bundles.saved(out.path()+"/./putgd-diagnostics-r9.zip"));QVERIFY(!bundles.saved(out.filePath("other.zip")));
   done=false;server.dispatch({{"schemaVersion",1},{"requestId","bad"},{"session",server.socketPath()},{"method","diagnostics.bundle"},{"params",QJsonObject{{"since","forever"}}}},[&](Error e,QJsonObject){error=e;done=true;});
   PUTGD_TRY_VERIFY(done);QCOMPARE(error.code,QString("invalid_request"));
+  // #2134: the logs.clear session method also removes the false-alarm reports and says how many. Here, with the one
+  // LocalServer this process may have (its HistoryService shuts the operations down), and last: it clears the logs.
+  FalseAlarmReports reports(dir_.filePath("state/false-alarms-clear"));operations_->setFalseAlarmReports(&reports);
+  const auto restore=qScopeGuard([this]{operations_->setFalseAlarmReports(nullptr);});
+  const QByteArray png=QByteArray("\x89PNG\r\n\x1a\n",8)+QByteArray(500,'o');
+  const QJsonObject helper{{"reportedFrom","prompt"},{"image",QJsonObject{{"width",10},{"height",10}}},{"check",QJsonObject{}},{"recognition",QJsonObject{}},{"findings",QJsonArray{}},{"words",QJsonObject{}},{"codes",QJsonArray{}}};
+  error={};const auto saved=reports.save(png,"png",png,FalseAlarmReports::compose(helper,{},error),error);QVERIFY2(!error,qPrintable(error.message));
+  done=false;
+  server.dispatch({{"schemaVersion",1},{"requestId","clear"},{"session",server.socketPath()},{"method","logs.clear"},{"params",QJsonObject{}}},[&](Error e,QJsonObject r){error=e;result=r;done=true;});
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(done,30000);QVERIFY2(!error,qPrintable(error.code+": "+error.message));
+  QCOMPARE(result["removedReports"].toInt(),1);QVERIFY(result["removedReportBytes"].toDouble()>=2*png.size());QVERIFY(result.contains("removedFiles"));
+  QVERIFY(!QFileInfo::exists(saved.path));QCOMPARE(reports.list()["count"].toInt(),0);
  }
 };
 QTEST_GUILESS_MAIN(DiagnosticsBundleContract)
