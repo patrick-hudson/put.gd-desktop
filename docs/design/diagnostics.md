@@ -244,7 +244,10 @@ false-alarm report, including folders a write left half-made, and adds `removedR
 afterwards (one holding a file put.gd didn't write), or the reports folder is a link or isn't the
 user's own and so isn't touched, it fails with `false_alarm_clear_incomplete`. Its message says the
 logs were cleared and the reports were not all removed, and its details carry the counts and
-`reportsLeft`.
+`reportsLeft`. The reports are deleted even when clearing the logs fails: that error
+(`logging_unavailable` or `logging_busy`) then also carries `removedReports`,
+`removedReportBytes` and, when any are left, `reportsLeft`, and its message says how the
+reports went.
 
 ## Diagnostics fields
 
