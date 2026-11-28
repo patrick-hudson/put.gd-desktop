@@ -299,11 +299,12 @@ Nothing asked to be encrypted is ever uploaded unencrypted:
   before it is sent. The resident's failure notice says why, and History keeps
   the upload.
 - A build from before the encrypted entry has no `--encrypt` option, so an old
-  client refuses that command line with a usage error and uploads nothing. A
-  resident from before encrypted uploads refuses the `encrypt` field as
-  `invalid_request`. The client then reads `capabilities`, finds no
-  `uploadFiles.encrypt`, and says "put.gd was updated. Quit put.gd and open it
-  again, then try again." It never asks again without `encrypt`.
+  client refuses that command line with a usage error and uploads nothing. Before
+  it sends an encrypted upload, the client reads `capabilities`; only a resident
+  that answers `uploadFiles.encrypt: true` gets the files. An older one, which
+  would refuse the field or skip the up-front check, gets nothing, and the notice
+  says "put.gd was updated. Quit put.gd and open it again, then try again." It
+  never asks again without `encrypt`.
 
 ## Notifications without a tray
 
