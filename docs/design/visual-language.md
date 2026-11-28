@@ -126,6 +126,31 @@ buttons must remain visibly checked when disabled. Menus preserve shortcuts,
 submenus, checkable state, disabled items and keyboard navigation. Literal
 ampersands must survive Qt's mnemonic escaping.
 
+### The wheel over a closed control
+
+The mouse wheel scrolls the page under the pointer. It never changes the value
+of a closed control. Someone scrolling a long Settings page or History's filters
+passes over dropdowns, number fields, sliders and tabs. If the control under the
+pointer took the wheel, the page would stop scrolling and a setting would change
+without anyone noticing. This was fixed in October 2026 (#26) and came back in
+November (#2117), when new code built its dropdowns straight from Qt.
+
+- Build every dropdown with `Ui::choiceBox()`.
+- Build every other control that changes its value on the wheel with
+  `Ui::wheelSafe<T>()`: spin boxes, date fields, sliders, tab widgets and tab
+  bars, and the font choice. A class derived from one of them calls
+  `Ui::leaveWheelToPane(this)` in its constructor.
+- Scrolling past such a control doesn't focus it either. Tab and a click still do.
+- An open dropdown list still scrolls. Keys, clicks and the step buttons still
+  change the value.
+- A widget that is itself what the wheel moves, such as the image editor's canvas
+  or the recording timeline, keeps the wheel. Its `wheelEvent` declaration says
+  why in a `wheel-input:` comment.
+
+`tests/ci/test_wheel_input.py` fails when `src/` builds a control any other way.
+The Settings and image editor widget tests turn the wheel over every such control
+and check that the value stays put and the page scrolls.
+
 ## Navigation and window behavior
 
 The main header has the application menu and name on the left, one centered
