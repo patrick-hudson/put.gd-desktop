@@ -24,6 +24,9 @@ foreach(template IN ITEMS FileManagerScript=src/app/file-manager-script.sh FileM
     KioServiceMenu1105=src/app/file-manager-legacy/kio-servicemenu-1105.desktop
     FileManagerScript987483d=src/app/file-manager-legacy/file-manager-script-987483d.sh
     FileManagerScriptFb3a313=src/app/file-manager-legacy/file-manager-script-fb3a313.sh
+    # The encrypted Nemo and FileManager-Actions entries before their visibility test (#2136).
+    NemoActionEncrypted4631e27=src/app/file-manager-legacy/putgd-upload-encrypted-4631e27.nemo_action
+    FileManagerActionEncrypted4631e27=src/app/file-manager-legacy/file-manager-action-encrypted-4631e27.desktop
     # The AppImage's stable launcher as each earlier build wrote it, before entries carried hashes (#2132).
     FileManagerLauncher987483d=src/app/file-manager-legacy/file-manager-launcher-987483d.sh
     FileManagerLauncher2f1bc55=src/app/file-manager-legacy/file-manager-launcher-2f1bc55.sh

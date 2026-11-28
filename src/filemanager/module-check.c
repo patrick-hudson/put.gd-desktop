@@ -3,11 +3,15 @@
 // file manager is, so the unlinked plugin's symbols resolve. Not installed.
 // Usage: putgd-<fm>-check <module.so> [--activate|--activate-encrypted]
 // --activate also chooses Upload with put.gd, --activate-encrypted Upload
-// encrypted with put.gd; either starts /usr/bin/putgd-launcher.
+// encrypted with put.gd; either starts /usr/bin/putgd-launcher. It then writes the
+// resident's marker (#2136) under a private XDG_DATA_HOME and checks that only
+// Upload with put.gd is offered while it exists.
 #include "fm-api.h"
 #include <dlfcn.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #define CHECK(condition, ...) do { if(!(condition)) { fprintf(stderr, "FAIL: " __VA_ARGS__); fputc('\n', stderr); return 1; } } while(0)
 
@@ -44,6 +48,10 @@ static gpointer check_file(const char *uri, const char *activation) {
 int main(int argc, char **argv) {
   const int activate = argc == 3 ? (!strcmp(argv[2], "--activate") ? 1 : !strcmp(argv[2], "--activate-encrypted") ? 2 : -1) : 0;
   CHECK(argc == 2 || activate > 0, "usage: %s <module.so> [--activate|--activate-encrypted]", argv[0]);
+  // Before GLib first reads it: the plugin's marker lives under this private data home.
+  char data_home[] = "/tmp/putgd-fm-check-XXXXXX";
+  CHECK(mkdtemp(data_home), "mkdtemp failed");
+  setenv("XDG_DATA_HOME", data_home, 1);
   void *module = dlopen(argv[1], RTLD_NOW | RTLD_LOCAL);
   CHECK(module, "dlopen: %s", dlerror());
   void (*initialize)(GTypeModule *) = (void (*)(GTypeModule *))dlsym(module, FM_MODULE_SYMBOL("initialize"));
@@ -74,7 +82,20 @@ int main(int argc, char **argv) {
     g_string_append_printf(json, "%s{\"item\":\"%s\",\"label\":\"%s\",\"icon\":\"%s\"}", index ? "," : "", name, label, icon);
     g_free(name); g_free(label); g_free(icon);
   }
-  printf("{\"type\":\"%s\",\"items\":[%s],\"activated\":%s}\n", g_type_name(types[0]), json->str,
+  // #2136: with the resident's marker present, the encrypted item is left out.
+  char *folder = g_build_filename(data_home, "putgd", "file-manager", NULL), *marker = g_build_filename(data_home, PUTGD_FM_ENCRYPTED_HIDDEN, NULL);
+  CHECK(g_mkdir_with_parents(folder, 0700) == 0 && g_file_set_contents(marker, "proton\n", -1, NULL), "cannot write %s", marker);
+  GList *hidden = fm_menu_provider_get_file_items(provider, files);
+  char *only = NULL;
+  if(g_list_length(hidden) == 1) g_object_get(hidden->data, "name", &only, NULL);
+  CHECK(!g_strcmp0(only, "PutgdMenu::Upload"), "with the marker: %u items, first %s", g_list_length(hidden), only);
+  g_free(only);
+  g_list_free_full(hidden, g_object_unref);
+  CHECK(unlink(marker) == 0 && rmdir(folder) == 0, "cannot remove %s", marker);
+  char *parent = g_path_get_dirname(folder);
+  CHECK(rmdir(parent) == 0 && rmdir(data_home) == 0, "cannot remove %s", parent);
+  g_free(parent); g_free(folder); g_free(marker);
+  printf("{\"type\":\"%s\",\"items\":[%s],\"activated\":%s,\"hidesEncrypted\":true}\n", g_type_name(types[0]), json->str,
          activate == 1 ? "\"plain\"" : activate == 2 ? "\"encrypted\"" : "null");
   g_string_free(json, TRUE);
   g_list_free_full(items, g_object_unref);

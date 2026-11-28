@@ -1,4 +1,5 @@
 #include "app/FileManagerIntegration.h"
+#include "filemanager/encrypted-entry.h"
 #include "fixtures/ElfImage.h"
 #include "fixtures/Waits.h"
 #include <QCoreApplication>
@@ -549,6 +550,23 @@ private slots:
   QVERIFY(!QFileInfo::exists(f.menu("kio/servicemenus/putgd-upload.desktop")));
   QCOMPARE(readAll(replaced(f)+"/data/kio/servicemenus/putgd-upload.desktop"),legacy);QCOMPARE(mode(replaced(f)+"/data/kio/servicemenus/putgd-upload.desktop"),programMode);
  }
+ // #2136 R5-2: an AppImage's encrypted Nemo and FileManager-Actions entries from before their
+ // visibility test are recognized byte for byte, and move aside for the package's.
+ void systemInstallRecognizesTheEarlierEncryptedTemplates() {
+  for(const auto& relative:{QStringLiteral("nemo/actions/putgd-upload-encrypted.nemo_action"),QStringLiteral("file-manager/actions/putgd-upload-encrypted.desktop")}) {
+   Fixture f;auto& c=f.context;
+   const auto earlier=FileManagerIntegration::earlierMenuForTesting(c,relative);
+   QVERIFY2(earlier.contains("--upload --encrypt -- %F")&&earlier.contains("X-putgd-Managed=true"),qPrintable(relative));
+   QVERIFY2(!earlier.contains("encrypted-entry-hidden"),qPrintable(relative));
+   write(f.menu(relative),earlier);
+   f.package(relative);
+   c.installation="system";
+   const auto result=FileManagerIntegration::apply(c);
+   QVERIFY2(!result.error,qPrintable(result.error.message));
+   QVERIFY2(!QFileInfo::exists(f.menu(relative)),qPrintable(relative));
+   QCOMPARE(readAll(replaced(f)+"/data/"+relative),earlier);
+  }
+ }
  // Only an exact AppImage copy moves: an edited one, a lookalike naming the launcher in a comment,
  // a menu folder that is a link, and a package file that isn't put.gd's all leave things alone.
  void systemInstallLeavesAnythingElse() {
@@ -622,6 +640,14 @@ private slots:
   {Fixture f;write(QDir(f.context.dataDirs[0]).filePath(kio),packaged(kio)+"\n# a later comment\n");QVERIFY(counted(f,kio));}
   // The old plain-only KIO menu offers only Upload with put.gd.
   {Fixture f;write(QDir(f.context.dataDirs[0]).filePath(kio),"[Desktop Entry]\nActions=putgdUpload;\n\n[Desktop Action putgdUpload]\nName=Upload with put.gd\nExec=/usr/bin/putgd-launcher --upload -- %F\n");QVERIFY(!counted(f,kio));}
+  // #2136: the KF6 package's plain-only menu beside its putgd KIO plugin offers both entries.
+  const QByteArray plain="[Desktop Entry]\nActions=putgdUpload;\n\n[Desktop Action putgdUpload]\nName=Upload with put.gd\nExec=/usr/bin/putgd-launcher --upload -- %F\n";
+  {Fixture f;write(QDir(f.context.dataDirs[0]).filePath(kio),plain);f.installPlugin("qt6/plugins/kf6/kfileitemaction","putgd.so");QVERIFY(counted(f,kio));}
+  // R5-1: a link to a plugin isn't the package's (its owner and its folder's are checked too).
+  {Fixture f;write(QDir(f.context.dataDirs[0]).filePath(kio),plain);f.installPlugin("qt6/plugins/kf6/kfileitemaction","putgd.so");
+   QVERIFY(QFile::rename(QDir(f.context.libraryDirs[0]).filePath("qt6/plugins/kf6/kfileitemaction/putgd.so"),f.path("elsewhere.so")));
+   QVERIFY(QFile::link(f.path("elsewhere.so"),QDir(f.context.libraryDirs[0]).filePath("qt6/plugins/kf6/kfileitemaction/putgd.so")));QVERIFY(!counted(f,kio));}
+
   // Nemo's plain action without its encrypted sibling, and a lookalike that runs something else.
   {Fixture f;write(QDir(f.context.dataDirs[0]).filePath(nemo),packaged(nemo));QVERIFY(!counted(f,nemo));}
   {Fixture f;f.package(nemo);write(QDir(f.context.dataDirs[0]).filePath(nemo),"[Nemo Action]\nName=Upload with put.gd\nExec=/opt/other --upload -- %F\n");QVERIFY(!counted(f,nemo));}
@@ -985,6 +1011,61 @@ private slots:
   QVERIFY(FileManagerIntegration::announceOnce(c,second));
   QVERIFY(!FileManagerIntegration::announceOnce(c,Error{}));
   QVERIFY(FileManagerIntegration::announceOnce(c,second));
+ }
+ // #2136: the resident's marker hides Upload encrypted with put.gd. The Nemo and PCManFM-Qt
+ // conditions in the per-user copies (the packaged files' text) find it the way those file
+ // managers run them, through /bin/sh, under $XDG_DATA_HOME or else ~/.local/share.
+ void encryptedEntryMarkerHidesThroughEachCondition() {
+  Fixture f;auto& c=f.context;
+  const auto marker=FileManagerIntegration::encryptedEntryMarker(c.dataRoot);
+  QCOMPARE(marker,QDir(c.dataRoot).filePath("file-manager/encrypted-entry-hidden"));
+  // The writer's data home: XDG_DATA_HOME only when absolute.
+  QCOMPARE(FileManagerIntegration::encryptedEntryDataHome("/x/data/","/h"),QString("/x/data"));
+  for(const auto& ignored:{QString(),QString("relative/data"),QString("./data")})QCOMPARE(FileManagerIntegration::encryptedEntryDataHome(ignored,"/h"),QString("/h/.local/share"));
+  // The path the plugins read below the data home.
+  QCOMPARE(QDir(QFileInfo(c.dataRoot).path()).relativeFilePath(marker),QString::fromLatin1(PUTGD_FM_ENCRYPTED_HIDDEN));
+  bool changed=true;
+  QVERIFY(!FileManagerIntegration::setEncryptedEntryHidden(c.dataRoot,false,{},&changed));QVERIFY(!changed);QVERIFY(!QFileInfo::exists(marker));
+  QVERIFY(!FileManagerIntegration::setEncryptedEntryHidden(c.dataRoot,true,"proton",&changed));QVERIFY(changed);QCOMPARE(readAll(marker),QByteArray("proton\n"));
+  QVERIFY(!FileManagerIntegration::setEncryptedEntryHidden(c.dataRoot,true,"proton",&changed));QVERIFY(!changed);
+  QVERIFY(!FileManagerIntegration::setEncryptedEntryHidden(c.dataRoot,true,"nextcloud",&changed));QVERIFY(changed);QCOMPARE(readAll(marker),QByteArray("nextcloud\n"));
+  // Something other than a file there is an error, never a write.
+  QVERIFY(QFile::remove(marker));QVERIFY(QDir().mkdir(marker));
+  const auto conflict=FileManagerIntegration::setEncryptedEntryHidden(c.dataRoot,true,"proton",&changed);
+  QCOMPARE(conflict.code,QString("file_manager_io"));QVERIFY(!changed);QVERIFY(QFileInfo(marker).isDir());
+  QVERIFY(QDir().rmdir(marker));
+  QVERIFY(!FileManagerIntegration::setEncryptedEntryHidden(c.dataRoot,true,"nextcloud",&changed));QVERIFY(changed);
+  c.installation="appimage";const auto result=FileManagerIntegration::apply(c);QVERIFY2(!result.error,qPrintable(result.error.message));
+  const auto line=[&](const QString& relative,const QString& key){
+   const auto text=QString::fromUtf8(readAll(f.menu(relative)));const auto at=text.indexOf('\n'+key);
+   return at<0?QString{}:text.mid(at+1+key.size(),text.indexOf('\n',at+1)-at-1-key.size());
+  };
+  // Conditions is a key-file list: Nemo reads its escaped semicolons as semicolons.
+  auto nemo=line(encryptedMenuFiles[0],"Conditions=exec ");QVERIFY2(nemo.endsWith(';'),qPrintable(nemo));nemo.chop(1);nemo.replace("\\;",";");
+  const auto pcmanfm=line(encryptedMenuFiles[2],"ShowIfTrue=");
+  for(const auto& condition:{nemo,pcmanfm})QVERIFY2(condition.contains("case \"$XDG_DATA_HOME\" in /*) d=$XDG_DATA_HOME ;; *) d=$HOME/.local/share ;; esac; test ! -e \"$d/putgd/file-manager/encrypted-entry-hidden\""),qPrintable(condition));
+  // The plain entries have none.
+  QVERIFY(line(menuFiles[1],"Conditions=").isEmpty());QVERIFY(line(menuFiles[3],"ShowIfTrue=").isEmpty());
+  const auto shows=[&](const QString& condition,const QString& dataHome,const QString& home){
+   QProcess shell;auto env=QProcessEnvironment::systemEnvironment();
+   if(dataHome.isNull())env.remove("XDG_DATA_HOME");else env.insert("XDG_DATA_HOME",dataHome);
+   env.insert("HOME",home);shell.setProcessEnvironment(env);
+   shell.start("/bin/sh",{"-c",condition});return shell.waitForFinished(10000)&&shell.exitStatus()==QProcess::NormalExit&&shell.exitCode()==0;
+  };
+  const auto dataHome=QFileInfo(c.dataRoot).path(),home=f.path("home");
+  for(const auto& condition:{nemo,pcmanfm}) {
+   QVERIFY(!shows(condition,dataHome,home));
+   QVERIFY(!FileManagerIntegration::setEncryptedEntryHidden(c.dataRoot,false,{},&changed));QVERIFY(changed);
+   QVERIFY(shows(condition,dataHome,home));
+   // Without XDG_DATA_HOME: ~/.local/share.
+   const auto homeRoot=QDir(home).filePath(".local/share/putgd");
+   QVERIFY(!FileManagerIntegration::setEncryptedEntryHidden(homeRoot,true,"no-destination"));
+   QVERIFY(!shows(condition,{},home));QVERIFY(shows(condition,dataHome,home));
+   // An empty or relative XDG_DATA_HOME is ignored, as the writer ignores it.
+   QVERIFY(!shows(condition,"",home));QVERIFY(!shows(condition,"relative/data",home));
+   QVERIFY(!FileManagerIntegration::setEncryptedEntryHidden(homeRoot,false,{}));QVERIFY(shows(condition,{},home));
+   QVERIFY(!FileManagerIntegration::setEncryptedEntryHidden(c.dataRoot,true,"proton"));
+  }
  }
  void toJsonCarriesTheResult() {
   FileManagerResult result;result.firstRun=true;result.written={"/a"};result.restartable={"caja"};result.error={"x","y",{}};

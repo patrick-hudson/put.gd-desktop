@@ -446,7 +446,7 @@ int main(int argc,char* argv[]) {
    QJsonObject out;b2->testDestination(destination,checkpoint,[&](QJsonObject result,putgd::Error e){out=result;error=e;});return out;
   },[finished](putgd::Error error,QJsonObject result){finished(result,error);});
  };
- QJsonObject loginStatus,fileManagerStatus;
+ QJsonObject loginStatus,fileManagerStatus,encryptedEntryStatus;
  // Each destination's last check (#1692): what a Test found, new credentials, and what
  // uploads found, kept in the data folder so Settings shows it after a restart.
  putgd::DestinationStatus destinationStatus(dataRoot+"/destination-status.json",settings);
@@ -748,7 +748,7 @@ int main(int argc,char* argv[]) {
  tray.setDiagnosticsSaver([&](const QString& id,putgd::JsonReply reply){putgd::BundleRequest request;request.operationId=id;const auto folder=operations.settingsSnapshot().document["preferences"].toObject()["diagnostics"].toObject()["packageFolder"].toString();if(QFileInfo(folder).isDir())request.output=folder;bundles.create(request,std::move(reply));});
  server.setLinkOpener([](const QUrl& link,std::function<void(const QJsonObject&)> done){putgd::TrayController::openLink(link,"history-link",std::move(done));});
  server.setDiagnosticsNotifications([&](const QJsonObject& result){tray.notifyDiagnosticsSaved(result);},[&](const QString& path){return putgd::TrayController::revealPackage(path,bundles.saved(path));});
- const auto fullDiagnostics=[&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;diagnostics["fileManagerMenu"]=fileManagerStatus;diagnostics["loginSession"]=sessionWatch.status();diagnostics["shortcuts"]=source->capabilities()["shortcuts"];diagnostics["ui"]=ui.status();diagnostics["trayAvailable"]=tray.available();diagnostics["trayTint"]=tray.trayTint();diagnostics["trayIcon"]=tray.trayIconState();diagnostics["trayMenu"]=tray.trayMenuState();diagnostics["update"]=updates.status();return diagnostics;};
+ const auto fullDiagnostics=[&]{auto diagnostics=operations.diagnostics();diagnostics["loginStartup"]=loginStatus;{auto menu=fileManagerStatus;menu["encryptedEntry"]=encryptedEntryStatus;diagnostics["fileManagerMenu"]=menu;}diagnostics["loginSession"]=sessionWatch.status();diagnostics["shortcuts"]=source->capabilities()["shortcuts"];diagnostics["ui"]=ui.status();diagnostics["trayAvailable"]=tray.available();diagnostics["trayTint"]=tray.trayTint();diagnostics["trayIcon"]=tray.trayIconState();diagnostics["trayMenu"]=tray.trayMenuState();diagnostics["update"]=updates.status();return diagnostics;};
  server.setUiDiagnostics(fullDiagnostics);
  bundles.setDiagnostics(fullDiagnostics);
  // environment.json's session-side facts: no pixels, only geometry scale.
@@ -830,6 +830,21 @@ int main(int argc,char* argv[]) {
  }
  QObject::connect(&settings,&putgd::SettingsService::accepted,&app,[&,menu=std::make_shared<bool>(settings.snapshot().fileManagerMenu)]{const bool enabled=settings.snapshot().fileManagerMenu;if(std::exchange(*menu,enabled)!=enabled)configureFileManagers();});
  QObject::connect(&updates,&putgd::UpdateService::imageReplaced,&app,configureFileManagers);
+ // #2136: the marker that hides Upload encrypted with put.gd follows the destination Upload with
+ // put.gd goes to, at start and on every settings change; the file managers read it at each menu.
+ // The menus read <XDG data home>/putgd, never a legacy data root StorageLocations may still use.
+ const auto markerRoot=putgd::FileManagerIntegration::encryptedEntryDataHome(qEnvironmentVariable("XDG_DATA_HOME"),QDir::homePath())+"/putgd";
+ const auto updateEncryptedEntry=[&] {
+  auto state=operations.encryptedEntryState();
+  const bool hidden=!state.value("shown").toBool();
+  bool changed=false;
+  const auto error=putgd::FileManagerIntegration::setEncryptedEntryHidden(markerRoot,hidden,hidden?state.value("provider").toString(QStringLiteral("no-destination")):QString{},&changed);
+  state["marker"]=putgd::FileManagerIntegration::encryptedEntryMarker(markerRoot);
+  if(error)state["error"]=error.toJson();
+  if(changed||error)putgd::logging::write(putgd::logApp(),error?QtWarningMsg:QtInfoMsg,"File manager encrypted entry",state);
+  encryptedEntryStatus=state;
+ };
+ updateEncryptedEntry();QObject::connect(&settings,&putgd::SettingsService::accepted,&app,updateEncryptedEntry);
  // The login script carries the image's update information; after an install
  // (a channel switch changes it, #344) write it from the new image at once.
  QObject::connect(&updates,&putgd::UpdateService::imageReplaced,&app,configureLogin);

@@ -56,6 +56,7 @@ def main():
     for required in ('usr/bin/putgd-record', 'usr/bin/putgd-region', 'usr/bin/putgd-clipboard-keeper',
                      'usr/share/nemo/actions/putgd-upload.nemo_action',
                      'usr/share/kio/servicemenus/putgd-upload.desktop',
+                     'usr/lib/qt6/plugins/kf6/kfileitemaction/putgd.so',
                      'usr/share/Thunar/sendto/putgd-upload.desktop',
                      'usr/share/nemo/actions/putgd-upload-encrypted.nemo_action',
                      'usr/share/Thunar/sendto/putgd-upload-encrypted.desktop'):

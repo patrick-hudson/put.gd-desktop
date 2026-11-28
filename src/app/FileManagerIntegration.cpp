@@ -421,6 +421,16 @@ bool systemPlugin(const FileManagerContext& c,const QString& relative) {
  }
  return false;
 }
+// #2136: the package's KF6 KIO plugin, qt6/plugins/kf6/kfileitemaction/putgd.so in a library
+// root. Like the other counterparts: a regular file, no link, owned with its root by the system owner.
+bool systemKioPlugin(const FileManagerContext& c) {
+ const auto roots=c.libraryDirs.isEmpty()?QStringList{"/usr/lib64","/usr/lib/x86_64-linux-gnu","/usr/lib/aarch64-linux-gnu","/usr/lib"}:c.libraryDirs;
+ for(const auto& root:roots) {
+  const QFileInfo file(QDir(root).filePath(QStringLiteral("qt6/plugins/kf6/kfileitemaction/putgd.so")));
+  if(file.isFile()&&!file.isSymLink()&&file.ownerId()==c.systemOwner&&QFileInfo(root).ownerId()==c.systemOwner)return true;
+ }
+ return false;
+}
 // GNOME desktop icons (DING, desktop-icons-ng): Ubuntu's package or its bundled
 // copy, or one the user installed.
 bool dingInstalled(const FileManagerContext& c) {
@@ -477,9 +487,10 @@ const MenuFormat menuFormats[]={
  {putgdFileManagerAction,"file-manager/actions","putgd-upload.desktop",true,false},
  {putgdContract,"contractor","putgd-upload.contract",false,false},
  // Upload encrypted with put.gd (#2119): KIO's is a second action in its one service menu.
- {putgdNemoActionEncrypted,"nemo/actions","putgd-upload-encrypted.nemo_action",true,false},
+ // #2136 added their visibility test; an AppImage before it wrote them without (4631e27).
+ {putgdNemoActionEncrypted,"nemo/actions","putgd-upload-encrypted.nemo_action",true,false,putgdNemoActionEncrypted4631e27},
  {putgdThunarSendToEncrypted,"Thunar/sendto","putgd-upload-encrypted.desktop",false,false},
- {putgdFileManagerActionEncrypted,"file-manager/actions","putgd-upload-encrypted.desktop",true,false},
+ {putgdFileManagerActionEncrypted,"file-manager/actions","putgd-upload-encrypted.desktop",true,false,putgdFileManagerActionEncrypted4631e27},
  {putgdContractEncrypted,"contractor","putgd-upload-encrypted.contract",false,false},
 };
 QString ownDirectory(const FileManagerContext& c) {return QDir(c.dataRoot).filePath("file-manager");}
@@ -507,7 +518,9 @@ bool systemCopy(const FileManagerContext& c,const MenuFormat& format) {
   if(!file.isFile()||file.isSymLink()||file.ownerId()!=c.systemOwner||QFileInfo(directory).ownerId()!=c.systemOwner)return false;
   const auto name=QString::fromLatin1(format.name);const bool encrypted=name.contains(QStringLiteral("-encrypted"));
   if(!packagedExec(file.filePath(),encrypted))return false;
-  if(QString::fromLatin1(format.directory)=="kio/servicemenus")return packagedExec(file.filePath(),true);
+  // KIO's one file holds both actions, or (#2136, KF6 packages) only Upload with put.gd while the
+  // package's putgd KFileItemAction plugin offers Upload encrypted with put.gd: both entries either way.
+  if(QString::fromLatin1(format.directory)=="kio/servicemenus")return packagedExec(file.filePath(),true)||systemKioPlugin(c);
   auto sibling=name;
   if(encrypted)sibling.remove(QStringLiteral("-encrypted"));else sibling.insert(QStringLiteral("putgd-upload").size(),QStringLiteral("-encrypted"));
   const auto siblingPath=QDir(QDir(directory).filePath(QString::fromLatin1(format.directory))).filePath(sibling);
@@ -771,6 +784,34 @@ void upgradeAppImageLauncher(const FileManagerContext& c,const QStringList& know
  if(commit(recordFile,updated+added.toUtf8(),dataMode)==Write::Failed)fail(ioError("Cannot update the AppImage's file manager record",recordFile));
 }
 }
+QString FileManagerIntegration::encryptedEntryMarker(const QString& dataRoot) {
+ // dataRoot is <XDG data home>/putgd, and the plugins read PUTGD_FM_ENCRYPTED_HIDDEN
+ // (src/filemanager/encrypted-entry.h) below the data home; the unit test holds them equal.
+ return QDir(dataRoot).filePath(QStringLiteral("file-manager/encrypted-entry-hidden"));
+}
+QString FileManagerIntegration::encryptedEntryDataHome(const QString& xdgDataHome,const QString& home) {
+ // The XDG spec ignores a relative value, and so do the plugins and the shell tests.
+ return QDir::cleanPath(xdgDataHome.startsWith('/')?xdgDataHome:QDir(home).filePath(".local/share"));
+}
+Error FileManagerIntegration::setEncryptedEntryHidden(const QString& dataRoot,bool hidden,const QString& why,bool* changed) {
+ if(changed)*changed=false;
+ const auto path=encryptedEntryMarker(dataRoot);
+ const QFileInfo info(path);
+ if(!hidden) {
+  if(!info.exists()&&!info.isSymLink())return {};
+  if(!QFile::remove(path))return ioError("Cannot remove the file manager's encrypted-entry marker",path);
+  if(changed)*changed=true;
+  return {};
+ }
+ switch(commit(path,(why+'\n').toUtf8(),dataMode,false)) {
+ case Write::Written:if(changed)*changed=true;return {};
+ case Write::Unchanged:return {};
+ // A symlink or folder there: left alone, and the menus may not show what put.gd decided.
+ case Write::Conflict:return ioError("The file manager's encrypted-entry marker isn't a file put.gd can replace",path);
+ case Write::Failed:break;
+ }
+ return ioError("Cannot write the file manager's encrypted-entry marker",path);
+}
 QString FileManagerIntegration::label() {return QStringLiteral("Upload with put.gd");}
 QString FileManagerIntegration::encryptedLabel() {return QStringLiteral("Upload encrypted with put.gd");}
 QByteArray FileManagerIntegration::earlierLauncherForTesting(const FileManagerContext& c) {
@@ -782,6 +823,13 @@ QByteArray FileManagerIntegration::earlierLauncherForTesting(const FileManagerCo
   if(!values.contains("ID")&&line.startsWith("integration_id='")&&line.endsWith('\''))values.insert("ID",line.mid(16,line.size()-17));
  }
  return substitute(QString::fromUtf8(putgdFileManagerLauncher4631e27).replace("# __PUTGD_DISCOVERY__",loginDiscovery()),values).toUtf8();
+}
+QByteArray FileManagerIntegration::earlierMenuForTesting(const FileManagerContext& c,const QString& relative) {
+ for(const auto& format:menuFormats)if(format.legacy&&relative==QString::fromLatin1(format.directory)+'/'+QString::fromLatin1(format.name)) {
+  const auto launcher=launcherPath(c);
+  return menuText(format.legacy,format.shell?shellExec(launcher):desktopExec(launcher),QDir(ownDirectory(c)).filePath("putgd.svg"));
+ }
+ return {};
 }
 QByteArray FileManagerIntegration::packagedMenu(const QString& relative) {
  for(const auto& format:menuFormats)if(relative==QString::fromLatin1(format.directory)+'/'+QString::fromLatin1(format.name))return QByteArray(format.source);

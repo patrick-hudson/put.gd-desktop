@@ -263,6 +263,63 @@ private slots:
   QCOMPARE(f.operations->encryptRefusal(files,"test","appimage").code,QString("encrypt_check_required"));
   QCOMPARE(f.operations->encryptRefusal(files,"test").code,QString("encrypt_check_required"));
  }
+ // #2136: file managers hide Upload encrypted with put.gd only where encrypting can't work
+ // whatever is tested: a destination that can't serve an encrypted page, or none at all. An
+ // untested destination shows it (choosing it opens the check, #2118). Choosing a hidden one
+ // anyway, from a file manager that can't hide it, is refused before anything is copied.
+ void encryptedEntryHidesOnlyWhereEncryptingCantWork() {
+  Fixture f({{"mode","on"}});f.checkState="untested";f.operations->setInstallation("appimage");PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto files=QString::fromLatin1(OperationService::fileManagerAction);
+  auto state=f.operations->encryptedEntryState();
+  QVERIFY(state["shown"].toBool());QVERIFY(!state.contains("reason"));
+  QCOMPARE(state["profileId"].toString(),QString("test"));QCOMPARE(state["provider"].toString(),QString("opaque"));
+  QCOMPARE(f.operations->capabilities()["uploadFiles"].toObject()["encryptedEntry"].toObject(),state);
+  QCOMPARE(f.operations->encryptRefusal(files,{},"appimage").code,QString("encrypt_check_required"));
+  // Proton Drive, Nextcloud, SFTP without a Link address: hidden, tested or not.
+  f.provider->encryptUnavailable="Proton Drive already encrypts files end to end.";
+  for(const auto& check:{"untested","passed"}) {
+   f.checkState=check;state=f.operations->encryptedEntryState();
+   QVERIFY(!state["shown"].toBool());QCOMPARE(state["reason"].toString(),QString("encrypt_unavailable"));
+   QCOMPARE(state["message"].toString(),f.provider->encryptUnavailable);QCOMPARE(state["provider"].toString(),QString("opaque"));
+   // Encrypted links is on for this destination, so Upload with put.gd would encrypt too.
+   auto refusal=f.operations->encryptRefusal(files,{},"appimage");
+   QCOMPARE(refusal.code,QString("encrypt_unavailable"));QCOMPARE(refusal.message,QString("Proton Drive already encrypts files end to end. Turn off Encrypted links for this destination."));
+   QCOMPARE(refusal.details["profileId"].toString(),QString("test"));
+   // putgd-cli and MCP send no installation, and can still upload without encryption.
+   QCOMPARE(f.operations->encryptRefusal(files).message,QString("Proton Drive already encrypts files end to end. Or upload it without encryption."));
+  }
+  // With Encrypted links off, Upload with put.gd uploads plainly, so the refusal names it.
+  {
+   Fixture off({});off.provider->encryptUnavailable="Proton Drive already encrypts files end to end.";off.operations->setInstallation("appimage");PUTGD_TRY_VERIFY(off.operations->ready());
+   QCOMPARE(off.operations->encryptRefusal(files,{},"appimage").message,QString("Proton Drive already encrypts files end to end. Select Upload with put.gd instead."));
+  }
+  // Captures keep their own refusal, at upload time.
+  QVERIFY(!f.operations->encryptRefusal("region"));
+  f.provider->encryptUnavailable.clear();state=f.operations->encryptedEntryState();
+  QVERIFY(state["shown"].toBool());QVERIFY(!f.operations->encryptRefusal(files,{},"appimage"));
+  // No destination at all: hidden, and Upload with put.gd says to add one.
+  QVERIFY(f.settings->save(configuration(f.dir.path(),true),f.settings->revision()));
+  state=f.operations->encryptedEntryState();
+  QCOMPARE(state,(QJsonObject{{"shown",false},{"reason","no_destination"}}));
+ }
+ // Private sharing shows the entry (a setting to change, not the destination's type), and
+ // choosing it says what to change before anything is copied. Upload with put.gd is named only
+ // while the destination's Encrypted links is off: when it's on, that entry encrypts too.
+ void privateSharingShowsTheEntryAndSaysWhy_data() {
+  QTest::addColumn<QString>("mode");QTest::addColumn<QString>("instead");
+  QTest::newRow("encrypted-links-on")<<"on"<<"turn off Encrypted links for this destination.";
+  QTest::newRow("encrypted-links-off")<<"off"<<"select Upload with put.gd instead.";
+ }
+ void privateSharingShowsTheEntryAndSaysWhy() {
+  QFETCH(QString,mode);QFETCH(QString,instead);
+  Fixture f(mode=="off"?QJsonObject{}:QJsonObject{{"mode",mode}},"private");f.operations->setInstallation("appimage");PUTGD_TRY_VERIFY(f.operations->ready());
+  QVERIFY(f.operations->encryptedEntryState()["shown"].toBool());
+  const auto refusal=f.operations->encryptRefusal(QString::fromLatin1(OperationService::fileManagerAction),{},"appimage");
+  QCOMPARE(refusal.code,QString("encrypt_needs_link"));
+  QCOMPARE(refusal.message,"Encrypted files open only from their link, and Sharing is set to Private upload. Change Sharing in Settings → Capture, or "+instead);
+  // putgd-cli and MCP keep the general wording.
+  QVERIFY(f.operations->encryptRefusal(QString::fromLatin1(OperationService::fileManagerAction)).message.endsWith("or turn off Encrypt to upload it privately."));
+ }
  // A private upload gets no link, and an encrypted file opens only from its link: it is refused
  // before encrypting, never sent, and the editor's toggle says why.
  void privateUploadIsNeverEncrypted() {

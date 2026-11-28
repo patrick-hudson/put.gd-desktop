@@ -129,8 +129,17 @@ public:
  // destination whose encrypted-page check hasn't passed is refused before anything is captured or
  // sent, saying why and what to do; empty otherwise. action is an action name, or the file
  // manager's for upload.files with its profileId and installation; another installation's request
- // gets installation_mismatch first, as uploadFiles answers it.
+ // gets installation_mismatch first, as uploadFiles answers it. #2136: upload.files is also refused
+ // up front where its destination can't encrypt at all (encrypt_unavailable, encrypt_needs_link).
  Error encryptRefusal(const QString& action,const QString& profileId={},const QString& installation={}) const;
+ // #2136: whether file managers show "Upload encrypted with put.gd". {shown, reason?, message?,
+ // provider?, profileId?} for the destination Upload with put.gd goes to (FileUploads::resolve).
+ // It hides only where encrypting can't work whatever is tested: no destination at all
+ // (reason no_destination), or one whose type or settings can't serve an encrypted page
+ // (encrypt_unavailable: Proton Drive, Nextcloud, SFTP without a Link address). An untested
+ // destination, private sharing and several destinations without a capture default show it, and
+ // choosing it says what to change.
+ QJsonObject encryptedEntryState() const;
  // #2119: a person's menu entry was refused by encryptRefusal; emits encryptCheckRequired.
  void announceEncryptCheckRequired(const QString& profileId) {if(!profileId.isEmpty())emit encryptCheckRequired(profileId);}
  // Tests may point encrypting at another putgd-cli.

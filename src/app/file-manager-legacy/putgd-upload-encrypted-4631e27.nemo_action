@@ -1,0 +1,10 @@
+# "Upload encrypted with put.gd" in Nemo (#2119), beside "Upload with put.gd":
+# files and folders in any location. Nemo escapes each %F path itself; quotes
+# around it would break names.
+[Nemo Action]
+Name=Upload encrypted with put.gd
+Comment=Upload the selected items as encrypted links with put.gd
+Exec=/usr/bin/putgd-launcher --upload --encrypt -- %F
+Icon-Name=putgd
+Selection=notnone
+Extensions=any;
