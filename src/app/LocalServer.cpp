@@ -693,7 +693,7 @@ void LocalServer::noteOutcome(const QString& method,const QJsonObject& p,Error& 
   {"delete.prepare","deletion"},{"delete.confirm","deletion"},{"delete.retry","deletion"},{"delete.cancel","deletion"},
   {"operation.retry","upload"},{"operation.retryLocalSave","local_save"},{"operation.cancel","upload"},{"operation.encrypt","upload"},{"upload.files","upload"},
   {"recording.start","recording"},{"recording.stop","recording"},{"recording.upload","recording"},{"recording.saveCopy","recording"},
-  {"diagnostics.bundle","diagnostics"},{"settings.save","settings_save"},{"settings.patch","settings_save"},{"settings.reorderProfiles","settings_save"},{"settings.importUploader","settings_save"},
+  {"diagnostics.bundle","diagnostics"},{"operation.reportFalseAlarm","diagnostics"},{"settings.save","settings_save"},{"settings.patch","settings_save"},{"settings.reorderProfiles","settings_save"},{"settings.importUploader","settings_save"},
   {"history.clear","history"},{"history.forget","history"},{"cache.clear","history"},{"action.invoke",""}};
  if(!kinds.contains(method))return;
  // A diagnostics preview writes nothing; its refusal is the dialog's own message.

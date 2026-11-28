@@ -15,6 +15,7 @@
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QScopeGuard>
 #include "fixtures/Waits.h"
 using namespace putgd;
 namespace {
@@ -420,6 +421,18 @@ private slots:
   QVERIFY(bundles.saved(custom));QVERIFY(bundles.saved(out.path()+"/./putgd-diagnostics-r9.zip"));QVERIFY(!bundles.saved(out.filePath("other.zip")));
   done=false;server.dispatch({{"schemaVersion",1},{"requestId","bad"},{"session",server.socketPath()},{"method","diagnostics.bundle"},{"params",QJsonObject{{"since","forever"}}}},[&](Error e,QJsonObject){error=e;done=true;});
   PUTGD_TRY_VERIFY(done);QCOMPARE(error.code,QString("invalid_request"));
+  // #2134: the logs.clear session method also removes the false-alarm reports and says how many. Here, with the one
+  // LocalServer this process may have (its HistoryService shuts the operations down), and last: it clears the logs.
+  FalseAlarmReports reports(dir_.filePath("state/false-alarms-clear"));operations_->setFalseAlarmReports(&reports);
+  const auto restore=qScopeGuard([this]{operations_->setFalseAlarmReports(nullptr);});
+  const QByteArray png=QByteArray("\x89PNG\r\n\x1a\n",8)+QByteArray(500,'o');
+  const QJsonObject helper{{"reportedFrom","prompt"},{"image",QJsonObject{{"width",10},{"height",10}}},{"check",QJsonObject{}},{"recognition",QJsonObject{}},{"findings",QJsonArray{}},{"words",QJsonObject{}},{"codes",QJsonArray{}}};
+  error={};const auto saved=reports.save(png,"png",png,FalseAlarmReports::compose(helper,{},error),error);QVERIFY2(!error,qPrintable(error.message));
+  done=false;
+  server.dispatch({{"schemaVersion",1},{"requestId","clear"},{"session",server.socketPath()},{"method","logs.clear"},{"params",QJsonObject{}}},[&](Error e,QJsonObject r){error=e;result=r;done=true;});
+  PUTGD_TRY_VERIFY_WITH_TIMEOUT(done,30000);QVERIFY2(!error,qPrintable(error.code+": "+error.message));
+  QCOMPARE(result["removedReports"].toInt(),1);QVERIFY(result["removedReportBytes"].toDouble()>=2*png.size());QVERIFY(result.contains("removedFiles"));
+  QVERIFY(!QFileInfo::exists(saved.path));QCOMPARE(reports.list()["count"].toInt(),0);
  }
 };
 QTEST_GUILESS_MAIN(DiagnosticsBundleContract)

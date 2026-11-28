@@ -241,7 +241,18 @@
        "required": ["engineStartMs", "recognizeMs"],
        "properties": {"engineStartMs": {"type": "integer", "minimum": 0}, "recognizeMs": {"type": "integer", "minimum": 0}}
       },
-      "detection": {"$ref": "#/$defs/detection"}
+      "detection": {"$ref": "#/$defs/detection"},
+      "engine": {
+       "type": "object",
+       "additionalProperties": false,
+       "required": ["version", "scale", "bands"],
+       "properties": {
+        "version": {"type": "string", "minLength": 1, "maxLength": 64, "pattern": "^[ -~]+$"},
+        "scale": {"type": "number", "minimum": 0, "maximum": 64},
+        "bands": {"type": "integer", "minimum": 0, "maximum": 100000}
+       },
+       "description": "#2134: the engine's own version string, the largest scale a panel was read at (1 is the image's size) and the number of bands. Present when the engine says; a false-alarm report records it."
+      }
      }
     }
    }

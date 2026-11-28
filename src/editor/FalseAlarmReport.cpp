@@ -66,6 +66,8 @@ QJsonObject build(const Input& input){
   kept=QList<int>(matched.cbegin(),matched.cend());std::sort(kept.begin(),kept.end());
   if(kept.size()>maximumWords)kept.resize(maximumWords);
   trimmed=report(input,kept);
+  // Still over: fewer listed words, halving, until it fits or none are left.
+  while(!kept.isEmpty()&&QJsonDocument(trimmed).toJson(QJsonDocument::Compact).size()>maximumBytes){kept.resize(kept.size()/2);trimmed=report(input,kept);}
  }
  return trimmed;
 }

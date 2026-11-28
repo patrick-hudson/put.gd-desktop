@@ -102,8 +102,9 @@ add_library(putgd_ui STATIC src/ui/MainWindow.cpp src/ui/ErrorLogPage.cpp src/ui
   src/ui/HistoryWindow.cpp src/ui/HistoryModel.cpp src/ui/QrCodeWindow.cpp)
 target_link_libraries(putgd_ui PUBLIC putgd_core putgd_client putgd_ui_state putgd_visual putgd_fonts putgd_appearance putgd_file_dialog PRIVATE putgd_capture_style_render putgd_s3_wire putgd_host_open putgd_shortcut_keyboard putgd_preview_reader)
 # Editing model and canvas for the on-demand editor helper; no storage or IPC.
-# #1941: Quick redact's matcher alone (Qt Core and Gui, no widgets), so the resident can withhold a decoded code
-# that holds a secret from text.inspect.
+# #1941: Quick redact's matcher (Qt Core and Gui, no widgets), so the resident can withhold a decoded code
+# that holds a secret from text.inspect; #2134: and the false-alarm report builder the editor helper runs on its
+# matches, kept here for the same reason (no widgets, unit-testable alone).
 add_library(putgd_quick_redact STATIC src/editor/QuickRedact.cpp src/editor/FalseAlarmReport.cpp)
 target_include_directories(putgd_quick_redact PUBLIC src)
 target_link_libraries(putgd_quick_redact PUBLIC Qt6::Gui putgd_build_options)

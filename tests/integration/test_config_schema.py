@@ -280,5 +280,23 @@ class ConfigurationSchema(unittest.TestCase):
                         resident.wait(timeout=5)
 
 
+
+class TextHelperProtocolSchema(unittest.TestCase):
+    # #2134: every example of the text-job helper protocol is judged by schemas/text-recognition.schema.json
+    # as the example says, including the output's engine member.
+    def test_helper_protocol_examples(self):
+        root = Path(__file__).resolve().parents[2]
+        schema = json.loads((root / 'schemas/text-recognition.schema.json').read_text(encoding='utf-8'))
+        examples = json.loads((root / 'tests/fixtures/text/helper-protocol.json').read_text(encoding='utf-8'))
+        kinds = set()
+        for case in examples['cases']:
+            kinds.add(case['kind'])
+            validator = Draft202012Validator({**schema, '$ref': '#/$defs/helper/$defs/' + case['kind']})
+            with self.subTest(case['name']):
+                self.assertEqual(validator.is_valid(case['value']), case['valid'])
+        self.assertIn('output', kinds)
+        self.assertTrue(any('engine' in case['value'] and case['valid'] for case in examples['cases'] if case['kind'] == 'output'))
+
+
 if __name__ == '__main__':
     unittest.main()
