@@ -10,8 +10,8 @@ desktop notifications** is off. History manages the uploads afterwards.
 There is no confirmation step and no extra "uploading" notice.
 
 **Upload encrypted with put.gd** sits alongside it in every menu that has the
-entry (most file managers list it right after; older Dolphin sorts the two
-alphabetically) and uploads the same selection as encrypted links ([Encrypted
+entry (most file managers list it right after; Dolphin's KF6 packages list it
+further down, among its plugin actions) and uploads the same selection as encrypted links ([Encrypted
 uploads](#encrypted-uploads), #2119). Where the destination can't encrypt at
 all, file managers that can hide it do ([When the encrypted entry
 hides](#when-the-encrypted-entry-hides), #2136).
@@ -414,7 +414,10 @@ changes. File managers read it at every menu and never call the resident:
 | PCManFM-Qt | `ShowIfTrue=` with the same test | one `/bin/sh` |
 | Dolphin and Konqueror on KF6, DEB/RPM (Ubuntu 26.04, Debian 13, Fedora 44 and 45, Arch) | The `putgd` KFileItemAction plugin, `kf6/kfileitemaction/putgd.so`, leaves its action out | one `access()` |
 
-A change shows at the next menu, with no file manager restart. Everywhere else
+A change needs no file manager restart. Nemo, PCManFM-Qt and Dolphin check the
+marker at every menu; Files and Caja ask their plugins again when the selection
+changes, so a menu reopened on the same selection still shows the earlier
+answer until another item is selected. Everywhere else
 the entry stays, and choosing it is refused before anything is copied with the
 destination's reason: Dolphin on Ubuntu 24.04 and with the AppImage (KF6
 service menus have no condition), Thunar's Send To (read once, no variables),
@@ -426,14 +429,20 @@ in the KIO service menu, which they install without its encrypted action, and
 the plugin offers **Upload encrypted with put.gd**. Its name, icon and command
 come from that service menu's `putgdUploadEncrypted` action at build time, and
 KIO runs the command as it runs service menus, so remote items get KIOFuse or
-kioexec paths. KIO offers plugins only for a selection whose items share one
-type, so a selection of files and folders together shows no encrypted entry in
-Dolphin. **Upload with put.gd** still does. The plugin links KF6 KIO like any
-Dolphin plugin, but the packages don't depend on KDE: the RPM leaves the KF6
-libraries out of its requirements, and the DEB's dependency scan reads a
-`shlibs.local`, written at build time, that names them with no dependency. Where KIO isn't installed the plugin
-is simply unused. Plugins are on by default. Dolphin's **Configure → Context
-Menu** lists it as **Upload encrypted with put.gd**.
+kioexec paths. Dolphin lists the plugin's entry among its other plugin actions
+(after Share and Compress), not right after **Upload with put.gd**. It shows for
+files, folders and a selection of both (checked with KIO 6.13, 6.24 and 6.31),
+and in Plasma's desktop icons too. The plugin links KF6 KIO like any Dolphin
+plugin, because Plasma's desktop loads KIO with local symbols, but the packages
+don't depend on KDE: the RPM leaves the KF6 libraries out of its requirements,
+and the DEB's dependency scan reads a `shlibs.local`, written at build time,
+that names them with no dependency. Where KIO isn't installed the plugin is
+simply unused. When the package moves an AppImage's old menu copies aside
+(#2132), this plain service menu together with the package's plugin counts as
+the package offering both entries. The plugin must then be a regular file
+owned, with its library folder, by root, like the package's other files.
+Plugins are on by default, and Dolphin's **Configure → Context Menu** lists it
+as **Upload encrypted with put.gd**.
 
 `capabilities.uploadFiles.encryptedEntry` and
 `diagnostics.fileManagerMenu.encryptedEntry` report the state as
