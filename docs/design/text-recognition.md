@@ -2120,7 +2120,8 @@ or upload the text as text. The image itself is what uploads or is saved locally
 choice. The resident gets findings only: kinds with counts, whether the check finished and why not, and
 the prompt number. It logs the check's start, outcome, findings and duration. The journal,
 observations, `operation.inspect` and diagnostics carry the same findings and nothing more, up to
-the decision; `operation.decide` answers only `decided` and `operationId`. The panel shows kinds and counts. After **Open in editor** the
+the decision, apart from a false-alarm report's state and name (`sensitive.falseAlarm`) once **Not
+sensitive** was selected; `operation.decide` answers only `decided` and `operationId`. The panel shows kinds and counts. After **Open in editor** the
 check's document becomes an ordinary editor. When the check placed no marks (it couldn't finish, and
 found nothing), the editor still holds the check's recognition result, and `editor.inspect` can return
 those words to the same-user caller that asks, without another recognition run. Placing any suggested
@@ -2133,7 +2134,8 @@ and the recognized text. It is saved only when the user selects **Not sensitive*
 [diagnostics.md](diagnostics.md#an-exception-to-the-diagnostics-rules) records the exception and its
 bounds. A finished check that found only **Redact automatically** kinds uploads with no panel and
 keeps no original, so it has no report.
-The report's pictures and text are unredacted: they show whatever was on screen.
+The report's original image and recognized text are unredacted and show whatever the capture held;
+only `covered.png` has the suggested covers over it.
 
 ### Cost
 
@@ -2201,8 +2203,9 @@ not checked (the option off, Edit & upload, a local-only capture) costs nothing.
 Every interactive capability has a session method, a `putgd-cli` form (the CLI forwards any
 method as it is) and an MCP tool with strict validation, `additionalProperties: false`.
 `schemas/text-recognition.schema.json` states every
-helper message and session method as data, with examples under `tests/fixtures/text/`, which
-`tests/integration/test_config_schema.py` checks against it. The helper's output carries an
+helper message and session method as data, with examples under `tests/fixtures/text/`.
+`tests/integration/test_config_schema.py` checks the helper protocol's examples
+(`helper-protocol.json`) against it. The helper's output carries an
 optional `engine` member, `{version, scale, bands}` (#2134): Tesseract's own version string, the
 largest scale a panel was read at and the number of bands, which a false-alarm report records. A
 parameter that names an operation is spelled `id`. The recognition methods reply at once and are

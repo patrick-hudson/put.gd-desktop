@@ -649,7 +649,7 @@ A preview writes nothing, so it takes none of `upload`, `profileId` and `copyLin
   before it was accepted to ten minutes after its last record, and, when asked for, that
   operation's false-alarm reports. `since` is ignored.
 - **`since`:** without `operation`, the failed, partial and interrupted operations
-  created in this window, and the false-alarm reports created in it, together with completed uploads whose link did not reach
+  created in this window, and, when asked for, the false-alarm reports created in it, together with completed uploads whose link did not reach
   the clipboard (`copyStatus` `suppressed`, `failed` or `partial`, or `no_result`
   while an item still has a link; #473), newest first, at most 50, and the window's
   log records. `1m` to
