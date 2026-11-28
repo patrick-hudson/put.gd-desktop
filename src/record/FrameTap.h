@@ -119,14 +119,17 @@ private:
         double loopCpu = 0, loopWaited = 0;
         ThreadSpan grab, copy;
     };
-    // On a streaming thread, after each frame: that thread's times, while the load is measured.
+    // On a streaming thread, after each frame: that thread's times, while the
+    // load is measured. The copy's is noted under the mailbox lock: the lock
+    // order is the mailbox's, then loadMutex_, never the other way.
     void noteThread(ThreadSpan& span);
     static void spanDelta(const ThreadSpan& from, const ThreadSpan& to, quint64& frames, double& cpu, double& waited, bool& known);
     // The loop's thread, under the mailbox lock: the times now (loadMutex_ held).
     Times timesNow(qint64 taken);
     // The loop's thread, under the mailbox lock, after the pace counters moved:
-    // a window that closed is kept, and the next one starts now.
-    void markWindows(bool closed, bool begun);
+    // a window that closed is kept, and the next one starts now. `taking`: the
+    // loop is taking a frame, which counts in the window it closes.
+    void markWindows(bool closed, bool begun, bool taking);
     // ximagesrc's streaming thread, after each grab.
     static GstPadProbeReturn grabbed(GstPad*, GstPadProbeInfo*, gpointer self);
     GstElement* pipeline_ = nullptr;

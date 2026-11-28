@@ -138,7 +138,7 @@ std::optional<RunFrame> FrameTap::freshFrame(int timeoutMs) {
         std::lock_guard lock(mailbox_);
         givenCount_ = arrivedCount_;
         pace_.begin(nowMs());
-        if (loadOpen_.load(std::memory_order_relaxed)) markWindows(false, true);
+        if (loadOpen_.load(std::memory_order_relaxed)) markWindows(false, true, false);
     }
     const int interval = 1000 / std::max(1, source_.fps) + 1;
     for (;;) {
@@ -225,6 +225,11 @@ void FrameTap::take(GstSample* sample) {
         latestHeight_ = height;
         latestAt_ = nowMs();
         latestSession_ = GST_BUFFER_OFFSET(buffer);
+        // While the load is measured, this frame's copy is in the measure
+        // before the frame is published: a loop that takes it, notified or
+        // not, closes a pace window on timing that includes it (#2099).
+        // Measurement before the mailbox's in the lock order, as in markWindows.
+        noteThread(copy_);
         ++arrivedCount_;
         if (watching_) {
             pace_.arrived();
@@ -242,11 +247,7 @@ void FrameTap::take(GstSample* sample) {
         }
     }
     gst_video_frame_unmap(&frame);
-    // This frame's copy is in the measure before the loop can take it and
-    // close a pace window on it (#2099).
-    if (!published) return;
-    noteThread(copy_);
-    fresh_.notify_all();
+    if (published) fresh_.notify_all();
 }
 
 // The newest frame the loop has not had yet, or nothing after the timeout.
@@ -262,7 +263,7 @@ std::optional<RunFrame> FrameTap::nextFrame(int timeoutMs) {
     givenCount_ = arrivedCount_;
     const uint64_t closed = pace_.closed(), begun = pace_.begun();
     const FramePace::Verdict pace = watching_ ? pace_.taken(nowMs(), missed) : FramePace::Verdict::Keep;
-    if (loadOpen_.load(std::memory_order_relaxed) && (pace_.closed() != closed || pace_.begun() != begun)) markWindows(pace_.closed() != closed, pace_.begun() != begun);
+    if (loadOpen_.load(std::memory_order_relaxed) && (pace_.closed() != closed || pace_.begun() != begun)) markWindows(pace_.closed() != closed, pace_.begun() != begun, true);
     // The loop's copy: the mailbox takes the next frame while the loop works on this one.
     std::swap(frame_, latest_);
     const int width = latestWidth_, height = latestHeight_;
@@ -331,8 +332,9 @@ void FrameTap::spanDelta(const ThreadSpan& from, const ThreadSpan& to, quint64& 
     known = from.known && to.known && frames > 0;
 }
 
-void FrameTap::markWindows(bool closed, bool begun) {
-    const qint64 taken = frames_.load();
+void FrameTap::markWindows(bool closed, bool begun, bool taking) {
+    // The frame the loop is taking now closes the window: it counts in it.
+    const qint64 taken = frames_.load() + (taking ? 1 : 0);
     std::lock_guard lock(loadMutex_);
     if (!loadOpen_.load(std::memory_order_relaxed)) return;
     const Times now = timesNow(taken);
