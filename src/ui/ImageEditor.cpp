@@ -84,18 +84,8 @@ public:
   return QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());
  }
  void discardCopy(){if(staging_.descriptor()>=0)::unlinkat(staging_.descriptor(),"copy.png",0);}
- // #2134: a false-alarm report's report.json or report-covered.png, written once beside the output, which the
- // resident reads, checks and removes. Returns the digest, or empty.
- QString writeReport(const char* name,const QByteArray& bytes){
-  if(!intact()||bytes.isEmpty())return {};
-  const int fd=::openat(staging_.descriptor(),name,O_WRONLY|O_CREAT|O_EXCL|O_CLOEXEC|O_NOFOLLOW,0600);
-  if(fd<0)return {};
-  qint64 written=0;
-  while(written<bytes.size()){const auto n=::write(fd,bytes.constData()+written,size_t(bytes.size()-written));if(n<0&&errno==EINTR)continue;if(n<=0)break;written+=n;}
-  if(::fchmod(fd,0600)!=0||written!=bytes.size()||::fsync(fd)!=0){::close(fd);::unlinkat(staging_.descriptor(),name,0);return {};}
-  ::close(fd);
-  return QString::fromLatin1(QCryptographicHash::hash(bytes,QCryptographicHash::Sha256).toHex());
- }
+ // #2134: a false-alarm report's report.json and report-covered.png are written by writeReportAt() through
+ // duplicateDirectory(); the resident reads, checks and removes them.
  void discardReport(){if(staging_.descriptor()>=0){::unlinkat(staging_.descriptor(),"report.json",0);::unlinkat(staging_.descriptor(),"report-covered.png",0);}}
  // A duplicate of the staging directory's descriptor for a report's worker (N5); -1 when staging isn't intact.
  int duplicateDirectory(){return intact()&&staging_.descriptor()>=0?::fcntl(staging_.descriptor(),F_DUPFD_CLOEXEC,0):-1;}

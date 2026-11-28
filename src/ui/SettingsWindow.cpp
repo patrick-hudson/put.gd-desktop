@@ -605,8 +605,10 @@ public:
  QJsonObject params(bool preview)const{
   QJsonObject p{{"includeNames",includeNames_->isChecked()}};if(!operation_.isEmpty())p["operation"]=operation_;if(!custom_.isEmpty())p["output"]=custom_;
   if(preview)p["preview"]=true;else p["notify"]=true;
-  // #2134: the package holds the false-alarm reports the preview counted, and no other, so the notice shown is true.
-  if(!preview){QJsonArray names;for(const auto& name:preview_.value("falseAlarmReports").toObject().value("names").toArray())names.append(name);p["falseAlarmReports"]=names;}
+  // #2134: the preview asks what reports there are, for the notice; the package holds only the reports the preview
+  // named (fewer when one is gone or no longer whole by then), never one the notice didn't count.
+  if(preview)p["falseAlarmReports"]=true;
+  else{QJsonArray names;for(const auto& name:preview_.value("falseAlarmReports").toObject().value("names").toArray())names.append(name);p["falseAlarmReports"]=names;}
   if(!preview&&uploading()){p["upload"]=true;p["copyLink"]=true;p["profileId"]=target_["profileId"].toString();}
   return p;
  }
@@ -644,7 +646,7 @@ public:
    else {
     saved_=saved;save_->setText("Saved");close_->setText("Close");show_->show();
     auto text="Saved "+QFileInfo(saved["path"].toString()).fileName()+" ("+ByteSize::summary(saved["bytes"].toInteger())+") in "+QDir::toNativeSeparators(QFileInfo(saved["path"].toString()).absolutePath())+".";
-    // #2134: what this package holds, as saved, not as previewed: a report saved since the preview is in it too.
+    // #2134: what this package holds, as saved: only the reports the preview named, and fewer if one was gone by then.
     if(const int reports=saved.value("falseAlarmReports").toObject().value("included").toInt();reports>0)
      text+=(reports==1?QString("\nIt includes 1 false-alarm report, with pictures of your screen and the text read from them."):QString("\nIt includes %1 false-alarm reports, with pictures of your screen and the text read from them.").arg(reports));
     // The local copy is kept whatever happens to the upload.

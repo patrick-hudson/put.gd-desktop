@@ -300,7 +300,8 @@ class ProductionCliTests(unittest.IsolatedAsyncioTestCase):
                     # #2134: Not sensitive, the reports it saved, and a package without them.
                     ('report_false_alarm', {'id': 'synthetic-operation'}, 'operation.reportFalseAlarm', {'id': 'synthetic-operation'}),
                     ('list_false_alarm_reports', {}, 'diagnostics.falseAlarms', {}),
-                    ('create_diagnostics_bundle', {'preview': True, 'include_false_alarm_reports': False}, 'diagnostics.bundle', {'preview': True, 'falseAlarmReports': False}),
+                    ('create_diagnostics_bundle', {'preview': True, 'include_false_alarm_reports': True}, 'diagnostics.bundle', {'preview': True, 'falseAlarmReports': True}),
+                    ('create_diagnostics_bundle', {'preview': True, 'include_false_alarm_reports': False}, 'diagnostics.bundle', {'preview': True}),
                     ('create_diagnostics_bundle', {'include_false_alarm_reports': ['putgd-false-alarm-20261128T045729017Z-9b5224a9']},
                      'diagnostics.bundle', {'falseAlarmReports': ['putgd-false-alarm-20261128T045729017Z-9b5224a9']}),
                     ('create_diagnostics_bundle', {'include_false_alarm_reports': []}, 'diagnostics.bundle', {'falseAlarmReports': []}),

@@ -45,6 +45,7 @@
 #include <QTimer>
 #include <QFontComboBox>
 #include <QSignalSpy>
+#include <cstdlib>
 #include <QTest>
 #include "fixtures/Waits.h"
 #include "fixtures/WheelProbe.h"
@@ -278,6 +279,14 @@ private slots:
   QSignalSpy asked(&window,&EditorWindow::falseAlarmRequested);button->click();QCOMPARE(asked.size(),1);
   auto* quick=window.findChild<QToolButton*>("quickRedact");
   PUTGD_TRY_VERIFY(button->width()>=button->sizeHint().width()&&quick->width()>=quick->sizeHint().width());
+  // A wide side pane: side by side on one row. The default narrow pane: stacked, Not sensitive under Quick redact,
+  // neither clipped.
+  const auto at=[&](QWidget* w){return QRect(w->mapTo(&window,QPoint(0,0)),w->size());};
+  auto* splitter=window.findChild<QSplitter*>();QVERIFY(splitter);const auto sizes=splitter->sizes();
+  splitter->setSizes({600,560});
+  PUTGD_TRY_VERIFY(at(button).left()>=at(quick).right()&&std::abs(at(button).center().y()-at(quick).center().y())<at(quick).height());
+  splitter->setSizes(sizes);
+  PUTGD_TRY_VERIFY(at(button).top()>=at(quick).bottom()&&button->width()>=button->sizeHint().width()&&quick->width()>=quick->sizeHint().width());
   window.showFalseAlarm("saved","Report saved for diagnostics.","putgd-false-alarm-20261128T000000000Z-0123abcd");
   QCOMPARE(window.falseAlarmState()["name"].toString(),QString("putgd-false-alarm-20261128T000000000Z-0123abcd"));PUTGD_TRY_VERIFY(!button->isVisible());
   window.allowClose();window.close();

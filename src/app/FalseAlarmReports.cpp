@@ -266,9 +266,11 @@ FalseAlarmReports::Saved FalseAlarmReports::save(const QByteArray& original,cons
   // Retention as for the logs, with the lock already held.
   const int days=days_.load();const qint64 budget=bytes_.load();int removed=0;
   auto list=entries(directory_);
-  for(auto it=list.begin();it!=list.end();){if(it->name!=name&&it->created<now.addDays(-days)){removeReport(it->path);++removed;it=list.erase(it);}else ++it;}
+  // A report counts as removed only once its folder is gone.
+  const auto drop=[&](const Entry& entry){bool gone=false;removeReport(entry.path,&gone);if(gone)++removed;return gone;};
+  for(auto it=list.begin();it!=list.end();){if(it->name!=name&&it->created<now.addDays(-days)){drop(*it);it=list.erase(it);}else ++it;}
   qint64 total=0;for(const auto& entry:list)total+=entry.bytes;
-  for(auto it=list.begin();it!=list.end()&&total>budget;){if(it->name==name){++it;continue;}removeReport(it->path);total-=it->bytes;++removed;it=list.erase(it);}
+  for(auto it=list.begin();it!=list.end()&&total>budget;){if(it->name==name){++it;continue;}if(drop(*it))total-=it->bytes;it=list.erase(it);}
   return removed;
  }();
  return saved;
@@ -280,9 +282,11 @@ int FalseAlarmReports::prune(const QDateTime& now,const QString& keep) const {
  auto list=entries(directory_);
  // The newest report always stays, like the log file being written.
  const auto newest=keep.isEmpty()&&!list.isEmpty()?list.last().name:keep;
- for(auto it=list.begin();it!=list.end();){if(it->name!=newest&&it->created<now.addDays(-days)){removeReport(it->path);++removed;it=list.erase(it);}else ++it;}
+ // A report counts as removed only once its folder is gone.
+ const auto drop=[&](const Entry& entry){bool gone=false;removeReport(entry.path,&gone);if(gone)++removed;return gone;};
+ for(auto it=list.begin();it!=list.end();){if(it->name!=newest&&it->created<now.addDays(-days)){drop(*it);it=list.erase(it);}else ++it;}
  qint64 total=0;for(const auto& entry:list)total+=entry.bytes;
- for(auto it=list.begin();it!=list.end()&&total>budget;){if(it->name==newest){++it;continue;}removeReport(it->path);total-=it->bytes;++removed;it=list.erase(it);}
+ for(auto it=list.begin();it!=list.end()&&total>budget;){if(it->name==newest){++it;continue;}if(drop(*it))total-=it->bytes;it=list.erase(it);}
  // A hidden folder left by a write that never finished (a crash), after an hour.
  for(const auto& path:partialFolders(directory_))if(QFileInfo(path).lastModified().toUTC()<now.addSecs(-3600))removeReport(path);
  return removed;

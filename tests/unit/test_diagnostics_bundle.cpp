@@ -283,7 +283,7 @@ private slots:
   // A package takes whole reports in its own allowance: one that doesn't fit is counted, not cut.
   QCOMPARE(FalseAlarmReports::select(folder,now.addDays(-1),now.addDays(1),{},100).omitted,1);
   auto bundle=context();bundle.falseAlarmsDirectory=folder;
-  BundleRequest request;request.output=dir_.filePath("false-alarms-in.zip");
+  BundleRequest request;request.output=dir_.filePath("false-alarms-in.zip");request.falseAlarmReports=true;
   auto result=build(bundle,request,error);QVERIFY2(!error,qPrintable(error.message));
   QCOMPARE(result["falseAlarmReports"].toObject()["included"].toInt(),1);
   auto files=unzip(result["path"].toString());
@@ -369,7 +369,8 @@ private slots:
   BundleRequest request;QVERIFY(!DiagnosticsBundles::parse({},request));QCOMPARE(request.sinceMs,7LL*86400000);
   QVERIFY(!DiagnosticsBundles::parse({{"operation","x"},{"since","24h"},{"includeNames",true},{"output","/tmp/a.zip"}},request));
   QCOMPARE(request.sinceMs,24LL*3600000);QVERIFY(request.includeNames);
-  QVERIFY(request.falseAlarmReports);QVERIFY(!DiagnosticsBundles::parse({{"falseAlarmReports",false}},request));QVERIFY(!request.falseAlarmReports);
+  // #2134: reports only when asked for: History's, the tray's and the error log's saves send nothing and get none.
+  QVERIFY(!request.falseAlarmReports);QVERIFY(!DiagnosticsBundles::parse({{"falseAlarmReports",true}},request));QVERIFY(request.falseAlarmReports);
   for(const auto& params:QList<QJsonObject>{{{"since","0d"}},{{"since","366d"}},{{"since","7"}},{{"since",7}},{{"output","relative.zip"}},{{"includeNames","yes"}},{{"operation",""}},{{"extra",1}},{{"profileId","x"}},{{"copyLink",true}},{{"upload",1}},{{"falseAlarmReports","no"}}})
    QCOMPARE(DiagnosticsBundles::parse(params,request).code,QString("invalid_request"));
  }
@@ -388,10 +389,10 @@ private slots:
   PUTGD_TRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,10000);QCOMPARE(client.exitCode(),0);
   QCOMPARE(received["method"].toString(),QString("diagnostics.bundle"));
   QCOMPARE(received["params"].toObject(),(QJsonObject{{"operation","synthetic-op"},{"since","24h"},{"includeNames",true},{"output",QDir(d.path()).absoluteFilePath("relative.zip")}}));
-  // #2134: --no-false-alarm-reports leaves the reports out.
-  received={};client.start(PUTGD_CLI_PATH,{"--socket",server.fullServerName(),"diagnostics.bundle","--no-false-alarm-reports"});
+  // #2134: --false-alarm-reports asks for the reports.
+  received={};client.start(PUTGD_CLI_PATH,{"--socket",server.fullServerName(),"diagnostics.bundle","--false-alarm-reports"});
   PUTGD_TRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,10000);QCOMPARE(client.exitCode(),0);
-  QCOMPARE(received["params"].toObject(),(QJsonObject{{"falseAlarmReports",false}}));
+  QCOMPARE(received["params"].toObject(),(QJsonObject{{"falseAlarmReports",true}}));
   // --upload [--profile ID] [--copy-link] (#123).
   received={};client.start(PUTGD_CLI_PATH,{"--socket",server.fullServerName(),"diagnostics.bundle","--upload","--profile","synthetic-s3","--copy-link"});
   PUTGD_TRY_COMPARE_WITH_TIMEOUT(client.state(),QProcess::NotRunning,10000);QCOMPARE(client.exitCode(),0);
