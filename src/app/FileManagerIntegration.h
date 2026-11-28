@@ -29,6 +29,7 @@ struct FileManagerContext {
  QString userRuntime; // the login's runtime directory, where its user manager listens; empty: /run/user/<uid>
  QString stateRoot;   // put.gd's state folder, for entries moved aside (#2132); empty: logging::stateRoot()
  QString replacedStamp; // tests: the backup folder's name under file-manager-replaced; empty: the current UTC time
+ uint systemOwner=0;    // who owns the package's menu files and their folders: root; tests use their own uid
 };
 struct FileManagerResult {
  Error error;               // e.g. {"cosmic_context_actions_unparseable",...}: nothing written to that file

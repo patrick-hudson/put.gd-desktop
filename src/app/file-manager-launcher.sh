@@ -111,8 +111,17 @@ remove_owned() {
     case $1 in
         # The launcher's own folder holds only put.gd's files.
         "$own_directory"/*) ours "$1" && rm -f -- "$1" ;;
-        *) ours "$1" && grep -Fq -- 'X-putgd-Managed=true' "$1" && rm -f -- "$1" ;;
     esac
+    return 0
+}
+
+# A menu entry elsewhere goes only while it still has the bytes put.gd wrote, which
+# the record keeps as "hash <sha256> <path>" (#2132). An edited entry, one another
+# install took over, or one without a recorded hash stays where it is.
+remove_exact() {
+    ours "$2" && grep -Fq -- 'X-putgd-Managed=true' "$2" || return 0
+    command -v sha256sum >/dev/null 2>&1 || return 0
+    [ "$(sha256sum <"$2" 2>/dev/null | cut -d ' ' -f 1)" = "$1" ] && rm -f -- "$2"
     return 0
 }
 
@@ -144,6 +153,10 @@ cleanup_missing() {
     while IFS= read -r line; do
         case $line in
             'file '*) remove_owned "${line#file }" ;;
+            'hash '*)
+                line=${line#hash }
+                remove_exact "${line%% *}" "${line#* }"
+                ;;
             'cosmic '*) cosmic=${line#cosmic } ;;
             'cosmic-line '*) [ -z "$cosmic" ] || remove_cosmic_line "$cosmic" "${line#cosmic-line }" ;;
         esac
