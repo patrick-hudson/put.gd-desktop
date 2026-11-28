@@ -666,6 +666,13 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
   const auto removed=reports?reports->clear():FalseAlarmReports::Removed{};
   result["removedReports"]=removed.reports;result["removedReportBytes"]=double(removed.bytes);
   if(removed.reports)logging::info(logApp(),"False alarm reports cleared",{{"reports",removed.reports},{"bytes",double(removed.bytes)}});
+  // A report still there afterwards is said, never passed over: the logs are cleared, the reports are not all gone.
+  if(removed.left){
+   auto details=result;details["reportsLeft"]=removed.left;
+   error={"false_alarm_clear_incomplete",removed.left<0?QStringLiteral("Logs cleared, but the false-alarm reports folder isn't put.gd's own folder, so its reports weren't deleted."):QStringLiteral("Logs cleared, but %1 false-alarm report folder(s) couldn't be deleted.").arg(removed.left),details};
+   logging::warning(logApp(),"False alarm reports not all cleared",{{"left",removed.left}});
+   return QJsonObject{};
+  }
   return result;},reply);
  // #2134: the saved false-alarm reports, without their contents.
  else if(method=="diagnostics.falseAlarms"){if(!p.isEmpty()){reply(invalid(),{});return;}auto* reports=operations_.falseAlarmReports();if(!reports){reply({"false_alarm_unavailable","Reports can't be saved here",{}},{});return;}operations_.background([reports](Error&){return reports->list();},reply);}

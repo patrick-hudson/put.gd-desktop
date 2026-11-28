@@ -285,7 +285,8 @@ EditorWindow::EditorWindow(editor::EditDocument& doc,QWidget* parent):QWidget(pa
   falseAlarm_=new QPushButton("Not sensitive",quickRedactRow_);falseAlarm_->setObjectName("editorFalseAlarm");Ui::role(falseAlarm_,"quiet");falseAlarm_->setAutoDefault(false);
   falseAlarm_->setToolTip("Save a report for diagnostics that the check found something that isn't sensitive");falseAlarm_->setAccessibleDescription(falseAlarm_->toolTip());falseAlarm_->hide();
   connect(falseAlarm_,&QPushButton::clicked,this,[this]{if(falseAlarmState_!="saving"&&falseAlarmState_!="saved")emit falseAlarmRequested();});
-  auto* row=new QHBoxLayout;row->setContentsMargins(0,0,0,0);row->addWidget(quickRedact_);row->addWidget(falseAlarm_);row->addStretch(1);layout->addLayout(row);
+  // Side by side where the pane has room for both; stacked otherwise (placeDocument), so neither label clips.
+  auto* row=new QBoxLayout(QBoxLayout::LeftToRight);row->setContentsMargins(0,0,0,0);row->addWidget(quickRedact_,0,Qt::AlignLeft);row->addWidget(falseAlarm_,0,Qt::AlignLeft);row->addStretch(1);layout->addLayout(row);quickRedactButtons_=row;
   auto* caution=Ui::label("Check the image before uploading. Detection can miss text.","secondary",quickRedactRow_);caution->setObjectName("quickRedactCaution");caution->setWordWrap(true);layout->addWidget(caution);
   quickRedactResult_=new QLabel(quickRedactRow_);quickRedactResult_->setObjectName("quickRedactResult");quickRedactResult_->setWordWrap(true);Ui::role(quickRedactResult_,"body");quickRedactResult_->hide();layout->addWidget(quickRedactResult_);
   falseAlarmResult_=Ui::label({},"secondary",quickRedactRow_);falseAlarmResult_->setObjectName("editorFalseAlarmResult");falseAlarmResult_->setWordWrap(true);falseAlarmResult_->hide();layout->addWidget(falseAlarmResult_);
@@ -681,6 +682,11 @@ void EditorWindow::placeDocument(){
  auto* cropButtons=qobject_cast<QBoxLayout*>(cropRow_->layout());
  const int cropWidth=findChild<QPushButton*>("applyCrop")->sizeHint().width()+findChild<QPushButton*>("cancelCrop")->sizeHint().width()+cropButtons->spacing();
  cropButtons->setDirection(cropWidth>available?QBoxLayout::TopToBottom:QBoxLayout::LeftToRight);
+ // #2134: Quick redact and Not sensitive, the same way.
+ if(quickRedactButtons_){
+  const int redactWidth=quickRedact_->sizeHint().width()+(falseAlarm_->isVisibleTo(this)?falseAlarm_->sizeHint().width()+quickRedactButtons_->spacing():0);
+  quickRedactButtons_->setDirection(redactWidth>available?QBoxLayout::TopToBottom:QBoxLayout::LeftToRight);
+ }
 }
 
 void EditorWindow::documentEdited(){canvas_->documentChanged();refresh();}
@@ -1310,18 +1316,21 @@ void EditorWindow::setRedactList(QStringList terms,QStringList patterns){
  if(quickRedactList_){quickRedactList_->setEnabled(!empty);quickRedactList_->setToolTip(empty?QStringLiteral("Add words or patterns in Settings → Capture → Text recognition"):QStringLiteral("Use words and patterns from Settings → Capture → Text recognition"));}
 }
 void EditorWindow::offerFalseAlarm(bool offered){
- falseAlarmOffered_=offered;falseAlarm_->setVisible(offered);
- if(!offered){falseAlarmResult_->hide();falseAlarmState_=QStringLiteral("none");}
+ falseAlarmOffered_=offered;falseAlarm_->setVisible(offered);falseAlarm_->setEnabled(offered);
+ if(!offered){falseAlarmResult_->hide();falseAlarmState_=QStringLiteral("none");falseAlarmName_.clear();}
+ QTimer::singleShot(0,this,&EditorWindow::placeDocument);
 }
-void EditorWindow::showFalseAlarm(const QString& state,const QString& text){
- falseAlarmState_=state;falseAlarm_->setEnabled(state=="failed");
- // Saved once: the button goes, and the line says where the report went.
+void EditorWindow::showFalseAlarm(const QString& state,const QString& text,const QString& name){
+ falseAlarmState_=state;falseAlarm_->setEnabled(state=="failed");if(!name.isEmpty())falseAlarmName_=name;
+ // Saved once: the button goes, and the line says so.
  falseAlarm_->setVisible(falseAlarmOffered_&&state!="saved");
  falseAlarmResult_->setText(text);Ui::role(falseAlarmResult_,state=="failed"?"danger":"secondary");falseAlarmResult_->setVisible(!text.isEmpty());
+ QTimer::singleShot(0,this,&EditorWindow::placeDocument);
 }
 QJsonObject EditorWindow::falseAlarmState() const {
  QJsonObject state{{"offered",falseAlarmOffered_},{"state",falseAlarmState_}};
  if(!falseAlarmResult_->text().isEmpty())state["message"]=falseAlarmResult_->text();
+ if(!falseAlarmName_.isEmpty())state["name"]=falseAlarmName_;
  return state;
 }
 int EditorWindow::removeSuggestions(){

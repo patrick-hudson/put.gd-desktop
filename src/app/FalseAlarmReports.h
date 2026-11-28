@@ -33,7 +33,9 @@ public:
  // Reports last written more than `days` ago go, then the oldest until the folder fits `bytes`; the newest
  // stays. Returns how many were removed.
  int prune(const QDateTime& now=QDateTime::currentDateTimeUtc(),const QString& keep={}) const;
- struct Removed {int reports=0;qint64 bytes=0;};
+ // `left`: report folders (and hidden half-written ones) that are still there afterwards; -1 when the folder
+ // itself isn't this user's own directory and was not touched.
+ struct Removed {int reports=0;qint64 bytes=0;int left=0;};
  Removed clear() const;
  // diagnostics.falseAlarms: {directory, reports [{name, created, bytes, operationId, reportedFrom, found,
  // covered}], count, bytes, retention {days, bytes}}, newest first. No text, no pictures.
@@ -41,7 +43,8 @@ public:
  // For a diagnostics package: whole reports, newest first, that fit `budget` bytes. With `operationId`,
  // that operation's reports; otherwise those created from `from` to `to`.
  struct Packed {QString name;QList<QPair<QString,QByteArray>> files;qint64 bytes=0;};
- struct Selection {QList<Packed> reports;int omitted=0;qint64 bytes=0;int eligible=0;};
+ // `invalid`: reports in the window that aren't whole (a file missing, extra or not as report.json records it).
+ struct Selection {QList<Packed> reports;int omitted=0;qint64 bytes=0;int eligible=0;int invalid=0;};
  static Selection select(const QString& directory,const QDateTime& from,const QDateTime& to,const QString& operationId,qint64 budget,bool read=true);
  static constexpr qint64 bundleBytes=64LL*1024*1024;
  // The settings a report records: the check's kinds, recognition languages, Unhinged mode, Quick redact's saved

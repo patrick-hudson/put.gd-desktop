@@ -300,7 +300,8 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
   // this worker staged, read back through its own pinned descriptor and checked against its digest.
   if(type=="falseAlarm"&&checking&&(prompting||editing)&&!finalizing&&!checkpoint){
    const auto id=payload["reportId"].toString();const auto from=payload["from"].toString();
-   if(payload.size()!=7||id.isEmpty()||id.size()>64||!(from=="prompt"||from=="editor")||!payload["json"].isObject()||!payload["covered"].isObject()){protocolFailed=true;return;}
+   // `from` names where the report was asked for, and must be where this check is: its prompt, or the editor it opened.
+   if(payload.size()!=7||id.isEmpty()||id.size()>64||from!=(editing?QStringLiteral("editor"):QStringLiteral("prompt"))||!payload["json"].isObject()||!payload["covered"].isObject()){protocolFailed=true;return;}
    const auto answer=[&](const Error& error,const QJsonObject& saved){
     auto frame=envelope(nonce);frame["reportId"]=id;frame["ok"]=!error;
     if(error){frame["code"]=error.code.left(64);frame["message"]=error.message.left(256);}else{frame["name"]=saved.value("name").toString().left(128);frame["bytes"]=QString::number(saved.value("bytes").toInteger());}
@@ -331,7 +332,8 @@ EditorResult EditorJob::supervise(const std::function<bool(QFile&)>& stage,const
    struct stat current{};
    if(::fstat(input.handle(),&current)||!sameFile(inputIdentity,current)||current.st_size!=inputIdentity.st_size||digest(input,inputIdentity.st_size)!=inputHash||!input.seek(0)){answer({"editor_io","The original image is no longer available",{}},{});return;}
    report.original=input.read(inputIdentity.st_size+1);
-   if(report.original.size()!=inputIdentity.st_size){answer({"editor_io","The original image is no longer available",{}},{});return;}
+   // The bytes saved are the bytes staged: their own digest, not only the file's a moment before.
+   if(report.original.size()!=inputIdentity.st_size||QString::fromLatin1(QCryptographicHash::hash(report.original,QCryptographicHash::Sha256).toHex())!=inputHash){answer({"editor_io","The original image is no longer available",{}},{});return;}
    report.suffix=report.original.startsWith("\xff\xd8\xff")?QStringLiteral("jpg"):QStringLiteral("png");
    const auto handler=session->reportHandler();
    if(!handler){answer({"false_alarm_unavailable","Reports can't be saved here",{}},{});return;}

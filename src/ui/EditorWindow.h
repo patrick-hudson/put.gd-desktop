@@ -238,7 +238,7 @@ public:
  // #2134: Not sensitive in the Redact tool's panel, offered in the editor the sensitive text check opened.
  // showFalseAlarm sets its line: "saving", "saved" or "failed" with the text to show.
  void offerFalseAlarm(bool offered);
- void showFalseAlarm(const QString& state,const QString& text);
+ void showFalseAlarm(const QString& state,const QString& text,const QString& name={});
  QJsonObject falseAlarmState() const;
 signals:
  void falseAlarmRequested();
@@ -334,7 +334,7 @@ private:
  void syncCaptureStyle();void changeCaptureStyle(const std::function<void(CaptureStyle&)>& change);
  QWidget* quickRedactRow_=nullptr;QToolButton* quickRedact_=nullptr;QLabel* quickRedactResult_=nullptr;bool quickRedacting_=false;
  QuickRedactRun lastQuickRedact_;
- QPushButton* falseAlarm_=nullptr;QLabel* falseAlarmResult_=nullptr;bool falseAlarmOffered_=false;QString falseAlarmState_=QStringLiteral("none");
+ QPushButton* falseAlarm_=nullptr;QLabel* falseAlarmResult_=nullptr;bool falseAlarmOffered_=false;QString falseAlarmState_=QStringLiteral("none"),falseAlarmName_;QBoxLayout* quickRedactButtons_=nullptr;
  QStringList redactTerms_,redactPatterns_;int quickRedactGestureWaitMs_=textjob::maximumDeadlineMs;QAction *quickRedactList_=nullptr,*quickRedactRemove_=nullptr;QLabel* suggested_=nullptr;
 };
 }

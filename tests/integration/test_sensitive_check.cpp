@@ -197,11 +197,29 @@ private slots:
   QCOMPARE(report["settings"].toObject()["quickRedact"].toObject()["terms"].toInt(),1);QVERIFY(!bytes.contains("synthetic-private-term"));
   // The panel's choices are all still there: the capture waits, and only one report is saved.
   QCOMPARE(f.inspect(id)["phase"].toString(),QString("sensitive_text_found"));QCOMPARE(f.provider->uploads.load(),0);
+  // F4: the operation says so, with the report's name.
+  PUTGD_TRY_COMPARE(f.inspect(id)["sensitive"].toObject()["falseAlarm"].toObject()["state"].toString(),QString("saved"));
+  QCOMPARE(f.inspect(id)["sensitive"].toObject()["falseAlarm"].toObject()["name"].toString(),saved.result["name"].toString());
   QCOMPARE(call([&](JsonReply r){f.operations->reportFalseAlarm(id,r);}).error.code,QString("false_alarm_already_saved"));
   QVERIFY(!call([&](JsonReply r){f.operations->decideSensitive(id,"upload",r);}).error);
   PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["state"].toString(),QString("completed"),20000);QCOMPARE(f.provider->uploads.load(),1);
   QCOMPARE(call([&](JsonReply r){f.operations->reportFalseAlarm(id,r);}).error.code,QString("false_alarm_unavailable"));
   QCOMPARE(reports.list()["count"].toInt(),1);
+ }
+ // #2134 F1: Redact and upload right after Not sensitive uploads as chosen: the report either was saved first or
+ // is dropped, and the session never fails.
+ void redactAndUploadRightAfterNotSensitiveStillUploads(){
+  Fixture f(page(card));PUTGD_TRY_VERIFY(f.operations->ready());
+  FalseAlarmReports reports(f.dir.filePath("state/false-alarms"));f.operations->setFalseAlarmReports(&reports);
+  const auto id=f.start();
+  QVERIFY(f.reaches(id,"sensitive_text_found"));
+  Call report;f.operations->reportFalseAlarm(id,[&](Error e,QJsonObject r){report={e,r,true};});
+  QVERIFY(!call([&](JsonReply r){f.operations->decideSensitive(id,"redact_upload",r);}).error);
+  PUTGD_TRY_COMPARE_WITH_TIMEOUT(f.inspect(id)["state"].toString(),QString("completed"),20000);
+  QCOMPARE(f.provider->uploads.load(),1);
+  PUTGD_TRY_VERIFY(report.done);
+  QVERIFY2(!report.error||QStringList({"editor_finalizing","editor_closed"}).contains(report.error.code),qPrintable(report.error.code+": "+report.error.message));
+  QCOMPARE(reports.list()["count"].toInt(),report.error?0:1);
  }
  // #2134: the editor the check opened offers Not sensitive too, with the check's findings and covers, not the edit.
  void notSensitiveInTheEditorTheCheckOpened(){

@@ -300,6 +300,49 @@ private slots:
   QCOMPARE(build(bundle,request,error)["falseAlarmReports"].toObject()["included"].toInt(),0);
   const auto removed=reports.clear();QCOMPARE(removed.reports,1);QCOMPARE(reports.list()["count"].toInt(),0);
  }
+ // #2134 P1b: report.json is rebuilt from its schema: the helper's unknown fields, wrong types and oversize values
+ // never reach the disk, and the check's counts are the resident's own.
+ void falseAlarmReportIsRebuiltFromItsSchema() {
+  const QJsonObject word{{"text","4111"},{"box",QJsonArray{1,2,3,4}},{"confidence",90},{"line",0},{"planted","synthetic-private-planted"}};
+  const QJsonObject helper{{"reportedFrom","prompt"},{"image",QJsonObject{{"width",10},{"height",10},{"path","/synthetic-private-path"}}},
+   {"check",QJsonObject{{"found",QJsonObject{{"phone",9}}},{"categories",QJsonArray{"phone","synthetic-private-kind"}},{"automatic",QJsonArray{}}}},
+   {"recognition",QJsonObject{{"engine",QJsonObject{{"name","other"},{"version","5.5.0"},{"scale",2}}},{"environment","synthetic-private-env"}}},
+   {"findings",QJsonArray{QJsonObject{{"kind","card"},{"rule","card"},{"text",QString(5000,'x')},{"words",QJsonArray{0,7}},{"box",QJsonArray{1,2,3,4}},{"token","synthetic-private-token"}},
+                          QJsonObject{{"kind","synthetic-private-kind"},{"text","dropped"}}}},
+   {"words",QJsonObject{{"total",1},{"list",QJsonArray{word,QJsonObject{{"text",3}}}}}},{"codes",QJsonArray{QJsonObject{{"kind","otp"},{"box",QJsonArray{0,0,5,5}},{"text","synthetic-private-code"}}}}};
+  Error error;const auto report=FalseAlarmReports::compose(helper,{{"check",QJsonObject{{"found",QJsonObject{{"card",1}}},{"complete",true}}}},error);QVERIFY(!error);
+  const auto bytes=QJsonDocument(report).toJson();QVERIFY2(!bytes.contains("synthetic-private"),bytes.constData());
+  QCOMPARE(report["check"].toObject()["found"].toObject(),(QJsonObject{{"card",1}}));QCOMPARE(report["check"].toObject()["categories"].toArray(),(QJsonArray{"phone"}));
+  QCOMPARE(report["recognition"].toObject()["engine"].toObject()["name"].toString(),QString("tesseract"));
+  const auto findings=report["findings"].toArray();QCOMPARE(findings.size(),1);
+  QCOMPARE(findings.first().toObject()["text"].toString().size(),4096);QCOMPARE(findings.first().toObject()["words"].toArray(),(QJsonArray{0}));
+  QCOMPARE(report["words"].toObject()["list"].toArray().size(),1);QCOMPARE(report["codes"].toArray().first().toObject().keys(),(QStringList{"box","kind"}));
+  QCOMPARE(report["image"].toObject().keys(),(QStringList{"height","width"}));
+ }
+ // #2134 P1d, P2a: Clear logs removes half-written folders too and says what it couldn't remove; a package takes only a
+ // whole report whose files are as report.json records them.
+ void falseAlarmClearAndPackageNeedWholeReports() {
+  QTemporaryDir root;const auto folder=root.filePath("false-alarms");FalseAlarmReports reports(folder);
+  const QByteArray png=QByteArray("\x89PNG\r\n\x1a\n",8)+QByteArray(300,'o');
+  const QJsonObject helper{{"reportedFrom","prompt"},{"image",QJsonObject{{"width",10},{"height",10}}},{"check",QJsonObject{}},{"recognition",QJsonObject{}},{"findings",QJsonArray{}},{"words",QJsonObject{}},{"codes",QJsonArray{}}};
+  Error error;const auto report=FalseAlarmReports::compose(helper,{},error);
+  const auto now=QDateTime::currentDateTimeUtc().addSecs(-10);
+  const auto good=reports.save(png,"png",png,report,error,now);const auto bad=reports.save(png,"png",png,report,error,now.addSecs(1));QVERIFY(!error);
+  {QFile tampered(QDir(bad.path).filePath("covered.png"));QVERIFY(tampered.open(QIODevice::Append));tampered.write("x");}
+  const auto selection=FalseAlarmReports::select(folder,now.addDays(-1),now.addDays(1),{},FalseAlarmReports::bundleBytes);
+  QCOMPARE(selection.reports.size(),1);QCOMPARE(selection.reports.first().name,good.name);QCOMPARE(selection.invalid,1);
+  QCOMPARE(selection.reports.first().files.size(),3);
+  // A half-written folder goes with Clear logs; a report folder holding a file put.gd didn't write stays, and is counted.
+  QVERIFY(QDir().mkpath(QDir(folder).filePath(".putgd-false-alarm-20260101T000000000Z-0123abcd")));
+  {QFile stray(QDir(good.path).filePath("notes.txt"));QVERIFY(stray.open(QIODevice::WriteOnly));stray.write("kept");}
+  const auto removed=reports.clear();
+  QCOMPARE(removed.reports,1);QCOMPARE(removed.left,1);QVERIFY(QFileInfo::exists(good.path));QVERIFY(!QFileInfo::exists(bad.path));
+  QVERIFY(!QFileInfo::exists(QDir(folder).filePath(".putgd-false-alarm-20260101T000000000Z-0123abcd")));
+  // A reports folder that is a link is never followed.
+  QTemporaryDir elsewhere;const auto linked=root.filePath("linked");QVERIFY(QFile::link(elsewhere.path(),linked));
+  FalseAlarmReports through(linked);(void)through.save(png,"png",png,report,error);QCOMPARE(error.code,QString("false_alarm_unavailable"));
+  QCOMPARE(through.clear().left,-1);QCOMPARE(through.list()["count"].toInt(),0);
+ }
  // #2134: a report's settings name the user's own Quick redact words and patterns by count only, and the
  // destination by its provider.
  void falseAlarmSettingsAreCountsOnly() {

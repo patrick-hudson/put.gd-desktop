@@ -269,6 +269,19 @@ private slots:
   for(const auto* name:{"sensitiveRedact","sensitiveEdit","sensitiveUpload","sensitiveCancel"})QVERIFY2(prompt.findChild<QPushButton*>(name)->isEnabled(),name);
   prompt.findChild<QPushButton*>("sensitiveUpload")->click();QCOMPARE(chosen.size(),1);QCOMPARE(chosen.first().first().toString(),QString("upload"));
  }
+ // #2134 F2, F5: the editor's Not sensitive asks for a report from its own button, and never clips: beside Quick redact
+ // where the pane has room, under it where it hasn't.
+ void editorNotSensitiveButtonAsksAndFits(){
+  editor::EditDocument doc(canvasImage());EditorWindow window(doc);window.resize(1180,820);window.selectTool(editor::Tool::Redact);window.show();QVERIFY(putgd::test::waitForWindowExposed(&window));
+  auto* button=window.findChild<QPushButton*>("editorFalseAlarm");QVERIFY(button);QVERIFY(!button->isVisible());
+  window.offerFalseAlarm(true);PUTGD_TRY_VERIFY(button->isVisible());
+  QSignalSpy asked(&window,&EditorWindow::falseAlarmRequested);button->click();QCOMPARE(asked.size(),1);
+  auto* quick=window.findChild<QToolButton*>("quickRedact");
+  PUTGD_TRY_VERIFY(button->width()>=button->sizeHint().width()&&quick->width()>=quick->sizeHint().width());
+  window.showFalseAlarm("saved","Report saved for diagnostics.","putgd-false-alarm-20261128T000000000Z-0123abcd");
+  QCOMPARE(window.falseAlarmState()["name"].toString(),QString("putgd-false-alarm-20261128T000000000Z-0123abcd"));PUTGD_TRY_VERIFY(!button->isVisible());
+  window.allowClose();window.close();
+ }
  // #1941: QR codes Keys and tokens found are named by their kind, apart from the other keys, never by content.
  void sensitivePromptNamesSecretCodesByKind(){
   SensitivePrompt::Model model;model.findings.found={{"card",1},{"key",3}};model.codes={{"otp",1},{"wifi",1}};

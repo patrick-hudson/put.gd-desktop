@@ -642,6 +642,9 @@ public:
    else {
     saved_=saved;save_->setText("Saved");close_->setText("Close");show_->show();
     auto text="Saved "+QFileInfo(saved["path"].toString()).fileName()+" ("+ByteSize::summary(saved["bytes"].toInteger())+") in "+QDir::toNativeSeparators(QFileInfo(saved["path"].toString()).absolutePath())+".";
+    // #2134: what this package holds, as saved, not as previewed: a report saved since the preview is in it too.
+    if(const int reports=saved.value("falseAlarmReports").toObject().value("included").toInt();reports>0)
+     text+=(reports==1?QString("\nIt includes 1 false-alarm report, with pictures of your screen and the text read from them."):QString("\nIt includes %1 false-alarm reports, with pictures of your screen and the text read from them.").arg(reports));
     // The local copy is kept whatever happens to the upload.
     const auto uploadError=saved["uploadError"].toObject();
     if(uploadError["code"]=="diagnostics_link_unavailable")text+="\nUploaded to "+saved["upload"].toObject()["label"].toString()+", but this destination gives it no link.";

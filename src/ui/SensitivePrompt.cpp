@@ -126,9 +126,9 @@ void SensitivePrompt::fit(){
  adjustSize();const int width=std::min(sizeHint().expandedTo(minimumSize()).width(),room_);
  setFixedSize(width,hasHeightForWidth()?heightForWidth(width):sizeHint().height());
 }
-void SensitivePrompt::showFalseAlarm(const QString& state,const QString& text){
+void SensitivePrompt::showFalseAlarm(const QString& state,const QString& text,const QString& name){
  if(!falseAlarm_)return;
- falseAlarmState_=state;falseAlarm_->setEnabled(state=="failed"&&!decided_);falseAlarm_->setVisible(state!="saved");
+ falseAlarmState_=state;if(!name.isEmpty())falseAlarmName_=name;falseAlarm_->setEnabled(state=="failed"&&!decided_);falseAlarm_->setVisible(state!="saved");
  falseAlarmLine_->setText(text);Ui::role(falseAlarmLine_,state=="failed"?"danger":"secondary");falseAlarmLine_->setVisible(!text.isEmpty());
  // The width stays; the panel grows by the line.
  const int width=this->width();setMinimumSize(0,0);setMaximumSize(QWIDGETSIZE_MAX,QWIDGETSIZE_MAX);
@@ -137,6 +137,7 @@ void SensitivePrompt::showFalseAlarm(const QString& state,const QString& text){
 QJsonObject SensitivePrompt::falseAlarmState() const {
  QJsonObject state{{"offered",falseAlarm_!=nullptr},{"state",falseAlarmState_}};
  if(falseAlarmLine_&&!falseAlarmLine_->text().isEmpty())state["message"]=falseAlarmLine_->text();
+ if(!falseAlarmName_.isEmpty())state["name"]=falseAlarmName_;
  return state;
 }
 void SensitivePrompt::paintEvent(QPaintEvent*){

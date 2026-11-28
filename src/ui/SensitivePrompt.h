@@ -52,7 +52,7 @@ public:
  bool choose(const QString& choice);
  // #2134: Not sensitive's line: "saving" (the button waits), "saved" (the button goes, the line says so) or
  // "failed" (the line says why, the button works again). The panel stays open with its choices either way.
- void showFalseAlarm(const QString& state,const QString& text);
+ void showFalseAlarm(const QString& state,const QString& text,const QString& name={});
  QJsonObject falseAlarmState() const;
 signals:
  void chosen(const QString& choice);
@@ -67,6 +67,6 @@ private:
  void fit();
  Model model_;bool decided_=false;int rows_=1,room_=0;
  QPushButton *redact_=nullptr,*edit_=nullptr,*upload_=nullptr,*cancel_=nullptr,*falseAlarm_=nullptr;
- QLabel* falseAlarmLine_=nullptr;QString falseAlarmState_=QStringLiteral("none");
+ QLabel* falseAlarmLine_=nullptr;QString falseAlarmState_=QStringLiteral("none"),falseAlarmName_;
 };
 }

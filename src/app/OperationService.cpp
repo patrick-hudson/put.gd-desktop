@@ -1028,11 +1028,31 @@ void OperationService::reportFalseAlarm(const QString& id,JsonReply reply) {
 }
 void OperationService::saveFalseAlarm(const QString& id,EditorSession::Report report,QJsonObject resident,std::function<void(Error,QJsonObject)> done) {
  if(!falseAlarms_){done({"false_alarm_unavailable","Couldn't save the report: reports aren't available here.",{}},{});return;}
+ // Only for a check waiting at its prompt (or in the editor it opened, when asked from there) that found or
+ // covered something: the findings are this resident's own, as the check reported them, never the helper's report.
+ const auto checked=checkOperations_.constFind(id);
+ const bool where=checked!=checkOperations_.cend()&&((checked->phase=="sensitive_text_found"&&report.from=="prompt")||(checked->phase=="editing"&&report.from=="editor"));
+ const auto found=where?checked->sensitive.value("found").toObject():QJsonObject{},covered=where?checked->sensitive.value("covered").toObject():QJsonObject{};
+ if(!where||(found.isEmpty()&&covered.isEmpty())){done({"false_alarm_unavailable","Couldn't save the report: this capture has no sensitive text warning open.",{}},{});return;}
+ {QJsonObject check{{"found",found},{"complete",checked->sensitive.value("complete").toBool(true)}};if(!covered.isEmpty())check["covered"]=covered;
+  if(checked->sensitive.contains("reason"))check["reason"]=checked->sensitive.value("reason");resident["check"]=check;}
  resident["schemaVersion"]=1;resident["kind"]="false_alarm";resident["operationId"]=id;
- resident["prompt"]=checkOperations_.value(id).sensitive.value("prompt").toInt();
+ resident["prompt"]=checked->sensitive.value("prompt").toInt();
  resident["build"]=QJsonDocument::fromJson(buildManifestJson()).object();
  resident["environment"]=FalseAlarmReports::environment();
  {auto capture=resident.value("capture").toObject();capture["format"]=report.suffix;capture["bytes"]=double(report.original.size());resident["capture"]=capture;}
+ // One report per prompt: a second request while one is saved or saving answers with that one (#2134 F3), so a
+ // helper that gave up waiting and asked again never makes two.
+ const int prompt=checked->sensitive.value("prompt").toInt();
+ {const auto earlier=checked->sensitive.value("falseAlarm").toObject();
+  if(earlier.value("state")=="saved"){done({},{{"name",earlier.value("name")},{"bytes",earlier.value("bytes")}});return;}
+  if(earlier.value("state")=="saving"){done({"editor_busy","The report is still being saved",{}},{});return;}}
+ const auto publish=[this,id,prompt](const QJsonObject& state){
+  // On the operation, as inspect and observations show it: the state, and the report's name once saved (F4).
+  auto it=checkOperations_.find(id);if(it==checkOperations_.end()||it->sensitive.value("prompt").toInt()!=prompt)return;
+  it->sensitive["falseAlarm"]=state;observe(it->publicJson());emit changed(id);emit observationsChanged();
+ };
+ publish({{"state","saving"}});
  auto* reports=falseAlarms_;
  background([reports,report=std::move(report),resident](Error& error) mutable {
   const auto now=QDateTime::currentDateTimeUtc();
@@ -1041,11 +1061,16 @@ void OperationService::saveFalseAlarm(const QString& id,EditorSession::Report re
   const auto composed=FalseAlarmReports::compose(QJsonDocument::fromJson(report.json).object(),resident,error);if(error)return QJsonObject{};
   report.json.clear();
   const auto saved=reports->save(report.original,report.suffix,report.covered,composed,error,now);if(error)return QJsonObject{};
-  return QJsonObject{{"name",saved.name},{"bytes",double(saved.bytes)},{"pruned",saved.pruned},{"found",composed.value("check").toObject().value("found")},{"covered",composed.value("check").toObject().value("covered")}};
- },[id,done](Error error,QJsonObject saved){
-  if(error){logging::warning(logOperation(),"False alarm report not saved",{{"operationId",id},{"error",logging::errorFields(error)}});done(error,{});return;}
+  return QJsonObject{{"name",saved.name},{"bytes",double(saved.bytes)},{"pruned",saved.pruned}};
+ },[owner=QPointer<OperationService>(this),publish,id,done,found,covered](Error error,QJsonObject saved){
+  if(error){
+   logging::warning(logOperation(),"False alarm report not saved",{{"operationId",id},{"error",logging::errorFields(error)}});
+   if(owner)publish({{"state","failed"},{"code",error.code}});
+   done(error,{});return;
+  }
+  if(owner)publish({{"state","saved"},{"name",saved.value("name")},{"bytes",saved.value("bytes")}});
   // Kinds and counts only, as for the check itself.
-  logging::info(logOperation(),"False alarm report saved",{{"operationId",id},{"report",saved.value("name")},{"bytes",saved.value("bytes")},{"pruned",saved.value("pruned")},{"found",saved.value("found")},{"covered",saved.value("covered")}});
+  logging::info(logOperation(),"False alarm report saved",{{"operationId",id},{"report",saved.value("name")},{"bytes",saved.value("bytes")},{"pruned",saved.value("pruned")},{"found",found},{"covered",covered}});
   done({},{{"name",saved.value("name")},{"bytes",saved.value("bytes")}});
  });
 }
