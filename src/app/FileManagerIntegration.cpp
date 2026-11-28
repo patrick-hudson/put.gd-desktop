@@ -13,6 +13,9 @@
 #include <QRegularExpression>
 #include <QSaveFile>
 #include <QStringDecoder>
+#include <QDateTime>
+#include <sys/stat.h>
+#include <cerrno>
 #include <unistd.h>
 #include <algorithm>
 namespace putgd {
@@ -400,11 +403,15 @@ bool onPath(const FileManagerContext& c,const QString& name) {
  }
  return false;
 }
-// put.gd's system plugin for a file manager: a putgd module where it loads them.
+// put.gd's system plugin for a file manager: its module, a regular file (not a link), where the
+// file manager loads modules (#2119: the same test decides skipping and replacing scripts).
 bool systemPlugin(const FileManagerContext& c,const QString& relative) {
  const auto roots=c.libraryDirs.isEmpty()?QStringList{"/usr/lib64","/usr/lib/x86_64-linux-gnu","/usr/lib/aarch64-linux-gnu","/usr/lib"}:c.libraryDirs;
- for(const auto& root:roots)
-  for(const auto& name:QDir(QDir(root).filePath(relative)).entryList({"*putgd*"},QDir::Files))if(!name.isEmpty())return true;
+ const auto module=relative.startsWith("caja/")?QStringLiteral("libputgd-caja.so"):relative.startsWith("peony")?QStringLiteral("libputgd-peony.so"):QStringLiteral("libputgd-nautilus.so");
+ for(const auto& root:roots) {
+  const QFileInfo file(QDir(QDir(root).filePath(relative)).filePath(module));
+  if(file.isFile()&&!file.isSymLink())return true;
+ }
  return false;
 }
 // GNOME desktop icons (DING, desktop-icons-ng): Ubuntu's package or its bundled
@@ -453,10 +460,11 @@ QByteArray menuText(const char* source,const QString& exec,const QString& icon) 
  }
  return lines.join('\n').toUtf8();
 }
-struct MenuFormat {const char* source;const char* directory;const char* name;bool shell;bool program;};
+// legacy: an earlier template of the same file, which older AppImages wrote (#2119).
+struct MenuFormat {const char* source;const char* directory;const char* name;bool shell;bool program;const char* legacy=nullptr;};
 const MenuFormat menuFormats[]={
  // KIO runs a per-user service menu only when it is executable (KDesktopFile::isAuthorizedDesktopFile).
- {putgdKioServiceMenu,"kio/servicemenus","putgd-upload.desktop",false,true},
+ {putgdKioServiceMenu,"kio/servicemenus","putgd-upload.desktop",false,true,putgdKioServiceMenu1105},
  {putgdNemoAction,"nemo/actions","putgd-upload.nemo_action",true,false},
  {putgdThunarSendTo,"Thunar/sendto","putgd-upload.desktop",false,false},
  {putgdFileManagerAction,"file-manager/actions","putgd-upload.desktop",true,false},
@@ -468,6 +476,50 @@ const MenuFormat menuFormats[]={
  {putgdContractEncrypted,"contractor","putgd-upload-encrypted.contract",false,false},
 };
 QString ownDirectory(const FileManagerContext& c) {return QDir(c.dataRoot).filePath("file-manager");}
+
+// #2132: the package's own copy of a menu file: a regular file (not a link) in an XDG data
+// folder that isn't the user's own (under any name), byte for byte the menu file this build's
+// package installs. An older package's file or a lookalike isn't one. The AppImage skips its copy
+// for one, and the package's start moves the AppImage's copy aside for one.
+bool systemCopy(const FileManagerContext& c,const MenuFormat& format) {
+ const auto relative=QString::fromLatin1(format.directory)+'/'+QString::fromLatin1(format.name);
+ const auto userRoot=QFileInfo(c.dataHome).canonicalFilePath();const QByteArray packaged(format.source);
+ for(const auto& directory:dataDirectories(c)) {
+  const auto root=QFileInfo(directory).canonicalFilePath();
+  if(root.isEmpty()||root==userRoot||root.startsWith(userRoot+'/'))continue;
+  const QFileInfo file(QDir(directory).filePath(relative));
+  if(!file.isFile()||file.isSymLink())continue;
+  bool read=false;if(readSmall(file.filePath(),&read)==packaged&&read)return true;
+ }
+ return false;
+}
+// A path's canonical form, also for a file that doesn't exist yet (its folder's canonical form).
+QString canonicalPath(const QString& path) {
+ const QFileInfo info(path);
+ if(const auto canonical=info.canonicalFilePath();!canonical.isEmpty())return canonical;
+ const auto folder=QFileInfo(info.absolutePath()).canonicalFilePath();
+ return folder.isEmpty()?QDir::cleanPath(info.absoluteFilePath()):folder+'/'+info.fileName();
+}
+// root/relative as a regular file inside root: no folder between them is a link, and its
+// canonical folder lies inside root's canonical form.
+bool contained(const QString& root,const QString& relative) {
+ const auto canonicalRoot=QFileInfo(root).canonicalFilePath();
+ if(canonicalRoot.isEmpty()||relative.startsWith('/')||relative.contains(QStringLiteral("..")))return false;
+ auto folder=QDir::cleanPath(root);
+ const auto parts=relative.split('/',Qt::SkipEmptyParts);
+ for(qsizetype i=0;i+1<parts.size();++i) {
+  folder+='/'+parts[i];
+  const QFileInfo step(folder);
+  if(step.isSymLink()||!step.isDir())return false;
+ }
+ const QFileInfo file(QDir(root).filePath(relative));
+ if(file.isSymLink()||!file.isFile())return false;
+ return QFileInfo(file.absolutePath()).canonicalFilePath().startsWith(canonicalRoot+'/')||QFileInfo(file.absolutePath()).canonicalFilePath()==canonicalRoot;
+}
+// A regular file's identity; `mine` only when this user owns it (#2132 N6).
+struct Identity {dev_t device=0;ino_t inode=0;off_t size=-1;timespec modified{};mode_t mode=0;bool mine=false;
+ bool same(const Identity& o) const {return mine&&o.mine&&device==o.device&&inode==o.inode&&size==o.size&&modified.tv_sec==o.modified.tv_sec&&modified.tv_nsec==o.modified.tv_nsec;}};
+Identity identity(const QString& path) {struct stat s{};Identity out;if(::lstat(QFile::encodeName(path).constData(),&s)==0&&S_ISREG(s.st_mode)){out.device=s.st_dev;out.inode=s.st_ino;out.size=s.st_size;out.modified=s.st_mtim;out.mode=s.st_mode&07777;out.mine=s.st_uid==::getuid();}return out;}
 QString recordPath(const FileManagerContext& c,const QString& installation) {return QDir(ownDirectory(c)).filePath(installation+".owned");}
 QStringList dingScriptPaths(const FileManagerContext& c) {
  const QDir scripts(QDir(c.home).filePath(".local/share/nautilus/scripts"));
@@ -482,8 +534,129 @@ bool isAppImage(const QString& path) {
 Error ioError(const QString& message,const QString& path) {return {"file_manager_io",message,{{"path",path}}};}
 }
 
+namespace {
+// #2132: every byte-exact file put.gd has written for a per-user entry at `path`, with `launcher`
+// (the AppImage's stable launcher or the package's): each shipped template, current and earlier,
+// with only the launcher and icon substituted.
+QList<QByteArray> renderings(const FileManagerContext& c,const QString& path,const QString& launcher,const MenuFormat* format,const QString& kind) {
+ const QStringList icons{QDir(ownDirectory(c)).filePath("putgd.svg"),QStringLiteral("putgd")};
+ QList<QByteArray> out;
+ for(const auto& icon:icons) {
+  if(format) {
+   const auto exec=format->shell?shellExec(launcher):desktopExec(launcher);
+   out<<menuText(format->source,exec,icon);
+   if(format->legacy)out<<menuText(format->legacy,exec,icon);
+  } else {
+   out<<scriptText(launcher,path,kind,icon,encryptedScript(path));
+   if(!encryptedScript(path))
+    for(const char* legacy:{putgdFileManagerScript987483d,putgdFileManagerScriptFb3a313})
+     out<<substitute(QString::fromUtf8(legacy),{{"LAUNCHER",shellQuoted(launcher)},{"SELF",shellQuoted(path)},{"KIND",shellQuoted(kind)},{"ICON",shellQuoted(icon)}}).toUtf8();
+  }
+ }
+ return out;
+}
+// Where a per-user entry file lives: its root folder, the backup area named after it, the
+// relative path, and its format (null for a Scripts entry, then `kind` names the file manager).
+struct Place {QString root,area,relative;const MenuFormat* format=nullptr;QString kind;bool valid() const {return !root.isEmpty();}};
+Place placeOf(const FileManagerContext& c,const QString& path) {
+ for(const auto& format:menuFormats) {
+  const auto relative=QString::fromLatin1(format.directory)+'/'+QString::fromLatin1(format.name);
+  if(QDir::cleanPath(path)==QDir::cleanPath(QDir(c.dataHome).filePath(relative)))return {c.dataHome,QStringLiteral("data"),relative,&format,{}};
+ }
+ for(const auto& name:{scriptName,encryptedScriptName}) {
+  if(QDir::cleanPath(path)==QDir::cleanPath(QDir(c.dataHome).filePath("nautilus/scripts/"+name)))return {c.dataHome,QStringLiteral("data"),"nautilus/scripts/"+name,nullptr,QStringLiteral("nautilus")};
+  if(QDir::cleanPath(path)==QDir::cleanPath(QDir(c.home).filePath(".local/share/nautilus/scripts/"+name)))return {c.home,QStringLiteral("home"),".local/share/nautilus/scripts/"+name,nullptr,QStringLiteral("nautilus")};
+  if(QDir::cleanPath(path)==QDir::cleanPath(QDir(c.configHome).filePath("caja/scripts/"+name)))return {c.configHome,QStringLiteral("config"),"caja/scripts/"+name,nullptr,QStringLiteral("caja")};
+ }
+ return {};
+}
+// Moves aside put.gd's per-user entry files, recoverably, under
+// <state>/file-manager-replaced/<UTC time>/<area>/<relative path>, with their mode. One mover per pass.
+class Mover {
+public:
+ Mover(const FileManagerContext& c,const char* reason):reason_(reason) {
+  const auto state=c.stateRoot.isEmpty()?logging::stateRoot():c.stateRoot;
+  const auto stamp=c.replacedStamp.isEmpty()?QDateTime::currentDateTimeUtc().toString(QStringLiteral("yyyyMMdd'T'HHmmss'Z'")):c.replacedStamp;
+  backup_=QDir(state).filePath("file-manager-replaced/"+stamp);
+ }
+ // Moves `path` (at `place`) aside if it is still `before`; never overwrites or removes anything
+ // already at the target. An empty answer: nothing moved, and the file is where it was.
+ QString move(const QString& path,const Place& place,const Identity& before,const QByteArray& bytes) {
+  const auto target=QDir(backup_).filePath(place.area+'/'+place.relative);
+  if(!QDir().mkpath(QFileInfo(target).path()))return {};
+  if(!before.same(identity(path)))return {};
+  const auto from=QFile::encodeName(path),to=QFile::encodeName(target);
+  // A hard link never replaces an existing target; the original goes only once the link stands.
+  if(::link(from.constData(),to.constData())==0) {
+   if(::unlink(from.constData())==0)return logged(path,target);
+   ::unlink(to.constData());return {};
+  }
+  if(errno==EEXIST)return {};
+  // Another filesystem (or one without links): a new file of our own, checked, then the original.
+  QFile copy(target);
+  if(!copy.open(QIODevice::WriteOnly|QIODevice::NewOnly))return {};
+  const bool written=copy.write(bytes)==bytes.size()&&copy.flush()&&::fchmod(copy.handle(),before.mode)==0&&::fsync(copy.handle())==0;
+  copy.close();
+  if(!written||readSmall(target)!=bytes||!before.same(identity(path))||::unlink(from.constData())!=0) {::unlink(to.constData());return {};}
+  return logged(path,target);
+ }
+private:
+ QString logged(const QString& path,const QString& target) {logging::info(logApp(),reason_,{{"path",path},{"movedTo",target}});return target;}
+ const char* reason_;QString backup_;
+};
+// Retires a per-user entry file put.gd no longer keeps there (#2132 N1): one exactly as put.gd
+// wrote it (with either launcher) is removed; one changed since is moved aside, never deleted.
+// A file outside the known places, or one that can't be moved, stays.
+bool retire(const FileManagerContext& c,const QString& path,const QString& own,Mover& mover) {
+ if(QDir::cleanPath(path).startsWith(QDir::cleanPath(own)+'/'))return removeOwned(path,own);
+ const auto place=placeOf(c,path);
+ if(!place.valid()||!contained(place.root,place.relative)||!managedFile(path))return false;
+ const auto before=identity(path);bool read=false;const auto bytes=readSmall(path,&read);
+ if(!read||!before.mine)return false;
+ auto exact=renderings(c,path,FileManagerIntegration::launcherPath(c),place.format,place.kind);exact+=renderings(c,path,c.systemLauncher,place.format,place.kind);
+ if(exact.contains(bytes))return before.same(identity(path))&&QFile::remove(path);
+ return !mover.move(path,place,before,bytes).isEmpty();
+}
+// The package's start moves an AppImage's per-user copy aside where the package has its own:
+// only a file whose bytes are exactly what an AppImage wrote, inside the user's folder with no
+// link on the way. The AppImage's record drops it, keeping every other line.
+void moveAsideAppImageCopies(const FileManagerContext& c,FileManagerResult& result,const std::function<void(const Error&)>& fail) {
+ QList<Place> candidates;
+ for(const auto& format:menuFormats)
+  if(systemCopy(c,format))candidates.append({c.dataHome,QStringLiteral("data"),QString::fromLatin1(format.directory)+'/'+QString::fromLatin1(format.name),&format,{}});
+ // Its Scripts entries duplicate the package's Files and Caja plugins; the DING scripts are the package's own.
+ QStringList dingScripts;
+ if(dingInstalled(c))for(const auto& script:dingScriptPaths(c))dingScripts<<canonicalPath(script);
+ for(const auto& name:{scriptName,encryptedScriptName}) {
+  if(systemPlugin(c,"nautilus/extensions-4")&&!dingScripts.contains(canonicalPath(QDir(c.dataHome).filePath("nautilus/scripts/"+name))))
+   candidates.append({c.dataHome,QStringLiteral("data"),"nautilus/scripts/"+name,nullptr,QStringLiteral("nautilus")});
+  if(systemPlugin(c,"caja/extensions-2.0"))candidates.append({c.configHome,QStringLiteral("config"),"caja/scripts/"+name,nullptr,QStringLiteral("caja")});
+ }
+ Mover mover(c,"Moved aside an AppImage file manager entry that the installed package replaces");
+ QStringList moved;
+ for(const auto& place:std::as_const(candidates)) {
+  const auto path=QDir(place.root).filePath(place.relative);
+  if(!contained(place.root,place.relative))continue;
+  const auto before=identity(path);bool read=false;const auto bytes=readSmall(path,&read);
+  if(!read||!before.mine||!renderings(c,path,FileManagerIntegration::launcherPath(c),place.format,place.kind).contains(bytes))continue;
+  if(mover.move(path,place,before,bytes).isEmpty()) {fail(ioError("Cannot move a replaced file manager entry aside",path));continue;}
+  result.removed<<path;moved<<path;
+ }
+ // The AppImage's record no longer names them; every other line stays as it was.
+ const auto recordFile=recordPath(c,"appimage");
+ if(moved.isEmpty()||!managedFile(recordFile))return;
+ bool read=false;const auto lines=QString::fromUtf8(readSmall(recordFile,&read)).split('\n');
+ if(!read)return;
+ QStringList kept;for(const auto& line:lines)if(!(line.startsWith("file ")&&moved.contains(line.mid(5))))kept<<line;
+ if(kept.size()!=lines.size()&&commit(recordFile,kept.join('\n').toUtf8(),dataMode)==Write::Failed)fail(ioError("Cannot update the AppImage's file manager record",recordFile));
+}
+}
 QString FileManagerIntegration::label() {return QStringLiteral("Upload with put.gd");}
 QString FileManagerIntegration::encryptedLabel() {return QStringLiteral("Upload encrypted with put.gd");}
+QByteArray FileManagerIntegration::packagedMenu(const QString& relative) {
+ for(const auto& format:menuFormats)if(relative==QString::fromLatin1(format.directory)+'/'+QString::fromLatin1(format.name))return QByteArray(format.source);
+ return {};
+}
 QStringList FileManagerIntegration::systemDirectories(const FileManagerContext& c) {
  QStringList directories;
  for(const auto& root:dataDirectories(c))for(const auto& format:menuFormats)directories<<QDir(root).filePath(QString::fromLatin1(format.directory));
@@ -552,6 +725,9 @@ FileManagerResult FileManagerIntegration::apply(const FileManagerContext& c) {
  };
  const auto ding=dingInstalled(c),cosmicFiles=cosmicFilesInstalled(c);
  if(system) {
+  // #2119: an AppImage's per-user copy of a menu file has the same name as the package's own, and
+  // a user file shadows the system one, so an older copy hides the package's entries.
+  moveAsideAppImageCopies(c,result,fail);
   // DEB/RPM: per-user files only where a desktop needs them, at every start.
   if(ding)for(const auto& script:dingScriptPaths(c))keep(script,scriptText(c.systemLauncher,script,"nautilus","putgd",encryptedScript(script)),programMode);
   if(cosmicFiles||previous.cosmic==cosmic)applyCosmic(c.systemLauncher,cosmicFiles);
@@ -586,11 +762,10 @@ FileManagerResult FileManagerIntegration::apply(const FileManagerContext& c) {
    if(next.files.contains(iconPath))icon=iconPath;
   }
   // A system menu file of put.gd's makes the per-user copy a duplicate.
-  const auto directories=dataDirectories(c);
   for(const auto& format:menuFormats) {
    const auto relative=QString::fromLatin1(format.directory)+'/'+QString::fromLatin1(format.name);
    const auto path=QDir(c.dataHome).filePath(relative);
-   if(inDataDirectories(directories,relative)) {result.skipped<<path;continue;}
+   if(systemCopy(c,format)) {result.skipped<<path;continue;}
    keep(path,menuText(format.source,format.shell?shellExec(launcher):desktopExec(launcher),icon),format.program?programMode:dataMode);
   }
   // Nautilus Scripts where put.gd's Nautilus plugin is missing; DING reads
@@ -600,7 +775,7 @@ FileManagerResult FileManagerIntegration::apply(const FileManagerContext& c) {
   if(ding)scripts<<dingScriptPaths(c);
   scripts.removeDuplicates();
   for(const auto& script:std::as_const(scripts)) {
-   if(systemRecord.files.contains(script)&&managedFile(script)) {result.skipped<<script;continue;}
+   if(std::any_of(systemRecord.files.cbegin(),systemRecord.files.cend(),[&](const QString& shared){return canonicalPath(shared)==canonicalPath(script);})&&managedFile(script)) {result.skipped<<script;continue;}
    keep(script,scriptText(launcher,script,"nautilus",icon,encryptedScript(script)),programMode);
   }
   for(const auto& name:{scriptName,encryptedScriptName}) {
@@ -615,10 +790,16 @@ FileManagerResult FileManagerIntegration::apply(const FileManagerContext& c) {
   else if(previous.cosmic==cosmic)applyCosmic(launcher,false);
  }
  // Whatever the previous record owned and this pass did not keep. A file the
- // system install's record names is shared (the DING script) and stays.
- for(const auto& path:previous.files) {
-  if(next.files.contains(path)||systemRecord.files.contains(path))continue;
-  if(removeOwned(path,own))result.removed<<path;
+ // system install's record names is shared (the DING script) and stays, under any of its names
+ // (#2132 N3). One changed since put.gd wrote it is moved aside rather than deleted (N1).
+ {
+  QStringList kept,shared;for(const auto& path:next.files)kept<<canonicalPath(path);for(const auto& path:systemRecord.files)shared<<canonicalPath(path);
+  Mover mover(c,"Moved aside a changed file manager entry put.gd no longer uses");
+  for(const auto& path:previous.files) {
+   const auto canonical=canonicalPath(path);
+   if(next.files.contains(path)||kept.contains(canonical)||shared.contains(canonical))continue;
+   if(retire(c,path,own,mover))result.removed<<path;
+  }
  }
  if(next.files.isEmpty()&&next.cosmic.isEmpty()) {
   if(QFileInfo::exists(ownedPath)&&managedFile(ownedPath)&&!QFile::remove(ownedPath))fail(ioError("Cannot remove the file manager record",ownedPath));

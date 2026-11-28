@@ -1,0 +1,13 @@
+# "Upload with put.gd" in Dolphin and Konqueror (#1105). A KIO service menu for
+# files and folders (all/all) on every protocol, so remote folders show it too
+# (KIOFuse or kioexec supplies the path), at the top level of the menu.
+[Desktop Entry]
+Type=Service
+MimeType=all/all;
+Actions=putgdUpload;
+X-KDE-Priority=TopLevel
+
+[Desktop Action putgdUpload]
+Name=Upload with put.gd
+Icon=putgd
+Exec=/usr/bin/putgd-launcher --upload -- %F

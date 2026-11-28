@@ -27,6 +27,8 @@ struct FileManagerContext {
  QString desktop,kdeVersion;                 // XDG_CURRENT_DESKTOP and KDE_SESSION_VERSION, for tests; empty asks the environment
  QString cgroupFile=QStringLiteral("/proc/self/cgroup"); // what the AppImage launcher reads
  QString userRuntime; // the login's runtime directory, where its user manager listens; empty: /run/user/<uid>
+ QString stateRoot;   // put.gd's state folder, for entries moved aside (#2132); empty: logging::stateRoot()
+ QString replacedStamp; // tests: the backup folder's name under file-manager-replaced; empty: the current UTC time
 };
 struct FileManagerResult {
  Error error;               // e.g. {"cosmic_context_actions_unparseable",...}: nothing written to that file
@@ -55,6 +57,8 @@ public:
  // The menu labels and the per-user file paths, for tests and diagnostics.
  static QString label();
  static QString encryptedLabel(); // #2119: the entry that uploads encrypted links
+ // #2132: the menu file the package installs at <XDG data dir>/<relative>, byte for byte; empty for another path.
+ static QByteArray packagedMenu(const QString& relative);
 
  // The /bin/sh -c script that restarts a restartable file manager, its name as $1; empty for any other name.
  static QString restartScript(const QString& name);
