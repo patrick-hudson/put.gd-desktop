@@ -1049,8 +1049,8 @@ int main(int argc,char** argv){
   QPainter painter(&image);painter.setFont(Ui::monoFont(26));painter.setPen(QColor("#202020"));painter.drawText(40,120,"GET /api/v2/orders   200 63292");painter.fillRect(QRect(330,96,190,34),Qt::black);painter.end();
   for(const auto& [name,size]:{std::pair{QStringLiteral("26m-editor-not-sensitive"),QSize(1180,820)},std::pair{QStringLiteral("26n-editor-not-sensitive-narrow"),QSize(760,700)}}){
    editor::EditDocument doc(image);EditorWindow editor(doc);editor.setDestination("Upload to Project archive",false);editor.resize(size);editor.selectTool(editor::Tool::Redact);editor.offerFalseAlarm(true);editor.show();putgd::test::settle(450);
-   const auto captured=steadyGrab(editor);if(!captured.save(QDir(output).filePath(name+".png")))return 2;
-   captures.append(QJsonObject{{"file",name+".png"},{"width",captured.width()},{"height",captured.height()}});editor.allowClose();editor.close();
+   const auto captured=steadyGrab(editor);if(!captured.save(QDir(output).filePath(name+".png"))||!writeInventory(output,name,editor))return 2;
+   captures.append(QJsonObject{{"file",name+".png"},{"controls",name+".controls.json"},{"width",captured.width()},{"height",captured.height()}});editor.allowClose();editor.close();
   }
  }
  }
