@@ -378,6 +378,14 @@ bool ensureResident(bool appImage,const QString& appImagePath){
 }
 
 bool requested(int argc,char** argv){return argc>=2&&std::strcmp(argv[1],"--upload")==0;}
+int firstPath(int argc,char** argv,bool& encrypt){
+ encrypt=argc>=3&&std::strcmp(argv[2],"--encrypt")==0;
+ const int separator=encrypt?3:2;
+ return argc>separator&&std::strcmp(argv[separator],"--")==0?separator+1:-1;
+}
+bool residentLacksEncrypt(const QString& code,const std::function<QJsonObject()>& capabilities){
+ return code=="invalid_request"&&!capabilities()["uploadFiles"].toObject()["encrypt"].toBool();
+}
 
 bool leafUnitIsService(const QByteArray& cgroup){
  for(const auto& line:cgroup.split('\n')){
@@ -516,7 +524,10 @@ bool showDialog(const QString& title,const QString& body,const QProcessEnvironme
 }
 
 int run(int argc,char** argv){
- if(argc<3||std::strcmp(argv[2],"--")!=0){std::fputs("Usage: putgd --upload -- <absolute paths or URIs>\n",stderr);return 2;}
+ // #2119: --encrypt, from an "Upload encrypted with put.gd" entry. A build before it
+ // has no such option and refuses the whole command line, so it never uploads them plainly.
+ bool encrypt=false;const int first=firstPath(argc,argv,encrypt);
+ if(first<0){std::fputs("Usage: putgd --upload [--encrypt] -- <absolute paths or URIs>\n",stderr);return 2;}
  reportScoped();
  // Both are read before the host environment is built, which drops them.
  const auto installation=host::installationClass();const bool appImage=installation=="appimage";
@@ -524,7 +535,7 @@ int run(int argc,char** argv){
  // DEB/RPM leave a D-Bus-activated file manager's cgroup here; the AppImage's
  // stable launcher does it on the host, before the image is mounted.
  if(!appImage)if(const int status=leaveServiceCgroup(argc,argv);status>=0)return status;
- QStringList arguments;for(int i=3;i<argc;++i)arguments.append(QFile::decodeName(argv[i]));
+ QStringList arguments;for(int i=first;i<argc;++i)arguments.append(QFile::decodeName(argv[i]));
  // Everything is resolved and checked before a Qt application object exists:
  // Qt would treat a selected "-platform" or "--style" as its own option.
  const auto resolution=resolve(arguments,appImage,hostGioInfo);
@@ -544,6 +555,8 @@ int run(int argc,char** argv){
   return 1;
  }
  QJsonObject params{{"paths",QJsonArray::fromStringList(resolution.paths)},{"installation",installation}};
+ // The destination's own passphrase setting applies; the resident refuses rather than send them unencrypted.
+ if(encrypt)params["encrypt"]=QJsonObject{{"enabled",true}};
  if(QJsonDocument(params).toJson(QJsonDocument::Compact).size()>requestBudget){
   refuse(QStringLiteral("Too many items were selected at once (%1). Select fewer, or upload their folder instead.").arg(resolution.paths.size()));return 1;
  }
@@ -560,6 +573,8 @@ int run(int argc,char** argv){
  if(error){
   const auto fuseGone=unreachableOverFuse(error.details["files"].toArray(),qEnvironmentVariable("XDG_RUNTIME_DIR"));
   if(residentLacksUpload(error.code,[]{Error probe;request("upload.files",{},probe);return probe.code;}))refuse(QStringLiteral("put.gd was just updated. Select Quit put.gd in the tray menu or the main window, or log out and back in, then try again."));
+  // A resident from before encrypted uploads refuses the encrypt field as a malformed request.
+  else if(encrypt&&residentLacksEncrypt(error.code,[]{Error probe;return request("capabilities",{},probe);}))refuse(QStringLiteral("put.gd was updated. Quit put.gd and open it again, then try again."));
   else if(!fuseGone.isEmpty()){
    // The resident's own list still reports whatever else this selection had wrong.
    const bool others=error.details["files"].toArray().size()>fuseGone.size();

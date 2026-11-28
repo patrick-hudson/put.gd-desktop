@@ -710,6 +710,9 @@ int main(int argc,char* argv[]) {
  server.setUiQuit(quitApplication);
  // A file-manager upload with no destination to go to opens Destinations (#1105).
  QObject::connect(&operations,&putgd::OperationService::destinationRequired,&app,[&]{startupRecovery.stop();ui.activate("destinations",{});});
+ // An encrypted file-manager upload to a destination that hasn't passed Test upload and link opens
+ // that destination's Encrypted links card, as the tray's encrypted capture does (#2118, #2119).
+ QObject::connect(&operations,&putgd::OperationService::encryptCheckRequired,&app,[&](const QString& profileId){startupRecovery.stop();ui.activate("encryptedLinks:"+profileId,{});});
  // A capture, the editor or a recording asked for by any route counts as
  // activation too: Settings must not open over its window (#1252).
  QObject::connect(&operations,&putgd::OperationService::explicitRequest,&startupRecovery,&QTimer::stop);

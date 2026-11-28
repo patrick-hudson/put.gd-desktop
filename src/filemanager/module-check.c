@@ -1,8 +1,9 @@
 // Loads a built Nautilus or Caja plugin the way the file manager does and checks
-// its menu entry (#1105). Linked to the extension library, as the file manager
-// is, so the unlinked plugin's symbols resolve. Not installed.
-// Usage: putgd-<fm>-check <module.so> [--activate]
-// --activate also chooses the entry, which starts /usr/bin/putgd-launcher.
+// its two menu entries (#1105, #2119). Linked to the extension library, as the
+// file manager is, so the unlinked plugin's symbols resolve. Not installed.
+// Usage: putgd-<fm>-check <module.so> [--activate|--activate-encrypted]
+// --activate also chooses Upload with put.gd, --activate-encrypted Upload
+// encrypted with put.gd; either starts /usr/bin/putgd-launcher.
 #include "fm-api.h"
 #include <dlfcn.h>
 #include <stdio.h>
@@ -41,7 +42,8 @@ static gpointer check_file(const char *uri, const char *activation) {
 }
 
 int main(int argc, char **argv) {
-  CHECK(argc == 2 || (argc == 3 && !strcmp(argv[2], "--activate")), "usage: %s <module.so> [--activate]", argv[0]);
+  const int activate = argc == 3 ? (!strcmp(argv[2], "--activate") ? 1 : !strcmp(argv[2], "--activate-encrypted") ? 2 : -1) : 0;
+  CHECK(argc == 2 || activate > 0, "usage: %s <module.so> [--activate|--activate-encrypted]", argv[0]);
   void *module = dlopen(argv[1], RTLD_NOW | RTLD_LOCAL);
   CHECK(module, "dlopen: %s", dlerror());
   void (*initialize)(GTypeModule *) = (void (*)(GTypeModule *))dlsym(module, FM_MODULE_SYMBOL("initialize"));
@@ -59,14 +61,22 @@ int main(int argc, char **argv) {
   // The second file has no activation URI, so its plain URI goes to the launcher.
   GList *files = g_list_append(g_list_append(NULL, check_file("recent:///a", "file:///tmp/a%20b.txt")), check_file("sftp://host/dir", NULL));
   GList *items = fm_menu_provider_get_file_items(provider, files);
-  CHECK(g_list_length(items) == 1, "expected one menu item, got %u", g_list_length(items));
-  char *name = NULL, *label = NULL, *icon = NULL;
-  g_object_get(items->data, "name", &name, "label", &label, "icon", &icon, NULL);
-  CHECK(!g_strcmp0(label, PUTGD_FM_LABEL) && !g_strcmp0(icon, PUTGD_FM_ICON), "menu item label %s, icon %s", label, icon);
-  if(argc == 3) fm_menu_item_activate(items->data);
-  printf("{\"type\":\"%s\",\"item\":\"%s\",\"label\":\"%s\",\"icon\":\"%s\",\"activated\":%s}\n",
-         g_type_name(types[0]), name, label, icon, argc == 3 ? "true" : "false");
-  g_free(name); g_free(label); g_free(icon);
+  CHECK(g_list_length(items) == 2, "expected two menu items, got %u", g_list_length(items));
+  // Upload with put.gd, then Upload encrypted with put.gd, each with the same icon.
+  const char *labels[] = {PUTGD_FM_LABEL, PUTGD_FM_ENCRYPTED_LABEL}, *names[] = {"PutgdMenu::Upload", "PutgdMenu::UploadEncrypted"};
+  GString *json = g_string_new(NULL);
+  int index = 0;
+  for(GList *entry = items; entry; entry = entry->next, ++index) {
+    char *name = NULL, *label = NULL, *icon = NULL;
+    g_object_get(entry->data, "name", &name, "label", &label, "icon", &icon, NULL);
+    CHECK(!g_strcmp0(name, names[index]) && !g_strcmp0(label, labels[index]) && !g_strcmp0(icon, PUTGD_FM_ICON), "menu item %d: name %s, label %s, icon %s", index, name, label, icon);
+    if(activate == index + 1) fm_menu_item_activate(entry->data);
+    g_string_append_printf(json, "%s{\"item\":\"%s\",\"label\":\"%s\",\"icon\":\"%s\"}", index ? "," : "", name, label, icon);
+    g_free(name); g_free(label); g_free(icon);
+  }
+  printf("{\"type\":\"%s\",\"items\":[%s],\"activated\":%s}\n", g_type_name(types[0]), json->str,
+         activate == 1 ? "\"plain\"" : activate == 2 ? "\"encrypted\"" : "null");
+  g_string_free(json, TRUE);
   g_list_free_full(items, g_object_unref);
   g_list_free_full(files, g_object_unref);
   g_object_unref(provider);

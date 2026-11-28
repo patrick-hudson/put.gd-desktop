@@ -1067,11 +1067,11 @@ QString fileManagerName(const QString& name){
 }
 void TrayController::notifyFileManagerMenu(const QStringList& restartable) {
  if(holdNotices_){heldFileManagerNotices_.append(restartable);return;}
- QString message=QStringLiteral("Added \"Upload with put.gd\" to your file manager's right-click menu.");
+ QString message=QStringLiteral("Added \"Upload with put.gd\" and \"Upload encrypted with put.gd\" to your file manager's right-click menu.");
  if(!restartable.isEmpty()){
   // Short, what matters first: some servers cut a body at about 80 characters.
   // "If it's missing": a file manager that hasn't shown a menu yet needs no restart.
-  message=QStringLiteral("Added \"Upload with put.gd\" to your right-click menu. Restart %1 if it's missing (closes its open windows).").arg(fileManagerName(restartable.first()));
+  message=QStringLiteral("Added put.gd's upload entries to your right-click menu. Restart %1 if they're missing (closes its open windows).").arg(fileManagerName(restartable.first()));
  }
  logging::info(logUi(),"Notification shown",{{"notificationId",qint64(++notifications_)},{"summary","file_manager_menu"},{"title","File manager menu"},{"notificationText",message},{"warning",false}});
 #ifdef Q_OS_LINUX

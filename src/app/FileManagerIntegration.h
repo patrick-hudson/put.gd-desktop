@@ -3,7 +3,8 @@
 #include <QJsonObject>
 #include <QStringList>
 namespace putgd {
-// "Upload with put.gd" in file managers (#1105): the per-user files put.gd
+// "Upload with put.gd" in file managers (#1105), and beside it "Upload encrypted
+// with put.gd" (#2119): the per-user files put.gd
 // writes. DEB and RPM menu files and plugins are system files; the system
 // install adds only its GNOME desktop icons (DING) script and its COSMIC entry
 // here. The AppImage writes every per-user entry through a stable launcher in
@@ -51,8 +52,10 @@ public:
  // The service itself runs the launcher's shell copy (no put.gd binary is left
  // then); this is the same cleanup in process, for any put.gd resident.
  static Error cleanupIfMissing(const FileManagerContext&);
- // The menu label and the per-user file paths, for tests and diagnostics.
+ // The menu labels and the per-user file paths, for tests and diagnostics.
  static QString label();
+ static QString encryptedLabel(); // #2119: the entry that uploads encrypted links
+
  // The /bin/sh -c script that restarts a restartable file manager, its name as $1; empty for any other name.
  static QString restartScript(const QString& name);
  // The existing system directories whose put.gd files (menu files, plugins) make

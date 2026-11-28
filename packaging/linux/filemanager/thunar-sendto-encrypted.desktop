@@ -1,0 +1,8 @@
+# "Upload encrypted with put.gd" under Thunar's Send To (#2119), beside "Upload
+# with put.gd". %U and no MimeType, for the same reasons as thunar-sendto.desktop.
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Upload encrypted with put.gd
+Icon=putgd
+Exec=/usr/bin/putgd-launcher --upload --encrypt -- %U

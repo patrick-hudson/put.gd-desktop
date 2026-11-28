@@ -24,6 +24,7 @@ constexpr auto modeBits=QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner|QFile
  QFile::ReadOther|QFile::WriteOther|QFile::ExeOther;
 constexpr qint64 textLimit=4*1024*1024;
 const QString scriptName=QStringLiteral("Upload with put.gd");
+const QString encryptedScriptName=QStringLiteral("Upload encrypted with put.gd"); // #2119
 
 QString hash(const QString& text) {return QString::fromLatin1(QCryptographicHash::hash(text.toUtf8(),QCryptographicHash::Sha256).toHex());}
 bool plain(const QString& value) {static const QRegularExpression safe("^[A-Za-z0-9/._+-]+$");return safe.match(value).hasMatch();}
@@ -82,8 +83,9 @@ bool removeOwned(const QString& path,const QString& ownDirectory) {
 
 // The owned-files record: line based, so the launcher's shell cleanup reads it too.
 struct Record {
- QString id,image,updateInformation,cosmic,cosmicLine;
- QStringList files;
+ QString id,image,updateInformation,cosmic;
+ QStringList files,cosmicLines; // #2119: one line per COSMIC entry
+
 };
 Record readRecord(const QString& path) {
  Record record;
@@ -96,7 +98,7 @@ Record readRecord(const QString& path) {
   else if(line.startsWith("file "))record.files<<value("file ");
   else if(line.startsWith("image "))record.image=value("image ");
   else if(line.startsWith("update "))record.updateInformation=value("update ");
-  else if(line.startsWith("cosmic-line "))record.cosmicLine=value("cosmic-line ");
+  else if(line.startsWith("cosmic-line "))record.cosmicLines<<value("cosmic-line ");
   else if(line.startsWith("cosmic "))record.cosmic=value("cosmic ");
  }
  return record;
@@ -108,7 +110,8 @@ QByteArray recordText(const Record& record) {
  if(!record.updateInformation.isEmpty())text+="update "+record.updateInformation+'\n';
  for(const auto& file:record.files)text+="file "+file+'\n';
  if(!record.cosmic.isEmpty())text+="cosmic "+record.cosmic+'\n';
- if(!record.cosmicLine.isEmpty())text+="cosmic-line "+record.cosmicLine+'\n';
+ // After the cosmic line: the launcher's shell cleanup removes each as it reads it.
+ for(const auto& line:record.cosmicLines)text+="cosmic-line "+line+'\n';
  return text.toUtf8();
 }
 
@@ -294,11 +297,14 @@ QString ronString(const QString& value) {
  }
  return out+"\"";
 }
-QString cosmicEntry(const QString& launcher) {
- return "(name: "+ronString(FileManagerIntegration::label())+", confirm: false, selection: Any, steps: ["+
-  ronString(shellWord(launcher)+" --upload -- %F")+"])";
+// put.gd's entries, in menu order: Upload with put.gd, then Upload encrypted with put.gd (#2119).
+QStringList cosmicEntries(const QString& launcher) {
+ const auto entry=[&](const QString& label,const QString& options){
+  return "(name: "+ronString(label)+", confirm: false, selection: Any, steps: ["+ronString(shellWord(launcher)+" "+options+" -- %F")+"])";
+ };
+ return {entry(FileManagerIntegration::label(),"--upload"),entry(FileManagerIntegration::encryptedLabel(),"--upload --encrypt")};
 }
-QString cosmicLine(const QString& launcher) {return "    "+cosmicEntry(launcher)+",";}
+QString cosmicLine(const QString& entry) {return "    "+entry+",";}
 bool decodeUtf8(const QByteArray& bytes,QString& text) {
  QStringDecoder decoder(QStringDecoder::Utf8,QStringDecoder::Flag::Stateless);
  text=decoder.decode(bytes);
@@ -312,9 +318,9 @@ void removeSpan(QString& text,qsizetype start,qsizetype end) {
  if(start>0&&blank(lineStart,start)&&blank(end,lineEnd)&&lineEnd<text.size())text.remove(lineStart,lineEnd+1-lineStart);
  else text.remove(start,end-start);
 }
-struct CosmicChange {Error error;bool changed=false;QString line;};
-// Adds put.gd's entry (want) or removes it (only when the record names this
-// file), recognising it by the launcher it runs. Nothing is written unless the
+struct CosmicChange {Error error;bool changed=false;QStringList lines;};
+// Adds put.gd's entries (want) or removes them (only when the record names this
+// file), recognising them by the launcher they run. Nothing is written unless the
 // value parses, and the result parses back to the same other entries.
 CosmicChange mergeCosmic(const QString& path,const QString& launcher,bool want,bool recorded) {
  CosmicChange change;
@@ -329,33 +335,36 @@ CosmicChange mergeCosmic(const QString& path,const QString& launcher,bool want,b
  }
  const auto list=parsePresets(text);
  if(!list.ok) {change.error=unparseable;return change;}
- const auto entry=cosmicEntry(launcher);
+ const auto entries=cosmicEntries(launcher);
+ QStringList lines;for(const auto& entry:entries)lines<<cosmicLine(entry);
  QList<Preset> mine,others;
  for(const auto& preset:list.presets)(runs(preset,launcher)?mine:others)<<preset;
  auto next=text;
- const auto canonical=mine.size()==1&&text.mid(mine[0].start,mine[0].end-mine[0].start)==entry;
+ // Exactly put.gd's entries, in order; anything else (an older single entry, a hand edit) is rewritten.
+ auto canonical=mine.size()==entries.size();
+ for(qsizetype i=0;canonical&&i<mine.size();++i)canonical=text.mid(mine[i].start,mine[i].end-mine[i].start)==entries[i];
  if(want&&!canonical) {
   for(auto i=mine.size()-1;i>=0;--i)removeSpan(next,mine[i].start,mine[i].comma>=0?mine[i].comma+1:mine[i].end);
   const auto rest=parsePresets(next);
   if(!rest.ok) {change.error=unparseable;return change;}
-  if(rest.close<0)next="[\n"+cosmicLine(launcher)+"\n]\n";
+  if(rest.close<0)next="[\n"+lines.join('\n')+"\n]\n";
   else {
    auto close=rest.close;
    if(!rest.presets.isEmpty()&&rest.presets.last().comma<0) {next.insert(rest.presets.last().end,',');++close;}
-   next.insert(close,(close>0&&next[close-1]=='\n'?QString{}:QStringLiteral("\n"))+cosmicLine(launcher)+'\n');
+   next.insert(close,(close>0&&next[close-1]=='\n'?QString{}:QStringLiteral("\n"))+lines.join('\n')+'\n');
   }
  } else if(!want&&recorded) {
   for(auto i=mine.size()-1;i>=0;--i)removeSpan(next,mine[i].start,mine[i].comma>=0?mine[i].comma+1:mine[i].end);
  }
- // Parse the new value back: every other entry unchanged, exactly one of ours or none.
+ // Parse the new value back: every other entry unchanged, exactly ours or none.
  const auto after=parsePresets(next);
  QList<Preset> afterMine,afterOthers;
  for(const auto& preset:after.presets)(runs(preset,launcher)?afterMine:afterOthers)<<preset;
  auto same=after.ok&&afterOthers.size()==others.size();
  for(qsizetype i=0;same&&i<others.size();++i)same=others[i].sameValue(afterOthers[i])&&
   text.mid(others[i].start,others[i].end-others[i].start)==next.mid(afterOthers[i].start,afterOthers[i].end-afterOthers[i].start);
- if(!same||afterMine.size()!=(want?1:(recorded?0:mine.size()))) {change.error={"file_manager_io","Couldn't update COSMIC Files context actions.",{{"path",path}}};return change;}
- if(want&&next.split('\n').count(cosmicLine(launcher))==1)change.line=cosmicLine(launcher);
+ if(!same||afterMine.size()!=(want?entries.size():(recorded?0:mine.size()))) {change.error={"file_manager_io","Couldn't update COSMIC Files context actions.",{{"path",path}}};return change;}
+ if(want) {const auto split=next.split('\n');for(const auto& line:lines)if(split.count(line)==1)change.lines<<line;}
  if(next==text)return change;
  const auto mode=exists?(info.permissions()&modeBits):QFile::Permissions(dataMode);
  const auto backup=exists?commit(path+".putgd-backup",before,mode,false):Write::Unchanged;
@@ -419,10 +428,12 @@ QString substitute(const QString& source,const QHash<QString,QString>& values) {
  }
  return text+source.mid(position);
 }
-QByteArray scriptText(const QString& launcher,const QString& self,const QString& kind,const QString& icon) {
+QByteArray scriptText(const QString& launcher,const QString& self,const QString& kind,const QString& icon,bool encrypt) {
  return substitute(QString::fromUtf8(putgdFileManagerScript),{{"LAUNCHER",shellQuoted(launcher)},{"SELF",shellQuoted(self)},
-  {"KIND",shellQuoted(kind)},{"ICON",shellQuoted(icon)}}).toUtf8();
+  {"KIND",shellQuoted(kind)},{"ICON",shellQuoted(icon)},{"ENCRYPT",encrypt?QStringLiteral("true"):QStringLiteral("false")}}).toUtf8();
 }
+// A script's entry: an encrypted one by its name (#2119).
+bool encryptedScript(const QString& path) {return QFileInfo(path).fileName()==encryptedScriptName;}
 // The login script's AppImage discovery (#307), the same in both scripts: an
 // update writes the next image beside the old one under a new name.
 QString loginDiscovery() {
@@ -450,10 +461,18 @@ const MenuFormat menuFormats[]={
  {putgdThunarSendTo,"Thunar/sendto","putgd-upload.desktop",false,false},
  {putgdFileManagerAction,"file-manager/actions","putgd-upload.desktop",true,false},
  {putgdContract,"contractor","putgd-upload.contract",false,false},
+ // Upload encrypted with put.gd (#2119): KIO's is a second action in its one service menu.
+ {putgdNemoActionEncrypted,"nemo/actions","putgd-upload-encrypted.nemo_action",true,false},
+ {putgdThunarSendToEncrypted,"Thunar/sendto","putgd-upload-encrypted.desktop",false,false},
+ {putgdFileManagerActionEncrypted,"file-manager/actions","putgd-upload-encrypted.desktop",true,false},
+ {putgdContractEncrypted,"contractor","putgd-upload-encrypted.contract",false,false},
 };
 QString ownDirectory(const FileManagerContext& c) {return QDir(c.dataRoot).filePath("file-manager");}
 QString recordPath(const FileManagerContext& c,const QString& installation) {return QDir(ownDirectory(c)).filePath(installation+".owned");}
-QString dingScriptPath(const FileManagerContext& c) {return QDir(c.home).filePath(".local/share/nautilus/scripts/"+scriptName);}
+QStringList dingScriptPaths(const FileManagerContext& c) {
+ const QDir scripts(QDir(c.home).filePath(".local/share/nautilus/scripts"));
+ return {scripts.filePath(scriptName),scripts.filePath(encryptedScriptName)};
+}
 bool isAppImage(const QString& path) {
  const QFileInfo info(path);
  if(!info.isFile()||info.isSymLink()||!info.isExecutable())return false;
@@ -464,6 +483,7 @@ Error ioError(const QString& message,const QString& path) {return {"file_manager
 }
 
 QString FileManagerIntegration::label() {return QStringLiteral("Upload with put.gd");}
+QString FileManagerIntegration::encryptedLabel() {return QStringLiteral("Upload encrypted with put.gd");}
 QStringList FileManagerIntegration::systemDirectories(const FileManagerContext& c) {
  QStringList directories;
  for(const auto& root:dataDirectories(c))for(const auto& format:menuFormats)directories<<QDir(root).filePath(QString::fromLatin1(format.directory));
@@ -524,17 +544,16 @@ FileManagerResult FileManagerIntegration::apply(const FileManagerContext& c) {
   const auto change=mergeCosmic(cosmic,launcher,want,previous.cosmic==cosmic);
   if(change.error) {
    fail(change.error);
-   if(previous.cosmic==cosmic) {next.cosmic=previous.cosmic;next.cosmicLine=previous.cosmicLine;}
+   if(previous.cosmic==cosmic) {next.cosmic=previous.cosmic;next.cosmicLines=previous.cosmicLines;}
    return;
   }
   if(change.changed)(want?result.written:result.removed)<<cosmic;
-  if(want) {next.cosmic=cosmic;next.cosmicLine=change.line;}
+  if(want) {next.cosmic=cosmic;next.cosmicLines=change.lines;}
  };
  const auto ding=dingInstalled(c),cosmicFiles=cosmicFilesInstalled(c);
  if(system) {
   // DEB/RPM: per-user files only where a desktop needs them, at every start.
-  const auto script=dingScriptPath(c);
-  if(ding)keep(script,scriptText(c.systemLauncher,script,"nautilus","putgd"),programMode);
+  if(ding)for(const auto& script:dingScriptPaths(c))keep(script,scriptText(c.systemLauncher,script,"nautilus","putgd",encryptedScript(script)),programMode);
   if(cosmicFiles||previous.cosmic==cosmic)applyCosmic(c.systemLauncher,cosmicFiles);
  } else if(!c.enabled) {
   // Stop the removal watch while its launcher still exists to run --stop-watch.
@@ -577,16 +596,18 @@ FileManagerResult FileManagerIntegration::apply(const FileManagerContext& c) {
   // Nautilus Scripts where put.gd's Nautilus plugin is missing; DING reads
   // only $HOME/.local/share/nautilus/scripts, also beside a system plugin.
   QStringList scripts;
-  if(!systemPlugin(c,"nautilus/extensions-4"))scripts<<QDir(c.dataHome).filePath("nautilus/scripts/"+scriptName);
-  if(ding)scripts<<dingScriptPath(c);
+  if(!systemPlugin(c,"nautilus/extensions-4"))for(const auto& name:{scriptName,encryptedScriptName})scripts<<QDir(c.dataHome).filePath("nautilus/scripts/"+name);
+  if(ding)scripts<<dingScriptPaths(c);
   scripts.removeDuplicates();
   for(const auto& script:std::as_const(scripts)) {
    if(systemRecord.files.contains(script)&&managedFile(script)) {result.skipped<<script;continue;}
-   keep(script,scriptText(launcher,script,"nautilus",icon),programMode);
+   keep(script,scriptText(launcher,script,"nautilus",icon,encryptedScript(script)),programMode);
   }
-  const auto caja=QDir(c.configHome).filePath("caja/scripts/"+scriptName);
-  if(systemPlugin(c,"caja/extensions-2.0"))result.skipped<<caja;
-  else keep(caja,scriptText(launcher,caja,"caja",icon),programMode);
+  for(const auto& name:{scriptName,encryptedScriptName}) {
+   const auto caja=QDir(c.configHome).filePath("caja/scripts/"+name);
+   if(systemPlugin(c,"caja/extensions-2.0"))result.skipped<<caja;
+   else keep(caja,scriptText(launcher,caja,"caja",icon,encryptedScript(caja)),programMode);
+  }
   // One COSMIC entry: the system install's, when it has one.
   const auto systemCosmic=systemRecord.cosmic==cosmic&&cosmicRuns(cosmic,c.systemLauncher);
   if(systemCosmic)result.skipped<<cosmic;

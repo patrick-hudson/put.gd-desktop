@@ -1,0 +1,8 @@
+# "Upload encrypted with put.gd" in Pantheon Files (#2119), beside "Upload with
+# put.gd", for the same types as putgd-upload.contract.
+[Contractor Entry]
+Name=Upload encrypted with put.gd
+Description=Upload the selected items as encrypted links with put.gd
+Icon=putgd
+MimeType=application/octet-stream;inode/directory;
+Exec=/usr/bin/putgd-launcher --upload --encrypt -- %U

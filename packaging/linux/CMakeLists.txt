@@ -29,6 +29,11 @@ if(NOT PUTGD_PACKAGE_TARGET STREQUAL "appimage")
   putgd_install_snapshot(filemanager/thunar-sendto.desktop "${CMAKE_INSTALL_DATADIR}/Thunar/sendto" RENAME putgd-upload.desktop)
   putgd_install_snapshot(filemanager/file-manager-action.desktop "${CMAKE_INSTALL_DATADIR}/file-manager/actions" RENAME putgd-upload.desktop)
   putgd_install_snapshot(filemanager/putgd-upload.contract "${CMAKE_INSTALL_DATADIR}/contractor")
+  # "Upload encrypted with put.gd" (#2119): KIO's is a second action in the file above.
+  putgd_install_snapshot(filemanager/putgd-upload-encrypted.nemo_action "${CMAKE_INSTALL_DATADIR}/nemo/actions")
+  putgd_install_snapshot(filemanager/thunar-sendto-encrypted.desktop "${CMAKE_INSTALL_DATADIR}/Thunar/sendto" RENAME putgd-upload-encrypted.desktop)
+  putgd_install_snapshot(filemanager/file-manager-action-encrypted.desktop "${CMAKE_INSTALL_DATADIR}/file-manager/actions" RENAME putgd-upload-encrypted.desktop)
+  putgd_install_snapshot(filemanager/putgd-upload-encrypted.contract "${CMAKE_INSTALL_DATADIR}/contractor")
 endif()
 # File-manager menu plugins (#1105, src/filemanager), each where its file
 # manager loads extensions, with the distros' plain shared-object mode.

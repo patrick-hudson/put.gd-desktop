@@ -10,4 +10,5 @@
 
 #define PUTGD_FM_LAUNCHER "/usr/bin/putgd-launcher"
 #define PUTGD_FM_LABEL "Upload with put.gd"
+#define PUTGD_FM_ENCRYPTED_LABEL "Upload encrypted with put.gd" // #2119
 #define PUTGD_FM_ICON "putgd"

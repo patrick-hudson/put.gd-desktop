@@ -15,7 +15,11 @@ set(putgd_file_manager_templates "#pragma once\nnamespace putgd {\n")
 foreach(template IN ITEMS FileManagerScript=src/app/file-manager-script.sh FileManagerLauncher=src/app/file-manager-launcher.sh
     KioServiceMenu=packaging/linux/filemanager/kio-servicemenu.desktop NemoAction=packaging/linux/filemanager/putgd-upload.nemo_action
     ThunarSendTo=packaging/linux/filemanager/thunar-sendto.desktop FileManagerAction=packaging/linux/filemanager/file-manager-action.desktop
-    Contract=packaging/linux/filemanager/putgd-upload.contract)
+    Contract=packaging/linux/filemanager/putgd-upload.contract
+    NemoActionEncrypted=packaging/linux/filemanager/putgd-upload-encrypted.nemo_action
+    ThunarSendToEncrypted=packaging/linux/filemanager/thunar-sendto-encrypted.desktop
+    FileManagerActionEncrypted=packaging/linux/filemanager/file-manager-action-encrypted.desktop
+    ContractEncrypted=packaging/linux/filemanager/putgd-upload-encrypted.contract)
   string(REPLACE "=" ";" template "${template}")
   list(GET template 0 template_name)
   list(GET template 1 template_path)

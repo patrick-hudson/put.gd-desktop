@@ -1393,10 +1393,11 @@ Error OperationService::encryptRefusal(const QString& action,const QString& prof
   // The route upload.files takes: its profileId, else the file manager's destination.
   Operation op;op.action=fileManagerAction;const auto snapshot=settings_.snapshot();const auto route=FileUploads::resolve(snapshot,profileId);if(route.error)return {};
   op.settings=Settings::fromValidated(FileUploads::routedDocument(snapshot,route));const auto profile=snapshot.profiles.value(route.profileId);
-  op.destination={profile["provider"].toString(),route.profileId,{},profile["settings"].toObject(),profile["credentials"].toObject()};state=encryptOptions(op);
+  op.destination={profile["provider"].toString(),route.profileId,{},profile["settings"].toObject(),profile["credentials"].toObject()};state=encryptOptions(op);state["profileId"]=route.profileId;
  } else state=encryptStateFor(action==Settings::repeatActionName()?QStringLiteral("region"):action);
  if(!state["checkRequired"].toBool())return {};
- return {"encrypt_check_required",state["reason"].toString()+QStringLiteral(" Or upload it without encryption."),{}};
+ // #2119: the destination, so a file manager's encrypted upload can open it at its Test.
+ return {"encrypt_check_required",state["reason"].toString()+QStringLiteral(" Or upload it without encryption."),{{"profileId",state["profileId"]}}};
 }
 QJsonObject OperationService::encryptStateFor(const QString& action) const {
  Operation op;op.action=action;op.settings=settings_.snapshot();
@@ -2326,7 +2327,8 @@ QJsonObject OperationService::capabilities() const {
  const bool editor=false;
 #endif
  auto sourceCapabilities=source_.capabilities();sourceCapabilities["scroll"]=scroll_->capabilities();
- return {{"source",sourceCapabilities},{"providers",providers_.capabilities()},
+ // #2119: the file manager's client asks this when an encrypted upload.files is refused as malformed.
+ return {{"source",sourceCapabilities},{"providers",providers_.capabilities()},{"uploadFiles",QJsonObject{{"encrypt",true}}},
   {"editor",QJsonObject{{"available",editor},{"admissionPixels",double(EditorJob::admissionPixels)},{"open",!editingId_.isEmpty()},
    {"sources",QJsonArray{"region","window","desktop","clipboard","file","scroll"}},{"fileFormats",QJsonArray{"png","jpeg"}},{"output","png"},
    {"shapes",QJsonArray{"redact","blur","arrow","rectangle","text","highlight","step","pen","ellipse","line"}},{"blurStyles",QJsonArray{"blur","pixelate"}},

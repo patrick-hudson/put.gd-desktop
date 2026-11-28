@@ -932,8 +932,8 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  appearance_=choices(this,"appearanceTheme",{});appearance_->addItem("Match the desktop","system");appearance_->addItem("Dark","dark");appearance_->addItem("Light","light");setting(look,"Theme",appearance_,"/preferences/appearance/theme");
  // "Upload with put.gd" in file managers (#1105). DEB and RPM install system-wide
  // entries that are always on; only the AppImage's per-user entries switch off.
- auto* fileManager=section(general,"File manager","Upload with put.gd in your file manager's right-click menu.");
- fileManagerMenu_=new PreferenceCheck("Add Upload with put.gd to the right-click menu");fileManagerMenu_->setObjectName("fileManagerMenu");
+ auto* fileManager=section(general,"File manager","Upload with put.gd and Upload encrypted with put.gd in your file manager's right-click menu.");
+ fileManagerMenu_=new PreferenceCheck("Add the put.gd upload entries to the right-click menu");fileManagerMenu_->setObjectName("fileManagerMenu");
  const bool appImage=host::installationClass()=="appimage";
  setting(fileManager,"File manager menu",fileManagerMenu_,"/preferences/fileManagerMenu",appImage?QString{}:QStringLiteral("Always on because the installed package adds it for everyone."));
  fileManagerMenu_->setEnabled(appImage);
