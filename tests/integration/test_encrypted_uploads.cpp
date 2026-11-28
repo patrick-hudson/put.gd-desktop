@@ -6,6 +6,9 @@
 #include "core/EncryptJob.h"
 #include "app/DestinationStatus.h"
 #include "app/SetupService.h"
+#include "app/LocalServer.h"
+#include "app/HistoryService.h"
+#include "core/HistoryStore.h"
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -184,6 +187,56 @@ private slots:
   bool accepted=false;f.operations->retry(op.id,[&](Error e,QJsonObject){QVERIFY2(!e,qPrintable(e.message));accepted=true;});PUTGD_TRY_VERIFY(accepted);
   HistoryStore journal(f.operations->databasePath());PUTGD_TRY_COMPARE(journal.operation(op.id).items.first().uploadStatus,QString("uploaded"));
   const auto item=journal.operation(op.id).items.first();QVERIFY(item.encrypted());QCOMPARE(f.provider->count(),1);QVERIFY(f.provider->file(item.candidate).startsWith("<!doctype html>"));
+ }
+ // #2118: an upload that can't encrypt because the destination's check hasn't passed names the
+ // destination, says why, and points at Test upload and link; one that asks to encrypt from
+ // putgd-cli or MCP is refused before anything is sent, and none is once the check passed.
+ void checkRequiredSaysWhyAndWhatToDo_data() {
+  QTest::addColumn<QString>("check");QTest::addColumn<QString>("says");
+  QTest::newRow("untested")<<"untested"<<"needs one passed Test upload and link before it can encrypt. It checks that encrypted pages open over https. Select it in Settings → Destinations.";
+  QTest::newRow("changed")<<"changed"<<"changed after its encrypted-page check. Select Test upload and link in Settings → Destinations again.";
+  QTest::newRow("failed")<<"failed"<<"didn't pass the encrypted-page check: Synthetic check refusal. Fix that, then select Test upload and link in Settings → Destinations.";
+ }
+ void checkRequiredSaysWhyAndWhatToDo() {
+  QFETCH(QString,check);QFETCH(QString,says);
+  Fixture f({{"mode","on"}});f.checkState=check;PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto label=f.settings->snapshot().profiles.value("test").value("label").toString();QVERIFY(!label.isEmpty());
+  const auto refusal=f.operations->encryptRefusal(QString::fromLatin1(OperationService::fileManagerAction),"test");
+  QCOMPARE(refusal.code,QString("encrypt_check_required"));QCOMPARE(refusal.message,label+" "+says+" Or upload it without encryption.");
+  const auto op=f.upload("must stay home","w.txt");
+  QCOMPARE(op.items.first().error.code,QString("encrypt_check_required"));QCOMPARE(op.items.first().error.message,label+" "+says+" Or turn off Encrypt to upload it as an ordinary link.");
+  QCOMPARE(f.provider->count(),0);
+  f.checkState="passed";QVERIFY(!f.operations->encryptRefusal(QString::fromLatin1(OperationService::fileManagerAction),"test"));
+ }
+ // #2118, through the session socket as putgd-cli and MCP send them: a request that asks to encrypt
+ // where the check hasn't passed gets its error envelope, and no operation, History row or capture
+ // starts. Another installation is refused for that first; a recording asking to encrypt keeps its
+ // own invalid_request.
+ void encryptRequestsAreRefusedAtTheSocket() {
+  Fixture f({});f.checkState="untested";f.operations->setInstallation("appimage");PUTGD_TRY_VERIFY(f.operations->ready());
+  HistoryService history(*f.operations);LocalServer server(*f.settings,*f.operations,history);QVERIFY(server.listen(f.dir.filePath("runtime")));
+  const auto call=[&](const QString& method,const QJsonObject& params){auto answer=std::make_shared<std::pair<bool,Error>>();
+   server.dispatch({{"schemaVersion",1},{"requestId","encrypt-refusal"},{"session",server.socketPath()},{"method",method},{"params",params}},[answer](Error e,QJsonObject){answer->first=true;answer->second=e;});
+   (void)waitFor([&]{return answer->first;});return answer->second;};
+  const auto path=fixture(f.dir.path(),"r.txt","stays home");const QJsonObject encrypt{{"enabled",true}};
+  const auto says=QString("Synthetic opaque provider needs one passed Test upload and link before it can encrypt.");
+  auto e=call("upload.files",{{"paths",QJsonArray{path}},{"profileId","test"},{"encrypt",encrypt}});
+  QCOMPARE(e.code,QString("encrypt_check_required"));QVERIFY2(e.message.startsWith(says),qPrintable(e.message));QVERIFY(e.message.endsWith("Or upload it without encryption."));
+  e=call("upload.files",{{"paths",QJsonArray{path}},{"encrypt",encrypt}});QCOMPARE(e.code,QString("encrypt_check_required"));
+  e=call("upload.files",{{"paths",QJsonArray{path}},{"installation","system"},{"encrypt",encrypt}});QCOMPARE(e.code,QString("installation_mismatch"));
+  e=call("action.invoke",{{"action","region"},{"encrypt",true}});QCOMPARE(e.code,QString("encrypt_check_required"));QVERIFY(e.message.startsWith(says));
+  e=call("action.invoke",{{"action","record"},{"encrypt",true}});QCOMPARE(e.code,QString("invalid_request"));
+  QCOMPARE(f.source.reads,0);QCOMPARE(f.operations->diagnostics()["activeOperations"].toInt(),0);
+  HistoryStore journal(f.operations->databasePath());QCOMPARE(journal.list({}).total,qint64(0));QCOMPARE(f.provider->count(),0);
+ }
+ // Another installation's file-manager entry is refused as installation_mismatch before anything
+ // about this resident's destinations, so it never learns or opens them.
+ void anotherInstallationIsRefusedBeforeTheCheck() {
+  Fixture f({{"mode","on"}});f.checkState="untested";f.operations->setInstallation("appimage");PUTGD_TRY_VERIFY(f.operations->ready());
+  const auto files=QString::fromLatin1(OperationService::fileManagerAction);
+  QCOMPARE(f.operations->encryptRefusal(files,"test","system").code,QString("installation_mismatch"));
+  QCOMPARE(f.operations->encryptRefusal(files,"test","appimage").code,QString("encrypt_check_required"));
+  QCOMPARE(f.operations->encryptRefusal(files,"test").code,QString("encrypt_check_required"));
  }
  // A private upload gets no link, and an encrypted file opens only from its link: it is refused
  // before encrypting, never sent, and the editor's toggle says why.

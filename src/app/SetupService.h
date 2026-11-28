@@ -29,6 +29,10 @@ public:
  // values over the cached ones and stores the set.
  using NamedCredentials=std::function<Error(const QJsonObject& profile,const QMap<QString,QString>& values,QStringList* names)>;
  void setNamedCredentials(NamedCredentials handler){namedCredentials_=std::move(handler);}
+ // The destination types that always sign in with keys put.gd's credential store holds: S3, B2,
+ // R2, Nextcloud and WebDAV (#2118: also DestinationStatus's session rule). usesCredentialStore
+ // adds a custom uploader's named values.
+ static bool storesKeys(const QJsonObject& profile);
  // What a key pair stored for a profile is bound to (#1872): the non-secret text the provider
  // keeps beside it, in place of a session token; empty for a provider that binds nothing.
  using CredentialBinding=std::function<QString(const QJsonObject& profile)>;

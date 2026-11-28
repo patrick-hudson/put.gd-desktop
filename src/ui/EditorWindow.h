@@ -290,6 +290,7 @@ private:
  QPushButton *copyImage_=nullptr;QJsonObject lastCopy_;
  QGridLayout* toolbarGrid_=nullptr;QBoxLayout *toolsLayout_=nullptr,*actionsLayout_=nullptr;QWidget* actionsSeparator_=nullptr;bool toolbarWrapped_=false;
  QPushButton* encrypt_=nullptr;QString encryptReason_;bool encryptAvailable_=false;
+ void describeEncrypt();void showEncryptReason();
  QPushButton *upload_=nullptr,*save_=nullptr,*cancel_=nullptr,*place_=nullptr,*showFolder_=nullptr,*copyPath_=nullptr,*chooseAnother_=nullptr,*remove_=nullptr;
  QSplitter* splitter_=nullptr;int propertiesWidth_=240;
  QWidget *canvasViewport_=nullptr,*side_=nullptr,*document_=nullptr;QScrollArea* propertiesScroll_=nullptr;

@@ -41,6 +41,55 @@ class UiEndpointsTest : public QObject {
   return QJsonDocument::fromJson(response).object();
  }
 private slots:
+ // #2118: an SFTP destination's passed check is the session's only while the session holds its
+ // password or key passphrase: a restart forgets it then, and keeps it for the SSH agent or a key
+ // file, a secret cleared again, a store that failed, and a switch from keychain to session.
+ void sessionOnlySftpChecksEndWithTheSession() {
+  QTemporaryDir dir;ProviderRegistry providers;providers.add("opaque",std::make_shared<OpaqueProvider>());providers.add("sftp",std::make_shared<OpaqueProvider>());
+  SettingsService settings(dir.filePath("config.json"),[&](const QString& id,const QJsonObject& value){return providers.validate(id,value);});
+  const QStringList ids{"password","agent","cleared","failed","switched"};
+  const auto save=[&](const QString& switchedMode){auto document=configuration(dir.path());auto profiles=document["profiles"].toArray();
+   for(const auto& id:ids)profiles.append(QJsonObject{{"id",id},{"label","SFTP"},{"provider","sftp"},{"settings",QJsonObject{{"workspace","fixture-"+id}}},
+    {"credentials",id=="switched"?QJsonObject{{"mode",switchedMode},{"reference",switchedMode=="keychain"?QJsonValue("putgd/switched"):QJsonValue(QJsonValue::Null)}}:QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}}});
+   document["profiles"]=profiles;return bool(settings.save(document,settings.revision()));};
+  QVERIFY(save("keychain"));
+  CredentialStore cache;const QJsonObject session{{"mode","session"},{"reference",QJsonValue::Null}};
+  const auto holds=[&](const QString& id,const QJsonObject& profile){const auto held=cache.cached(id,profile["credentials"].toObject());return held&&(!held->values.value("password").isEmpty()||!held->values.value("passphrase").isEmpty());};
+  const auto path=dir.filePath("data/destination-status.json");
+  {DestinationStatus status(path,settings);status.setUsesCredentials(&SetupService::storesKeys);status.setHoldsSessionSecret(holds);status.load();
+   // Keychain keys stored once, then the destination switched to this session with nothing in it.
+   status.credentialsChanged("switched");QVERIFY(save("session"));
+   Credentials password;password.values={{"password","synthetic-password"}};cache.setSession("password",password);cache.setSession("cleared",password);
+   QVERIFY(cache.cached("password",session));
+   status.credentialsChanged("password");status.credentialsChanged("cleared");status.credentialsChanged("failed");
+   cache.forget("cleared",session);
+   for(const auto& id:ids){status.encryptChecked(id,destinationcheck::fingerprint(settings.snapshot().profiles.value(id)),true,{});QCOMPARE(status.encryptCheck(id)["state"].toString(),QString("passed"));}}
+  DestinationStatus restarted(path,settings);restarted.setUsesCredentials(&SetupService::storesKeys);restarted.load();
+  for(const auto& id:ids)QCOMPARE(restarted.encryptCheck(id)["state"].toString(),id=="password"?QString("untested"):QString("passed"));
+ }
+ // #2118: whether a check is the session's is decided when it is recorded. A check made with a
+ // session password, then the destination switched to the keychain, then an unrelated save, a
+ // restart and a switch back to this session: the check is gone, never written.
+ void sessionCheckStaysTheSessionsAfterAStorageSwitch() {
+  QTemporaryDir dir;ProviderRegistry providers;providers.add("opaque",std::make_shared<OpaqueProvider>());providers.add("sftp",std::make_shared<OpaqueProvider>());
+  SettingsService settings(dir.filePath("config.json"),[&](const QString& id,const QJsonObject& value){return providers.validate(id,value);});
+  const auto save=[&](const QString& mode){auto document=configuration(dir.path());auto profiles=document["profiles"].toArray();
+   for(const auto* id:{"seq","other"})profiles.append(QJsonObject{{"id",id},{"label","SFTP"},{"provider","sftp"},{"settings",QJsonObject{{"workspace",QString("fixture-")+id}}},
+    {"credentials",QString(id)=="seq"&&mode=="keychain"?QJsonObject{{"mode","keychain"},{"reference","putgd/seq"}}:QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}}});
+   document["profiles"]=profiles;return bool(settings.save(document,settings.revision()));};
+  QVERIFY(save("session"));
+  CredentialStore cache;Credentials password;password.values={{"password","synthetic-password"}};cache.setSession("seq",password);
+  const auto holds=[&](const QString& id,const QJsonObject& profile){const auto held=cache.cached(id,profile["credentials"].toObject());return held&&!held->values.value("password").isEmpty();};
+  const auto path=dir.filePath("data/destination-status.json");
+  {DestinationStatus status(path,settings);status.setUsesCredentials(&SetupService::storesKeys);status.setHoldsSessionSecret(holds);status.load();
+   status.encryptChecked("seq",destinationcheck::fingerprint(settings.snapshot().profiles.value("seq")),true,{});QCOMPARE(status.encryptCheck("seq")["state"].toString(),QString("passed"));
+   QVERIFY(save("keychain"));
+   status.encryptChecked("other",destinationcheck::fingerprint(settings.snapshot().profiles.value("other")),true,{});}
+  {DestinationStatus restarted(path,settings);restarted.setUsesCredentials(&SetupService::storesKeys);restarted.setHoldsSessionSecret(holds);restarted.load();
+   QVERIFY(save("session"));
+   QCOMPARE(restarted.encryptCheck("seq")["state"].toString(),QString("untested"));
+   QCOMPARE(restarted.encryptCheck("other")["state"].toString(),QString("passed"));}
+ }
  // #1692: a passed Test is the resident's, on disk, so a new helper or a restarted resident
  // still shows it. A label change keeps it, a connection or credential change does not, and
  // uploads confirm it: a refused sign-in fails it, a network failure leaves it.

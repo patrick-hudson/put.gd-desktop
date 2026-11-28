@@ -320,6 +320,8 @@ private:
     struct Placement { QString kind; recording::Span span; bool whole = false; };
     QList<StatusEntry> statusEntries() const;
     void refreshStatus();
+    // #2118: why Encrypt can't turn on here, in the status band.
+    void showEncryptReason();
     void refreshAll();
     void refreshTransport();
     void refreshTools();

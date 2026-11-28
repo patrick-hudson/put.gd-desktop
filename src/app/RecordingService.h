@@ -38,7 +38,7 @@ public:
         std::function<void(const QJsonObject& preferences)> remember;
         // #2079: the review's Encrypt toggle changed for this operation; optional.
         std::function<void(const QString& operationId, bool on)> encrypt;
-        // #2079: why this operation can't be encrypted now (encrypt_unavailable, or
+        // #2079: why this operation can't be encrypted now (encrypt_unavailable, encrypt_check_required, or
         // encrypt_passphrase_locked), or no error when it can; an upload request that asks for
         // encryption is refused with it before anything is exported. Optional.
         std::function<Error(const Operation&)> encryptRefusal;

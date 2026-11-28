@@ -62,7 +62,7 @@ UiApplicationController::~UiApplicationController(){
   if(window){window->removeEventFilter(this);disconnect(window,nullptr,this,nullptr);}
 }
 QWidget* UiApplicationController::view(const QString& name){
- if(name.startsWith("historyCancelAll:")||name=="historyFailed"||name.startsWith("actionRecovery:")||name.startsWith("errors:")||QStringList{"settings","updates","history","activity","destinations","editFile","captureSettings","errors"}.contains(name)){
+ if(name.startsWith("historyCancelAll:")||name=="historyFailed"||name.startsWith("actionRecovery:")||name.startsWith("errors:")||name.startsWith("encryptedLinks:")||QStringList{"settings","updates","history","activity","destinations","editFile","captureSettings","errors"}.contains(name)){
   if(!main_){
    main_=std::make_unique<MainWindow>(session_);
    connect(main_.get(),&MainWindow::settingsCreated,this,[this](SettingsWindow* settings){
@@ -92,6 +92,9 @@ QWidget* UiApplicationController::view(const QString& name){
   // Scrolled once the window is shown and laid out, as editFile opens its picker.
   if(name=="captureSettings"){main_->navigate("settings");QTimer::singleShot(0,main_.get(),[main=QPointer<MainWindow>(main_.get())]{if(main)main->showCaptureSettings();});return main_.get();}
   if(name=="updates"){main_->navigate("settings");QTimer::singleShot(0,main_.get(),[main=QPointer<MainWindow>(main_.get())]{if(main)main->settings()->showUpdates();});return main_.get();}
+  // #2118: "encryptedLinks:<profile id>" opens that destination at its Encrypted links card and its Test.
+  // A destination that isn't there (removed meanwhile) refuses the activation rather than show another.
+  if(name.startsWith("encryptedLinks:")){const auto id=name.mid(15);main_->showDestination(id);if(!main_->settings()->showEncryptedLinks(id))return nullptr;return main_.get();}
   if(name=="historyFailed"){main_->navigate("history");main_->history()->showFailedUploads();return main_.get();}
   // Settings → Error log (#1753); "errors:<target JSON>" opens it on one entry.
   if(name=="errors"||name.startsWith("errors:")){const auto target=name=="errors"?QJsonObject{}:QJsonDocument::fromJson(name.mid(7).toUtf8()).object();main_->navigate("settings");QTimer::singleShot(0,main_.get(),[main=QPointer<MainWindow>(main_.get()),target]{if(main)main->showErrorLog(target);});return main_.get();}

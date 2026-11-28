@@ -36,6 +36,9 @@ public:
  void showCaptureSettings(const QStringList& affectedActions={});void showLocalCopySettings();
  // General → Updates (#293), scrolled into view.
  void showUpdates();
+ // #2118: destination profileId's Encrypted links card, its Test upload and link focused when offered;
+ // false, and nothing revealed, when that destination isn't the one shown.
+ bool showEncryptedLinks(const QString& profileId);
  QWidget* destinationsPage()const{return destinationPage_;}
  void clearCredentialInputs();
  void retryProtonBrowser();
@@ -228,7 +231,7 @@ private:
  // A finished setup job of a Nextcloud or WebDAV destination; true when it was handled whole.
  bool davSetupFinished(const QJsonObject& job,const QJsonObject& data,const Error& error,bool currentTest);
  // #1871: the SFTP form; inspectProfile_ is the destination whose ssh -G line is being read.
- SftpPanel* sftpPanel_=nullptr;class EncryptedLinksPanel* encryptPanel_=nullptr;void loadEncryptPanel(bool edited);QString sftpInspected_;void inspectSftp();QString sftpInspectKey()const;
+ SftpPanel* sftpPanel_=nullptr;class EncryptedLinksPanel* encryptPanel_=nullptr;void loadEncryptPanel(bool edited);QString revealEncryptFor_;void revealEncryptedLinks();std::function<void(Error,QJsonObject)> encryptTestReply_;QString encryptTestFor_;QHash<QString,QJsonObject> testOutcomes_;QString sftpInspected_;void inspectSftp();QString sftpInspectKey()const;
  // #1871: a Clear about to start; its setup job record carries the mark from then on.
  bool sftpClearPending_=false;
  QVector<QHash<QString,CredentialInputs>> credentialDrafts_;

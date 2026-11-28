@@ -67,6 +67,15 @@ QString uuid() {return QUuid::createUuid().toString(QUuid::WithoutBraces);}
 Error unsupported() {return {"source_unsupported","Screen capture and clipboard access aren't available on this desktop.",{}};}
 bool terminalUpload(const QString& s) {return s=="uploaded"||s=="skipped"||s=="conflict"||s=="local_only";}
 const QLoggingCategory& providerLog(const QString& provider) {return provider=="s3"||provider=="cloudflare-r2"?logS3():provider=="proton-drive"?logProton():logOperation();}
+// #2118: why a destination whose encrypted-page check hasn't passed can't encrypt, and what to do.
+// Every per-upload place says it the same way: the editor, recording review, putgd-cli and MCP.
+QString encryptCheckMessage(const QJsonObject& check,const QJsonObject& profile) {
+ const auto label=profile.value("label").toString().trimmed();const auto name=label.isEmpty()?QStringLiteral("This destination"):label;
+ const auto state=check.value("state").toString();
+ if(state=="failed")return QStringLiteral("%1 didn't pass the encrypted-page check: %2 Fix that, then select Test upload and link in Settings → Destinations.").arg(name,check.value("reason").toString());
+ if(state=="changed")return QStringLiteral("%1 changed after its encrypted-page check. Select Test upload and link in Settings → Destinations again.").arg(name);
+ return QStringLiteral("%1 needs one passed Test upload and link before it can encrypt. It checks that encrypted pages open over https. Select it in Settings → Destinations.").arg(name);
+}
 // #2079: an encrypted file opens only from its link, which a private upload doesn't get.
 QString encryptNeedsLink() {return QStringLiteral("Encrypted files open only from their link, and Sharing is set to Private upload. Change Sharing in Settings → Capture, or turn off Encrypt to upload it privately.");}
 qint64 artifactBytes(const Operation& op) {qint64 total=0;for(const auto& item:op.items)total+=item.artifact.bytes;return total;}
@@ -140,6 +149,8 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  host.encrypt=[this](const QString& id,bool on){recordEncrypt(id,on);};
  host.encryptRefusal=[this](const Operation& op)->Error{
   const auto options=encryptOptions(op);
+  // #2118: only the encrypted-page check missing is encrypt_check_required, as on every other path.
+  if(options["checkRequired"].toBool())return {"encrypt_check_required",options["reason"].toString()+QStringLiteral(" Or upload it without encryption."),{}};
   if(!options["available"].toBool())return {"encrypt_unavailable",options["reason"].toString(QStringLiteral("Encrypted links aren't available for this upload."))+" Upload it without encryption.",{}};
   // A saved passphrase that isn't loaded is said now, as the upload would say it after the export.
   if(options["passphrase"].toBool()){QString loaded;{std::lock_guard lock(encryptHooksMutex_);if(encryptPassphrase_)loaded=encryptPassphrase_(op.destination.profileId,op.settings.profiles.value(op.destination.profileId));}
@@ -406,6 +417,9 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
  if(action=="edit"&&delay>0&&!Settings::delayableEditSource(source)){reply({"invalid_request","delaySeconds applies to an edit of a region, window or desktop capture",{}},{});return;}
  if(action=="edit"&&editor_){editor_->request("raise",activationToken.isEmpty()?QJsonObject{}:QJsonObject{{"activationToken",activationToken}},[](Error,QJsonObject){});reply({"editor_active","An image edit is already open. Finish or cancel it first.",{{"operationId",editingId_}}},{});return;}
  if(action=="edit"&&recording_->active()){reply({"recording_active","A recording is already running. Stop or cancel it before editing.",{{"operationId",recording_->activeId()}}},{});return;}
+ // #2118: encrypt true where the destination's encrypted-page check hasn't passed captures nothing,
+ // once the request is otherwise valid.
+ if(encryptValue.toBool())if(auto refusal=encryptRefusal(action)){reply(refusal,{});return;}
  const bool interactive=source!="clipboard"&&source!="file";
  auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued actions in Settings → Advanced → Resource limits.",{}},{});return;}
  if(interactive&&!selectingId_.isEmpty()) {reply({"busy_selecting","Another capture selection or countdown is already in progress. Finish or cancel it first.",{}},{});return;}
@@ -1369,13 +1383,28 @@ void OperationService::editorCommand(const QString& id,const QString& command,co
 void OperationService::pump() {
  while(!queue_.isEmpty()&&running_<queue_.head().op.settings.limits.concurrentUploads&&!stopping_) {auto job=queue_.dequeue();++running_;if(!job.op.destination.profileId.isEmpty())emit uploadStarting(job.op);background([this,job=std::move(job)](Error&) mutable {return run(std::move(job)).toJson();},[this](Error,QJsonObject doc) {--running_;auto op=Operation::fromJson(doc);finish(op);pump();});}
 }
-bool OperationService::encryptAvailableFor(const QString& action) const {
+bool OperationService::encryptAvailableFor(const QString& action) const {return encryptStateFor(action)["available"].toBool();}
+Error OperationService::encryptRefusal(const QString& action,const QString& profileId,const QString& installation) const {
+ QJsonObject state;
+ if(action==fileManagerAction) {
+  // Another installation's menu entry is refused for that first, as uploadFiles refuses it,
+  // whatever this resident's destinations would say.
+  if(!installation.isEmpty())if(auto error=FileUploads::matchInstallation(installation,installation_))return error;
+  // The route upload.files takes: its profileId, else the file manager's destination.
+  Operation op;op.action=fileManagerAction;const auto snapshot=settings_.snapshot();const auto route=FileUploads::resolve(snapshot,profileId);if(route.error)return {};
+  op.settings=Settings::fromValidated(FileUploads::routedDocument(snapshot,route));const auto profile=snapshot.profiles.value(route.profileId);
+  op.destination={profile["provider"].toString(),route.profileId,{},profile["settings"].toObject(),profile["credentials"].toObject()};state=encryptOptions(op);
+ } else state=encryptStateFor(action==Settings::repeatActionName()?QStringLiteral("region"):action);
+ if(!state["checkRequired"].toBool())return {};
+ return {"encrypt_check_required",state["reason"].toString()+QStringLiteral(" Or upload it without encryption."),{}};
+}
+QJsonObject OperationService::encryptStateFor(const QString& action) const {
  Operation op;op.action=action;op.settings=settings_.snapshot();
  const auto route=op.settings.actions.value(action);
- if(route.destination!="upload"||route.profileId.isEmpty())return false;
+ if(route.destination!="upload"||route.profileId.isEmpty())return {{"available",false}};
  const auto profile=op.settings.profiles.value(route.profileId);
  op.destination={profile["provider"].toString(),route.profileId,{},profile["settings"].toObject(),profile["credentials"].toObject()};
- return encryptOptions(op)["available"].toBool();
+ auto out=encryptOptions(op);out["profileId"]=route.profileId;return out;
 }
 bool OperationService::encryptWanted(const Operation& op) const {
  if(op.action==diagnosticsAction)return false;
@@ -1395,8 +1424,7 @@ QJsonObject OperationService::encryptOptions(const Operation& op) const {
   auto mode=route.publicationMode;if(mode=="default"&&provider)mode=provider->defaultPublicationMode(op.destination);
   if(!unavailable.isEmpty())out["reason"]=unavailable;
   else if(mode=="private")out["reason"]=encryptNeedsLink();
-  else if(check.value("state")=="failed")out["reason"]="This destination didn't pass the encrypted-link check: "+check.value("reason").toString();
-  else if(check.value("state")!="passed")out["reason"]=QStringLiteral("Select Test upload and link for this destination first.");
+  else if(check.value("state")!="passed"){out["reason"]=encryptCheckMessage(check,op.settings.profiles.value(op.destination.profileId));out["checkRequired"]=true;}
   else out["available"]=true;}
  out["on"]=on;return out;
 }
@@ -1447,7 +1475,7 @@ bool OperationService::encryptItems(Operation& op,const ProviderCapabilities& ca
   if(!capabilities.encryptUnavailable.isEmpty())refusal={"encrypt_unavailable",capabilities.encryptUnavailable+" Turn off Encrypt to upload it.",{}};
   // An encrypted file opens only from its link, and a private upload gets none.
   else if(publicationMode=="private")refusal={"encrypt_needs_link",encryptNeedsLink(),{}};
-  else if(check.value("state")!="passed")refusal={"encrypt_check_required",check.value("state")=="failed"?"This destination didn't pass the encrypted-link check: "+check.value("reason").toString()+" Turn off Encrypt to upload it.":QStringLiteral("Select Test upload and link for this destination before uploading encrypted links."),{}};
+  else if(check.value("state")!="passed")refusal={"encrypt_check_required",encryptCheckMessage(check,profile)+QStringLiteral(" Or turn off Encrypt to upload it as an ordinary link."),{}};
   else if(op.encrypt.value("passphraseFrom")=="request"&&requestPassphrase.isEmpty())refusal={"encrypt_passphrase_missing","This upload's passphrase came with the request and isn't kept, so it can't be encrypted now. Upload the file again with its passphrase.",{}};
   else if(setting=="passphrase"&&passphrase.isEmpty())refusal={"encrypt_passphrase_locked","The Encrypted links passphrase isn't loaded. Unlock it in Destinations, then select Retry upload.",{}};
   // The format's limits: a file encrypting can't take fails before anything is sent. It is never

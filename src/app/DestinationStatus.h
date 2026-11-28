@@ -24,10 +24,13 @@ public:
  void load();
  // Follows uploads and forgets removed destinations from then on.
  void follow(OperationService& operations);
- // Whether a destination keeps keys: S3, B2, a custom uploader with secret values. A
- // session-mode destination that does is kept in memory only, so after a restart it is
- // untested. Unset, every destination counts as keeping keys.
+ // Whether a destination keeps keys (SetupService::storesKeys, and a custom uploader with secret
+ // values). A session-mode destination that does is kept in memory only, so after a restart it is
+ // untested. Unset, every destination counts as keeping keys. SFTP follows setHoldsSessionSecret.
  void setUsesCredentials(std::function<bool(const QJsonObject& profile)> uses){usesCredentials_=std::move(uses);}
+ // #2118: whether the session credential cache holds a non-empty SFTP password or key passphrase
+ // for this destination right now. Unset, no SFTP destination counts as session-only.
+ void setHoldsSessionSecret(std::function<bool(const QString& profileId,const QJsonObject& profile)> holds){holdsSessionSecret_=std::move(holds);}
  // Counts stores of new credentials (and Proton sign-ins) for a destination.
  quint64 credentialRevision(const QString& profileId) const {return credentialRevisions_.value(profileId);}
  // A store of credentials starts or succeeds: every configured destination that names the
@@ -52,7 +55,9 @@ public:
  // like a test; the Encrypted links setting and per-upload Encrypt are available only while it
  // passed. reason is one sentence when it failed.
  void encryptChecked(const QString& profileId,const QString& fingerprint,bool passed,const QString& reason);
- // {state: passed|failed|untested, reason?} against the destination's current settings.
+ // {state: passed|failed|changed|untested, reason?} against the destination's current settings:
+ // changed when the check ran on an earlier connection (#2118), untested when it never ran on
+ // these keys (also every destination set up before the check existed).
  QJsonObject encryptCheck(const QString& profileId) const;
  // The same for a connection fingerprint the caller computed (an accepted upload's own
  // settings); safe from any thread.
@@ -65,7 +70,10 @@ public:
 signals:
  void changed();
 private:
- struct Record {QString state,source,errorCode,fingerprint;quint64 credentialRevision=0;};
+ // sessionOnly: made with keys kept only for this session, so never written (#2118).
+ struct Record {QString state,source,errorCode,fingerprint;quint64 credentialRevision=0;bool sessionOnly=false;};
+ // Whether a check made now would be made with keys kept only for this session.
+ bool sessionOnlyNow(const QString& profileId) const;
  // What the operation held when this run started: its uploaded files and each item's
  // error code.
  struct Attempt {quint64 credentialRevision=0;QSet<QString> uploaded;QHash<QString,QString> errors;};
@@ -75,12 +83,13 @@ private:
  QString path_;
  SettingsService& settings_;
  QHash<QString,Record> records_;
- struct EncryptRecord {bool passed=false;QString reason,fingerprint;quint64 credentialRevision=0;};
+ struct EncryptRecord {bool passed=false;QString reason,fingerprint;quint64 credentialRevision=0;bool sessionOnly=false;};
  QHash<QString,EncryptRecord> encryptRecords_; // written on the owning thread, under encryptMutex_
  mutable std::mutex encryptMutex_;
  QHash<QString,quint64> credentialRevisions_;
  QSet<QString> keychainEntries_;
  QHash<QString,Attempt> attempts_;
  std::function<bool(const QJsonObject&)> usesCredentials_;
+ std::function<bool(const QString&,const QJsonObject&)> holdsSessionSecret_;
 };
 }

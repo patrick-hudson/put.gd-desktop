@@ -1474,6 +1474,8 @@ SettingsWindow::SettingsWindow(UiSession& settings,QWidget* parent):RetainedWind
  connect(this,&SettingsWindow::viewStateChanged,this,[this]{if(!encryptWaits_.isEmpty())settleEncryptWaits();});
  connect(encryptPanel_,&EncryptedLinksPanel::storePassphrase,this,[this](const QString& text){if(admitSetup())beginSetup("storeEncryptPassphrase",{{"passphrase",text}});});
  connect(encryptPanel_,&EncryptedLinksPanel::unlockPassphrase,this,[this]{if(admitSetup())beginSetup("unlockEncryptPassphrase");});
+ // #2118: the card's Test upload and link is the destination's own test, as its header button starts it.
+ connect(encryptPanel_,&EncryptedLinksPanel::testRequested,this,[this]{if(auto* test=findControl<QPushButton*>("testDestination");test&&test->isEnabled())test->click();});
  connect(&settings_,&UiSession::destinationStatusChanged,this,[this]{loadEncryptPanel(true);});
  updateProviderVisibility_=[=,this]{for(const auto& update:connectionDefaults)update();const auto provider=providerType_->currentData().toString();for(auto* action:services->actions())action->setChecked(action->data()==provider);const bool s3=provider=="s3";const bool b2=provider=="backblaze-b2";const bool r2=provider==r2::providerId;const bool storage=s3||b2||r2;const bool http=provider==CustomUploaderPanel::provider();const bool sftpDest=provider==SftpPanel::provider();const bool dav=dav::isDav(provider);const bool davCredentials=provider==dav::webdavId||(provider==dav::nextcloudId&&dav_->appPasswordShown());const bool authorized=(b2&&b2LinkMode_->currentData()=="authorized")||((s3||r2)&&b2LinkMode_->currentData()=="presigned");const bool expanded=advanced->isChecked();updateR2Feedback();s3_["publicUrlBase"]->setPlaceholderText(r2?"https://pub-….r2.dev":"https://i.example.com");links->setRowVisible(r2LinkWarning,r2&&!authorized&&s3_["publicUrlBase"]->text().trimmed().isEmpty());advancedCaption->setText(storage?"Advanced connection settings":"Advanced link settings");advanced->setAccessibleName(advancedCaption->text());description->setProperty("compactText",s3?"Amazon S3":r2?"Cloudflare R2":b2?"Backblaze B2 · Native API":http?"Custom uploader · HTTP":provider==dav::nextcloudId?"Nextcloud":provider==dav::webdavId?"WebDAV":sftpDest?"SFTP · Your own server":"Proton Drive · Third-party integration");description->setProperty("fullText",s3?"Amazon S3 or compatible storage.":r2?"Cloudflare R2 through its S3 API.":b2?"Backblaze B2 through its native API.":http?"Your own server or any ShareX custom uploader over HTTP.":provider==dav::nextcloudId?"Uploads to a folder in your Nextcloud files with a public share link.":provider==dav::webdavId?"A folder on a WebDAV server.":sftpDest?"Your own server over SFTP using your OpenSSH client and config.":"Third-party Proton Drive integration. Share links open a Proton page.");description->setText(description->property("fullText").toString());for(auto* field:{s3_["bucket"],s3_["objectPrefix"]})destinationDetails->setRowVisible(formRow(field),storage);PreferenceRows::sectionFor(destinationDetails)->setVisible(storage);destinationDetails->setRowVisible(formRow(providerType_),false);destinationDetails->setRowVisible(s3ServiceRow,s3);destinationDetails->setRowVisible(r2AccountRow,r2);destinationDetails->setRowVisible(r2JurisdictionRow,r2);destinationDetails->setRowVisible(moveToR2Row,s3&&r2::fromS3Settings(editedProfile()["settings"].toObject()).has_value());destinationDetails->setRowVisible(formRow(regionChoices_),s3);connection->setRowVisible(PreferenceRows::rowFor(endpointHint_),(s3&&!customEndpoint->isChecked())||r2);destinationDetails->setRowVisible(endpointWarning,s3&&s3_["endpoint"]->text().contains("backblazeb2.com"));connection->setRowVisible(customEndpointRow,s3);connection->setRowVisible(formRow(s3_["endpoint"]),s3&&customEndpoint->isChecked());PreferenceRows::sectionFor(links)->setVisible(storage);links->setRowVisible(aclRow,s3&&!authorized);aclHint->setVisible(s3&&!authorized);links->setRowVisible(b2ModeRow,storage);links->setRowVisible(b2DaysRow,authorized);if(b2DaysHint){const auto hint=s3||r2?QString("Links last 1–7 days (default: 7) and use the S3 endpoint host, ignoring Link domain. Temporary credentials can expire sooner. Files stay in the bucket."):QString("Links expire after 1–7 days (default: 7). Files stay in the bucket.");b2DaysHint->setText(hint);b2LinkDays_->setAccessibleDescription(hint);b2LinkDays_->setToolTip(hint);b2LinkDays_->setProperty("settingDescription",hint);}links->setRowVisible(formRow(s3_["publicUrlBase"]),storage&&!authorized);auto* exampleHost=(s3||r2)&&authorized?b2DaysRow:linkDomainRow;if(exampleLine->parentWidget()!=exampleHost){exampleHost->layout()->addWidget(exampleLine);exampleLine->show();}connectionPanel_->setVisible(storage&&expanded);for(auto it=connectionRows.begin();it!=connectionRows.end();++it)connection->setRowVisible(it.value(),s3||(r2&&it.key()!="storageClass")||it.key()=="connectTimeoutMs"||it.key()=="requestTimeoutMs");connection->setRowVisible(addressRow,s3);PreferenceRows::sectionFor(credentialForm)->setVisible(storage||http||dav||sftpDest);for(auto* row:sftpPanel_->signInRows())credentialForm->setRowVisible(row,sftpDest);if(credentialHeading)credentialHeading->setText(sftpDest?"Sign-in":"Credentials");if(credentialCaption)credentialCaption->setText(sftpDest?"All optional. Leave them empty to sign in with your SSH agent and ~/.ssh/config, as ssh does in a terminal. Secrets never enter settings or history.":"Credentials never enter settings or history. Typed replacements are cleared after use and when this window closes or reloads.");relabel(credentialForm,storageRow,sftpDest?"Keep secrets in":"Credential storage");credentialMode_->setAccessibleName(sftpDest?"Keep secrets in":"Credential storage");credentialForm->setRowVisible(tokenRow,s3);credentialForm->setRowVisible(accessRow,storage||davCredentials);credentialForm->setRowVisible(secretRow,storage||davCredentials);currentKeyCaption->setText(http||sftpDest?"Stored values":dav?"Stored login":"Current key");uploader_->setVisible(http);sftpPanel_->setVisible(sftpDest);dav_->setProvider(dav?provider:dav_->provider());dav_->setVisible(dav);if(dav){findControl<QPushButton*>("storeCredentials")->setVisible(davCredentials);access_->setVisible(davCredentials);secret_->setVisible(davCredentials);}const auto accessLabel=b2?QStringLiteral("Application key ID"):provider==dav::nextcloudId?QStringLiteral("Login name"):provider==dav::webdavId?QStringLiteral("User"):QStringLiteral("Access key ID");const auto secretLabel=b2?QStringLiteral("Application key"):provider==dav::nextcloudId?QStringLiteral("App password"):provider==dav::webdavId?QStringLiteral("Password"):QStringLiteral("Secret access key");relabel(credentialForm,accessRow,accessLabel);relabel(credentialForm,secretRow,secretLabel);access_->setAccessibleName(accessLabel);secret_->setAccessibleName(secretLabel);protonPanel_->setVisible(provider=="proton-drive");if(auto* footer=findControl<QWidget*>("destinationTestSection");footer&&footer->parentWidget()!=(storage||http||dav||sftpDest?credentialForm->parentWidget():protonForm->parentWidget())){auto* previous=storage||http||dav||sftpDest?protonForm:credentialForm;auto taken=previous->takeRow(footer);delete taken.fieldItem;delete taken.labelItem;(storage||http||dav||sftpDest?credentialForm:protonForm)->addRow(footer);footer->show();}if(auto* footer=findControl<QWidget*>("destinationTestSection"))footer->show();test->setVisible(storage||http||dav||sftpDest||provider=="proton-drive");test->setText(sftpDest?sftpPanel_->testLabel():storage||http||dav?"Test upload and link":"Check account and folder");sizeProtonAccountButtons();test->setAccessibleName(test->text());testScope->setText(storage?"Tests an upload, its link and cleanup.":dav?"Uploads a small test file, opens its link without signing in and compares it, then deletes it.":sftpDest?"Connects, signs in, uploads a small test file, opens its link when Link address is set, and deletes it.":http?"Uploads a small test file and opens its link. The file is deleted only when the server returns a deletion URL put.gd can use.":"Checks account and folder access. Upload and sharing aren't tested.");showSecret_->setAccessibleName((showSecret_->isChecked()?QString("Hide "):QString("Show "))+secret_->accessibleName().toLower());reveal->setText(showSecret_->accessibleName());reveal->setToolTip(reveal->text());test->setToolTip(sftpDest?"Test connection, host key, sign-in, folder, upload, link, and cleanup":s3||r2?"Test upload, link access, and cleanup. Expiring links must work while unsigned access is denied.":dav?"Upload a test file, verify its public link, and delete it if unchanged":http?"Upload a test file, open its link, and delete it if a usable deletion URL is returned":b2?"Test application key, upload, link, cleanup, and large-file start":"Check Proton account and folder access without uploading");if(advancedRow->parentWidget()!=(storage?destinationDetails->parentWidget():publicationForm->parentWidget())){auto* previous=storage?publicationForm:destinationDetails;auto taken=previous->takeRow(advancedRow);delete taken.fieldItem;delete taken.labelItem;auto* target=storage?destinationDetails:publicationForm;int row=-1;QFormLayout::ItemRole role;target->getWidgetPosition(storage?connectionPanel_:protonAdvancedPanel,&row,&role);target->insertRow(row<0?target->rowCount():row,advancedRow);}advancedRow->show();advanced->setVisible(true);if(http||dav)advancedRow->hide();QStringList departures;if(s3&&s3_["storageClass"]->text()!="STANDARD")departures.append(storageClassLabel(s3_["storageClass"]->text()));if(s3&&addressing_->currentData()!="auto")departures.append(addressing_->currentText());for(const auto& timeout:{QString("connectTimeoutMs"),QString("requestTimeoutMs")})if(inputText(s3_[timeout]).toDouble()!=(timeout=="connectTimeoutMs"?5:60))departures.append(inputText(s3_[timeout])+(timeout=="connectTimeoutMs"?" s connect":" s request"));connectionSummary->setText(departures.join(" · "));connectionSummary->setVisible(storage&&!expanded&&!departures.isEmpty());protonAdvancedForm->parentWidget()->setVisible(provider=="proton-drive"&&expanded);endpointHint_->setText(r2?r2::endpoint(r2AccountId_->text(),r2Jurisdiction_->currentData().toString()):s3_["endpoint"]->text());updateBucketHint();{const QSignalBlocker block(s3Service);const auto endpoint=s3_["endpoint"]->text();s3Service->setCurrentIndex(s3AmazonEndpoint(endpoint)?0:1);}if(b2){const auto settings=editedProfile()["settings"].toObject();static_cast<Ui::ElidedLabel*>(linkExample_)->setText(b2::fileUrl(settings,"https://f000.backblazeb2.com",b2::fileName(settings,"Screenshot.png"))+(authorized?QStringLiteral("?Authorization=…"):QString()));}else{auto settings=editedProfile()["settings"].toObject();if(r2)settings=r2::s3Settings(settings);if((s3||r2)&&authorized)settings["publicUrlBase"]=QJsonValue::Null;static_cast<Ui::ElidedLabel*>(linkExample_)->setText(publicObjectUrl(settings,s3_["objectPrefix"]->text()+"Screenshot.png")+((s3||r2)&&authorized?QStringLiteral("?X-Amz-Signature=…"):QString()));}};
  // Keep advanced controls and the connection test inside the provider's cards.
@@ -1627,6 +1629,7 @@ const QList<SettingsWindow::DestinationType>& SettingsWindow::destinationTypes()
 SettingsWindow::~SettingsWindow(){
  revealUpdates_=false;
  for(auto& wait:std::exchange(encryptWaits_,{}))wait.reply({"ui_view_closed","Settings closed before Encrypted links was saved.",{}},{});
+ if(auto pending=std::exchange(encryptTestReply_,{}))pending({"ui_view_closed","Settings closed before Test upload and link started.",{}},{});
  for(auto* child:findChildren<QObject*>())disconnect(child,nullptr,this,nullptr);
  if(destinationPage_)for(auto* child:destinationPage_->findChildren<QObject*>())disconnect(child,nullptr,this,nullptr);
  disconnect(&settings_,nullptr,this,nullptr);
@@ -1635,6 +1638,8 @@ bool SettingsWindow::eventFilter(QObject* watched,QEvent* event){
  if(watched==destinationPage_&&event->type()==QEvent::Hide)resetCredentialSecretDisplay();
  // A destination opened before its page was on screen scrolls to its Endpoint problem now (#1676).
  if(watched==destinationPage_&&event->type()==QEvent::Show&&!loading_)showS3SettingsProblems();
+ // #2118: Encrypted links asked for before the page was on screen is scrolled to now, once laid out.
+ if(watched==destinationPage_&&event->type()==QEvent::Show)revealEncryptedLinks();
  if(watched==destinationPage_&&event->type()==QEvent::Hide)s3_["endpoint"]->setProperty("revealedFor",{});
  if(revealUpdates_&&(event->type()==QEvent::Move||event->type()==QEvent::Resize)&&watched==updatesCard_)revealUpdates();
  if(event->type()==QEvent::Hide&&watched==generalPage_&&!event->spontaneous())revealUpdates_=false;
@@ -3034,6 +3039,25 @@ void SettingsWindow::showCaptureSettings(const QStringList& affectedActions){
  captureExceptions_->setChecked(overriding);
  revealAndFocus(target);
 }
+bool SettingsWindow::showEncryptedLinks(const QString& profileId){
+ if(profileId.isEmpty()||profileIndex_<0||profileId_->text()!=profileId)return false;
+ // Kept until the card is on screen: a fresh window shows its page, and lays it out, only later.
+ revealEncryptFor_=profileId;revealEncryptedLinks();return true;
+}
+void SettingsWindow::revealEncryptedLinks(){
+ if(revealEncryptFor_.isEmpty())return;
+ QTimer::singleShot(0,this,[this]{
+  // findControl: the destination page may live in the main window, outside this one.
+  auto* section=findControl<QWidget*>("encryptedLinksSection");
+  if(revealEncryptFor_.isEmpty()||!section||!encryptPanel_||profileId_->text()!=revealEncryptFor_){if(profileId_->text()!=revealEncryptFor_)revealEncryptFor_.clear();return;}
+  if(!section->isVisible())return;
+  auto* test=findControl<QPushButton*>("encryptedLinksTest");
+  QWidget* target=test&&test->isVisible()&&test->isEnabled()?static_cast<QWidget*>(test):encryptPanel_->control();
+  for(auto* parent=section->parentWidget();parent;parent=parent->parentWidget())if(auto* scroll=qobject_cast<QScrollArea*>(parent)){if(auto* layout=scroll->widget()->layout())layout->activate();scroll->ensureWidgetVisible(section,24,24);scroll->ensureWidgetVisible(target,24,24);break;}
+  target->setFocus(Qt::TabFocusReason);target->setAttribute(Qt::WA_KeyboardFocusChange);target->window()->setAttribute(Qt::WA_KeyboardFocusChange);target->update();
+  revealEncryptFor_.clear();
+ });
+}
 void SettingsWindow::showUpdates(){
  tabs_->setCurrentIndex(0);revealUpdates_=true;revealUpdates();
  // The action the update state offers, else Check now, else the status itself.
@@ -3811,9 +3835,15 @@ void SettingsWindow::beginSetup(const QString& kind,const QJsonObject& input){
  const bool sftpClear=kind=="storeCredentials"&&std::exchange(sftpClearPending_,false);
  // #1892: what an SFTP address check was asked about, so a late answer for another key is dropped.
  const auto sftpInspect=kind=="inspectAccount"&&providerType_->currentData()==SftpPanel::provider()?sftpInspectKey():QString();
- settings_.request("setup."+kind,params,this,[this,kind,profileId,revision,testMessage,sftpClear,sftpInspect](Error e,QJsonObject data){
+ // #2118: the connection as it is now, when the request goes out, not when its answer arrives.
+ const auto fingerprint=destinationcheck::fingerprint(editedProfile());
+ settings_.request("setup."+kind,params,this,[this,kind,profileId,revision,testMessage,sftpClear,sftpInspect,fingerprint](Error e,QJsonObject data){
   folderRequests_.remove(profileId);--setupAccepting_;if(kind=="testDestination")testAccepting_=false;
-  if(e){updateSetupButton();status(e);if(kind=="connectAccount"&&profileId==profileId_->text()){protonAccount_->setText("Connection failed: "+e.message);dav_->setSignIn(DavDestinationPanel::SignIn::Idle);davCancelPending_=false;}emit viewStateChanged();return;}
+  // #2118: ui.encryptedLinks test answers once the resident took or refused the test.
+  // It describes the destination it was asked for, even when another is shown by then.
+  const auto answerTest=[this,kind](const Error& error){if(kind!="testDestination")return;if(auto reply=std::exchange(encryptTestReply_,{})){const auto asked=std::exchange(encryptTestFor_,{});
+   if(error)reply(error,{});else if(asked==profileId_->text())reply({},encryptState());else reply({},{{"profileId",asked},{"testing",true},{"shown",false}});}};
+  if(e){updateSetupButton();status(e);answerTest(e);if(kind=="connectAccount"&&profileId==profileId_->text()){protonAccount_->setText("Connection failed: "+e.message);dav_->setSignIn(DavDestinationPanel::SignIn::Idle);davCancelPending_=false;}emit viewStateChanged();return;}
   if(kind=="connectAccount"&&dav::isDav(providerType_->currentData().toString())&&profileId==profileId_->text()){davSignInSetup_=data["setupId"].toString();
    // Cancel was pressed before the sign-in was accepted: it is cancelled now, and no browser opens.
    if(davCancelPending_){davCancelPending_=false;davAdoptedSetup_=davSignInSetup_;cancelDavSignIn();}}
@@ -3827,7 +3857,7 @@ void SettingsWindow::beginSetup(const QString& kind,const QJsonObject& input){
   }
   for(int i=setupJobs_.size()-1;i>=0;--i){const auto old=setupJobs_[i].toObject();if(old["kind"]==kind&&old["profileId"]==profileId)setupJobs_.removeAt(i);}
   // #1871: a Clear is marked on its own job record; its completion keeps the other typed secret.
-  QJsonObject record{{"setupId",data["setupId"]},{"kind",kind},{"profileId",profileId},{"revision",revision},{"fingerprint",destinationcheck::fingerprint(editedProfile())}};
+  QJsonObject record{{"setupId",data["setupId"]},{"kind",kind},{"profileId",profileId},{"revision",revision},{"fingerprint",fingerprint}};
   if(sftpClear)record["sftpClear"]=QStringLiteral("true");  // the saved view state keeps string fields only
   if(!sftpInspect.isEmpty())record["sftpInspect"]=sftpInspect;
   setupJobs_.append(record);
@@ -3836,7 +3866,7 @@ void SettingsWindow::beginSetup(const QString& kind,const QJsonObject& input){
   static const QHash<QString,QString> progress{{"connectAccount","Connecting account…"},{"storeCredentials","Storing credentials…"},{"unlockCredentials","Unlocking saved credentials…"},{"createFolder","Creating folder…"},{"storeSharePassword","Storing link password…"},{"signOut","Signing out…"}};
   updateSetupButton();if(kind=="inspectAccount")Ui::feedback(plain(destinationStatus_),{});else setupFeedback(kind=="testDestination"?testMessage:progress.value(kind,"Working…"));
   if(kind=="connectAccount"&&profileId==profileId_->text())protonAccount_->setText("Connecting to Proton…");
-  emit viewStateChanged();setupTimer_->start();pollSetup();
+  emit viewStateChanged();setupTimer_->start();pollSetup();answerTest({});
  });
 }
 // ui.customUploader (#1361): the open Custom uploader form, driven as a user drives it.
@@ -4018,6 +4048,8 @@ void SettingsWindow::updateSetupButton(){
  updateStoreButtons();
  const bool pending=std::any_of(setupJobs_.cbegin(),setupJobs_.cend(),[](const QJsonValue& value){return value.toObject()["kind"]=="testDestination";});
  findControl<QPushButton*>("testDestination")->setEnabled(!testAccepting_&&!pending);
+ if(encryptPanel_){const bool testingHere=std::any_of(setupJobs_.cbegin(),setupJobs_.cend(),[&id](const QJsonValue& value){const auto job=value.toObject();return job["kind"]=="testDestination"&&job["profileId"]==id;});
+  encryptPanel_->setTesting(testAccepting_||testingHere,!testAccepting_&&!pending&&!busy);}
 }
 void SettingsWindow::updateStoreButtons(){
  const auto reason=setupBlockedReason();
@@ -4068,6 +4100,8 @@ void SettingsWindow::pollSetup(){
    if(e&&sftpShown&&data["kind"]=="testDestination"&&currentTest){sftpPanel_->showTestError(e.code,e.message,e.details);
     // #1892: the host key box shows the fingerprint; the status line only says where to look.
     if(!sftpPanel_->offeredFingerprint().isEmpty())e.message=e.code=="ssh_trusted_key_changed"?QStringLiteral("The server's host key changed. Compare the new key above before you trust it."):QStringLiteral("put.gd doesn't know this server's host key yet. Compare it above before you trust it.");}
+   // #2118: how the last Test of each destination ended, for ui.encryptedLinks inspect.
+   if(job["kind"]=="testDestination"){QJsonObject outcome{{"state",e?"failed":"passed"},{"fingerprint",job["fingerprint"]}};if(e){outcome["code"]=e.code;outcome["message"]=e.message;}else if(data["result"].toObject().contains("encrypt"))outcome["encrypt"]=data["result"].toObject()["encrypt"].toObject()["state"];testOutcomes_.insert(job["profileId"].toString(),outcome);}
    if(e){if(job["kind"]=="testDestination"&&!currentTest)e.message="Connection test failed for the original destination settings. "+e.message;
     // A custom uploader's test shows the start of a reply it could not read, so the Response fields can be fixed.
     if(const auto excerpt=data["result"].toObject()["replyExcerpt"].toString();!excerpt.isEmpty())e.message+=" The reply began: "+excerpt;
@@ -4196,8 +4230,12 @@ void SettingsWindow::loadEncryptPanel(bool edited){
  const auto profile=edited?editedProfile():profiles[profileIndex_].toObject();
  const bool previous=loading_;loading_=true;
  auto status=settings_.destinationStatus().value(profile["id"].toString()).toObject();
- // A check of the saved connection says nothing about an edited one: until it is tested, On isn't offered.
- if(status["encrypt"].toObject()["fingerprint"].toString()!=destinationcheck::fingerprint(profile))status["encrypt"]=QJsonObject{{"state","untested"}};
+ // A check of the saved connection says nothing about an edited one: until it is tested, On isn't
+ // offered, and the card says the destination changed after its check (#2118).
+ const auto check=status["encrypt"].toObject();
+ if(check.contains("fingerprint")&&check["fingerprint"].toString()!=destinationcheck::fingerprint(profile))status["encrypt"]=QJsonObject{{"state","changed"}};
+ // The connection's own check, likewise, so "Uploads work here" is said only of the connection shown.
+ status["state"]=checkState(profile);
  encryptPanel_->load(profile,status,false,edited);
  loading_=previous;
 }
@@ -4209,7 +4247,11 @@ void SettingsWindow::encryptedLinksCommand(const QJsonObject& params,std::functi
  if(!requested.isEmpty()&&requested!=profileId_->text()){const int index=profile_->findData(requested);if(index<0){reply({"profile_not_found","No destination has this ID.",{}},{});return;}profile_->setCurrentIndex(index);}
  if(profileIndex_<0||!encryptPanel_){reply({"profile_not_found","Select a destination first.",{}},{});return;}
  const auto action=params["action"].toString();
- if(action!="inspect"){QString refusal;if(!encryptPanel_->drive(params,&refusal)){reply({"encrypt_unavailable",refusal,{}},{});return;}}
+ // #2118: test answers once the resident took or refused it (beginSetup's request).
+ if(action=="test"){if(encryptTestReply_){reply({"setup_busy","Test upload and link is already starting.",{}},{});return;}encryptTestReply_=reply;encryptTestFor_=profileId_->text();}
+ if(action!="inspect"){QString refusal;if(!encryptPanel_->drive(params,&refusal)){if(action=="test")encryptTestReply_={};reply({action=="test"?"control_unavailable":"encrypt_unavailable",refusal,{}},{});return;}}
+ // A test Settings refused before asking the resident (an edit still saving, say) is answered with what Settings shows.
+ if(action=="test"){if(!testAccepting_)if(auto pending=std::exchange(encryptTestReply_,{})){const auto shown=status_->text();pending({"setup_busy",shown.isEmpty()?QStringLiteral("Test upload and link couldn't start."):shown,{}},{});}return;}
  if(action!="mode"){reply({},encryptState());return;}
  // #2103: a mode change answers once the file has it, never while it is only queued: an agent's
  // next call, such as setup.storeEncryptPassphrase, reads the saved mode.
@@ -4229,6 +4271,9 @@ QString SettingsWindow::savedEncryptMode(const QString& profileId)const{
 // saved: the file has the mode shown, with nothing for this destination still waiting to be sent.
 QJsonObject SettingsWindow::encryptState()const{
  auto state=encryptPanel_->viewState();const auto id=profileId_->text();state["profileId"]=id;
+ // #2118: how this destination's last Test upload and link ended, while this window watched it.
+ // Only of the connection shown: an edited destination's earlier test says nothing about it.
+ if(auto outcome=testOutcomes_.value(id);!outcome.isEmpty()&&outcome.take("fingerprint").toString()==destinationcheck::fingerprint(editedProfile()))state["lastTest"]=outcome;
  state["saved"]=savedEncryptMode(id)==encryptPanel_->mode()&&!queued("destination:"+id);return state;
 }
 // Each waiting mode change is answered once the file has it, or with settings_not_saved once it can't

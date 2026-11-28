@@ -48,8 +48,12 @@ QString activeKey(const QString& profileId,const QString& kind) {
 // Destinations whose credentials live in put.gd's credential store: S3, Backblaze B2
 // (#282), Cloudflare R2 (#1678), Nextcloud and WebDAV (#1872), and a provider with named values
 // when its settings need any (#1361).
+bool SetupService::storesKeys(const QJsonObject& profile) {
+ const auto provider=profile.value("provider").toString();
+ return provider=="s3"||provider=="backblaze-b2"||provider=="cloudflare-r2"||provider=="nextcloud"||provider=="webdav";
+}
 bool SetupService::usesCredentialStore(const QJsonObject& profile) const {
- if(profile["provider"]=="s3"||profile["provider"]=="backblaze-b2"||profile["provider"]=="cloudflare-r2"||profile["provider"]=="nextcloud"||profile["provider"]=="webdav")return true;
+ if(storesKeys(profile))return true;
  QStringList names;
  return namedCredentials_&&!namedCredentials_(profile,{},&names)&&!names.isEmpty();
 }
