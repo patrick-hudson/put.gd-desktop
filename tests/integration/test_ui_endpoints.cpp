@@ -41,19 +41,23 @@ class UiEndpointsTest : public QObject {
   return QJsonDocument::fromJson(response).object();
  }
 private slots:
- // #2118: an SFTP destination whose password or passphrase is kept for this session only: its
- // passed encrypted-page check is the session's too, and a restart forgets it.
+ // #2118: an SFTP destination whose password or passphrase was stored for this session only: its
+ // passed encrypted-page check is the session's too, and a restart forgets it. One that signs in
+ // with the SSH agent or a key file stored nothing, so its check outlives the restart.
  void sessionOnlySftpChecksEndWithTheSession() {
   QTemporaryDir dir;ProviderRegistry providers;providers.add("opaque",std::make_shared<OpaqueProvider>());providers.add("sftp",std::make_shared<OpaqueProvider>());
   SettingsService settings(dir.filePath("config.json"),[&](const QString& id,const QJsonObject& value){return providers.validate(id,value);});
   auto document=configuration(dir.path());auto profiles=document["profiles"].toArray();
-  profiles.append(QJsonObject{{"id","s"},{"label","SFTP"},{"provider","sftp"},{"settings",QJsonObject{{"workspace","fixture-workspace"}}},{"credentials",QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}}});
+  for(const auto* id:{"s","k"})profiles.append(QJsonObject{{"id",id},{"label","SFTP"},{"provider","sftp"},{"settings",QJsonObject{{"workspace",QString("fixture-")+id}}},{"credentials",QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}}}});
   document["profiles"]=profiles;QVERIFY(settings.save(document,{}));
   const auto path=dir.filePath("data/destination-status.json");
   {DestinationStatus status(path,settings);status.setUsesCredentials(&DestinationStatus::storesKeys);status.load();
-   status.encryptChecked("s",destinationcheck::fingerprint(settings.snapshot().profiles.value("s")),true,{});QCOMPARE(status.encryptCheck("s")["state"].toString(),QString("passed"));}
+   // "s" had a password stored for the session; "k" uses the SSH agent and stored nothing.
+   status.credentialsChanged("s");
+   for(const auto* id:{"s","k"}){status.encryptChecked(id,destinationcheck::fingerprint(settings.snapshot().profiles.value(id)),true,{});QCOMPARE(status.encryptCheck(id)["state"].toString(),QString("passed"));}}
   DestinationStatus restarted(path,settings);restarted.setUsesCredentials(&DestinationStatus::storesKeys);restarted.load();
   QCOMPARE(restarted.encryptCheck("s")["state"].toString(),QString("untested"));
+  QCOMPARE(restarted.encryptCheck("k")["state"].toString(),QString("passed"));
  }
  // #1692: a passed Test is the resident's, on disk, so a new helper or a restarted resident
  // still shows it. A label change keeps it, a connection or credential change does not, and

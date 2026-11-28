@@ -2,6 +2,7 @@
 #include "SettingsGuiFixture.h"
 #include "ui/EncryptedLinksPanel.h"
 #include "app/DestinationStatus.h"
+#include "app/SetupService.h"
 #include "core/DestinationCheck.h"
 #include <QFormLayout>
 #include <QHBoxLayout>
@@ -175,6 +176,27 @@ private slots:
   // It was a long page: the card sits well below its top, so it really scrolled.
   auto* area=[&]()->QScrollArea*{for(auto* parent=test->parentWidget();parent;parent=parent->parentWidget())if(auto* a=qobject_cast<QScrollArea*>(parent))return a;return nullptr;}();
   QVERIFY(area);QVERIFY(area->verticalScrollBar()->value()>0);
+ }
+ // #2118: ui.encryptedLinks test answers once the resident accepted the test, and for the
+ // destination it was asked about, even when another is shown by then.
+ void encryptedLinksTestAnswersForTheDestinationAsked(){
+  QTemporaryDir dir;CredentialStore secrets;SettingsService service(dir.filePath("config.json"),[](auto,auto){return Error{};});
+  auto doc=threeDestinations();auto profiles=doc["profiles"].toArray();auto first=profiles[0].toObject();first["credentials"]=QJsonObject{{"mode","session"},{"reference",QJsonValue::Null}};profiles[0]=first;doc["profiles"]=profiles;QVERIFY(service.save(doc,{}));
+  const auto asked=first["id"].toString();secrets.setSession(asked,{"synthetic-access","synthetic-secret",{}});
+  UiSessionFixture fixture(service,secrets);DestinationStatus checks(dir.filePath("destination-status.json"),service);fixture.server.setDestinationStatus(&checks);
+  JsonReply running;SetupService setup(service,secrets,[&](const QString&,const QJsonObject&,JsonReply reply){running=std::move(reply);});setup.setDestinationStatus(&checks);fixture.server.setSetupService(&setup);
+  MainWindow window(fixture.session);window.navigate("destinations");window.show();auto* settings=window.settings();
+  QVERIFY(waitFor([&]{auto state=std::make_shared<QJsonObject>();settings->encryptedLinksCommand({{"action","inspect"},{"profileId",asked}},[state](Error,QJsonObject s){*state=s;});return waitFor([&]{return !state->isEmpty();})&&(*state)["testEnabled"].toBool();}));
+  fixture.client.hold=[](const QString& method,const QJsonObject&){return method=="setup.testDestination";};
+  struct Answer{bool done=false;Error error;QJsonObject state;};auto answer=std::make_shared<Answer>();
+  settings->encryptedLinksCommand({{"action","test"},{"profileId",asked}},[answer](Error e,QJsonObject s){answer->done=true;answer->error=e;answer->state=s;});
+  QVERIFY(waitFor([&]{return fixture.client.held.size()==1;}));QVERIFY(!answer->done);
+  // Another destination is shown before the resident takes the test.
+  window.findChild<QListWidget*>("destinationList")->setCurrentRow(1);
+  fixture.client.hold={};QVERIFY(fixture.client.release());
+  QVERIFY(waitFor([&]{return answer->done;},10000));QVERIFY2(!answer->error,qPrintable(answer->error.message));
+  QCOMPARE(answer->state["profileId"].toString(),asked);QVERIFY(answer->state["testing"].toBool());
+  if(running)running({},{});
  }
  // #2103: ui.encryptedLinks answers a mode change only once the file has it, so an agent's next
  // call (setup.storeEncryptPassphrase reads the saved mode) never races the save. Two Capture

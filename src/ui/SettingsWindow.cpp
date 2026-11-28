@@ -3838,7 +3838,9 @@ void SettingsWindow::beginSetup(const QString& kind,const QJsonObject& input){
  settings_.request("setup."+kind,params,this,[this,kind,profileId,revision,testMessage,sftpClear,sftpInspect](Error e,QJsonObject data){
   folderRequests_.remove(profileId);--setupAccepting_;if(kind=="testDestination")testAccepting_=false;
   // #2118: ui.encryptedLinks test answers once the resident took or refused the test.
-  const auto answerTest=[this,kind](const Error& error){if(kind!="testDestination")return;if(auto reply=std::exchange(encryptTestReply_,{})){if(error)reply(error,{});else reply({},encryptState());}};
+  // It describes the destination it was asked for, even when another is shown by then.
+  const auto answerTest=[this,kind](const Error& error){if(kind!="testDestination")return;if(auto reply=std::exchange(encryptTestReply_,{})){const auto asked=std::exchange(encryptTestFor_,{});
+   if(error)reply(error,{});else if(asked==profileId_->text())reply({},encryptState());else reply({},{{"profileId",asked},{"testing",true},{"shown",false}});}};
   if(e){updateSetupButton();status(e);answerTest(e);if(kind=="connectAccount"&&profileId==profileId_->text()){protonAccount_->setText("Connection failed: "+e.message);dav_->setSignIn(DavDestinationPanel::SignIn::Idle);davCancelPending_=false;}emit viewStateChanged();return;}
   if(kind=="connectAccount"&&dav::isDav(providerType_->currentData().toString())&&profileId==profileId_->text()){davSignInSetup_=data["setupId"].toString();
    // Cancel was pressed before the sign-in was accepted: it is cancelled now, and no browser opens.
@@ -4244,7 +4246,7 @@ void SettingsWindow::encryptedLinksCommand(const QJsonObject& params,std::functi
  if(profileIndex_<0||!encryptPanel_){reply({"profile_not_found","Select a destination first.",{}},{});return;}
  const auto action=params["action"].toString();
  // #2118: test answers once the resident took or refused it (beginSetup's request).
- if(action=="test"){if(encryptTestReply_){reply({"setup_busy","Test upload and link is already starting.",{}},{});return;}encryptTestReply_=reply;}
+ if(action=="test"){if(encryptTestReply_){reply({"setup_busy","Test upload and link is already starting.",{}},{});return;}encryptTestReply_=reply;encryptTestFor_=profileId_->text();}
  if(action!="inspect"){QString refusal;if(!encryptPanel_->drive(params,&refusal)){if(action=="test")encryptTestReply_={};reply({action=="test"?"control_unavailable":"encrypt_unavailable",refusal,{}},{});return;}}
  // A test Settings refused before asking the resident (an edit still saving, say) is answered with what Settings shows.
  if(action=="test"){if(!testAccepting_)if(auto pending=std::exchange(encryptTestReply_,{})){const auto shown=status_->text();pending({"setup_busy",shown.isEmpty()?QStringLiteral("Test upload and link couldn't start."):shown,{}},{});}return;}

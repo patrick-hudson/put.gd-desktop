@@ -15,7 +15,7 @@
 namespace putgd {
 bool DestinationStatus::storesKeys(const QJsonObject& profile) {
  const auto provider=profile.value("provider").toString();
- return provider=="s3"||provider=="backblaze-b2"||provider==r2::providerId||dav::isDav(provider)||provider==sftp::providerId;
+ return provider=="s3"||provider=="backblaze-b2"||provider==r2::providerId||dav::isDav(provider);
 }
 namespace {
 // The keychain entries configured destinations own, in any credentials mode: the reference each
@@ -95,7 +95,11 @@ void DestinationStatus::save() {
  QJsonObject destinations,revisions;
  // Keys kept only for this session make a check that ends with the session.
  const auto profiles=settings_.snapshot().profiles;
- const auto sessionOnly=[&](const QString& id){const auto found=profiles.constFind(id);return found!=profiles.cend()&&(*found)["credentials"].toObject()["mode"]=="session"&&(!usesCredentials_||usesCredentials_(*found));};
+ const auto sessionOnly=[&](const QString& id){const auto found=profiles.constFind(id);if(found==profiles.cend()||(*found)["credentials"].toObject()["mode"]!="session")return false;
+  // #2118: SFTP signs in with the SSH agent or a key file unless a password or key passphrase was
+  // stored for this session; only then are its checks the session's.
+  if((*found)["provider"]==sftp::providerId)return credentialRevisions_.value(id)>0;
+  return !usesCredentials_||usesCredentials_(*found);};
  for(auto it=records_.cbegin();it!=records_.cend();++it) {
   if(sessionOnly(it.key()))continue;
   QJsonObject record{{"state",it->state},{"source",it->source},{"fingerprint",it->fingerprint},{"credentialRevision",double(it->credentialRevision)}};
