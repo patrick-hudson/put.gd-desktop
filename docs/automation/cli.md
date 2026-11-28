@@ -526,6 +526,10 @@ existed); `fingerprint` names the connection a passed or failed check ran on. En
 (loopback addresses excepted). New credentials stored for the destination, or for one that
 shares its keychain entry, clear a passed check.
 
+`capabilities.uploadFiles.encrypt` is true on a resident whose `upload.files` takes `encrypt` and
+refuses an untested destination before accepting. The file manager's client reads it before every
+encrypted upload and sends nothing to a resident without it (#2119).
+
 `capabilities` gives each provider type in `providers` three encryption fields: `encryptedLinks`
 (the type can serve an encrypted page; its Test check still decides), `encryptSplit` (the page and
 a data file side by side, for files over 64 MB) and, when `encryptedLinks` is false,
