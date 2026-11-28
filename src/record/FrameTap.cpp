@@ -3,10 +3,13 @@
 #include "ImageCopySource.h"
 #include "SourceDescription.h"
 #include <chrono>
+#include <cstdio>
 #include <cstring>
+#include <fcntl.h>
 #include <gst/app/gstappsink.h>
 #include <gst/video/video.h>
 #include <thread>
+#include <unistd.h>
 
 namespace putgd::record {
 int64_t FrameTap::nowMs() {
@@ -15,6 +18,26 @@ int64_t FrameTap::nowMs() {
 void SteadyClock::sleepMs(int ms) { std::this_thread::sleep_for(std::chrono::milliseconds(ms)); }
 
 FrameTap::~FrameTap() { stop(); }
+
+namespace {
+// This thread's CPU time and the time it was ready to run but waited for a
+// CPU, in milliseconds (/proc/thread-self/schedstat); false when the kernel
+// does not say.
+bool threadTimes(double& cpuMs, double& waitedMs) {
+    const int fd = ::open("/proc/thread-self/schedstat", O_RDONLY | O_CLOEXEC);
+    if (fd < 0) return false;
+    char text[128];
+    const ssize_t n = ::read(fd, text, sizeof text - 1);
+    ::close(fd);
+    if (n <= 0) return false;
+    text[n] = 0;
+    unsigned long long cpu = 0, waited = 0;
+    if (std::sscanf(text, "%llu %llu", &cpu, &waited) != 2) return false;
+    cpuMs = double(cpu) / 1e6;
+    waitedMs = double(waited) / 1e6;
+    return true;
+}
+}
 
 QString FrameTap::describe(const Source& source) {
     QString description;
@@ -57,6 +80,14 @@ Error FrameTap::start(const Source& source) {
         fallback_.clear();
     }
     if (sink_) g_signal_connect(sink_, "new-sample", G_CALLBACK(&FrameTap::arrived), this);
+    if (source.x11Rect.isValid() && !source.imageCopy && !source.pipewireNode)
+        if (GstElement* grab = gst_bin_get_by_name(GST_BIN(pipeline), "src")) {
+            if (GstPad* pad = gst_element_get_static_pad(grab, "src")) {
+                gst_pad_add_probe(pad, GST_PAD_PROBE_TYPE_BUFFER, &FrameTap::grabbed, this, nullptr);
+                gst_object_unref(pad);
+            }
+            gst_object_unref(grab);
+        }
     { std::lock_guard lock(mutex_); reason_.clear(); }
     if (source.imageCopy) {
         // The capture thread pushes into appsrc; it is stopped before the pipeline.
@@ -232,12 +263,66 @@ std::optional<RunFrame> FrameTap::nextFrame(int timeoutMs) {
 }
 
 void FrameTap::watchPace(bool on) {
+    if (!on) closeLoad();
+    {
+        std::lock_guard lock(mailbox_);
+        watching_ = on && source_.x11Rect.isValid() && !source_.imageCopy && !source_.pipewireNode;
+        if (!watching_) return;
+        pace_.restart(source_.fps, nowMs());
+        // Frames replaced before the watch began are not the loop's to answer for.
+        if (arrivedCount_ - givenCount_ > 1) givenCount_ = arrivedCount_ - 1;
+        if (source_.fps != askedFps_) return;
+    }
+    openLoad();
+}
+
+void FrameTap::openLoad() {
+    double cpu = 0, waited = 0;
+    const bool known = threadTimes(cpu, waited);
     std::lock_guard lock(mailbox_);
-    watching_ = on && source_.x11Rect.isValid() && !source_.imageCopy && !source_.pipewireNode;
-    if (!watching_) return;
-    pace_.restart(source_.fps, nowMs());
-    // Frames replaced before the watch began are not the loop's to answer for.
-    if (arrivedCount_ - givenCount_ > 1) givenCount_ = arrivedCount_ - 1;
+    loadOpen_ = true;
+    loopKnown_ = known;
+    loopCpuFrom_ = cpu;
+    loopWaitedFrom_ = waited;
+    loadFrom_ = nowMs();
+    takenFrom_ = frames_.load();
+    grabs_ = 0;
+    grabKnown_ = true;
+    load_ = {};
+}
+
+void FrameTap::closeLoad() {
+    double cpu = 0, waited = 0;
+    const bool known = threadTimes(cpu, waited);
+    std::lock_guard lock(mailbox_);
+    if (!loadOpen_) return;
+    loadOpen_ = false;
+    load_.ms = double(nowMs() - loadFrom_);
+    load_.taken = quint64(std::max<qint64>(0, frames_.load() - takenFrom_));
+    load_.grabbed = grabs_ > 1 ? grabs_ - 1 : 0;
+    load_.known = known && loopKnown_ && grabKnown_ && load_.grabbed > 0;
+    if (!load_.known) return;
+    load_.loopCpuMs = cpu - loopCpuFrom_;
+    load_.loopWaitedMs = waited - loopWaitedFrom_;
+    load_.grabCpuMs = grabCpuLast_ - grabCpuFirst_;
+    load_.grabWaitedMs = grabWaitedLast_ - grabWaitedFirst_;
+}
+
+GstPadProbeReturn FrameTap::grabbed(GstPad*, GstPadProbeInfo*, gpointer self) {
+    auto* tap = static_cast<FrameTap*>(self);
+    { std::lock_guard lock(tap->mailbox_); if (!tap->loadOpen_) return GST_PAD_PROBE_OK; }
+    double cpu = 0, waited = 0;
+    const bool known = threadTimes(cpu, waited);
+    std::lock_guard lock(tap->mailbox_);
+    if (!tap->loadOpen_) return GST_PAD_PROBE_OK;
+    if (!known) tap->grabKnown_ = false;
+    if (tap->grabs_++ == 0) {
+        tap->grabCpuFirst_ = cpu;
+        tap->grabWaitedFirst_ = waited;
+    }
+    tap->grabCpuLast_ = cpu;
+    tap->grabWaitedLast_ = waited;
+    return GST_PAD_PROBE_OK;
 }
 
 FrameTap::Rate FrameTap::rate() const {
@@ -247,6 +332,7 @@ FrameTap::Rate FrameTap::rate() const {
     rate.now = askedFps_ ? source_.fps : 0;
     if (watchedFrames_ > 1 && watchedLast_ > watchedFirst_) rate.delivered = double(watchedFrames_ - 1) * 1000.0 / double(watchedLast_ - watchedFirst_);
     rate.fallback = fallback_;
+    rate.load = load_;
     return rate;
 }
 
@@ -270,6 +356,7 @@ void FrameTap::fallBack(FramePace::Verdict why) {
     debugLog(QStringLiteral("scroll tap: %1 frames a second not kept (%2), now %3").arg(source_.fps).arg(reason, QString::number(source_.fallbackFps)));
     Source lower = source_;
     lower.fps = source_.fallbackFps;
+    closeLoad();
     const qint64 given = frames_.load();
     stop();
     if (start(lower)) {

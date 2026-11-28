@@ -43,12 +43,25 @@ public:
         int fps = 60;
         int fallbackFps = 30;
     };
+    // How the loop's thread and the grab's thread fared while the source ran
+    // at the rate asked for and the session read (#2099): their CPU time,
+    // and the time each was ready to run but waited for a CPU (the kernel's
+    // schedstat). Work that fits a frame interval and long waits for a CPU
+    // say a fallback came from a busy host, not from the capture's own work.
+    struct Load {
+        double ms = 0;  // wall time at the rate asked for
+        quint64 taken = 0, grabbed = 0;  // frames the loop took, grabs between the first and the last measured
+        bool known = false;  // both threads' times were read
+        double loopCpuMs = 0, loopWaitedMs = 0, grabCpuMs = 0, grabWaitedMs = 0;  // totals
+    };
     // The rate a fixed-rate source was asked for and runs at now, the frames
     // a second it delivered while watched, and why it went down (empty: it did not).
+    // `load` covers the time at the rate asked for.
     struct Rate {
         int asked = 0, now = 0;
         double delivered = 0;
         QString fallback;
+        Load load;
     };
     FrameTap() = default;
     ~FrameTap() override;
@@ -84,6 +97,11 @@ private:
     void take(GstSample* sample);
     // The loop's thread: the source again at the lower rate.
     void fallBack(FramePace::Verdict why);
+    // The loop's thread: the load at the asked rate begins, and ends (at a fallback or the end of the watch).
+    void openLoad();
+    void closeLoad();
+    // ximagesrc's streaming thread, after each grab.
+    static GstPadProbeReturn grabbed(GstPad*, GstPadProbeInfo*, gpointer self);
     GstElement* pipeline_ = nullptr;
     GstElement* sink_ = nullptr;
     ImageCopySource* imageCopy_ = nullptr;
@@ -104,6 +122,15 @@ private:
     int64_t watchedFirst_ = -1, watchedLast_ = -1;
     quint64 watchedFrames_ = 0;
     QString fallback_;
+    // The load at the asked rate, under the mailbox lock: the loop's times
+    // when it began, the grab's at its first and last measured grab.
+    bool loadOpen_ = false, loopKnown_ = false, grabKnown_ = false;
+    int64_t loadFrom_ = 0;
+    qint64 takenFrom_ = 0;
+    double loopCpuFrom_ = 0, loopWaitedFrom_ = 0;
+    double grabCpuFirst_ = 0, grabWaitedFirst_ = 0, grabCpuLast_ = 0, grabWaitedLast_ = 0;
+    quint64 grabs_ = 0;
+    Load load_;
     std::atomic<bool> lost_{false};
     std::atomic<int> width_{0}, height_{0};
     std::atomic<qint64> frames_{0};

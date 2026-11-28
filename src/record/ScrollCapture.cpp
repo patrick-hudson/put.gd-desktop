@@ -1479,6 +1479,19 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
                 if (const FrameTap::Rate rate = job->tap->rate(); rate.asked > 0) {
                     QJsonObject source{{"asked", rate.asked}, {"atEnd", rate.now}, {"delivered", std::round(rate.delivered * 10) / 10}};
                     if (!rate.fallback.isEmpty()) source["fallback"] = rate.fallback;
+                    // At the rate asked for: the loop's and the grab's CPU time a
+                    // frame, and how long each waited for a CPU (#2099).
+                    if (const FrameTap::Load& load = rate.load; load.ms > 0) {
+                        const auto tenth = [](double v) { return std::round(v * 10) / 10; };
+                        QJsonObject at{{"ms", load.ms}, {"framesTaken", double(load.taken)}};
+                        if (load.known && load.taken > 0) {
+                            at["loopCpuMsPerFrame"] = tenth(load.loopCpuMs / double(load.taken));
+                            at["loopWaitedMs"] = tenth(load.loopWaitedMs);
+                            at["grabCpuMsPerFrame"] = tenth(load.grabCpuMs / double(load.grabbed));
+                            at["grabWaitedMs"] = tenth(load.grabWaitedMs);
+                        }
+                        source["atAsked"] = at;
+                    }
                     QJsonObject statsObject = outcome->descriptor["stats"].toObject();
                     statsObject["sourceRate"] = source;
                     outcome->descriptor["stats"] = statsObject;

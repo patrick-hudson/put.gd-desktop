@@ -16,9 +16,11 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QProcess>
+#include <QRegularExpression>
 #include <QTemporaryDir>
 #include <QTest>
 #include <QUuid>
+#include <algorithm>
 #include <memory>
 #include <xcb/xcb.h>
 #include <xcb/xinput.h>
@@ -28,6 +30,31 @@ namespace ruler = putgd::test::ruler;
 
 namespace {
 const QRect page(100, 60, 640, 600);
+// A sanitizer build does the capture's work several times slower by design (#2099).
+#if defined(__SANITIZE_ADDRESS__) || defined(__SANITIZE_THREAD__)
+constexpr bool sanitizerBuild = true;
+#elif defined(__has_feature)
+#if __has_feature(address_sanitizer) || __has_feature(thread_sanitizer) || __has_feature(undefined_behavior_sanitizer)
+constexpr bool sanitizerBuild = true;
+#else
+constexpr bool sanitizerBuild = false;
+#endif
+#else
+constexpr bool sanitizerBuild = false;
+#endif
+// A busy host: the helper's loop or grab thread waited for a CPU at least
+// this share of the time it ran at 60 frames a second.
+constexpr double busyHostWaitShare = 0.1;
+// The CPU a frame may take, in frame intervals at 60 a second. On an idle
+// aurora-amd core (Ryzen 5 8500GE) the loop takes about 1 ms a frame
+// optimized and 6 ms unoptimized (the dev preset), and a busy SMT sibling
+// doubles that; a shared runner's slower core adds more. Unoptimized code
+// gets twice the interval (#2099).
+#ifdef __OPTIMIZE__
+constexpr double cpuBudgetFrames = 1;
+#else
+constexpr double cpuBudgetFrames = 2;
+#endif
 QJsonArray rectJson(const QRect& r) { return {r.x(), r.y(), r.width(), r.height()}; }
 
 // The fixture window, at `page`.
@@ -280,13 +307,54 @@ private slots:
         QCOMPARE(done.result["truncated"].toBool(true), false);
         QCOMPARE(done.result["scrolledBy"].toString(), QString("user"));
         QCOMPARE(done.result["framesSkipped"].toInt(), 0);
-        // #2064: this capture's own source rate, from its result: asked for 60
-        // frames a second, still at 60 at the end, and 60 delivered (within
-        // the four fifths below which the tap goes down to 30).
+        // #2064: this capture's own source rate, from its result. It asked for
+        // 60 frames a second. Kept up, it is still at 60 at the end with 60
+        // delivered (within the four fifths below which the tap goes down).
+        // It goes down to 30 when the loop or the source cannot keep 60 up
+        // (#2099, #1535). That is right on a sanitizer build, whose work is
+        // several times slower by design. On any other build it is right
+        // only on a busy host: the thread that fell behind needed no more
+        // CPU a frame than its budget, the loop's own times account for the
+        // frames it missed, and the helper's threads were kept waiting for a
+        // CPU. A change that made the capture's work too heavy for 60, that
+        // counted frames as missed that were not, or that fell back on an
+        // idle host fails here.
         const QJsonObject rate = done.result["stats"].toObject()["sourceRate"].toObject();
         const QByteArray rateText = QJsonDocument(rate).toJson(QJsonDocument::Compact);
-        QVERIFY2(rate["asked"].toInt() == 60 && rate["atEnd"].toInt() == 60 && !rate.contains("fallback"), rateText.constData());
-        QVERIFY2(rate["delivered"].toDouble() >= 48 && rate["delivered"].toDouble() <= 62, rateText.constData());
+        qInfo("source rate: %s", rateText.constData());
+        const double delivered = rate["delivered"].toDouble();
+        QVERIFY2(rate["asked"].toInt() == 60, rateText.constData());
+        if (!rate.contains("fallback")) {
+            QVERIFY2(rate["atEnd"].toInt() == 60, rateText.constData());
+            QVERIFY2(delivered >= 48 && delivered <= 62, rateText.constData());
+        } else {
+            const QString why = rate["fallback"].toString();
+            const auto source = QRegularExpression(QStringLiteral("^the source sent (\\d+\\.\\d) frames a second$")).match(why);
+            const auto loop = QRegularExpression(QStringLiteral("^the loop missed (\\d+)% of the frames$")).match(why);
+            QVERIFY2(rate["atEnd"].toInt() == 30, rateText.constData());
+            QVERIFY2((source.hasMatch() && source.captured(1).toDouble() < 48) ||
+                         (loop.hasMatch() && loop.captured(1).toInt() >= 25 && loop.captured(1).toInt() <= 100),
+                     rateText.constData());
+            // Over both rates: up to 60 a second, and some delivered.
+            QVERIFY2(delivered > 0 && delivered <= 62, rateText.constData());
+            if (!sanitizerBuild) {
+                const QJsonObject at = rate["atAsked"].toObject();
+                const QString text = QString::fromUtf8(rateText);
+                QVERIFY2(at.contains("loopCpuMsPerFrame"), qPrintable("no thread times, so a busy host cannot be told from the capture's own work: " + text));
+                const double interval = 1000.0 / 60;
+                const QString part = loop.hasMatch() ? QStringLiteral("loop") : QStringLiteral("grab");
+                const double cpu = at[part + "CpuMsPerFrame"].toDouble();
+                QVERIFY2(cpu < cpuBudgetFrames * interval, qPrintable(QStringLiteral("the %1 needs %2 ms of CPU a frame, too much for 60 frames a second: %3").arg(part).arg(cpu).arg(text)));
+                if (loop.hasMatch()) {
+                    // A missed frame is a frame interval the loop was away
+                    // from the mailbox: its CPU time and its wait for a CPU say it was.
+                    const double away = cpu + at["loopWaitedMs"].toDouble() / std::max(1.0, at["framesTaken"].toDouble());
+                    QVERIFY2(away >= 0.6 * interval, qPrintable(QStringLiteral("the loop was away %1 ms a frame, too little to miss a quarter of the frames: %2").arg(away).arg(text)));
+                }
+                const double waited = std::max(at["loopWaitedMs"].toDouble(), at["grabWaitedMs"].toDouble());
+                QVERIFY2(waited >= busyHostWaitShare * at["ms"].toDouble(), qPrintable("it went down to 30 on a host that kept no thread waiting for a CPU: " + text));
+            }
+        }
         const QImage image(done.result["path"].toString());
         const auto verdict = ruler::verify(image, 0, 0, 0, 59);
         QVERIFY2(verdict.problem.isEmpty(), qPrintable(verdict.problem));
