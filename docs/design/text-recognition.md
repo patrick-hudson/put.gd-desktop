@@ -2201,7 +2201,10 @@ not checked (the option off, Edit & upload, a local-only capture) costs nothing.
 Every interactive capability has a session method, a `putgd-cli` form (the CLI forwards any
 method as it is) and an MCP tool with strict validation, `additionalProperties: false`.
 `schemas/text-recognition.schema.json` states every
-helper message and session method as data, with examples under `tests/fixtures/text/`. A
+helper message and session method as data, with examples under `tests/fixtures/text/`, which
+`tests/integration/test_config_schema.py` checks against it. The helper's output carries an
+optional `engine` member, `{version, scale, bands}` (#2134): Tesseract's own version string, the
+largest scale a panel was read at and the number of bands, which a false-alarm report records. A
 parameter that names an operation is spelled `id`. The recognition methods reply at once and are
 followed through `inspect`, as for scrolling capture and recording.
 

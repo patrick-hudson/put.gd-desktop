@@ -803,7 +803,7 @@ An entry is added for:
 - a refused session call that stands for a person's action: copying a link or image,
   a QR code or Copy text, sharing, unlocking credentials, preparing, confirming,
   retrying or cancelling a deletion, Retry, Retry local save, cancelling an upload,
-  Upload with put.gd, recording commands, a diagnostics package, saving settings,
+  Upload with put.gd, recording commands, a diagnostics package, a false-alarm report, saving settings,
   clearing History or temporary files, and `action.invoke`. Malformed requests, busy
   or not-yet-ready answers and closed windows are left out. The reply's
   `details.errorLogId` names the entry;
