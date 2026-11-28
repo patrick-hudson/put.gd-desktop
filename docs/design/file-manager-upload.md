@@ -9,8 +9,9 @@ alone. The usual finished or failure notification appears unless **Show
 desktop notifications** is off. History manages the uploads afterwards.
 There is no confirmation step and no extra "uploading" notice.
 
-**Upload encrypted with put.gd** sits right below it in every menu that has the
-entry and uploads the same selection as encrypted links ([Encrypted
+**Upload encrypted with put.gd** sits alongside it in every menu that has the
+entry (most file managers list it right after; older Dolphin sorts the two
+alphabetically) and uploads the same selection as encrypted links ([Encrypted
 uploads](#encrypted-uploads), #2119).
 
 The design, its council review and the decisions behind it are in
@@ -80,8 +81,8 @@ link was copied on the `v26.1101.3698-nightly` DEB and AppImage.
   window closes, so the entry may appear only after the file manager restarts
   or the user logs in again.
 - **AppImage:** the first time it runs, put.gd writes per-user entries and
-  shows "Upload with put.gd is now in your file manager's right-click menu",
-  once per installation. **Settings → General → File manager → File manager
+  shows "Added "Upload with put.gd" and "Upload encrypted with put.gd" to your
+  file manager's right-click menu.", once per installation. **Settings → General → File manager → File manager
   menu** turns them off (removing only the files this AppImage wrote) and on
   again; `preferences.fileManagerMenu` holds the switch.
 - **PCManFM and PCManFM-Qt**, with the AppImage: they load their entries at
@@ -157,8 +158,13 @@ If the AppImage ran before the DEB or RPM was installed, its per-user files have
 the same names as the package's and hide them. Dolphin, Nemo, Thunar, PCManFM
 and Pantheon Files may then show only the AppImage's old **Upload with put.gd**,
 and no **Upload encrypted with put.gd**, until the AppImage starts again and
-skips them. Deleting the AppImage's files brings the package's entries back.
-They are listed in the per-user files table above.
+skips them. Deleting those five menu files from the user's data folder
+(`$XDG_DATA_HOME`, by default `~/.local/share`) brings the package's entries back:
+`kio/servicemenus/putgd-upload.desktop`, `nemo/actions/putgd-upload.nemo_action`,
+`Thunar/sendto/putgd-upload.desktop`, `file-manager/actions/putgd-upload.desktop`
+and `contractor/putgd-upload.contract`. Nothing else in the per-user table is
+deleted by hand. COSMIC's `context_actions` in particular is a shared list
+holding the user's own actions too.
 
 ## What happens
 
@@ -314,8 +320,9 @@ CLI form is `putgd-cli upload.files '{"paths":["/abs/a.png","/abs/folder"]}'`,
 and the MCP tool is `upload_files(paths, profile_id?, encrypt?)`. An agent drives
 the encrypted entry exactly as a menu does with
 `putgd-cli upload.files '{"paths":[...],"installation":"system","encrypt":{"enabled":true}}'`
-(or `"appimage"`), and `operation.inspect` reports `encrypt.requested` and each
-item's `encrypt`. Without `installation`
+(or `"appimage"`). `operation.inspect` reports the request's `encrypt.requested`
+at once, and an item's `encrypt` details (status, form, key) only once that item
+is encrypted. Without `installation`
 there is no identity check. Poll `operation.inspect` with the returned
 `operationId`. Both settings take `settings.patch` and MCP
 `patch_configuration` like any other.
