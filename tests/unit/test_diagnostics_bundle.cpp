@@ -307,7 +307,8 @@ private slots:
   result=build(bundle,request,error);QVERIFY(!error);
   files=unzip(result["path"].toString());for(auto it=files.begin();it!=files.end();++it)QVERIFY2(!it.key().startsWith("false-alarms/"),qPrintable(it.key()));
   request.falseAlarmReports=true;request.output=dir_.filePath("false-alarms-other.zip");request.operationId=failedId_;
-  QCOMPARE(build(bundle,request,error)["falseAlarmReports"].toObject()["included"].toInt(),0);
+  {const auto other=build(bundle,request,error);QVERIFY2(!error,qPrintable(error.message));QVERIFY(QFileInfo::exists(other["path"].toString()));
+   QCOMPARE(other["falseAlarmReports"].toObject()["requested"].toBool(),true);QCOMPARE(other["falseAlarmReports"].toObject()["included"].toInt(),0);}
   const auto removed=reports.clear();QCOMPARE(removed.reports,1);QCOMPARE(reports.list()["count"].toInt(),0);
  }
  // #2134 P1b: report.json is rebuilt from its schema: the helper's unknown fields, wrong types and oversize values
@@ -332,6 +333,15 @@ private slots:
   QCOMPARE(findings.first().toObject()["text"].toString().size(),4096);QCOMPARE(findings.first().toObject()["words"].toArray(),(QJsonArray{0}));
   QCOMPARE(report["words"].toObject()["list"].toArray().size(),1);QCOMPARE(report["codes"].toArray().first().toObject().keys(),(QStringList{"box","kind"}));
   QCOMPARE(report["image"].toObject().keys(),(QStringList{"height","width"}));
+  // A malformed word the rebuild drops doesn't shift the others: each finding still points at its own word.
+  auto shifted=helper;
+  shifted["words"]=QJsonObject{{"total",3},{"list",QJsonArray{QJsonObject{{"text",3}},word,QJsonObject{{"text","5000"},{"box",QJsonArray{9,9,9,9}},{"confidence",80},{"line",1}}}}};
+  shifted["findings"]=QJsonArray{QJsonObject{{"kind","card"},{"rule","card"},{"text","4111 5000"},{"words",QJsonArray{1,2,0,-1,9}}}};
+  const auto rebuilt=FalseAlarmReports::compose(shifted,{},error);QVERIFY(!error);
+  QCOMPARE(rebuilt["words"].toObject()["list"].toArray().size(),2);
+  QCOMPARE(rebuilt["findings"].toArray().first().toObject()["words"].toArray(),(QJsonArray{0,1,-1,-1}));
+  const auto list=rebuilt["words"].toObject()["list"].toArray();
+  QCOMPARE(list.at(0).toObject()["text"].toString(),QString("4111"));QCOMPARE(list.at(1).toObject()["text"].toString(),QString("5000"));
  }
  // #2134 P1d, P2a: Clear logs removes half-written folders too and says what it couldn't remove; a package takes only a
  // whole report whose files are as report.json records them.

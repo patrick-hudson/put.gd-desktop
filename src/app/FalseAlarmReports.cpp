@@ -187,7 +187,8 @@ QJsonObject cleanRecognition(const QJsonObject& in){
  if(const auto offset=in.value("cropOffset").toArray();offset.size()==2&&whole(offset.at(0),0,1000000)&&whole(offset.at(1),0,1000000))out["cropOffset"]=offset;
  return out;
 }
-QJsonArray cleanFindings(const QJsonArray& in,int words){
+// `remap`: each of the helper's word indexes to its place in the cleaned list, or -1 for a word dropped there.
+QJsonArray cleanFindings(const QJsonArray& in,const QList<int>& remap){
  static const QRegularExpression rule(QStringLiteral("^[a-z0-9_.,]{1,200}$"));
  QJsonArray out;
  for(const auto& value:in){
@@ -195,7 +196,13 @@ QJsonArray cleanFindings(const QJsonArray& in,int words){
   const auto f=value.toObject();if(!kinds().contains(f.value("kind").toString()))continue;
   QJsonObject clean{{"kind",f.value("kind")},{"automatic",f.value("automatic").toBool(false)},{"covered",f.value("covered").toBool(false)},{"text",text(f.value("text"),4096)}};
   const auto r=text(f.value("rule"),200);clean["rule"]=rule.match(r).hasMatch()?r:f.value("kind").toString();
-  QJsonArray indexes;for(const auto& w:f.value("words").toArray()){if(indexes.size()>=10000)break;if(whole(w,-1,words-1))indexes.append(w);}clean["words"]=indexes;
+  QJsonArray indexes;
+  for(const auto& w:f.value("words").toArray()){
+   if(indexes.size()>=10000)break;
+   if(whole(w,-1,-1))indexes.append(-1);
+   else if(whole(w,0,remap.size()-1))indexes.append(remap.at(w.toInt()));
+  }
+  clean["words"]=indexes;
   QJsonArray lines;for(const auto& l:f.value("lines").toArray()){if(lines.size()>=1000)break;if(whole(l,0,10000000))lines.append(l);}clean["lines"]=lines;
   put(clean,"box",box(f.value("box")));
   QJsonArray marks;for(const auto& m:f.value("marks").toArray()){if(marks.size()>=100)break;if(const auto b=box(m);!b.isUndefined())marks.append(b);}clean["marks"]=marks;
@@ -204,11 +211,13 @@ QJsonArray cleanFindings(const QJsonArray& in,int words){
  }
  return out;
 }
-QJsonObject cleanWords(const QJsonObject& in){
- QJsonArray list;
+QJsonObject cleanWords(const QJsonObject& in,QList<int>& remap){
+ QJsonArray list;remap.clear();
  for(const auto& value:in.value("list").toArray()){
-  if(list.size()>=editor::falseAlarm::maximumWords)break;
+  if(remap.size()>=editor::falseAlarm::maximumWords)break;
+  remap.append(-1);
   const auto w=value.toObject();const auto b=box(w.value("box"));if(b.isUndefined()||!w.value("text").isString())continue;
+  remap.last()=int(list.size());
   QJsonObject clean{{"text",text(w.value("text"),512)},{"box",b},{"confidence",integer(w.value("confidence"),0,100).toDouble(0)},{"line",integer(w.value("line"),0,10000000).toDouble(0)}};
   if(w.value("second").toBool(false))clean["second"]=true;
   list.append(clean);
@@ -227,12 +236,12 @@ QJsonObject FalseAlarmReports::compose(const QJsonObject& helper,const QJsonObje
  const auto image=helper.value("image").toObject();
  shaped=shaped&&whole(image.value("width"),1,1000000)&&whole(image.value("height"),1,1000000);
  if(!shaped){error={"edit_output_invalid","The editor's report is not in the expected form",{}};return {};}
- const auto words=cleanWords(helper.value("words").toObject());
+ QList<int> remap;const auto words=cleanWords(helper.value("words").toObject(),remap);
  QJsonArray codes;
  for(const auto& value:helper.value("codes").toArray()){if(codes.size()>=64)break;const auto c=value.toObject();const auto b=box(c.value("box"));if(QStringList{"otp","wifi","key"}.contains(c.value("kind").toString())&&!b.isUndefined())codes.append(QJsonObject{{"kind",c.value("kind")},{"box",b}});}
  QJsonObject report{{"reportedFrom",helper.value("reportedFrom")},{"image",QJsonObject{{"width",image.value("width")},{"height",image.value("height")}}},
   {"check",cleanCheck(helper.value("check").toObject())},{"recognition",cleanRecognition(helper.value("recognition").toObject())},
-  {"findings",cleanFindings(helper.value("findings").toArray(),int(words.value("list").toArray().size()))},{"words",words},{"codes",codes}};
+  {"findings",cleanFindings(helper.value("findings").toArray(),remap)},{"words",words},{"codes",codes}};
  // The resident's own fields win; its `check` (the findings it validated itself) joins the helper's.
  for(auto it=resident.begin();it!=resident.end();++it){
   if(it.key()=="check"){auto check=report.value("check").toObject();const auto mine=it.value().toObject();for(auto c=mine.begin();c!=mine.end();++c)check[c.key()]=c.value();report["check"]=check;}
@@ -260,7 +269,8 @@ FalseAlarmReports::Saved FalseAlarmReports::save(const QByteArray& original,cons
  QJsonArray files{QJsonObject{{"name",originalName},{"bytes",double(original.size())},{"sha256",sha256(original)}}};
  if(!covered.isEmpty())files.append(QJsonObject{{"name","covered.png"},{"bytes",double(covered.size())},{"sha256",sha256(covered)}});
  report["files"]=files;report["name"]=name;
- const auto json=QJsonDocument(report).toJson(QJsonDocument::Indented);
+ // Compact: a report the listing and the package can read back (readReport's 16 MiB) is one that saves.
+ const auto json=QJsonDocument(report).toJson(QJsonDocument::Compact);
  const bool ok=writePrivate(QDir(partial).filePath(originalName),original)&&(covered.isEmpty()||writePrivate(QDir(partial).filePath("covered.png"),covered))
   &&writePrivate(QDir(partial).filePath("report.json"),json)&&QDir().rename(partial,final);
  if(!ok){removeReport(partial);error={"false_alarm_write_failed","Couldn't save the report. Check free disk space and try again.",{}};return saved;}

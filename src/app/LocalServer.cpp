@@ -661,11 +661,18 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  else if(method=="cache.clear")operations_.cleanup(reply);
  // Removes every persistent log file and starts a new one (#74).
  else if(method=="logs.clear")operations_.background([reports=operations_.falseAlarmReports()](Error& error){
-  // #2134: Clear logs removes the false-alarm reports too: they live beside the logs and hold screen content.
-  auto result=logging::clear(error);if(error)return result;
+  // #2134: Clear logs removes the false-alarm reports too: they live beside the logs and hold screen content. They go
+  // even when clearing the logs fails, and the answer says how both went.
+  Error logsError;auto result=logging::clear(logsError);
   const auto removed=reports?reports->clear():FalseAlarmReports::Removed{};
   result["removedReports"]=removed.reports;result["removedReportBytes"]=double(removed.bytes);
   if(removed.reports)logging::info(logApp(),"False alarm reports cleared",{{"reports",removed.reports},{"bytes",double(removed.bytes)}});
+  if(logsError){
+   auto details=logsError.details;details["removedReports"]=removed.reports;details["removedReportBytes"]=double(removed.bytes);if(removed.left)details["reportsLeft"]=removed.left;
+   const auto reportsLine=removed.left?QStringLiteral(" The false-alarm reports weren't all deleted either."):removed.reports==1?QStringLiteral(" 1 false-alarm report was deleted."):removed.reports>1?QStringLiteral(" %1 false-alarm reports were deleted.").arg(removed.reports):QString();
+   error={logsError.code,logsError.message+reportsLine,details};
+   return QJsonObject{};
+  }
   // A report still there afterwards is said, never passed over: the logs are cleared, the reports are not all gone.
   if(removed.left){
    auto details=result;details["reportsLeft"]=removed.left;
