@@ -31,6 +31,8 @@ void write(const QString& path,const QByteArray& bytes,QFile::Permissions mode=d
 QFile::Permissions mode(const QString& path) {return QFileInfo(path).permissions()&modeBits;}
 using putgd::test::elfImage;
 const QByteArray updateInformation="zsync|https://app.put.gd/dl/nightly/appimage.zsync";
+// A package's menu file as the DEB/RPM installs it, byte for byte (#2132).
+QByteArray packaged(const QString& relative) {return FileManagerIntegration::packagedMenu(relative);}
 // Temporary XDG roots. The data root holds a space and a quote, so every
 // format's quoting of the launcher path is exercised.
 // Fake user-manager tools for code that runs the launcher from this process.
@@ -47,7 +49,7 @@ struct Fixture {
   context.home=path("home");context.dataHome=path("xdg data");context.configHome=path("xdg config");
   context.dataRoot=path("put.gd's data/putgd");context.dataDirs={path("system share")};context.libraryDirs={path("system lib")};
   context.searchPath=path("bin");context.version="26.1031.1";context.iconSource=path("putgd.svg");
-  context.systemLauncher=path("system bin/putgd-launcher");context.appImage=path("Applications/putgd-26.1031.1-x86_64.AppImage");
+  context.systemLauncher=path("system bin/putgd-launcher");context.stateRoot=path("xdg state/putgd");context.systemOwner=::getuid();context.appImage=path("Applications/putgd-26.1031.1-x86_64.AppImage");
   receipt=path("receipt");
   for(const auto& directory:{context.home,context.dataHome,context.configHome,context.dataRoot,context.dataDirs[0],context.libraryDirs[0],context.searchPath})QDir().mkpath(directory);
   write(context.iconSource,"<svg xmlns=\"http://www.w3.org/2000/svg\"/>\n");
@@ -73,6 +75,15 @@ struct Fixture {
  QString menu(const QString& relative) const {return QDir(context.dataHome).filePath(relative);}
  QString cosmic() const {return FileManagerIntegration::cosmicPath(context);}
  void installDing() const {write(QDir(context.dataDirs[0]).filePath("gnome-shell/extensions/ding@rastersoft.com/metadata.json"),"{}\n");}
+ // The package's menu file and, where it has one, its plain or encrypted sibling, as the DEB/RPM installs them.
+ void package(const QString& relative,const QString& root={}) const {
+  const QDir data(root.isEmpty()?context.dataDirs[0]:root);
+  write(data.filePath(relative),packaged(relative));
+  if(relative.startsWith("kio/"))return;
+  auto sibling=relative;
+  if(sibling.contains("-encrypted"))sibling.remove("-encrypted");else sibling.insert(sibling.indexOf("putgd-upload")+12,"-encrypted");
+  write(data.filePath(sibling),packaged(sibling));
+ }
  void installCosmic() const {write(QDir(context.dataDirs[0]).filePath("applications/com.system76.CosmicFiles.desktop"),"[Desktop Entry]\n");}
  void installPlugin(const QString& relative,const QString& name) const {write(QDir(context.libraryDirs[0]).filePath(relative+"/"+name),"\x7f""ELF");}
  int run(const QString& file,const QStringList& arguments,const QString& workingDirectory={},const QHash<QString,QString>& environment={}) const {
@@ -140,7 +151,7 @@ private slots:
   QFETCH(QString,desktop);QFETCH(QString,plugin);QFETCH(QString,manager);
   Fixture f;auto& c=f.context;c.installation="system";c.desktop=desktop;
   if(!plugin.isEmpty())f.installPlugin(plugin,"libputgd-"+manager+".so");
-  write(QDir(c.dataDirs[0]).filePath("file-manager/actions/putgd-upload.desktop"),"[Desktop Entry]\n");
+  f.package("file-manager/actions/putgd-upload.desktop");
   write(QDir(c.searchPath).filePath(manager),"#!/bin/sh\n",programMode);
   auto result=FileManagerIntegration::apply(c);
   QVERIFY2(!result.error,qPrintable(result.error.message));
@@ -213,7 +224,7 @@ private slots:
   // The AppImage skipped its copy for the system install's entry: this run added nothing.
   Fixture skipped;auto& b=skipped.context;b.installation="appimage";b.desktop="LXDE";
   write(QDir(b.searchPath).filePath("pcmanfm"),"#!/bin/sh\n",programMode);
-  write(QDir(b.dataDirs[0]).filePath("file-manager/actions/putgd-upload.desktop"),"[Desktop Entry]\n");
+  skipped.package("file-manager/actions/putgd-upload.desktop");
   QVERIFY(FileManagerIntegration::apply(b).restartable.isEmpty());
   // A menu switched off: no first run, no notice.
   Fixture off;auto& d=off.context;d.installation="appimage";d.desktop="LXDE";d.enabled=false;
@@ -431,15 +442,18 @@ private slots:
   auto result=FileManagerIntegration::apply(c);
   QVERIFY(!result.error);QVERIFY(QFileInfo::exists(f.menu(menuFiles[0])));QVERIFY(QFileInfo::exists(f.caja()));
   // A DEB arrives: its menu files and plugins, then its resident's per-user files.
-  for(const auto& relative:allMenuFiles)write(QDir(c.dataDirs[0]).filePath(relative),"[Desktop Entry]\n");
+  for(const auto& relative:allMenuFiles)f.package(relative);
   f.installPlugin("nautilus/extensions-4","libputgd-nautilus.so");f.installPlugin("caja/extensions-2.0","libputgd-caja.so");
   auto system=c;system.installation="system";
-  QVERIFY(!FileManagerIntegration::apply(system).error);
+  // The package's start already removes the AppImage's copies its own files replace (#2119).
+  const auto systemResult=FileManagerIntegration::apply(system);
+  QVERIFY(!systemResult.error);
+  for(const auto& relative:allMenuFiles)QVERIFY2(systemResult.removed.contains(f.menu(relative)),qPrintable(relative));
   QVERIFY(readAll(f.ding()).contains("launcher='"+c.systemLauncher.toUtf8()+"'\n"));
   result=FileManagerIntegration::apply(c);
   QVERIFY2(!result.error,qPrintable(result.error.message));
   for(const auto& relative:allMenuFiles) {
-   QVERIFY(result.skipped.contains(f.menu(relative)));QVERIFY(result.removed.contains(f.menu(relative)));QVERIFY(!QFileInfo::exists(f.menu(relative)));
+   QVERIFY(result.skipped.contains(f.menu(relative)));QVERIFY(!QFileInfo::exists(f.menu(relative)));
   }
   QVERIFY(result.skipped.contains(f.caja()));QVERIFY(!QFileInfo::exists(f.caja()));
   QVERIFY(result.skipped.contains(f.caja(encryptedScript)));QVERIFY(!QFileInfo::exists(f.caja(encryptedScript)));QVERIFY(!QFileInfo::exists(f.nautilus(encryptedScript)));
@@ -452,6 +466,356 @@ private slots:
   const auto cosmic=QString::fromUtf8(readAll(f.cosmic()));
   QCOMPARE(cosmic.count("(name: "),2);QVERIFY(cosmic.contains(c.systemLauncher));
   QVERIFY(!QString::fromUtf8(readAll(QDir(c.dataRoot).filePath("file-manager/appimage.owned"))).contains("\ncosmic "));
+ }
+ // #2119: an AppImage's per-user menu file shadows the package's file of the same name, so an
+ // older one hides the package's encrypted entry. The package's start moves the AppImage's exact
+ // copies aside wherever it has its own, keeps them restorable, and leaves everything else.
+ static QString replaced(const Fixture& f) {
+  const QDir root(QDir(f.context.stateRoot).filePath("file-manager-replaced"));
+  const auto stamps=root.entryList(QDir::Dirs|QDir::NoDotAndDotDot);
+  return stamps.size()==1?root.filePath(stamps.first()):QString();
+ }
+ void systemInstallMovesAsideAppImageCopiesThatShadowItsOwn() {
+  Fixture f;auto& c=f.context;c.installation="appimage";
+  QVERIFY(!FileManagerIntegration::apply(c).error);
+  const auto recordFile=QDir(c.dataRoot).filePath("file-manager/appimage.owned");const auto recordBefore=QString::fromUtf8(readAll(recordFile));
+  // A user's own file of that name, which isn't put.gd's, stays whatever happens.
+  QVERIFY(QFile::remove(f.menu("contractor/putgd-upload.contract")));
+  write(f.menu("contractor/putgd-upload.contract"),"[Contractor Entry]\nName=mine\n");
+  const QStringList relatives{"nemo/actions/putgd-upload.nemo_action","nemo/actions/putgd-upload-encrypted.nemo_action","Thunar/sendto/putgd-upload.desktop","Thunar/sendto/putgd-upload-encrypted.desktop","contractor/putgd-upload-encrypted.contract"};
+  QHash<QString,QByteArray> before;for(const auto& relative:relatives)before[relative]=readAll(f.menu(relative));
+  const auto cajaBefore=readAll(f.caja());const auto cajaMode=mode(f.caja());
+  // The package arrives with only some formats: Nemo and Thunar (both entries), Contractor, and the Caja plugin.
+  for(const auto& relative:relatives+QStringList{"contractor/putgd-upload.contract"})f.package(relative);
+  f.installPlugin("caja/extensions-2.0","libputgd-caja.so");
+  auto system=c;system.installation="system";
+  auto result=FileManagerIntegration::apply(system);
+  QVERIFY2(!result.error,qPrintable(result.error.message));
+  const auto backup=replaced(f);QVERIFY(!backup.isEmpty());
+  for(const auto& relative:relatives) {
+   QVERIFY2(result.removed.contains(f.menu(relative))&&!QFileInfo::exists(f.menu(relative)),qPrintable(relative));
+   // Restorable: the same bytes and mode under data/<relative>.
+   QCOMPARE(readAll(backup+"/data/"+relative),before[relative]);QCOMPARE(mode(backup+"/data/"+relative),dataMode);
+  }
+  QVERIFY(!QFileInfo::exists(f.caja()));QCOMPARE(readAll(backup+"/config/caja/scripts/"+script),cajaBefore);QCOMPARE(mode(backup+"/config/caja/scripts/"+script),cajaMode);
+  QVERIFY(!QFileInfo::exists(f.caja(encryptedScript)));QVERIFY(QFileInfo::exists(backup+"/config/caja/scripts/"+encryptedScript));
+  // Only where the package has its own copy: the AppImage keeps its Dolphin, PCManFM and Files entries.
+  for(const auto& path:{f.menu("kio/servicemenus/putgd-upload.desktop"),f.menu("file-manager/actions/putgd-upload.desktop"),f.nautilus(),f.nautilus(encryptedScript)})
+   QVERIFY2(QFileInfo::exists(path)&&!result.removed.contains(path),qPrintable(path));
+  QCOMPARE(readAll(f.menu("contractor/putgd-upload.contract")),QByteArray("[Contractor Entry]\nName=mine\n"));
+  // The record drops only the moved files; its other lines (identity, image, update, other files) stay as they were.
+  const auto record=QString::fromUtf8(readAll(recordFile));
+  for(const auto& relative:relatives)QVERIFY(!record.contains("\nfile "+f.menu(relative)+'\n'));
+  QVERIFY(!record.contains("\nfile "+f.caja()+'\n'));
+  const auto movedLine=[&](const QString& line){
+   const auto path=line.startsWith("file ")?line.mid(5):line.startsWith("hash ")?line.mid(70):QString();
+   return !path.isEmpty()&&(relatives.contains(QDir(c.dataHome).relativeFilePath(path))||path.startsWith(QDir(c.configHome).filePath("caja/scripts/")));
+  };
+  QStringList expected;for(const auto& line:recordBefore.split('\n'))if(!movedLine(line))expected<<line;
+  QCOMPARE(record,expected.join('\n'));
+  // The AppImage's next start skips what the package provides and recreates none of it.
+  result=FileManagerIntegration::apply(c);
+  QVERIFY2(!result.error,qPrintable(result.error.message));
+  for(const auto& relative:relatives)QVERIFY2(!QFileInfo::exists(f.menu(relative)),qPrintable(relative));
+  QVERIFY(QFileInfo::exists(f.menu("kio/servicemenus/putgd-upload.desktop")));
+ }
+ // A removed AppImage record leaves its files behind; their exact bytes still identify them.
+ void systemInstallMovesAsideOrphanedAppImageCopies() {
+  Fixture f;auto& c=f.context;c.installation="appimage";
+  QVERIFY(!FileManagerIntegration::apply(c).error);
+  QVERIFY(QFile::remove(QDir(c.dataRoot).filePath("file-manager/appimage.owned")));
+  QVERIFY(QFile::remove(FileManagerIntegration::launcherPath(c)));
+  for(const auto& relative:allMenuFiles)f.package(relative);
+  auto system=c;system.installation="system";
+  const auto result=FileManagerIntegration::apply(system);
+  QVERIFY2(!result.error,qPrintable(result.error.message));
+  for(const auto& relative:allMenuFiles)QVERIFY2(!QFileInfo::exists(f.menu(relative))&&QFileInfo::exists(replaced(f)+"/data/"+relative),qPrintable(relative));
+  // No record to update: none is created.
+  QVERIFY(!QFileInfo::exists(QDir(c.dataRoot).filePath("file-manager/appimage.owned")));
+ }
+ // An older AppImage's KIO service menu (only Upload with put.gd) is recognized byte for byte too.
+ void systemInstallRecognizesTheEarlierKioTemplate() {
+  Fixture f;auto& c=f.context;
+  const auto launcher=FileManagerIntegration::launcherPath(c),icon=QDir(c.dataRoot).filePath("file-manager/putgd.svg");
+  const auto quote=[](QString v){return v.contains(' ')||v.contains('\'')?"\""+v.replace("\\","\\\\").replace("\"","\\\"")+"\"":v;};
+  const QByteArray legacy="# \"Upload with put.gd\" in Dolphin and Konqueror (#1105). A KIO service menu for\n# files and folders (all/all) on every protocol, so remote folders show it too\n"
+   "# (KIOFuse or kioexec supplies the path), at the top level of the menu.\n[Desktop Entry]\nX-putgd-Managed=true\nType=Service\nMimeType=all/all;\nActions=putgdUpload;\nX-KDE-Priority=TopLevel\n\n"
+   "[Desktop Action putgdUpload]\nName=Upload with put.gd\nIcon="+icon.toUtf8()+"\nExec="+quote(launcher).toUtf8()+" --upload -- %F\n";
+  write(f.menu("kio/servicemenus/putgd-upload.desktop"),legacy,programMode);
+  f.package("kio/servicemenus/putgd-upload.desktop");
+  c.installation="system";
+  const auto result=FileManagerIntegration::apply(c);
+  QVERIFY2(!result.error,qPrintable(result.error.message));
+  QVERIFY(!QFileInfo::exists(f.menu("kio/servicemenus/putgd-upload.desktop")));
+  QCOMPARE(readAll(replaced(f)+"/data/kio/servicemenus/putgd-upload.desktop"),legacy);QCOMPARE(mode(replaced(f)+"/data/kio/servicemenus/putgd-upload.desktop"),programMode);
+ }
+ // Only an exact AppImage copy moves: an edited one, a lookalike naming the launcher in a comment,
+ // a menu folder that is a link, and a package file that isn't put.gd's all leave things alone.
+ void systemInstallLeavesAnythingElse() {
+  const auto nemo=QStringLiteral("nemo/actions/putgd-upload.nemo_action");
+  {
+   Fixture f;auto& c=f.context;c.installation="appimage";QVERIFY(!FileManagerIntegration::apply(c).error);
+   // Customized: still marked, still runs the launcher, one line added.
+   const auto edited=readAll(f.menu(nemo))+"Quote=single\n";write(f.menu(nemo),edited);
+   // A lookalike that only mentions the launcher in a comment.
+   const auto lookalike="[Desktop Entry]\nX-putgd-Managed=true\n# "+FileManagerIntegration::launcherPath(c).toUtf8()+"\nName=mine\n";
+   write(f.menu("Thunar/sendto/putgd-upload.desktop"),lookalike);
+   for(const auto* relative:{"nemo/actions/putgd-upload.nemo_action","Thunar/sendto/putgd-upload.desktop"})f.package(relative);
+   auto system=c;system.installation="system";const auto result=FileManagerIntegration::apply(system);
+   QVERIFY2(!result.error,qPrintable(result.error.message));
+   QCOMPARE(readAll(f.menu(nemo)),edited);QCOMPARE(readAll(f.menu("Thunar/sendto/putgd-upload.desktop")),lookalike);
+   // Only the exact encrypted copies beside them moved.
+   QVERIFY(!QFileInfo::exists(replaced(f)+"/data/"+nemo));QVERIFY(!QFileInfo::exists(replaced(f)+"/data/Thunar/sendto/putgd-upload.desktop"));
+   QVERIFY(QFileInfo::exists(replaced(f)+"/data/nemo/actions/putgd-upload-encrypted.nemo_action"));
+  }
+  {
+   // The user's Nemo actions folder is a link to somewhere else.
+   Fixture f;auto& c=f.context;c.installation="appimage";QVERIFY(!FileManagerIntegration::apply(c).error);
+   const auto elsewhere=f.path("elsewhere");QVERIFY(QDir().rename(f.menu("nemo/actions"),elsewhere));QVERIFY(QFile::link(elsewhere,f.menu("nemo/actions")));
+   f.package(nemo);
+   auto system=c;system.installation="system";const auto result=FileManagerIntegration::apply(system);
+   QVERIFY2(!result.error,qPrintable(result.error.message));
+   QVERIFY(QFileInfo::exists(elsewhere+"/putgd-upload.nemo_action"));QVERIFY(replaced(f).isEmpty());
+  }
+  {
+   // A system file of that name that isn't put.gd's: no counterpart. The AppImage keeps writing its copy.
+   Fixture f;auto& c=f.context;c.installation="appimage";
+   write(QDir(c.dataDirs[0]).filePath(nemo),"[Nemo Action]\nName=Other\nExec=/usr/bin/other %F\n");
+   QVERIFY(!FileManagerIntegration::apply(c).error);QVERIFY(QFileInfo::exists(f.menu(nemo)));
+   auto system=c;system.installation="system";const auto result=FileManagerIntegration::apply(system);
+   QVERIFY2(!result.error,qPrintable(result.error.message));QVERIFY(QFileInfo::exists(f.menu(nemo)));QVERIFY(replaced(f).isEmpty());
+  }
+  {
+   // An XDG_DATA_DIRS entry that is the user's own folder under another name: its "system" copy is the AppImage's own file.
+   Fixture f;auto& c=f.context;c.installation="appimage";QVERIFY(!FileManagerIntegration::apply(c).error);
+   const auto alias=f.path("alias of data");QVERIFY(QFile::link(c.dataHome,alias));c.dataDirs={alias};
+   // The AppImage doesn't skip its own file either.
+   QVERIFY(!FileManagerIntegration::apply(c).skipped.contains(f.menu(nemo)));
+   auto system=c;system.installation="system";const auto result=FileManagerIntegration::apply(system);
+   QVERIFY2(!result.error,qPrintable(result.error.message));QVERIFY(QFileInfo::exists(f.menu(nemo)));QVERIFY(replaced(f).isEmpty());
+  }
+ }
+ // #2132 N1: when a package arrives, the AppImage's own pass never deletes a copy changed since it wrote it: it moves it aside.
+ void appImageMovesAsideItsChangedCopyInsteadOfDeleting() {
+  Fixture f;auto& c=f.context;c.installation="appimage";QVERIFY(!FileManagerIntegration::apply(c).error);
+  const auto nemo=QStringLiteral("nemo/actions/putgd-upload.nemo_action");
+  const auto edited=readAll(f.menu(nemo))+"Quote=single\n";write(f.menu(nemo),edited);
+  f.package(nemo);
+  const auto result=FileManagerIntegration::apply(c);
+  QVERIFY2(!result.error,qPrintable(result.error.message));QVERIFY(result.skipped.contains(f.menu(nemo)));
+  QVERIFY(!QFileInfo::exists(f.menu(nemo)));QCOMPARE(readAll(replaced(f)+"/data/"+nemo),edited);
+  // Turned off, an exact copy goes; a changed one is moved aside too.
+  const auto thunar=QStringLiteral("Thunar/sendto/putgd-upload.desktop");const auto changed=readAll(f.menu(thunar))+"# mine\n";write(f.menu(thunar),changed);
+  auto off=c;off.enabled=false;off.replacedStamp="off";QVERIFY(!FileManagerIntegration::apply(off).error);
+  QVERIFY(!QFileInfo::exists(f.menu("kio/servicemenus/putgd-upload.desktop")));QVERIFY(!QFileInfo::exists(f.menu(thunar)));
+  QCOMPARE(readAll(QDir(c.stateRoot).filePath("file-manager-replaced/off/data/"+thunar)),changed);
+  QVERIFY(!QFileInfo::exists(QDir(c.stateRoot).filePath("file-manager-replaced/off/data/kio/servicemenus/putgd-upload.desktop")));
+ }
+ // #2132 N2: an older package's menu file (only Upload with put.gd) or a lookalike isn't the package's copy.
+ // #2132 N2, L5, S5: the package's counterpart is a packaged put.gd file offering both entries, in
+ // the highest-priority system folder that has the file.
+ void onlyThePackagesFileWithBothEntriesIsACounterpart() {
+  const auto kio=QStringLiteral("kio/servicemenus/putgd-upload.desktop"),nemo=QStringLiteral("nemo/actions/putgd-upload.nemo_action");
+  const auto counted=[](Fixture& f,const QString& relative){f.context.installation="appimage";const auto result=FileManagerIntegration::apply(f.context);return !result.error&&result.skipped.contains(f.menu(relative));};
+  {Fixture f;f.package(kio);QVERIFY(counted(f,kio));}
+  // Not byte for byte this build's, but packaged with both actions: still the package's.
+  {Fixture f;write(QDir(f.context.dataDirs[0]).filePath(kio),packaged(kio)+"\n# a later comment\n");QVERIFY(counted(f,kio));}
+  // The old plain-only KIO menu offers only Upload with put.gd.
+  {Fixture f;write(QDir(f.context.dataDirs[0]).filePath(kio),"[Desktop Entry]\nActions=putgdUpload;\n\n[Desktop Action putgdUpload]\nName=Upload with put.gd\nExec=/usr/bin/putgd-launcher --upload -- %F\n");QVERIFY(!counted(f,kio));}
+  // Nemo's plain action without its encrypted sibling, and a lookalike that runs something else.
+  {Fixture f;write(QDir(f.context.dataDirs[0]).filePath(nemo),packaged(nemo));QVERIFY(!counted(f,nemo));}
+  {Fixture f;f.package(nemo);write(QDir(f.context.dataDirs[0]).filePath(nemo),"[Nemo Action]\nName=Upload with put.gd\nExec=/opt/other --upload -- %F\n");QVERIFY(!counted(f,nemo));}
+  // Not owned like the package's files: here, by "another" owner than the one expected.
+  {Fixture f;f.package(nemo);f.context.systemOwner=::getuid()+1;QVERIFY(!counted(f,nemo));}
+  // An earlier XDG data folder with a different file of that name decides, even with a packaged one later.
+  {Fixture f;const auto first=f.path("first share");write(QDir(first).filePath(nemo),"[Nemo Action]\nName=mine\n");f.package(nemo);f.context.dataDirs.prepend(first);QVERIFY(!counted(f,nemo));}
+  // The user's own folder under another name, first in line, decides likewise.
+  {Fixture f;const auto alias=f.path("alias of data");QVERIFY(QFile::link(f.context.dataHome,alias));
+   QVERIFY(!FileManagerIntegration::apply([&]{auto c=f.context;c.installation="appimage";return c;}()).error);
+   f.package(nemo);f.context.dataDirs.prepend(alias);QVERIFY(!counted(f,nemo));}
+ }
+ // #2132 N3: the package's DING script, recorded under another name for the same folder, is never deleted by the AppImage.
+ void appImageNeverDeletesThePackagesDingScriptUnderAnotherName() {
+  Fixture f;auto& c=f.context;f.installDing();
+  QVERIFY(QDir().mkpath(QDir(c.home).filePath(".local/share")));
+  const auto alias=f.path("home alias");QVERIFY(QFile::link(c.home,alias));
+  auto image=c;image.installation="appimage";image.home=alias;
+  QVERIFY(!FileManagerIntegration::apply(image).error);
+  auto system=c;system.installation="system";QVERIFY(!FileManagerIntegration::apply(system).error);
+  QVERIFY(readAll(f.ding()).contains("launcher='"+c.systemLauncher.toUtf8()+"'\n"));
+  const auto result=FileManagerIntegration::apply(image);
+  QVERIFY2(!result.error,qPrintable(result.error.message));
+  QVERIFY(QFileInfo::exists(f.ding()));QVERIFY(readAll(f.ding()).contains("launcher='"+c.systemLauncher.toUtf8()+"'\n"));
+ }
+ // #2132 N4: a move never replaces or removes what is already at its target.
+ void moveAsideNeverReplacesAnExistingBackup() {
+  Fixture f;auto& c=f.context;c.installation="appimage";QVERIFY(!FileManagerIntegration::apply(c).error);
+  const auto nemo=QStringLiteral("nemo/actions/putgd-upload.nemo_action");const auto mine=readAll(f.menu(nemo));
+  const auto target=QDir(c.stateRoot).filePath("file-manager-replaced/fixed/data/"+nemo);write(target,"already here\n");
+  f.package(nemo);
+  auto system=c;system.installation="system";system.replacedStamp="fixed";
+  const auto result=FileManagerIntegration::apply(system);
+  QCOMPARE(result.error.code,QString("file_manager_io"));
+  QCOMPARE(readAll(target),QByteArray("already here\n"));QCOMPARE(readAll(f.menu(nemo)),mine);
+ }
+ // #2132 S9: a moved entry comes back from its backup with its original bytes and mode.
+ void aMovedEntryRestoresFromItsBackup() {
+  Fixture f;auto& c=f.context;c.installation="appimage";QVERIFY(!FileManagerIntegration::apply(c).error);
+  const auto kio=QStringLiteral("kio/servicemenus/putgd-upload.desktop");const auto original=readAll(f.menu(kio));
+  f.package(kio);auto system=c;system.installation="system";system.replacedStamp="restore";
+  QVERIFY(!FileManagerIntegration::apply(system).error);QVERIFY(!QFileInfo::exists(f.menu(kio)));
+  // What a user does: move the backup back where the file manager reads it.
+  QVERIFY(QFile::rename(QDir(c.stateRoot).filePath("file-manager-replaced/restore/data/"+kio),f.menu(kio)));
+  QCOMPARE(readAll(f.menu(kio)),original);QCOMPARE(mode(f.menu(kio)),programMode);
+ }
+ // #2132 S1: an edited DING script is moved aside before the package writes its own.
+ void anEditedDingScriptIsMovedAsideBeforeThePackageReplacesIt() {
+  Fixture f;auto& c=f.context;c.installation="appimage";f.installDing();QVERIFY(!FileManagerIntegration::apply(c).error);
+  const auto edited=readAll(f.ding())+"# my change\n";write(f.ding(),edited,programMode);
+  auto system=c;system.installation="system";system.replacedStamp="ding";
+  const auto result=FileManagerIntegration::apply(system);
+  QVERIFY2(!result.error,qPrintable(result.error.message));
+  QVERIFY(readAll(f.ding()).contains("launcher='"+c.systemLauncher.toUtf8()+"'\n"));
+  QCOMPARE(readAll(QDir(c.stateRoot).filePath("file-manager-replaced/ding/home/.local/share/nautilus/scripts/"+script)),edited);
+  // An exact AppImage script is simply replaced, with nothing to keep.
+  QVERIFY(!QFileInfo::exists(QDir(c.stateRoot).filePath("file-manager-replaced/ding/home/.local/share/nautilus/scripts/"+encryptedScript)));
+ }
+ // #2132 S2, L2: the AppImage is deleted right after the package started, with no AppImage pass in
+ // between. Its removal (in process and the launcher's shell) leaves the package's DING scripts and
+ // any edited entry, and removes only its own exact files.
+ void appImageRemovalLeavesThePackagesAndEditedFiles() {
+  for(const bool shell:{false,true}) {
+   Fixture f;auto& c=f.context;c.installation="appimage";f.installDing();
+   const SearchPath tools(c.searchPath);
+   const auto result=FileManagerIntegration::apply(c);QVERIFY(!result.error);
+   const auto nemo=QStringLiteral("nemo/actions/putgd-upload.nemo_action");const auto edited=readAll(f.menu(nemo))+"Quote=single\n";write(f.menu(nemo),edited);
+   auto system=c;system.installation="system";QVERIFY(!FileManagerIntegration::apply(system).error);
+   QVERIFY(QFile::remove(c.appImage));
+   if(shell)QCOMPARE(f.run(result.launcher,{"--cleanup-if-missing"}),0);
+   else QVERIFY(!FileManagerIntegration::cleanupIfMissing(c));
+   QVERIFY2(readAll(f.ding()).contains("launcher='"+c.systemLauncher.toUtf8()+"'\n"),shell?"shell":"in process");
+   QVERIFY(readAll(f.ding(encryptedScript)).contains("launcher='"+c.systemLauncher.toUtf8()+"'\n"));
+   QCOMPARE(readAll(f.menu(nemo)),edited);
+   QVERIFY(!QFileInfo::exists(f.menu("kio/servicemenus/putgd-upload.desktop")));
+   QVERIFY(!QFileInfo::exists(QDir(c.dataRoot).filePath("file-manager/appimage.owned")));
+  }
+ }
+ // #2132 S6: a retirement that fails stays recorded and succeeds on a later pass.
+ void aFailedRetirementIsRetried() {
+  Fixture f;auto& c=f.context;c.installation="appimage";QVERIFY(!FileManagerIntegration::apply(c).error);
+  const auto nemo=QStringLiteral("nemo/actions/putgd-upload.nemo_action");const auto edited=readAll(f.menu(nemo))+"Quote=single\n";write(f.menu(nemo),edited);
+  f.package(nemo);
+  // The backup can't be made: the state folder is a file.
+  QVERIFY(QDir().mkpath(QFileInfo(c.stateRoot).path()));write(c.stateRoot,"not a folder\n");
+  auto result=FileManagerIntegration::apply(c);
+  QCOMPARE(result.error.code,QString("file_manager_io"));QCOMPARE(readAll(f.menu(nemo)),edited);
+  QVERIFY(QString::fromUtf8(readAll(QDir(c.dataRoot).filePath("file-manager/appimage.owned"))).contains("\nfile "+f.menu(nemo)+'\n'));
+  QVERIFY(QFile::remove(c.stateRoot));c.replacedStamp="retry";
+  result=FileManagerIntegration::apply(c);
+  QVERIFY2(!result.error,qPrintable(result.error.message));QVERIFY(!QFileInfo::exists(f.menu(nemo)));
+  QCOMPARE(readAll(QDir(c.stateRoot).filePath("file-manager-replaced/retry/data/"+nemo)),edited);
+  QVERIFY(!QString::fromUtf8(readAll(QDir(c.dataRoot).filePath("file-manager/appimage.owned"))).contains("\nfile "+f.menu(nemo)+'\n'));
+ }
+ // #2132 L4: an entry written under one spelling of the home folder (/home) is recognized under
+ // another (/var/home): here a link to the same home.
+ void entriesWrittenUnderAnotherHomeSpellingAreRecognized_data() {
+  QTest::addColumn<bool>("imageUnderAlias");QTest::newRow("package under the alias")<<false;QTest::newRow("AppImage under the alias")<<true;
+ }
+ void entriesWrittenUnderAnotherHomeSpellingAreRecognized() {
+  QFETCH(bool,imageUnderAlias);
+  Fixture f;
+  const auto real=f.path("real home"),alias=f.path("aliased home");QVERIFY(QDir().mkpath(real));QVERIFY(QFile::link(real,alias));
+  const auto at=[&](FileManagerContext c,const QString& home){c.home=home;c.dataHome=home+"/.local/share";c.configHome=home+"/.config";c.dataRoot=home+"/.local/share/putgd";return c;};
+  auto image=at(f.context,imageUnderAlias?alias:real);image.installation="appimage";
+  QVERIFY(!FileManagerIntegration::apply(image).error);
+  const auto nemo=QStringLiteral("nemo/actions/putgd-upload.nemo_action");
+  f.package(nemo);
+  auto system=at(f.context,imageUnderAlias?real:alias);system.installation="system";system.replacedStamp="alias";
+  const auto result=FileManagerIntegration::apply(system);
+  QVERIFY2(!result.error,qPrintable(result.error.message));
+  QVERIFY(!QFileInfo::exists(real+"/.local/share/"+nemo));QVERIFY(QFileInfo::exists(QDir(f.context.stateRoot).filePath("file-manager-replaced/alias/data/"+nemo)));
+ }
+
+ // #2132 R2-1: a launcher an earlier AppImage wrote, before entries carried hashes, would remove an
+ // edited entry when the image goes. The package's start upgrades an exact one, keeping its paths.
+ void anEarlierLauncherIsUpgradedSoItsRemovalKeepsEditedEntries() {
+  Fixture f;auto& c=f.context;c.installation="appimage";
+  const SearchPath tools(c.searchPath);
+  QVERIFY(!FileManagerIntegration::apply(c).error);
+  const auto launcher=FileManagerIntegration::launcherPath(c),recordFile=QDir(c.dataRoot).filePath("file-manager/appimage.owned");
+  const auto current=readAll(launcher);const auto earlier=FileManagerIntegration::earlierLauncherForTesting(c);
+  QVERIFY(earlier!=current);QVERIFY(!earlier.contains("remove_exact"));
+  write(launcher,earlier,programMode);
+  QStringList lines;for(const auto& line:QString::fromUtf8(readAll(recordFile)).split('\n'))if(!line.startsWith("hash "))lines<<line;
+  write(recordFile,lines.join('\n').toUtf8());
+  const auto nemo=QStringLiteral("nemo/actions/putgd-upload.nemo_action");const auto edited=readAll(f.menu(nemo))+"Quote=single\n";write(f.menu(nemo),edited);
+  auto system=c;system.installation="system";QVERIFY(!FileManagerIntegration::apply(system).error);
+  QCOMPARE(readAll(launcher),current);QCOMPARE(mode(launcher),programMode);
+  const auto record=QString::fromUtf8(readAll(recordFile));
+  // A hash for the entry that is still exactly the AppImage's, none for the edited one.
+  bool kioHashed=false,nemoHashed=false;
+  for(const auto& line:record.split('\n'))if(line.startsWith("hash ")){kioHashed|=line.endsWith(' '+f.menu("kio/servicemenus/putgd-upload.desktop"));nemoHashed|=line.endsWith(' '+f.menu(nemo));}
+  QVERIFY(kioHashed);QVERIFY(!nemoHashed);
+  QVERIFY(QFile::remove(c.appImage));
+  QCOMPARE(f.run(launcher,{"--cleanup-if-missing"}),0);
+  QCOMPARE(readAll(f.menu(nemo)),edited);QVERIFY(!QFileInfo::exists(f.menu("kio/servicemenus/putgd-upload.desktop")));
+ }
+ // #2132 R3-1, R3-2: the upgrade keeps the launcher's own mode, and the record's hashes are added
+ // at a later start when writing them failed, once only.
+ void launcherUpgradeKeepsItsModeAndRetriesTheRecord() {
+  Fixture f;auto& c=f.context;c.installation="appimage";QVERIFY(!FileManagerIntegration::apply(c).error);
+  const auto launcher=FileManagerIntegration::launcherPath(c),recordFile=QDir(c.dataRoot).filePath("file-manager/appimage.owned");
+  const auto own=QFileInfo(launcher).path();
+  constexpr auto ownerOnly=QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner;
+  write(launcher,FileManagerIntegration::earlierLauncherForTesting(c),ownerOnly);
+  QStringList lines;for(const auto& line:QString::fromUtf8(readAll(recordFile)).split('\n'))if(!line.startsWith("hash "))lines<<line;
+  write(recordFile,lines.join('\n').toUtf8());
+  const auto hashes=[&]{return QString::fromUtf8(readAll(recordFile)).count("\nhash ");};
+  auto system=c;system.installation="system";
+  QVERIFY(!FileManagerIntegration::apply(system).error);
+  QCOMPARE(mode(launcher),QFile::Permissions(ownerOnly));QVERIFY(readAll(launcher).contains("remove_exact"));
+  const auto expected=hashes();QVERIFY(expected>0);
+  // The record loses its hashes again and can't be written: the next start reports it, and the one after adds them, once.
+  write(recordFile,lines.join('\n').toUtf8());
+  QVERIFY(QFile::setPermissions(own,QFile::ReadOwner|QFile::ExeOwner));
+  const auto refused=FileManagerIntegration::apply(system);
+  QVERIFY(QFile::setPermissions(own,QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner));
+  QCOMPARE(refused.error.code,QString("file_manager_io"));QCOMPARE(hashes(),0);
+  QVERIFY(!FileManagerIntegration::apply(system).error);QCOMPARE(hashes(),expected);
+  QVERIFY(!FileManagerIntegration::apply(system).error);QCOMPARE(hashes(),expected);
+ }
+ // A launcher that isn't exactly one put.gd wrote is left as it is.
+ void aChangedLauncherIsLeftAlone() {
+  Fixture f;auto& c=f.context;c.installation="appimage";QVERIFY(!FileManagerIntegration::apply(c).error);
+  const auto launcher=FileManagerIntegration::launcherPath(c);const auto changed=FileManagerIntegration::earlierLauncherForTesting(c)+"# mine\n";
+  write(launcher,changed,programMode);
+  auto system=c;system.installation="system";QVERIFY(!FileManagerIntegration::apply(system).error);
+  QCOMPARE(readAll(launcher),changed);
+ }
+ // #2132 R2-2: even when the AppImage's record still names the package's DING script (its update
+ // failed), the AppImage's removal and passes never delete what the package wrote.
+ void theAppImageNeverRemovesThePackagesScripts() {
+  Fixture f;auto& c=f.context;c.installation="appimage";f.installDing();
+  const SearchPath tools(c.searchPath);
+  QVERIFY(!FileManagerIntegration::apply(c).error);
+  const auto recordFile=QDir(c.dataRoot).filePath("file-manager/appimage.owned");const auto before=readAll(recordFile);
+  auto system=c;system.installation="system";QVERIFY(!FileManagerIntegration::apply(system).error);
+  write(recordFile,before);
+  QVERIFY(QFile::remove(c.appImage));
+  QVERIFY(!FileManagerIntegration::cleanupIfMissing(c));
+  for(const auto& name:{script,encryptedScript})QVERIFY(readAll(f.ding(name)).contains("launcher='"+c.systemLauncher.toUtf8()+"'\n"));
+ }
+ // DING's scripts are the package's own: one reached through another name for the same folder isn't moved (#2119).
+ void dingScriptComparedCanonically() {
+  Fixture f;auto& c=f.context;c.installation="appimage";f.installDing();
+  QVERIFY(QDir().mkpath(QDir(c.home).filePath(".local/share")));
+  const auto alias=f.path("data alias");QVERIFY(QFile::link(QDir(c.home).filePath(".local/share"),alias));c.dataHome=alias;
+  QVERIFY(!FileManagerIntegration::apply(c).error);QVERIFY(QFileInfo::exists(f.ding()));
+  f.installPlugin("nautilus/extensions-4","libputgd-nautilus.so");
+  auto system=c;system.installation="system";const auto result=FileManagerIntegration::apply(system);
+  QVERIFY2(!result.error,qPrintable(result.error.message));
+  QVERIFY(!result.removed.contains(QDir(alias).filePath("nautilus/scripts/"+script)));QVERIFY(replaced(f).isEmpty());
+  QVERIFY(readAll(f.ding()).contains("launcher='"+c.systemLauncher.toUtf8()+"'\n"));
  }
  void cosmicMergeLeavesOtherEntriesUnchanged() {
   Fixture f;auto& c=f.context;c.installation="appimage";f.installCosmic();

@@ -4,6 +4,7 @@
 The launcher is rendered from its template as FileManagerIntegration writes it.
 Stand-in images and systemd-run record their arguments; no image is mounted.
 """
+import hashlib
 import os
 from pathlib import Path
 import shutil
@@ -168,14 +169,25 @@ done
         menu.write_text("[Desktop Entry]\nX-putgd-Managed=true\n")
         foreign = self.root / "foreign.desktop"
         foreign.write_text("[Desktop Entry]\n")
+        # #2132: a marked entry goes only while it has the bytes the record's hash names; an edited
+        # one, or one with no recorded hash, stays.
+        edited = self.root / "edited.desktop"
+        edited.write_text("[Desktop Entry]\nX-putgd-Managed=true\nName=changed\n")
+        unhashed = self.root / "unhashed.desktop"
+        unhashed.write_text("[Desktop Entry]\nX-putgd-Managed=true\n")
+        digest = hashlib.sha256(menu.read_bytes()).hexdigest()
         record.write_text("# X-putgd-Managed=true\n# X-putgd-IntegrationId=" + "b" * 64 + "\nfile " + str(menu) +
-                          "\nfile " + str(foreign) + "\nfile " + str(self.script) + "\n")
+                          "\nfile " + str(foreign) + "\nfile " + str(edited) + "\nfile " + str(unhashed) +
+                          "\nfile " + str(self.script) + "\nhash " + digest + " " + str(menu) +
+                          "\nhash " + digest + " " + str(edited) + "\n")
         self.write(self.bin / "systemctl", "#!/bin/sh\nprintf 'not-found\\n'\n")
         completed, started = self.run_launcher("--upload", "--", "/a")
         self.assertEqual((completed.returncode, started), (1, []))
         self.assertIn("is missing", completed.stderr)
         self.assertFalse(menu.exists())
         self.assertTrue(foreign.exists())
+        self.assertTrue(edited.exists())
+        self.assertTrue(unhashed.exists())
         self.assertFalse(record.exists())
         self.assertFalse(self.script.exists())
 
