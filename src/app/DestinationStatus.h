@@ -70,7 +70,10 @@ public:
 signals:
  void changed();
 private:
- struct Record {QString state,source,errorCode,fingerprint;quint64 credentialRevision=0;};
+ // sessionOnly: made with keys kept only for this session, so never written (#2118).
+ struct Record {QString state,source,errorCode,fingerprint;quint64 credentialRevision=0;bool sessionOnly=false;};
+ // Whether a check made now would be made with keys kept only for this session.
+ bool sessionOnlyNow(const QString& profileId) const;
  // What the operation held when this run started: its uploaded files and each item's
  // error code.
  struct Attempt {quint64 credentialRevision=0;QSet<QString> uploaded;QHash<QString,QString> errors;};
@@ -80,7 +83,7 @@ private:
  QString path_;
  SettingsService& settings_;
  QHash<QString,Record> records_;
- struct EncryptRecord {bool passed=false;QString reason,fingerprint;quint64 credentialRevision=0;};
+ struct EncryptRecord {bool passed=false;QString reason,fingerprint;quint64 credentialRevision=0;bool sessionOnly=false;};
  QHash<QString,EncryptRecord> encryptRecords_; // written on the owning thread, under encryptMutex_
  mutable std::mutex encryptMutex_;
  QHash<QString,quint64> credentialRevisions_;

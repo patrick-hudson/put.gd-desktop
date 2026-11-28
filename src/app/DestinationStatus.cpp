@@ -84,26 +84,29 @@ void DestinationStatus::follow(OperationService& operations) {
  connect(&operations,&OperationService::uploadStarting,this,&DestinationStatus::uploadStarting);
  connect(&operations,&OperationService::uploadSettled,this,&DestinationStatus::uploadSettled);
 }
+bool DestinationStatus::sessionOnlyNow(const QString& id) const {
+ const auto profiles=settings_.snapshot().profiles;const auto found=profiles.constFind(id);
+ if(found==profiles.cend()||(*found)["credentials"].toObject()["mode"]!="session")return false;
+ // #2118: SFTP signs in with the SSH agent or a key file unless the session holds a password or
+ // key passphrase for it now; only then are its checks the session's.
+ if((*found)["provider"]=="sftp")return holdsSessionSecret_&&holdsSessionSecret_(id,*found);
+ return !usesCredentials_||usesCredentials_(*found);
+}
 void DestinationStatus::save() {
  QJsonObject destinations,revisions;
- // Keys kept only for this session make a check that ends with the session.
- const auto profiles=settings_.snapshot().profiles;
- const auto sessionOnly=[&](const QString& id){const auto found=profiles.constFind(id);if(found==profiles.cend()||(*found)["credentials"].toObject()["mode"]!="session")return false;
-  // #2118: SFTP signs in with the SSH agent or a key file unless the session holds a password or
-  // key passphrase for it now; only then are its checks the session's.
-  if((*found)["provider"]=="sftp")return holdsSessionSecret_&&holdsSessionSecret_(id,*found);
-  return !usesCredentials_||usesCredentials_(*found);};
+ // A check made with keys kept only for this session ends with the session: decided when it was
+ // recorded (#2118), so a later switch of the destination's storage never writes it.
  for(auto it=records_.cbegin();it!=records_.cend();++it) {
-  if(sessionOnly(it.key()))continue;
+  if(it->sessionOnly)continue;
   QJsonObject record{{"state",it->state},{"source",it->source},{"fingerprint",it->fingerprint},{"credentialRevision",double(it->credentialRevision)}};
   if(!it->errorCode.isEmpty())record["errorCode"]=it->errorCode;
   destinations.insert(it.key(),record);
  }
- for(auto it=credentialRevisions_.cbegin();it!=credentialRevisions_.cend();++it)if(!sessionOnly(it.key()))revisions.insert(it.key(),double(it.value()));
+ for(auto it=credentialRevisions_.cbegin();it!=credentialRevisions_.cend();++it)if(!sessionOnlyNow(it.key()))revisions.insert(it.key(),double(it.value()));
  // Always written, even empty: a file without it is one from before #1890.
  auto entries=QStringList(keychainEntries_.cbegin(),keychainEntries_.cend());entries.sort();
  // A check made with session-only keys ends with the session, as the destination's own does.
- QJsonObject encrypts;for(auto it=encryptRecords_.cbegin();it!=encryptRecords_.cend();++it)if(!sessionOnly(it.key()))encrypts.insert(it.key(),QJsonObject{{"passed",it->passed},{"reason",it->reason},{"fingerprint",it->fingerprint},{"credentialRevision",double(it->credentialRevision)}});
+ QJsonObject encrypts;for(auto it=encryptRecords_.cbegin();it!=encryptRecords_.cend();++it)if(!it->sessionOnly)encrypts.insert(it.key(),QJsonObject{{"passed",it->passed},{"reason",it->reason},{"fingerprint",it->fingerprint},{"credentialRevision",double(it->credentialRevision)}});
  QJsonObject root{{"schemaVersion",1},{"destinations",destinations},{"credentialRevisions",revisions},{"keychainEntries",QJsonArray::fromStringList(entries)},{"encryptChecks",encrypts}};
  const auto bytes=QJsonDocument(root).toJson(QJsonDocument::Compact);
  QDir().mkpath(QFileInfo(path_).absolutePath());
@@ -122,7 +125,7 @@ void DestinationStatus::put(const QString& profileId,Record record) {
  if(old!=records_.cend()&&old->state==record.state&&old->source==record.source&&old->errorCode==record.errorCode&&old->fingerprint==record.fingerprint&&old->credentialRevision==record.credentialRevision)return;
  // An upload that passes keeps a pass as it was; a Test's result always replaces it.
  if(old!=records_.cend()&&record.source=="upload"&&record.state=="passed"&&old->state=="passed"&&old->fingerprint==record.fingerprint&&old->credentialRevision==record.credentialRevision)return;
- records_.insert(profileId,std::move(record));save();emit changed();
+ record.sessionOnly=sessionOnlyNow(profileId);records_.insert(profileId,std::move(record));save();emit changed();
 }
 void DestinationStatus::credentialsChanged(const QString& profileId) {
  // Two destinations can name one keychain entry; session keys are each destination's own.
@@ -194,7 +197,7 @@ QJsonObject DestinationStatus::publicJson() const {
 void DestinationStatus::encryptChecked(const QString& profileId,const QString& fingerprint,bool passed,const QString& reason) {
  const auto profiles=settings_.snapshot().profiles;const auto found=profiles.constFind(profileId);
  if(found==profiles.cend()||destinationcheck::fingerprint(*found)!=fingerprint)return;
- {std::lock_guard lock(encryptMutex_);encryptRecords_.insert(profileId,{passed,passed?QString():reason,fingerprint,credentialRevision(profileId)});}save();emit changed();
+ {std::lock_guard lock(encryptMutex_);encryptRecords_.insert(profileId,{passed,passed?QString():reason,fingerprint,credentialRevision(profileId),sessionOnlyNow(profileId)});}save();emit changed();
 }
 QJsonObject DestinationStatus::encryptCheckFor(const QString& profileId,const QString& fingerprint) const {
  std::lock_guard lock(encryptMutex_);const auto record=encryptRecords_.constFind(profileId);
