@@ -268,6 +268,76 @@ private slots:
   QVERIFY(!UploadClient::residentLacksUpload("invalid_request",answering("client_unavailable")));QCOMPARE(asked,3);
   QVERIFY(!UploadClient::residentLacksUpload("files_rejected",answering("unknown_method")));QCOMPARE(asked,3);
  }
+ // `--upload [--encrypt] --` (#2119): anything else is a usage error, so a build without
+ // --encrypt refuses an encrypted entry's command line instead of uploading it plainly.
+ void encryptOptionComesBeforeTheSeparator() {
+  const auto first=[](QList<QByteArray> words,bool& encrypt){
+   std::vector<char*> argv;for(auto& word:words)argv.push_back(word.data());
+   return UploadClient::firstPath(int(argv.size()),argv.data(),encrypt);
+  };
+  bool encrypt=true;
+  QCOMPARE(first({"putgd","--upload","--","/a"},encrypt),3);QVERIFY(!encrypt);
+  QCOMPARE(first({"putgd","--upload","--encrypt","--","/a","--encrypt"},encrypt),4);QVERIFY(encrypt);
+  QCOMPARE(first({"putgd","--upload","--encrypt","--"},encrypt),4);
+  QCOMPARE(first({"putgd","--upload","--encrypt","/a"},encrypt),-1);
+  QCOMPARE(first({"putgd","--upload","--","--encrypt"},encrypt),3);QVERIFY(!encrypt);
+  QCOMPARE(first({"putgd","--upload","--encrypted","--","/a"},encrypt),-1);
+  QCOMPARE(first({"putgd","--upload"},encrypt),-1);
+ }
+ // #2119: an encrypted request asks for capabilities first. A resident without
+ // uploadFiles.encrypt (before #2079, or before the up-front check) gets no upload request at all.
+ void residentWithoutEncryptGetsNoUpload() {
+  QStringList asked;QJsonObject capabilities,sent;
+  const UploadClient::Requester send=[&](const QString& method,const QJsonObject& params,Error& error){error={};asked<<method;if(method=="upload.files")sent=params;return method=="capabilities"?capabilities:QJsonObject{{"operationId","synthetic"}};};
+  const QJsonObject encrypted{{"paths",QJsonArray{"/a"}},{"installation","system"},{"encrypt",QJsonObject{{"enabled",true}}}};
+  Error error;
+  for(const auto& older:{QJsonObject{},QJsonObject{{"schemaVersion",1}},QJsonObject{{"uploadFiles",QJsonObject{{"encrypt",false}}}}}) {
+   asked.clear();capabilities=older;
+   QVERIFY(UploadClient::sendUpload(send,encrypted,error).isEmpty());
+   QCOMPARE(asked,QStringList{"capabilities"});QCOMPARE(error.code,QString("resident_outdated"));
+   QCOMPARE(error.message,QString("put.gd was updated. Quit put.gd and open it again, then try again."));
+  }
+  // A resident that says yes gets the request exactly as built: encryption on, and a passphrase when one was given.
+  asked.clear();capabilities={{"uploadFiles",QJsonObject{{"encrypt",true}}}};
+  QCOMPARE(UploadClient::sendUpload(send,encrypted,error)["operationId"].toString(),QString("synthetic"));QVERIFY(!error);
+  QCOMPARE(asked,(QStringList{"capabilities","upload.files"}));QCOMPARE(sent,encrypted);QVERIFY(sent["encrypt"].toObject()["enabled"].toBool());
+  auto withPassphrase=encrypted;withPassphrase["encrypt"]=QJsonObject{{"enabled",true},{"passphrase","synthetic phrase"}};
+  UploadClient::sendUpload(send,withPassphrase,error);QCOMPARE(sent["encrypt"].toObject()["passphrase"].toString(),QString("synthetic phrase"));QVERIFY(sent["encrypt"].toObject()["enabled"].toBool());
+  // A plain upload asks nothing first.
+  asked.clear();UploadClient::sendUpload(send,{{"paths",QJsonArray{"/a"}}},error);QCOMPARE(asked,QStringList{"upload.files"});
+  // A capabilities request that fails, even after it was sent, sends nothing and is no unknown outcome.
+  asked.clear();
+  const UploadClient::Requester down=[&](const QString& method,const QJsonObject&,Error& e){asked<<method;e={"client_timeout","synthetic",{{"outcomeUnknown",true}}};return QJsonObject{};};
+  UploadClient::sendUpload(down,encrypted,error);QCOMPARE(asked,QStringList{"capabilities"});QCOMPARE(error.code,QString("client_timeout"));QVERIFY(!error.details.contains("outcomeUnknown"));
+  QCOMPARE(operations_->capabilities()["uploadFiles"].toObject()["encrypt"].toBool(),true);
+ }
+ // #2118, #2119: an encrypted upload.files to a destination that hasn't passed its encrypted-page
+ // check is refused before anything is accepted, naming that destination. Only a menu entry (it
+ // names its installation) opens the destination's Encrypted links card; another installation's
+ // entry is refused as that first.
+ void encryptedUploadToAnUntestedDestinationOpensItsTest() {
+  HistoryService history(*operations_);LocalServer server(*settings_,*operations_,history);
+  const auto a=write(files("encrypted.txt"),"secret");
+  // A destination type that can encrypt, whose check hasn't run in this fixture.
+  provider_->encryptable=true;
+  QSignalSpy opened(operations_.get(),&OperationService::encryptCheckRequired);
+  const auto refused=[&](const QJsonObject& params){
+   QJsonObject result;Error error;bool done=false;
+   server.dispatch({{"schemaVersion",1},{"requestId","encrypted-menu-upload"},{"session",server.socketPath()},{"method","upload.files"},{"params",params}},[&](Error e,QJsonObject r){error=e;result=r;done=true;});
+   if(!putgd::test::waitFor([&]{return done;},20000))qWarning("upload.files timed out");
+   return error;
+  };
+  const QJsonObject encrypt{{"enabled",true}};
+  auto error=refused({{"paths",QJsonArray{a}},{"installation","system"},{"encrypt",encrypt}});
+  QCOMPARE(error.code,QString("encrypt_check_required"));QCOMPARE(error.details["profileId"].toString(),QString("test"));
+  QCOMPARE(opened.size(),1);QCOMPARE(opened.first().first().toString(),QString("test"));
+  // The CLI and MCP name no installation: the same refusal, and no window.
+  error=refused({{"paths",QJsonArray{a}},{"encrypt",encrypt}});
+  QCOMPARE(error.code,QString("encrypt_check_required"));QCOMPARE(opened.size(),1);
+  error=refused({{"paths",QJsonArray{a}},{"installation","appimage"},{"encrypt",encrypt}});
+  QCOMPARE(error.code,QString("installation_mismatch"));QCOMPARE(opened.size(),1);
+  provider_->encryptable=false;
+ }
  void fuseMountThatStopped() {
   QTemporaryDir runtime;QVERIFY(QDir(runtime.path()).mkpath("gvfs/smb-share:server=live"));
   const auto gvfs=runtime.filePath("gvfs/");
@@ -338,6 +408,11 @@ private slots:
   QProcess client;auto environment=QProcessEnvironment::systemEnvironment();environment.remove("DBUS_SESSION_BUS_ADDRESS");environment.insert("XDG_RUNTIME_DIR",dir_.filePath("runtime"));
   client.setProcessEnvironment(environment);client.start(putgd,{"--upload","--","relative.txt"});QVERIFY(client.waitForFinished(20000));
   QCOMPARE(client.exitCode(),1);QVERIFY(client.readAllStandardError().contains("no local path"));
+  // The encrypted entry's command line (#2119) is read the same way; an unknown option is a usage error.
+  client.start(putgd,{"--upload","--encrypt","--","relative.txt"});QVERIFY(client.waitForFinished(20000));
+  QCOMPARE(client.exitCode(),1);QVERIFY(client.readAllStandardError().contains("no local path"));
+  client.start(putgd,{"--upload","--sealed","--","/a"});QVERIFY(client.waitForFinished(20000));
+  QCOMPARE(client.exitCode(),2);QVERIFY(client.readAllStandardError().contains("Usage: putgd --upload [--encrypt] --"));
  }
 };
 QTEST_GUILESS_MAIN(FileUploadsContract)

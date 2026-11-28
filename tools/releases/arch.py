@@ -56,7 +56,9 @@ def main():
     for required in ('usr/bin/putgd-record', 'usr/bin/putgd-region', 'usr/bin/putgd-clipboard-keeper',
                      'usr/share/nemo/actions/putgd-upload.nemo_action',
                      'usr/share/kio/servicemenus/putgd-upload.desktop',
-                     'usr/share/Thunar/sendto/putgd-upload.desktop'):
+                     'usr/share/Thunar/sendto/putgd-upload.desktop',
+                     'usr/share/nemo/actions/putgd-upload-encrypted.nemo_action',
+                     'usr/share/Thunar/sendto/putgd-upload-encrypted.desktop'):
         if not (extracted / required).is_file():
             raise ValueError('Missing required Arch payload: ' + required)
     metadata = dict(line.split(' = ', 1) for line in (extracted / '.PKGINFO').read_text().splitlines()

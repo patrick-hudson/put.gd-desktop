@@ -3,12 +3,14 @@
 #include <QByteArray>
 #include <QHash>
 #include <QJsonArray>
+#include <QJsonObject>
 #include <QProcessEnvironment>
 #include <QString>
 #include <QStringList>
 #include <functional>
-// `putgd --upload -- <paths or URIs>`: the short-lived client a file manager's
-// "Upload with put.gd" entry runs (#1105). It hands the selection to the
+// `putgd --upload [--encrypt] -- <paths or URIs>`: the short-lived client a file
+// manager's "Upload with put.gd" entry runs (#1105), with --encrypt for "Upload
+// encrypted with put.gd" (#2119). It hands the selection to the
 // resident (starting one in its own scope when none runs), waits until put.gd
 // holds its own copy, and reports every refusal or failure as a notification,
 // since no terminal is attached. It never becomes the resident itself.
@@ -16,6 +18,9 @@ namespace putgd::UploadClient {
 // argv[1] is --upload. Runs before any Qt application object exists: Qt would
 // read its own options (-platform, ...) from the selected file names.
 bool requested(int argc,char** argv);
+// `--upload [--encrypt] -- ...`: the index of the first path or URI, or -1 for
+// any other command line. `encrypt` says whether --encrypt came first (#2119).
+int firstPath(int argc,char** argv,bool& encrypt);
 int run(int argc,char** argv);
 
 // The pieces below are separate for tests.
@@ -57,6 +62,13 @@ QString noticeName(const QString& argument);
 // parameters: a resident that doesn't know the method then says unknown_method,
 // and one that does repeats invalid_request. `codeWithoutParameters` makes that call.
 bool residentLacksUpload(const QString& code,const std::function<QString()>& codeWithoutParameters);
+// Sends upload.files through `send`. An encrypted request (#2119) first asks for `capabilities`,
+// and goes out only when the resident says uploadFiles.encrypt: an older resident would refuse
+// the field or skip the up-front encrypted-link check. Otherwise nothing is sent and the error
+// is resident_outdated, with the notice to restart put.gd. A failed capabilities request is
+// never an unknown outcome: no upload was sent.
+using Requester=std::function<QJsonObject(const QString& method,const QJsonObject& params,Error& error)>;
+QJsonObject sendUpload(const Requester& send,const QJsonObject& params,Error& error);
 // The names of the files the resident reported missing (`details.files` of its
 // refusal) whose whole GVfs FUSE mount can't be seen: the share was disconnected or
 // gvfsd-fuse stopped, and the files themselves may be fine. A missing file on a

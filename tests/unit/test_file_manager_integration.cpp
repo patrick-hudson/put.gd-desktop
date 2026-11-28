@@ -21,6 +21,7 @@ constexpr auto programMode=QFile::ReadOwner|QFile::WriteOwner|QFile::ExeOwner|QF
 constexpr auto dataMode=QFile::ReadOwner|QFile::WriteOwner|QFile::ReadGroup|QFile::ReadOther;
 constexpr auto modeBits=programMode|QFile::WriteGroup|QFile::WriteOther;
 const QString script=QStringLiteral("Upload with put.gd");
+const QString encryptedScript=QStringLiteral("Upload encrypted with put.gd"); // #2119
 QByteArray readAll(const QString& path) {QFile file(path);return file.open(QIODevice::ReadOnly)?file.readAll():QByteArray{};}
 void write(const QString& path,const QByteArray& bytes,QFile::Permissions mode=dataMode) {
  QVERIFY(QDir().mkpath(QFileInfo(path).path()));
@@ -66,9 +67,9 @@ struct Fixture {
   if(!parts.isEmpty()&&parts.last().isEmpty())parts.removeLast();
   return parts;
  }
- QString ding() const {return QDir(context.home).filePath(".local/share/nautilus/scripts/"+script);}
- QString nautilus() const {return QDir(context.dataHome).filePath("nautilus/scripts/"+script);}
- QString caja() const {return QDir(context.configHome).filePath("caja/scripts/"+script);}
+ QString ding(const QString& name=script) const {return QDir(context.home).filePath(".local/share/nautilus/scripts/"+name);}
+ QString nautilus(const QString& name=script) const {return QDir(context.dataHome).filePath("nautilus/scripts/"+name);}
+ QString caja(const QString& name=script) const {return QDir(context.configHome).filePath("caja/scripts/"+name);}
  QString menu(const QString& relative) const {return QDir(context.dataHome).filePath(relative);}
  QString cosmic() const {return FileManagerIntegration::cosmicPath(context);}
  void installDing() const {write(QDir(context.dataDirs[0]).filePath("gnome-shell/extensions/ding@rastersoft.com/metadata.json"),"{}\n");}
@@ -86,6 +87,10 @@ struct Fixture {
 };
 const QStringList menuFiles{"kio/servicemenus/putgd-upload.desktop","nemo/actions/putgd-upload.nemo_action","Thunar/sendto/putgd-upload.desktop",
  "file-manager/actions/putgd-upload.desktop","contractor/putgd-upload.contract"};
+// Upload encrypted with put.gd (#2119): KIO's is a second action in its one service menu.
+const QStringList encryptedMenuFiles{"nemo/actions/putgd-upload-encrypted.nemo_action","Thunar/sendto/putgd-upload-encrypted.desktop",
+ "file-manager/actions/putgd-upload-encrypted.desktop","contractor/putgd-upload-encrypted.contract"};
+const QStringList allMenuFiles=menuFiles+encryptedMenuFiles;
 }
 class FileManagerIntegrationTest:public QObject {
  Q_OBJECT
@@ -101,21 +106,24 @@ private slots:
   f.installDing();f.installCosmic();
   result=FileManagerIntegration::apply(c);
   QVERIFY(!result.error);QVERIFY(!result.firstRun);
-  QCOMPARE(result.written,QStringList({f.ding(),f.cosmic()}));
+  QCOMPARE(result.written,QStringList({f.ding(),f.ding(encryptedScript),f.cosmic()}));
   QVERIFY(!QFileInfo::exists(f.nautilus()));
   const auto text=readAll(f.ding());
   QVERIFY(text.startsWith("#!/bin/sh\n"));QVERIFY(text.contains("\n# X-putgd-Managed=true\n"));
   QVERIFY(text.contains("launcher='"+c.systemLauncher.toUtf8()+"'\n"));
   QCOMPARE(mode(f.ding()),programMode);
+  QVERIFY(text.contains("\nencrypt=false\n"));QVERIFY(readAll(f.ding(encryptedScript)).contains("\nencrypt=true\n"));
+  QCOMPARE(mode(f.ding(encryptedScript)),programMode);
   QCOMPARE(QString::fromUtf8(readAll(f.cosmic())),"[\n    (name: \"Upload with put.gd\", confirm: false, selection: Any, steps: [\"'"+c.systemLauncher+
-   "' --upload -- %F\"]),\n]\n");
+   "' --upload -- %F\"]),\n    (name: \"Upload encrypted with put.gd\", confirm: false, selection: Any, steps: [\"'"+c.systemLauncher+
+   "' --upload --encrypt -- %F\"]),\n]\n");
   QCOMPARE(mode(f.cosmic()),dataMode);
   QVERIFY(!QFileInfo::exists(f.cosmic()+".putgd-backup"));
   QVERIFY(FileManagerIntegration::apply(c).written.isEmpty());
   // DING removed: the script goes; the COSMIC entry stays while COSMIC Files is installed.
   QVERIFY(QDir(QDir(c.dataDirs[0]).filePath("gnome-shell")).removeRecursively());
   result=FileManagerIntegration::apply(c);
-  QCOMPARE(result.removed,QStringList{f.ding()});QVERIFY(!QFileInfo::exists(f.ding()));QVERIFY(QFileInfo::exists(f.cosmic()));
+  QCOMPARE(result.removed,QStringList({f.ding(),f.ding(encryptedScript)}));QVERIFY(!QFileInfo::exists(f.ding()));QVERIFY(QFileInfo::exists(f.cosmic()));
  }
  void systemFirstRunHasNoNotice_data() {
   QTest::addColumn<QString>("desktop");QTest::addColumn<QString>("plugin");QTest::addColumn<QString>("manager");
@@ -255,6 +263,11 @@ private slots:
   expected<<"/absolute/a b.txt";
   QCOMPARE(f.received(),expected);
   QVERIFY(!QFileInfo::exists(QDir(folder).filePath("pwned")));
+  // Upload encrypted with put.gd (#2119): the same paths, with --encrypt before them.
+  QFile::remove(f.receipt);
+  QCOMPARE(f.run(f.ding(encryptedScript),names+QStringList{"/absolute/a b.txt"},folder,{{"NAUTILUS_SCRIPT_SELECTED_FILE_PATHS","/x\n/y\n"}}),0);
+  expected.insert(1,"--encrypt");
+  QCOMPARE(f.received(),expected);
  }
  void nautilusScriptWithoutPathsNotifiesAndDoesNotLaunch() {
   Fixture f;auto& c=f.context;c.installation="system";f.installDing();
@@ -284,6 +297,10 @@ private slots:
   QFile::remove(f.receipt);
   QCOMPARE(f.run(f.caja(),{"local.txt"},f.path("home")),0);
   QCOMPARE(f.received(),QStringList({"--upload","--",QFileInfo(f.path("home")).canonicalFilePath()+"/local.txt"}));
+  // The encrypted entry passes the same URIs, encrypted (#2119).
+  QFile::remove(f.receipt);
+  QCOMPARE(f.run(f.caja(encryptedScript),{},{},{{"CAJA_SCRIPT_SELECTED_URIS","sftp://host/a%20b.txt\n"}}),0);
+  QCOMPARE(f.received(),QStringList({"--upload","--encrypt","--","sftp://host/a%20b.txt"}));
  }
  void nautilusScriptPassesUrisFromRecentAndStarred() {
   // Nautilus's Recent view passes an item name that is no file, no file paths, and the item's URI (#1105).
@@ -293,6 +310,9 @@ private slots:
   f.launcher(result.launcher);
   QCOMPARE(f.run(f.nautilus(),{"0c78a927"},f.path("home"),{{"NAUTILUS_SCRIPT_SELECTED_URIS","recent:///0c78a927\n"},{"NAUTILUS_SCRIPT_SELECTED_FILE_PATHS",""}}),0);
   QCOMPARE(f.received(),QStringList({"--upload","--","recent:///0c78a927"}));
+  QFile::remove(f.receipt);
+  QCOMPARE(f.run(f.nautilus(encryptedScript),{"0c78a927"},f.path("home"),{{"NAUTILUS_SCRIPT_SELECTED_URIS","recent:///0c78a927\n"},{"NAUTILUS_SCRIPT_SELECTED_FILE_PATHS",""}}),0);
+  QCOMPARE(f.received(),QStringList({"--upload","--encrypt","--","recent:///0c78a927"}));
   // With file paths, the arguments stay what they were.
   QFile::remove(f.receipt);
   QCOMPARE(f.run(f.nautilus(),{"local.txt"},f.path("home"),{{"NAUTILUS_SCRIPT_SELECTED_URIS","file:///x/local.txt\n"},{"NAUTILUS_SCRIPT_SELECTED_FILE_PATHS","/x/local.txt\n"}}),0);
@@ -346,17 +366,36 @@ private slots:
   QVERIFY(!QString::fromUtf8(readAll(f.menu(menuFiles[2]))).contains("\nMimeType="));
   QVERIFY(QString::fromUtf8(readAll(f.menu(menuFiles[3]))).contains("\nMimeTypes=all/all;\n"));
   QVERIFY(QString::fromUtf8(readAll(f.menu(menuFiles[4]))).contains("\nMimeType=application/octet-stream;inode/directory;\n"));
+  // Upload encrypted with put.gd (#2119): KIO's second action, then a file of its own for the others.
+  const auto kio=QString::fromUtf8(readAll(f.menu(menuFiles[0])));
+  QVERIFY(kio.contains("\nActions=putgdUpload;putgdUploadEncrypted;\n"));
+  QVERIFY2(kio.contains("[Desktop Action putgdUploadEncrypted]\nName=Upload encrypted with put.gd\nIcon="+icon+"\n"+desktopExec.chopped(3)+"--encrypt -- %F\n"),qPrintable(kio));
+  const QString encryptedDesktopExec="Exec=\""+desktop+"\" --upload --encrypt -- ",encryptedShellExec="Exec='"+QString(launcher).replace("'","'\\\\''")+"' --upload --encrypt -- %F\n";
+  const QStringList encryptedExecs{encryptedShellExec,encryptedDesktopExec+"%U\n",encryptedShellExec,encryptedDesktopExec+"%U\n"};
+  for(int i=0;i<encryptedMenuFiles.size();++i) {
+   const auto path=f.menu(encryptedMenuFiles[i]);const auto text=QString::fromUtf8(readAll(path));
+   QVERIFY2(result.written.contains(path),qPrintable(path));
+   QVERIFY2(text.contains(encryptedExecs[i]),qPrintable(text));QVERIFY(!text.contains("--upload -- "));
+   QVERIFY(text.contains("\nName=Upload encrypted with put.gd\n"));
+   QVERIFY(text.contains((i==0?"\nIcon-Name=":"\nIcon=")+icon+'\n'));
+   QVERIFY(text.contains("]\nX-putgd-Managed=true\n"));
+   QCOMPARE(mode(path),dataMode);
+  }
   // Scripts: Nautilus (no system plugin), not DING ($HOME differs, DING absent), Caja.
-  for(const auto& path:{f.nautilus(),f.caja()}) {
+  for(const auto& path:{f.nautilus(),f.caja(),f.nautilus(encryptedScript),f.caja(encryptedScript)}) {
    QVERIFY(result.written.contains(path));QCOMPARE(mode(path),programMode);
    QVERIFY(readAll(path).contains("launcher='"+QString(launcher).replace("'","'\\''").toUtf8()+"'\n"));
+   QVERIFY(readAll(path).contains(path.endsWith(encryptedScript)?"\nencrypt=true\n":"\nencrypt=false\n"));
   }
   QVERIFY(readAll(f.caja()).contains("kind='caja'\n"));
   QVERIFY(!QFileInfo::exists(f.ding()));
   // RON escapes the backslash of the shell quoting.
   QVERIFY(readAll(f.cosmic()).contains("steps: [\"'"+QString(launcher).replace("'","'\\\\''").toUtf8()+"' --upload -- %F\"]"));
+  QVERIFY(readAll(f.cosmic()).contains("(name: \"Upload encrypted with put.gd\", confirm: false, selection: Any, steps: [\"'"+QString(launcher).replace("'","'\\\\''").toUtf8()+"' --upload --encrypt -- %F\"]"));
   const auto record=QString::fromUtf8(readAll(own+"/appimage.owned"));
-  for(const auto& path:QStringList{launcher,icon,f.nautilus(),f.caja()}+QStringList{f.menu(menuFiles[0])})QVERIFY2(record.contains("\nfile "+path+'\n'),qPrintable(record));
+  for(const auto& path:QStringList{launcher,icon,f.nautilus(),f.caja(),f.nautilus(encryptedScript),f.caja(encryptedScript)}+QStringList{f.menu(menuFiles[0]),f.menu(encryptedMenuFiles[0])})QVERIFY2(record.contains("\nfile "+path+'\n'),qPrintable(record));
+  // One cosmic-line per entry, after the cosmic file they belong to.
+  QCOMPARE(record.count("\ncosmic-line "),2);QVERIFY(record.indexOf("\ncosmic ")<record.indexOf("\ncosmic-line "));
   QVERIFY(record.contains("\ncosmic "+f.cosmic()+'\n'));QVERIFY(record.contains("\nimage "+c.appImage+'\n'));
   QVERIFY(record.contains("\nupdate "+QString::fromUtf8(updateInformation)+'\n'));
   QCOMPARE(readAll(own+"/appimage.stamp"),QByteArray("26.1031.1\n"));
@@ -392,24 +431,26 @@ private slots:
   auto result=FileManagerIntegration::apply(c);
   QVERIFY(!result.error);QVERIFY(QFileInfo::exists(f.menu(menuFiles[0])));QVERIFY(QFileInfo::exists(f.caja()));
   // A DEB arrives: its menu files and plugins, then its resident's per-user files.
-  for(const auto& relative:menuFiles)write(QDir(c.dataDirs[0]).filePath(relative),"[Desktop Entry]\n");
+  for(const auto& relative:allMenuFiles)write(QDir(c.dataDirs[0]).filePath(relative),"[Desktop Entry]\n");
   f.installPlugin("nautilus/extensions-4","libputgd-nautilus.so");f.installPlugin("caja/extensions-2.0","libputgd-caja.so");
   auto system=c;system.installation="system";
   QVERIFY(!FileManagerIntegration::apply(system).error);
   QVERIFY(readAll(f.ding()).contains("launcher='"+c.systemLauncher.toUtf8()+"'\n"));
   result=FileManagerIntegration::apply(c);
   QVERIFY2(!result.error,qPrintable(result.error.message));
-  for(const auto& relative:menuFiles) {
+  for(const auto& relative:allMenuFiles) {
    QVERIFY(result.skipped.contains(f.menu(relative)));QVERIFY(result.removed.contains(f.menu(relative)));QVERIFY(!QFileInfo::exists(f.menu(relative)));
   }
   QVERIFY(result.skipped.contains(f.caja()));QVERIFY(!QFileInfo::exists(f.caja()));
+  QVERIFY(result.skipped.contains(f.caja(encryptedScript)));QVERIFY(!QFileInfo::exists(f.caja(encryptedScript)));QVERIFY(!QFileInfo::exists(f.nautilus(encryptedScript)));
+  QVERIFY(result.skipped.contains(f.ding(encryptedScript)));QVERIFY(readAll(f.ding(encryptedScript)).contains("launcher='"+c.systemLauncher.toUtf8()+"'\n"));
   // Nautilus has the plugin; the DING script is the system install's and stays.
   QVERIFY(!QFileInfo::exists(f.nautilus()));
   QVERIFY(result.skipped.contains(f.ding()));QVERIFY(readAll(f.ding()).contains("launcher='"+c.systemLauncher.toUtf8()+"'\n"));
-  // One COSMIC entry: the system install's.
+  // One pair of COSMIC entries: the system install's.
   QVERIFY(result.skipped.contains(f.cosmic()));
   const auto cosmic=QString::fromUtf8(readAll(f.cosmic()));
-  QCOMPARE(cosmic.count("(name: "),1);QVERIFY(cosmic.contains(c.systemLauncher));
+  QCOMPARE(cosmic.count("(name: "),2);QVERIFY(cosmic.contains(c.systemLauncher));
   QVERIFY(!QString::fromUtf8(readAll(QDir(c.dataRoot).filePath("file-manager/appimage.owned"))).contains("\ncosmic "));
  }
  void cosmicMergeLeavesOtherEntriesUnchanged() {
@@ -426,7 +467,7 @@ private slots:
    auto result=FileManagerIntegration::apply(on);
    QVERIFY2(!result.error,qPrintable(result.error.message+" "+original));
    const auto text=readAll(f.cosmic());
-   QCOMPARE(text.count("Upload with put.gd"),1);
+   QCOMPARE(text.count("Upload with put.gd"),1);QCOMPARE(text.count("Upload encrypted with put.gd"),1);
    if(original.contains("Open"))QVERIFY(text.startsWith(original.left(original.size()-2)));
    if(original.contains("Say"))QVERIFY(text.contains("[ContextActionPreset(name:r#\"Say \"hi\"\"#,selection:folders,steps:[\"echo \\\"\\u{e9}\\\" %F\",],),/* note */ (confirm:true),\n"));
    QCOMPARE(readAll(f.cosmic()+".putgd-backup"),original);
@@ -436,7 +477,7 @@ private slots:
    result=FileManagerIntegration::apply(off);
    QVERIFY2(!result.error,qPrintable(result.error.message));
    const auto after=readAll(f.cosmic());
-   QVERIFY(!after.contains("Upload with put.gd"));
+   QVERIFY(!after.contains("Upload with put.gd"));QVERIFY(!after.contains("Upload encrypted with put.gd"));
    // A pretty list round-trips byte for byte; put.gd's line leaves its own break in a compact one.
    if(original.contains("Open"))QCOMPARE(after,original);
    if(original=="[]")QCOMPARE(after,QByteArray("[\n]"));
@@ -485,8 +526,8 @@ private slots:
   write(f.menu("kio/servicemenus/other.desktop"),"[Desktop Entry]\n");
   const auto error=FileManagerIntegration::cleanupIfMissing(c);
   QVERIFY2(!error,qPrintable(error.message));
-  for(const auto& relative:menuFiles)QVERIFY(!QFileInfo::exists(f.menu(relative)));
-  QVERIFY(!QFileInfo::exists(f.nautilus()));QVERIFY(!QFileInfo::exists(f.caja()));
+  for(const auto& relative:allMenuFiles)QVERIFY(!QFileInfo::exists(f.menu(relative)));
+  for(const auto& name:{script,encryptedScript}){QVERIFY(!QFileInfo::exists(f.nautilus(name)));QVERIFY(!QFileInfo::exists(f.caja(name)));}
   QVERIFY(!QFileInfo::exists(FileManagerIntegration::launcherPath(c)));
   QVERIFY(!QFileInfo::exists(QDir(c.dataRoot).filePath("file-manager/appimage.owned")));
   QCOMPARE(readAll(f.cosmic()),unrelated);QVERIFY(QFileInfo::exists(f.menu("kio/servicemenus/other.desktop")));
@@ -515,6 +556,31 @@ private slots:
   QVERIFY(!result.error);
   QCOMPARE(f.run(result.launcher,{"--upload","--","/a b/${USER}.txt"}),0);
   QCOMPARE(f.received(),QStringList({"--upload","--","/a b/${USER}.txt"}));
+  QFile::remove(f.receipt);
+  QCOMPARE(f.run(result.launcher,{"--upload","--encrypt","--","/a b"}),0);
+  QCOMPARE(f.received(),QStringList({"--upload","--encrypt","--","/a b"}));
+ }
+ // An older AppImage wrote one COSMIC entry: the next start replaces it with both, in order,
+ // and the launcher's shell cleanup later removes both lines (#2119).
+ void cosmicSingleEntryBecomesBoth() {
+  Fixture f;auto& c=f.context;c.installation="appimage";f.installCosmic();
+  const SearchPath tools(c.searchPath);
+  const auto launcher=FileManagerIntegration::launcherPath(c);
+  const auto quoted="'"+QString(launcher).replace("'","'\\\\''")+"'";
+  const auto mine=QByteArray("[\n    (name: \"Mine\", steps: [\"xdg-open %F\"]),\n");
+  write(f.cosmic(),mine+"    (name: \"Upload with put.gd\", confirm: false, selection: Any, steps: [\""+quoted.toUtf8()+" --upload -- %F\"]),\n]\n");
+  auto result=FileManagerIntegration::apply(c);
+  QVERIFY2(!result.error,qPrintable(result.error.message));QVERIFY(result.written.contains(f.cosmic()));
+  const auto text=QString::fromUtf8(readAll(f.cosmic()));
+  QVERIFY2(text.startsWith(QString::fromUtf8(mine)),qPrintable(text));
+  QCOMPARE(text.count("--upload -- %F"),1);QCOMPARE(text.count("--upload --encrypt -- %F"),1);
+  QVERIFY(text.indexOf("Upload with put.gd")<text.indexOf("Upload encrypted with put.gd"));
+  QVERIFY(!FileManagerIntegration::apply(c).written.contains(f.cosmic()));
+  QVERIFY(QFile::remove(c.appImage));
+  QCOMPARE(f.run(launcher,{"--cleanup-if-missing"}),0);
+  QCOMPARE(readAll(f.cosmic()),mine+"]\n");
+  // The backup is the list as it was before the cleanup, with both entries.
+  QCOMPARE(QString::fromUtf8(readAll(f.cosmic()+".putgd-backup")),text);
  }
  // A user manager at this runtime directory; nothing answers the socket (#1112).
  static void managerSocket(const QString& runtime) {

@@ -1,8 +1,10 @@
 // Loads a built Peony plugin the way Peony's PluginManager does and checks it
 // (#1105): metadata version and IID, instance(), the dynamic_casts Peony uses,
-// and the action it returns per menu type. Built against the same distro Qt as
-// the plugin. Not installed. Usage: putgd-peony-check <plugin.so> [--activate]
-// --activate also triggers the folder-view action, which starts /usr/bin/putgd-launcher.
+// and the two actions it returns per menu type (#2119). Built against the same
+// distro Qt as the plugin. Not installed.
+// Usage: putgd-peony-check <plugin.so> [--activate|--activate-encrypted]
+// --activate also triggers the folder view's Upload with put.gd action,
+// --activate-encrypted its Upload encrypted with put.gd; either starts /usr/bin/putgd-launcher.
 #include <menu-plugin-iface.h>
 #include <QApplication>
 #include <QJsonDocument>
@@ -13,8 +15,8 @@
 static int fail(const QString &message) { std::fprintf(stderr, "FAIL: %s\n", qPrintable(message)); return 1; }
 
 int main(int argc, char **argv) {
-  const bool activate=argc == 3 && !qstrcmp(argv[2], "--activate");
-  if(argc != 2 && !activate) return fail(QStringLiteral("usage: putgd-peony-check <plugin.so> [--activate]"));
+  const int activate=argc == 3 ? (!qstrcmp(argv[2], "--activate") ? 1 : !qstrcmp(argv[2], "--activate-encrypted") ? 2 : -1) : 0;
+  if(argc != 2 && activate <= 0) return fail(QStringLiteral("usage: putgd-peony-check <plugin.so> [--activate|--activate-encrypted]"));
   if(qEnvironmentVariableIsEmpty("QT_QPA_PLATFORM")) qputenv("QT_QPA_PLATFORM", "offscreen");
   QApplication app(argc, argv);
   QPluginLoader loader(QString::fromLocal8Bit(argv[1]));
@@ -31,18 +33,19 @@ int main(int argc, char **argv) {
   const QStringList selection{QStringLiteral("file:///tmp/a%20b.txt"), QStringLiteral("smb://host/share/dir")};
   const auto offered=[&](Peony::MenuPluginInterface::Types types, const QStringList &uris) {
     const QList<QAction *> actions=menu->menuActions(types, QStringLiteral("file:///tmp"), uris);
-    QString text=actions.size() == 1 ? actions.first()->text() : QString::number(actions.size()) + QStringLiteral(" actions");
-    if(activate && types == Peony::MenuPluginInterface::DirectoryView && actions.size() == 1) actions.first()->trigger();
+    QStringList texts;for(auto *action : actions) texts << action->text();
+    const QString text=actions.isEmpty() ? QStringLiteral("0 actions") : texts.join(QStringLiteral(" | "));
+    if(activate > 0 && types == Peony::MenuPluginInterface::DirectoryView && actions.size() == 2) actions[activate - 1]->trigger();
     qDeleteAll(actions);
     return text;
   };
   for(auto type : {Peony::MenuPluginInterface::DirectoryView, Peony::MenuPluginInterface::DesktopWindow})
-    if(const QString text=offered(type, selection); text != QStringLiteral("Upload with put.gd")) return fail(QStringLiteral("menu type %1 offered %2").arg(type).arg(text));
+    if(const QString text=offered(type, selection); text != QStringLiteral("Upload with put.gd | Upload encrypted with put.gd")) return fail(QStringLiteral("menu type %1 offered %2").arg(type).arg(text));
   if(offered(Peony::MenuPluginInterface::SideBar, selection) != QStringLiteral("0 actions") || offered(Peony::MenuPluginInterface::DirectoryView, {}) != QStringLiteral("0 actions"))
     return fail(QStringLiteral("offered an action for the side bar or an empty selection"));
   QJsonObject result{{QStringLiteral("iid"), metadata.value(QStringLiteral("IID"))}, {QStringLiteral("version"), QStringLiteral("3.2.2")},
                      {QStringLiteral("name"), menu->name()}, {QStringLiteral("qt"), QStringLiteral(QT_VERSION_STR)},
-                     {QStringLiteral("activated"), activate}};
+                     {QStringLiteral("activated"), activate == 1 ? QJsonValue(QStringLiteral("plain")) : activate == 2 ? QJsonValue(QStringLiteral("encrypted")) : QJsonValue()}};
   std::printf("%s\n", QJsonDocument(result).toJson(QJsonDocument::Compact).constData());
   return 0;
 }

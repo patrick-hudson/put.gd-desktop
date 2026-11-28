@@ -1,6 +1,7 @@
-// "Upload with put.gd" in Peony's folder views and desktop (#1105). Peony loads
-// this plugin into its own process, so it only builds one action and, when it
-// is chosen, starts the launcher with the selection's URIs, unchanged. Built
+// "Upload with put.gd" and "Upload encrypted with put.gd" (#2119) in Peony's
+// folder views and desktop (#1105). Peony loads this plugin into its own
+// process, so it only builds the two actions and, when one is chosen, starts
+// the launcher with the selection's URIs, unchanged. Built
 // against the libpeony interface headers (inline only) and the distro Qt's
 // headers without linking either: Qt resolves from Peony, and no libpeony
 // symbol is used. QT_NO_VERSION_TAGGING drops the reference a linked QtCore would satisfy.
@@ -29,11 +30,15 @@ public:
   // Peony re-parents the returned actions to its menu.
   QList<QAction *> menuActions(Types types, const QString &, const QStringList &selection) override {
     if(selection.isEmpty() || !(types.testFlag(DirectoryView) || types.testFlag(DesktopWindow))) return {};
-    auto *action=new QAction(icon(), QStringLiteral("Upload with put.gd"), nullptr);
-    QObject::connect(action, &QAction::triggered, action, [selection] {
-      QProcess::startDetached(QStringLiteral("/usr/bin/putgd-launcher"), QStringList{QStringLiteral("--upload"), QStringLiteral("--")} + selection);
-    });
-    return {action};
+    const auto action=[this, &selection](const QString& label, const QStringList& options) {
+      auto *item=new QAction(icon(), label, nullptr);
+      QObject::connect(item, &QAction::triggered, item, [selection, options] {
+        QProcess::startDetached(QStringLiteral("/usr/bin/putgd-launcher"), options + QStringList{QStringLiteral("--")} + selection);
+      });
+      return item;
+    };
+    return {action(QStringLiteral("Upload with put.gd"), {QStringLiteral("--upload")}),
+            action(QStringLiteral("Upload encrypted with put.gd"), {QStringLiteral("--upload"), QStringLiteral("--encrypt")})};
   }
 private:
   bool enabled_=true;

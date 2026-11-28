@@ -1281,7 +1281,7 @@
         "fileManagerMenu": {
           "type": "boolean",
           "default": true,
-          "description": "Whether the AppImage adds Upload with put.gd to your file managers' right-click menus (per-user files it writes and removes). DEB and RPM installs add system-wide entries that are always on. Omitted means true."
+          "description": "Whether the AppImage adds Upload with put.gd and Upload encrypted with put.gd to your file managers' right-click menus (per-user files it writes and removes). DEB and RPM installs add system-wide entries that are always on. Omitted means true."
         },
         "unlockCredentialsAtStartup": {
           "type": "boolean",

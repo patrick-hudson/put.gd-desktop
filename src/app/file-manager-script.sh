@@ -1,5 +1,6 @@
 #!/bin/sh
-# Upload with put.gd (#1105): a Nautilus, GNOME desktop icons or Caja script.
+# Upload with put.gd (#1105), or Upload encrypted with put.gd (#2119): a
+# Nautilus, GNOME desktop icons or Caja script.
 # put.gd writes this file and rewrites it at every start; edits are replaced.
 # X-putgd-Managed=true
 set -u
@@ -7,6 +8,7 @@ launcher=__PUTGD_LAUNCHER__
 self=__PUTGD_SELF__
 kind=__PUTGD_KIND__
 icon=__PUTGD_ICON__
+encrypt=__PUTGD_ENCRYPT__
 
 # Removing put.gd leaves this per-user script behind. Then it removes itself
 # and does nothing, instead of running a missing launcher.
@@ -16,6 +18,15 @@ if [ ! -x "$launcher" ]; then
     fi
     exit 0
 fi
+
+# The launcher with this entry's own options; an encrypted entry never runs
+# the plain upload.
+upload() {
+    if [ "$encrypt" = true ]; then
+        exec "$launcher" --upload --encrypt -- "$@"
+    fi
+    exec "$launcher" --upload -- "$@"
+}
 
 # No terminal is attached; best effort, and never a reason to fail.
 notify() {
@@ -41,7 +52,7 @@ if [ "$#" -eq 0 ] && [ "$kind" = caja ] && [ -n "${CAJA_SCRIPT_SELECTED_URIS-}" 
     set -- $CAJA_SCRIPT_SELECTED_URIS
     set +f
     IFS=$old_ifs
-    [ "$#" -eq 0 ] || exec "$launcher" --upload -- "$@"
+    [ "$#" -eq 0 ] || upload "$@"
 fi
 # Nautilus's Recent and Starred views pass item names that are not files, with
 # no file paths, but list each item's URI; the launcher resolves its target.
@@ -53,7 +64,7 @@ if [ "$kind" = nautilus ] && [ -z "${NAUTILUS_SCRIPT_SELECTED_FILE_PATHS-}" ] &&
     set -- $NAUTILUS_SCRIPT_SELECTED_URIS
     set +f
     IFS=$old_ifs
-    [ "$#" -eq 0 ] || exec "$launcher" --upload -- "$@"
+    [ "$#" -eq 0 ] || upload "$@"
 fi
 # Nautilus passes no arguments when any selected item has no local path.
 if [ "$#" -eq 0 ]; then
@@ -73,4 +84,4 @@ for argument do
         *) set -- "$@" "$directory/$argument" ;;
     esac
 done
-exec "$launcher" --upload -- "$@"
+upload "$@"

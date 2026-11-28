@@ -116,7 +116,7 @@ remove_owned() {
     return 0
 }
 
-# Remove put.gd's COSMIC context action: exactly the one line put.gd wrote,
+# Remove one of put.gd's COSMIC context actions: exactly a line put.gd wrote,
 # found exactly once. COSMIC Files never rewrites the list itself; after a
 # hand edit the line may differ, and the entry is left (its command then fails
 # harmlessly).
@@ -125,8 +125,10 @@ remove_cosmic_line() {
     [ "$(grep -Fxc -- "$2" "$1" 2>/dev/null)" = 1 ] || return 0
     mode=$(stat -c '%a' -- "$1" 2>/dev/null) || return 0
     staged=$(mktemp -- "$1.putgd-XXXXXX") || return 0
-    if cp -- "$1" "$1.putgd-backup" && grep -Fxv -- "$2" "$1" >"$staged" && chmod -- "$mode" "$staged" &&
-        mv -f -- "$staged" "$1"; then
+    # The backup keeps the list as it was before this cleanup's first removal.
+    if { [ "$cosmic_backed_up" = true ] || cp -- "$1" "$1.putgd-backup"; } && grep -Fxv -- "$2" "$1" >"$staged" &&
+        chmod -- "$mode" "$staged" && mv -f -- "$staged" "$1"; then
+        cosmic_backed_up=true
         return 0
     fi
     rm -f -- "$staged"
@@ -137,15 +139,15 @@ cleanup_missing() {
     ours "$record" && grep -Fxq -- '# X-putgd-Managed=true' "$record" &&
         grep -Fxq -- "# X-putgd-IntegrationId=$integration_id" "$record" || return 0
     cosmic=
-    cosmic_line=
+    cosmic_backed_up=false
+    # The record lists the COSMIC file before its lines, one per entry (#2119).
     while IFS= read -r line; do
         case $line in
             'file '*) remove_owned "${line#file }" ;;
             'cosmic '*) cosmic=${line#cosmic } ;;
-            'cosmic-line '*) cosmic_line=${line#cosmic-line } ;;
+            'cosmic-line '*) [ -z "$cosmic" ] || remove_cosmic_line "$cosmic" "${line#cosmic-line }" ;;
         esac
     done <"$record"
-    [ -z "$cosmic" ] || [ -z "$cosmic_line" ] || remove_cosmic_line "$cosmic" "$cosmic_line"
     rm -f -- "$record"
     stop_watch path
 }

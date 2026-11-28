@@ -117,12 +117,13 @@ public:
  // The choice itself, from the editor's toggle or setEncrypt.
  void recordEncrypt(const QString& id,bool enabled);
  // What an upload of this operation would do about encrypting: {on, setting, available,
- // reason?, passphrase}. `on` is the operation's own choice, else the destination's.
+ // reason?, passphrase, checkRequired?}. `on` is the operation's own choice, else the destination's.
+ // checkRequired (#2118) is true when only the destination's encrypted-page check stands in the way.
  QJsonObject encryptOptions(const Operation&) const;
  // Whether an upload of this action, as Settings routes it now, could be encrypted (the tray's row).
  bool encryptAvailableFor(const QString& action) const;
- // The same as encryptOptions, with the route's profileId; checkRequired when only the destination's
- // encrypted-page check stands in the way (#2118).
+ // The same as encryptOptions, with the route's profileId. For an action that doesn't upload (a
+ // local route, or no destination) it is only {available: false}: no profileId, no checkRequired.
  QJsonObject encryptStateFor(const QString& action) const;
  // #2118: an upload request that asks to encrypt (putgd-cli upload --encrypt, MCP encrypt true) on a
  // destination whose encrypted-page check hasn't passed is refused before anything is captured or
@@ -130,6 +131,8 @@ public:
  // manager's for upload.files with its profileId and installation; another installation's request
  // gets installation_mismatch first, as uploadFiles answers it.
  Error encryptRefusal(const QString& action,const QString& profileId={},const QString& installation={}) const;
+ // #2119: a person's menu entry was refused by encryptRefusal; emits encryptCheckRequired.
+ void announceEncryptCheckRequired(const QString& profileId) {if(!profileId.isEmpty())emit encryptCheckRequired(profileId);}
  // Tests may point encrypting at another putgd-cli.
  void setEncryptHelperForTesting(const QString& path) {encryptHelper_=path;}
  // Tests may lower the encrypting size limits (64 MiB for one page, 2 GiB in all).
@@ -259,6 +262,9 @@ signals:
  void textFinished(const QString& operationId,const QJsonObject& record,const QString& notification);
  // upload.files found no destination to upload to (#1105): Settings should open.
  void destinationRequired();
+ // #2119: an encrypted upload.files from a menu entry (it names its installation) was refused because
+ // this destination hasn't passed Test upload and link: its Encrypted links card should open.
+ void encryptCheckRequired(const QString& profileId);
  // An upload operation's provider work starts, and the operation ends (#1692): the record of
  // its destination's last check follows what the upload found. Both are sent on this thread.
  void uploadStarting(const putgd::Operation& operation);
