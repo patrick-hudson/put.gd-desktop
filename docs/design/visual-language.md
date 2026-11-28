@@ -144,6 +144,10 @@ November (#2117), when new code built its dropdowns straight from Qt.
   in its constructor, as the recording window's `FormatBox` and `MaskBox` do. A
   class derived from `QTabWidget` calls `Ui::leaveWheelToPane(tabBar())` instead,
   because the tab bar is what takes the wheel.
+- Controls that Qt creates itself inside one of its own widgets get the guard
+  after the widget is built, by calling `Ui::leaveWheelToPane()` on each. The
+  fallback file dialog does this for its folder and file-type dropdowns
+  (`src/ui/FileDialog.cpp`).
 - Scrolling past such a control doesn't focus it either. Tab and a click still do.
 - An open dropdown list still scrolls. Keys, clicks and the step buttons still
   change the value.
@@ -151,11 +155,15 @@ November (#2117), when new code built its dropdowns straight from Qt.
   or the recording timeline, keeps the wheel. Its `wheelEvent` declaration says
   why in a `wheel-input:` comment.
 
-`tests/ci/test_wheel_input.py` reads `src/` and fails on three things: a Qt
-control of these kinds constructed directly, a class derived from one that
-doesn't guard itself, and a `wheelEvent` override without a `wheel-input:`
-comment. It reads source text, so it can't catch every way to build a control;
-review still matters. Two widget tests turn the real wheel:
+`tests/ci/test_wheel_input.py` reads `src/` and fails on four things:
+- a Qt control of these kinds constructed directly;
+- `Ui::wheelSafe<QComboBox>()`, where `Ui::choiceBox()` belongs;
+- a class derived from one of these controls that doesn't guard itself;
+- a `wheelEvent` override.
+
+A `wheel-input:` comment on the same line marks a deliberate exception to any of
+them. It reads source text, so it can't catch every way to build a control;
+review still matters. Two widget tests send wheel events through Qt's normal event delivery:
 
 - **Settings:** the values don't change over the guarded controls, and the page
   scrolls over **Encrypted links**.
