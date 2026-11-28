@@ -12,7 +12,9 @@ There is no confirmation step and no extra "uploading" notice.
 **Upload encrypted with put.gd** sits alongside it in every menu that has the
 entry (most file managers list it right after; older Dolphin sorts the two
 alphabetically) and uploads the same selection as encrypted links ([Encrypted
-uploads](#encrypted-uploads), #2119).
+uploads](#encrypted-uploads), #2119). Where the destination can't encrypt at
+all, file managers that can hide it do ([When the encrypted entry
+hides](#when-the-encrypted-entry-hides), #2136).
 
 The design, its council review and the decisions behind it are in
 [GitHub issue #1105](https://github.com/patrick-hudson/put.gd-desktop/issues/1105).
@@ -367,11 +369,14 @@ Nothing asked to be encrypted is ever uploaded unencrypted:
   **Capture region (encrypted)** opens. A request from another installation's
   entry is refused with `installation_mismatch` first, so a DEB's entry never
   opens a running AppImage's Settings.
-- Proton Drive and Nextcloud (`encrypt_unavailable`), a private route
-  (`encrypt_needs_link`), a saved passphrase that isn't loaded and a file over a
-  size limit (`encrypt_too_large`, `encrypt_split_unavailable`) fail each item
-  before it is sent. The resident's failure notice says why, and History keeps
-  the upload.
+- Proton Drive, Nextcloud and SFTP without a **Link address**
+  (`encrypt_unavailable`) and a private route (`encrypt_needs_link`) are also
+  refused before anything is accepted (#2136). The menu entry's notice gives the
+  destination's reason, then "Select Upload with put.gd instead."; putgd-cli and
+  MCP get "Or upload it without encryption." A saved passphrase that isn't loaded
+  and a file over a size limit (`encrypt_too_large`, `encrypt_split_unavailable`)
+  fail each item before it is sent. The resident's failure notice says why, and
+  History keeps the upload.
 - A build from before the encrypted entry has no `--encrypt` option, so an old
   client refuses that command line with a usage error and uploads nothing. Before
   it sends an encrypted upload, the client reads `capabilities`; only a resident
@@ -379,6 +384,59 @@ Nothing asked to be encrypted is ever uploaded unencrypted:
   would refuse the field or skip the up-front check, gets nothing, and the notice
   says "put.gd was updated. Quit put.gd and open it again, then try again." It
   never asks again without `encrypt`.
+
+## When the encrypted entry hides
+
+**Upload encrypted with put.gd** disappears where it could never work (#2136):
+when the destination **Upload with put.gd** goes to ([Destination](#destination))
+can't serve an encrypted page whatever is tested (Proton Drive, Nextcloud, SFTP
+without a **Link address**), or when no destination is set up. It stays for a
+destination that hasn't passed **Test upload and link** yet, since choosing it
+opens that test, for **Private upload** sharing, and for several destinations
+with no capture default; choosing it there says what to change.
+
+The resident keeps a marker for it, `encrypted-entry-hidden` in
+`putgd/file-manager/` under the data home: `$XDG_DATA_HOME` when it is an
+absolute path, else `~/.local/share` (an empty or relative value is ignored, as
+the XDG spec says), for put.gd and every menu alike. The marker existing hides the entry, and
+its one line names why: a provider ID, or `no-destination`. No marker shows it,
+so a resident that never ran or an older build changes nothing. The resident
+rewrites it at start and after every settings change, and only when the answer
+changes. File managers read it at every menu and never call the resident:
+
+| File manager | How it hides | Cost per menu |
+|---|---|---|
+| Nautilus, Caja, Peony (DEB/RPM plugins) | The plugin leaves the item out | one `access()` |
+| Nemo (packaged and AppImage entries) | `Conditions=exec /bin/sh -c 'test ! -e …'` | one `/bin/sh`, about 2 ms |
+| PCManFM-Qt | `ShowIfTrue=` with the same test | one `/bin/sh` |
+| Dolphin and Konqueror on KF6, DEB/RPM (Ubuntu 26.04, Debian 13, Fedora 44 and 45, Arch) | The `putgd` KFileItemAction plugin, `kf6/kfileitemaction/putgd.so`, leaves its action out | one `access()` |
+
+A change shows at the next menu, with no file manager restart. Everywhere else
+the entry stays, and choosing it is refused before anything is copied with the
+destination's reason: Dolphin on Ubuntu 24.04 and with the AppImage (KF6
+service menus have no condition), Thunar's Send To (read once, no variables),
+Pantheon's Contractor, COSMIC, PCManFM (libfm ignores `ShowIfTrue`), and the
+Nautilus, Caja and DING scripts.
+
+On KF6 the DEB and RPM split Dolphin's two entries: **Upload with put.gd** stays
+in the KIO service menu, which they install without its encrypted action, and
+the plugin offers **Upload encrypted with put.gd**. Its name, icon and command
+come from that service menu's `putgdUploadEncrypted` action at build time, and
+KIO runs the command as it runs service menus, so remote items get KIOFuse or
+kioexec paths. KIO offers plugins only for a selection whose items share one
+type, so a selection of files and folders together shows no encrypted entry in
+Dolphin. **Upload with put.gd** still does. The plugin links KF6 KIO like any
+Dolphin plugin, but the packages don't depend on KDE: the RPM leaves the KF6
+libraries out of its requirements, and the DEB's dependency scan finds them in a
+private build folder that no package owns. Where KIO isn't installed the plugin
+is simply unused. Plugins are on by default. Dolphin's **Configure → Context
+Menu** lists it as **Upload encrypted with put.gd**.
+
+`capabilities.uploadFiles.encryptedEntry` and
+`diagnostics.fileManagerMenu.encryptedEntry` report the state as
+`{shown, reason?, message?, provider?, profileId?}`. `reason` is
+`encrypt_unavailable` (with the provider's `message`) or `no_destination`, and
+diagnostics adds the marker's path.
 
 ## Notifications without a tray
 
