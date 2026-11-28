@@ -134,7 +134,12 @@ std::optional<RunFrame> FrameTap::freshFrame(int timeoutMs) {
     // ximagesrc grabs the screen for every frame. What is in the mailbox, and
     // a frame already on its way, were grabbed before now: the one wanted
     // arrives a whole frame interval after the call began.
-    { std::lock_guard lock(mailbox_); givenCount_ = arrivedCount_; pace_.begin(nowMs()); }
+    {
+        std::lock_guard lock(mailbox_);
+        givenCount_ = arrivedCount_;
+        pace_.begin(nowMs());
+        if (loadOpen_.load(std::memory_order_relaxed)) markWindows(false, true);
+    }
     const int interval = 1000 / std::max(1, source_.fps) + 1;
     for (;;) {
         const int left = timeoutMs - int(nowMs() - began);
@@ -196,7 +201,6 @@ GstFlowReturn FrameTap::arrived(GstElement* sink, gpointer self) {
         tap->take(sample);
         gst_sample_unref(sample);
     }
-    tap->noteThread(tap->copy_);
     return GST_FLOW_OK;
 }
 
@@ -210,9 +214,11 @@ void FrameTap::take(GstSample* sample) {
     const int width = GST_VIDEO_FRAME_WIDTH(&frame), height = GST_VIDEO_FRAME_HEIGHT(&frame);
     const auto* data = static_cast<const uint8_t*>(GST_VIDEO_FRAME_PLANE_DATA(&frame, 0));
     const int stride = GST_VIDEO_FRAME_PLANE_STRIDE(&frame, 0);
+    bool published = false;
     if (width > 0 && height > 0 && data && stride >= width * 4) {
         const size_t row = size_t(width) * 4;
         std::lock_guard lock(mailbox_);
+        published = true;
         latest_.resize(row * size_t(height));
         for (int y = 0; y < height; ++y) std::memcpy(latest_.data() + row * size_t(y), data + ptrdiff_t(stride) * y, row);
         latestWidth_ = width;
@@ -234,9 +240,13 @@ void FrameTap::take(GstSample* sample) {
             for (int y = 0; y < height; y += 16) { const uint8_t* line = latest_.data() + row * size_t(y); for (size_t x = 0; x < row; x += 4) sum = sum * 31 + line[x] + (line[x + 1] << 8) + (line[x + 2] << 16); }
             debugLog(QStringLiteral("scroll tap buffer: t=%1 sum=%2").arg(latestAt_ % 1000000).arg(sum % 100000));
         }
-        fresh_.notify_all();
     }
     gst_video_frame_unmap(&frame);
+    // This frame's copy is in the measure before the loop can take it and
+    // close a pace window on it (#2099).
+    if (!published) return;
+    noteThread(copy_);
+    fresh_.notify_all();
 }
 
 // The newest frame the loop has not had yet, or nothing after the timeout.
@@ -250,7 +260,9 @@ std::optional<RunFrame> FrameTap::nextFrame(int timeoutMs) {
     }
     const quint64 missed = arrivedCount_ - givenCount_ - 1;
     givenCount_ = arrivedCount_;
+    const uint64_t closed = pace_.closed(), begun = pace_.begun();
     const FramePace::Verdict pace = watching_ ? pace_.taken(nowMs(), missed) : FramePace::Verdict::Keep;
+    if (loadOpen_.load(std::memory_order_relaxed) && (pace_.closed() != closed || pace_.begun() != begun)) markWindows(pace_.closed() != closed, pace_.begun() != begun);
     // The loop's copy: the mailbox takes the next frame while the loop works on this one.
     std::swap(frame_, latest_);
     const int width = latestWidth_, height = latestHeight_;
@@ -291,8 +303,57 @@ void FrameTap::openLoad() {
     grab_ = {};
     copy_ = {};
     load_ = {};
+    trigger_ = {};
+    windowCount_ = 0;
+    fallingBack_ = false;
+    windowFrom_ = Times{loadFrom_, taken, known, cpu, waited, {}, {}};
     loadOpen_.store(true);
 }
+
+FrameTap::Times FrameTap::timesNow(qint64 taken) {
+    Times now;
+    now.ms = nowMs();
+    now.taken = taken;
+    now.known = threadTimes(now.loopCpu, now.loopWaited);
+    now.grab = grab_;
+    now.copy = copy_;
+    return now;
+}
+
+// A thread's frames and times between two moments: from its latest frame
+// at the first (its first frame, when it had none yet) to its latest at the second.
+void FrameTap::spanDelta(const ThreadSpan& from, const ThreadSpan& to, quint64& frames, double& cpu, double& waited, bool& known) {
+    const bool fromFirst = from.frames == 0;
+    const quint64 base = fromFirst ? 1 : from.frames;
+    frames = to.frames > base ? to.frames - base : 0;
+    cpu = to.cpuLast - (fromFirst ? to.cpuFirst : from.cpuLast);
+    waited = to.waitedLast - (fromFirst ? to.waitedFirst : from.waitedLast);
+    known = from.known && to.known && frames > 0;
+}
+
+void FrameTap::markWindows(bool closed, bool begun) {
+    const qint64 taken = frames_.load();
+    std::lock_guard lock(loadMutex_);
+    if (!loadOpen_.load(std::memory_order_relaxed)) return;
+    const Times now = timesNow(taken);
+    if (closed) {
+        const Times& from = windowFrom_;
+        Load window;
+        window.ms = double(now.ms - from.ms);
+        window.taken = quint64(std::max<qint64>(0, now.taken - from.taken));
+        window.loopCpuMs = now.loopCpu - from.loopCpu;
+        window.loopWaitedMs = now.loopWaited - from.loopWaited;
+        bool grabKnown = false, copyKnown = false;
+        spanDelta(from.grab, now.grab, window.grabbed, window.grabCpuMs, window.grabWaitedMs, grabKnown);
+        spanDelta(from.copy, now.copy, window.copied, window.copyCpuMs, window.copyWaitedMs, copyKnown);
+        window.known = from.known && now.known && grabKnown && copyKnown;
+        windows_[0] = windows_[1];
+        windows_[1] = window;
+        windowCount_ = std::min(windowCount_ + 1, 2);
+    }
+    if (begun) windowFrom_ = now;
+}
+
 
 void FrameTap::closeLoad() {
     double cpu = 0, waited = 0;
@@ -300,6 +361,21 @@ void FrameTap::closeLoad() {
     const qint64 taken = frames_.load();
     std::lock_guard lock(loadMutex_);
     if (!loadOpen_.exchange(false)) return;
+    if (fallingBack_ && windowCount_ == 2) {
+        const Load& a = windows_[0];
+        const Load& b = windows_[1];
+        trigger_.ms = a.ms + b.ms;
+        trigger_.taken = a.taken + b.taken;
+        trigger_.grabbed = a.grabbed + b.grabbed;
+        trigger_.copied = a.copied + b.copied;
+        trigger_.known = a.known && b.known;
+        trigger_.loopCpuMs = a.loopCpuMs + b.loopCpuMs;
+        trigger_.loopWaitedMs = a.loopWaitedMs + b.loopWaitedMs;
+        trigger_.grabCpuMs = a.grabCpuMs + b.grabCpuMs;
+        trigger_.grabWaitedMs = a.grabWaitedMs + b.grabWaitedMs;
+        trigger_.copyCpuMs = a.copyCpuMs + b.copyCpuMs;
+        trigger_.copyWaitedMs = a.copyWaitedMs + b.copyWaitedMs;
+    }
     load_.ms = double(nowMs() - loadFrom_);
     load_.taken = quint64(std::max<qint64>(0, taken - takenFrom_));
     load_.grabbed = grab_.frames > 1 ? grab_.frames - 1 : 0;
@@ -345,6 +421,7 @@ FrameTap::Rate FrameTap::rate() const {
     lock.unlock();
     std::lock_guard loadLock(loadMutex_);
     rate.load = load_;
+    rate.trigger = trigger_;
     return rate;
 }
 
@@ -368,6 +445,7 @@ void FrameTap::fallBack(FramePace::Verdict why) {
     debugLog(QStringLiteral("scroll tap: %1 frames a second not kept (%2), now %3").arg(source_.fps).arg(reason, QString::number(source_.fallbackFps)));
     Source lower = source_;
     lower.fps = source_.fallbackFps;
+    { std::lock_guard lock(loadMutex_); fallingBack_ = true; }
     closeLoad();
     const qint64 given = frames_.load();
     stop();

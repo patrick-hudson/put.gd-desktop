@@ -342,9 +342,12 @@ private slots:
             // Over both rates: up to 60 a second, and some delivered.
             QVERIFY2(delivered > 0 && delivered <= 62, rateText.constData());
             if (!sanitizerBuild) {
-                const QJsonObject at = rate["atAsked"].toObject();
+                // Judged over the two pace windows that made it go down, not
+                // the whole session: contention earlier on cannot cover for
+                // work that grew in those windows.
+                const QJsonObject at = rate["fallbackWindows"].toObject();
                 const QString text = QString::fromUtf8(rateText);
-                QVERIFY2(at.contains("loopCpuMsPerFrame"), qPrintable("no thread times, so a busy host cannot be told from the capture's own work: " + text));
+                QVERIFY2(at.contains("loopCpuMsPerFrame"), qPrintable("no thread times for the windows that made it go down, so a busy host cannot be told from the capture's own work: " + text));
                 const double interval = 1000.0 / 60;
                 // The threads that fell behind: the loop, or the source's
                 // grab and copy threads. Each is judged on its own CPU and wait.

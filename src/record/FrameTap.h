@@ -59,12 +59,13 @@ public:
     };
     // The rate a fixed-rate source was asked for and runs at now, the frames
     // a second it delivered while watched, and why it went down (empty: it did not).
-    // `load` covers the time at the rate asked for.
+    // `load` covers the time at the rate asked for; `trigger` the two pace
+    // windows that made the source go down (empty when it did not).
     struct Rate {
         int asked = 0, now = 0;
         double delivered = 0;
         QString fallback;
-        Load load;
+        Load load, trigger;
     };
     FrameTap() = default;
     ~FrameTap() override;
@@ -109,8 +110,23 @@ private:
         quint64 frames = 0;
         bool known = true;
     };
+    // Every thread's times at one moment, on the loop's thread: the loop's
+    // own, and the grab's and the copy's as of their latest frame.
+    struct Times {
+        int64_t ms = 0;
+        qint64 taken = 0;
+        bool known = false;
+        double loopCpu = 0, loopWaited = 0;
+        ThreadSpan grab, copy;
+    };
     // On a streaming thread, after each frame: that thread's times, while the load is measured.
     void noteThread(ThreadSpan& span);
+    static void spanDelta(const ThreadSpan& from, const ThreadSpan& to, quint64& frames, double& cpu, double& waited, bool& known);
+    // The loop's thread, under the mailbox lock: the times now (loadMutex_ held).
+    Times timesNow(qint64 taken);
+    // The loop's thread, under the mailbox lock, after the pace counters moved:
+    // a window that closed is kept, and the next one starts now.
+    void markWindows(bool closed, bool begun);
     // ximagesrc's streaming thread, after each grab.
     static GstPadProbeReturn grabbed(GstPad*, GstPadProbeInfo*, gpointer self);
     GstElement* pipeline_ = nullptr;
@@ -145,6 +161,13 @@ private:
     double loopCpuFrom_ = 0, loopWaitedFrom_ = 0;
     ThreadSpan grab_, copy_;
     Load load_;
+    // The pace windows at the asked rate: where the current one began, and
+    // the last two that closed with a verdict, the ones a fallback comes from.
+    Times windowFrom_;
+    Load windows_[2];
+    int windowCount_ = 0;
+    bool fallingBack_ = false;
+    Load trigger_;
     std::atomic<bool> lost_{false};
     std::atomic<int> width_{0}, height_{0};
     std::atomic<qint64> frames_{0};

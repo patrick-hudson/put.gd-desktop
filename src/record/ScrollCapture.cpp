@@ -1479,9 +1479,10 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
                 if (const FrameTap::Rate rate = job->tap->rate(); rate.asked > 0) {
                     QJsonObject source{{"asked", rate.asked}, {"atEnd", rate.now}, {"delivered", std::round(rate.delivered * 10) / 10}};
                     if (!rate.fallback.isEmpty()) source["fallback"] = rate.fallback;
-                    // At the rate asked for: the loop's, the grab's and the copy's
-                    // CPU time a frame, and how long each waited for a CPU (#2099).
-                    if (const FrameTap::Load& load = rate.load; load.ms > 0) {
+                    // At the rate asked for, and over the two pace windows that
+                    // made it go down: the loop's, the grab's and the copy's CPU
+                    // time a frame, and how long each waited for a CPU (#2099).
+                    const auto loadJson = [](const FrameTap::Load& load) {
                         const auto tenth = [](double v) { return std::round(v * 10) / 10; };
                         QJsonObject at{{"ms", load.ms}, {"framesTaken", double(load.taken)}};
                         if (load.known && load.taken > 0) {
@@ -1492,8 +1493,10 @@ void ScrollCapture::work(std::shared_ptr<Job> job) {
                             at["copyCpuMsPerFrame"] = tenth(load.copyCpuMs / double(load.copied));
                             at["copyWaitedMs"] = tenth(load.copyWaitedMs);
                         }
-                        source["atAsked"] = at;
-                    }
+                        return at;
+                    };
+                    if (rate.load.ms > 0) source["atAsked"] = loadJson(rate.load);
+                    if (rate.trigger.ms > 0) source["fallbackWindows"] = loadJson(rate.trigger);
                     QJsonObject statsObject = outcome->descriptor["stats"].toObject();
                     statsObject["sourceRate"] = source;
                     outcome->descriptor["stats"] = statsObject;
