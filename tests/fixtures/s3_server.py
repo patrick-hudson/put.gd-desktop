@@ -247,7 +247,8 @@ class Handler(BaseHTTPRequestHandler):
                 if not selected or selected.get('marker'):
                     headers = {'x-amz-delete-marker': 'true', 'x-amz-version-id': selected['version']} if selected else {}
                     self.error(404, 'NoSuchKey', headers); return
-                headers = {'ETag': selected['etag'], 'Content-Length': len(payload(selected))}
+                # Like S3 and R2 (#2129): the type the object was stored with, else binary/octet-stream.
+                headers = {'ETag': selected['etag'], 'Content-Length': len(payload(selected)), 'Content-Type': selected.get('contentType') or 'binary/octet-stream'}
                 if selected.get('version') or 'versionId' in query: headers['x-amz-version-id'] = selected['version'] or 'null'
                 for k,v in selected['metadata'].items(): headers['x-amz-meta-' + k] = v
                 self.respond(200, payload(selected), headers); return
@@ -262,7 +263,8 @@ class Handler(BaseHTTPRequestHandler):
                 version = str(state['sequence']) if state['versioning'] == 'Enabled' else ('null' if state['versioning'] == 'Suspended' else '')
                 value = {'version': version, 'body': base64.b64encode(body).decode(),
                          'metadata': {k.lower()[11:]: v for k,v in self.headers.items() if k.lower().startswith('x-amz-meta-')},
-                         'etag': '"' + hashlib.md5(body).hexdigest() + '"', 'marker': False}
+                         'etag': '"' + hashlib.md5(body).hexdigest() + '"', 'marker': False,
+                         'contentType': self.headers.get('content-type', '')}
                 if state['versioning'] != 'Enabled': versions[:] = [v for v in versions if v['version'] != version]
                 if rule and rule.get('stripMetadata'): value['metadata'] = {}
                 versions.append(value)
