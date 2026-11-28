@@ -439,7 +439,9 @@ its wheel). After `pausedBy: lost`, `activity` is `lost` until the user scrolls 
 the image finds the page, then `paused`; `scroll.autoScroll {on: true}` then carries on. After the end the view also carries what the helper reported: `state: "done"`,
 `endReason`, `truncated`, `scrolledBy` (`user`, `putgd`, `both`, `none`), `framesPlaced`,
 `framesSkipped`, `endedLost`, `reachedEnd`, `foundAgain`, `height`, `bytes`, `stats {steps, pixelsPerNotch,
-lowConfidenceSteps, elapsedMs, frames, recovered, pinnedRegions, framesPerSecond, rowsAtDone}` (also flat),
+lowConfidenceSteps, elapsedMs, frames, recovered, pinnedRegions, framesPerSecond, rowsAtDone}` (also flat;
+on X11 `stats` also carries `sourceRate {asked, atEnd, delivered, fallback, atAsked, fallbackWindows}`,
+described with the helper result in [scrolling capture](../design/scroll-capture.md), and not flattened),
 `result` (the helper's descriptor without its path), `note` where there is one, and
 `hiddenCells` and `hiddenRows` when the bar sat inside the region and hid part of the page's
 end, or rows were left that no frame covered. With

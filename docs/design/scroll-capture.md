@@ -160,8 +160,9 @@ host; work over a frame interval means the capture's own work is too heavy for 6
 source goes down, `fallbackWindows` gives the same numbers over the two one-second pace windows that
 made it go down, so a slowdown in those windows is not averaged away by the time before them. The
 grab and copy threads only check a flag while nothing is measured. Their times are kept apart from
-the mailbox, so a grab never waits on a frame copy, and the copy's time for a frame is noted before
-the loop is notified.
+the mailbox, so a grab never waits on a frame copy. While the load is measured, the copy's time for
+a frame is noted before the frame is published, so a loop that takes it, whether it was notified
+or not, counts it in the window it closes.
 
 The frame size is the logical rectangle at the output's scale. Lab runs at 125% on Plasma
 and GNOME and at 150% on Cinnamon X11 gave exact images; a compositor that resamples a
