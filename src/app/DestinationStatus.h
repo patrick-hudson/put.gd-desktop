@@ -26,9 +26,11 @@ public:
  void follow(OperationService& operations);
  // Whether a destination keeps keys (SetupService::storesKeys, and a custom uploader with secret
  // values). A session-mode destination that does is kept in memory only, so after a restart it is
- // untested. Unset, every destination counts as keeping keys. SFTP's checks are the session's only
- // once a password or key passphrase was stored for the session (#2118).
+ // untested. Unset, every destination counts as keeping keys. SFTP follows setHoldsSessionSecret.
  void setUsesCredentials(std::function<bool(const QJsonObject& profile)> uses){usesCredentials_=std::move(uses);}
+ // #2118: whether the session credential cache holds a non-empty SFTP password or key passphrase
+ // for this destination right now. Unset, no SFTP destination counts as session-only.
+ void setHoldsSessionSecret(std::function<bool(const QString& profileId,const QJsonObject& profile)> holds){holdsSessionSecret_=std::move(holds);}
  // Counts stores of new credentials (and Proton sign-ins) for a destination.
  quint64 credentialRevision(const QString& profileId) const {return credentialRevisions_.value(profileId);}
  // A store of credentials starts or succeeds: every configured destination that names the
@@ -85,5 +87,6 @@ private:
  QSet<QString> keychainEntries_;
  QHash<QString,Attempt> attempts_;
  std::function<bool(const QJsonObject&)> usesCredentials_;
+ std::function<bool(const QString&,const QJsonObject&)> holdsSessionSecret_;
 };
 }

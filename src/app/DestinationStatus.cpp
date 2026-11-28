@@ -89,9 +89,9 @@ void DestinationStatus::save() {
  // Keys kept only for this session make a check that ends with the session.
  const auto profiles=settings_.snapshot().profiles;
  const auto sessionOnly=[&](const QString& id){const auto found=profiles.constFind(id);if(found==profiles.cend()||(*found)["credentials"].toObject()["mode"]!="session")return false;
-  // #2118: SFTP signs in with the SSH agent or a key file unless a password or key passphrase was
-  // stored for this session; only then are its checks the session's.
-  if((*found)["provider"]=="sftp")return credentialRevisions_.value(id)>0;
+  // #2118: SFTP signs in with the SSH agent or a key file unless the session holds a password or
+  // key passphrase for it now; only then are its checks the session's.
+  if((*found)["provider"]=="sftp")return holdsSessionSecret_&&holdsSessionSecret_(id,*found);
   return !usesCredentials_||usesCredentials_(*found);};
  for(auto it=records_.cbegin();it!=records_.cend();++it) {
   if(sessionOnly(it.key()))continue;

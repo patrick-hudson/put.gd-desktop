@@ -3835,7 +3835,9 @@ void SettingsWindow::beginSetup(const QString& kind,const QJsonObject& input){
  const bool sftpClear=kind=="storeCredentials"&&std::exchange(sftpClearPending_,false);
  // #1892: what an SFTP address check was asked about, so a late answer for another key is dropped.
  const auto sftpInspect=kind=="inspectAccount"&&providerType_->currentData()==SftpPanel::provider()?sftpInspectKey():QString();
- settings_.request("setup."+kind,params,this,[this,kind,profileId,revision,testMessage,sftpClear,sftpInspect](Error e,QJsonObject data){
+ // #2118: the connection as it is now, when the request goes out, not when its answer arrives.
+ const auto fingerprint=destinationcheck::fingerprint(editedProfile());
+ settings_.request("setup."+kind,params,this,[this,kind,profileId,revision,testMessage,sftpClear,sftpInspect,fingerprint](Error e,QJsonObject data){
   folderRequests_.remove(profileId);--setupAccepting_;if(kind=="testDestination")testAccepting_=false;
   // #2118: ui.encryptedLinks test answers once the resident took or refused the test.
   // It describes the destination it was asked for, even when another is shown by then.
@@ -3855,7 +3857,7 @@ void SettingsWindow::beginSetup(const QString& kind,const QJsonObject& input){
   }
   for(int i=setupJobs_.size()-1;i>=0;--i){const auto old=setupJobs_[i].toObject();if(old["kind"]==kind&&old["profileId"]==profileId)setupJobs_.removeAt(i);}
   // #1871: a Clear is marked on its own job record; its completion keeps the other typed secret.
-  QJsonObject record{{"setupId",data["setupId"]},{"kind",kind},{"profileId",profileId},{"revision",revision},{"fingerprint",destinationcheck::fingerprint(editedProfile())}};
+  QJsonObject record{{"setupId",data["setupId"]},{"kind",kind},{"profileId",profileId},{"revision",revision},{"fingerprint",fingerprint}};
   if(sftpClear)record["sftpClear"]=QStringLiteral("true");  // the saved view state keeps string fields only
   if(!sftpInspect.isEmpty())record["sftpInspect"]=sftpInspect;
   setupJobs_.append(record);

@@ -196,7 +196,11 @@ private slots:
   fixture.client.hold={};QVERIFY(fixture.client.release());
   QVERIFY(waitFor([&]{return answer->done;},10000));QVERIFY2(!answer->error,qPrintable(answer->error.message));
   QCOMPARE(answer->state["profileId"].toString(),asked);QVERIFY(answer->state["testing"].toBool());
-  if(running)running({});
+  // The test passes; back on the destination asked about, lastTest describes its own connection.
+  QVERIFY(waitFor([&]{return bool(running);}));running({});
+  window.findChild<QListWidget*>("destinationList")->setCurrentRow(0);
+  QVERIFY(waitFor([&]{auto state=std::make_shared<QJsonObject>();settings->encryptedLinksCommand({{"action","inspect"},{"profileId",asked}},[state](Error,QJsonObject s){*state=s;});
+   return waitFor([&]{return !state->isEmpty();})&&(*state)["lastTest"].toObject()["state"]=="passed";},10000));
  }
  // #2103: ui.encryptedLinks answers a mode change only once the file has it, so an agent's next
  // call (setup.storeEncryptPassphrase reads the saved mode) never races the save. Two Capture

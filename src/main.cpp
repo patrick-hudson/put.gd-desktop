@@ -452,6 +452,10 @@ int main(int argc,char* argv[]) {
  putgd::DestinationStatus destinationStatus(dataRoot+"/destination-status.json",settings);
  // The destinations whose keys a session-mode check would outlive: the ones SetupService stores keys for.
  destinationStatus.setUsesCredentials([](const QJsonObject& profile){QStringList names;return putgd::SetupService::storesKeys(profile)||(!putgd::http::namedCredentials(profile,{},&names)&&!names.isEmpty());});
+ // #2118: an SFTP destination's checks are the session's only while the session holds its password or passphrase.
+ destinationStatus.setHoldsSessionSecret([&credentials](const QString& profileId,const QJsonObject& profile){
+  const auto held=credentials.cached(profileId,profile["credentials"].toObject());
+  return held&&(!held->values.value(putgd::sftp::passwordKey()).isEmpty()||!held->values.value(putgd::sftp::passphraseKey()).isEmpty());});
  destinationStatus.load();destinationStatus.prune();destinationStatus.follow(operations);
  server.setDestinationStatus(&destinationStatus);
  putgd::SetupService setup(settings,credentials,tester);
