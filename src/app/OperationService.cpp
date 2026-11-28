@@ -149,7 +149,9 @@ OperationService::OperationService(QString root,SettingsService& settings,Provid
  host.encrypt=[this](const QString& id,bool on){recordEncrypt(id,on);};
  host.encryptRefusal=[this](const Operation& op)->Error{
   const auto options=encryptOptions(op);
-  if(!options["available"].toBool())return {"encrypt_unavailable",options["reason"].toString(QStringLiteral("Encrypted links aren't available for this upload."))+(options["checkRequired"].toBool()?QStringLiteral(" Or upload it without encryption."):QStringLiteral(" Upload it without encryption.")),{}};
+  // #2118: only the encrypted-page check missing is encrypt_check_required, as on every other path.
+  if(options["checkRequired"].toBool())return {"encrypt_check_required",options["reason"].toString()+QStringLiteral(" Or upload it without encryption."),{}};
+  if(!options["available"].toBool())return {"encrypt_unavailable",options["reason"].toString(QStringLiteral("Encrypted links aren't available for this upload."))+" Upload it without encryption.",{}};
   // A saved passphrase that isn't loaded is said now, as the upload would say it after the export.
   if(options["passphrase"].toBool()){QString loaded;{std::lock_guard lock(encryptHooksMutex_);if(encryptPassphrase_)loaded=encryptPassphrase_(op.destination.profileId,op.settings.profiles.value(op.destination.profileId));}
    if(loaded.isEmpty())return {"encrypt_passphrase_locked","The Encrypted links passphrase isn't loaded. Unlock it in Destinations, then upload again.",{}};}
@@ -415,6 +417,9 @@ void OperationService::invokeCapture(const QString& requestedAction,JsonReply re
  if(action=="edit"&&delay>0&&!Settings::delayableEditSource(source)){reply({"invalid_request","delaySeconds applies to an edit of a region, window or desktop capture",{}},{});return;}
  if(action=="edit"&&editor_){editor_->request("raise",activationToken.isEmpty()?QJsonObject{}:QJsonObject{{"activationToken",activationToken}},[](Error,QJsonObject){});reply({"editor_active","An image edit is already open. Finish or cancel it first.",{{"operationId",editingId_}}},{});return;}
  if(action=="edit"&&recording_->active()){reply({"recording_active","A recording is already running. Stop or cancel it before editing.",{{"operationId",recording_->activeId()}}},{});return;}
+ // #2118: encrypt true where the destination's encrypted-page check hasn't passed captures nothing,
+ // once the request is otherwise valid.
+ if(encryptValue.toBool())if(auto refusal=encryptRefusal(action)){reply(refusal,{});return;}
  const bool interactive=source!="clipboard"&&source!="file";
  auto snapshot=settings_.snapshot();if(active_.size()>=snapshot.limits.pendingOperations+snapshot.limits.concurrentUploads) {reply({"queue_full","Too many actions are in progress. Wait for some to finish, or raise Queued actions in Settings → Advanced → Resource limits.",{}},{});return;}
  if(interactive&&!selectingId_.isEmpty()) {reply({"busy_selecting","Another capture selection or countdown is already in progress. Finish or cancel it first.",{}},{});return;}

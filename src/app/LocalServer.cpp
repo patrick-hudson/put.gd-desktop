@@ -230,8 +230,6 @@ void LocalServer::dispatch(const QJsonObject& request,JsonReply reply) {
  }
  if(method=="action.invoke") {
   if(!fields(p,{"action"},{"source","path","mode","delaySeconds","sensitiveText","captureStyle","person","encrypt"})||(p.contains("encrypt")&&!p["encrypt"].isBool())||(p.contains("person")&&!string(p,"person",128))||(p.contains("captureStyle")&&(p["action"]!="edit"||!p["captureStyle"].isBool()))||!string(p,"action")||(p.contains("source")&&!string(p,"source",32))||(p.contains("path")&&!string(p,"path",4096))||(p.contains("mode")&&(p["action"]!="record"||!string(p,"mode",16)))){reply(invalid(),{});return;}
-  // #2118: encrypt true where the destination's encrypted-page check hasn't passed captures nothing.
-  if(p["encrypt"].toBool())if(auto refusal=operations_.encryptRefusal(p["action"].toString())){reply(refusal,{});return;}
   auto options=p;options.remove("action");options.remove("person");operations_.invoke(p["action"].toString(),reply,options,!fromPerson(p));return;
  }
  // "Upload with put.gd" from a file manager (#1105): absolute paths only; the

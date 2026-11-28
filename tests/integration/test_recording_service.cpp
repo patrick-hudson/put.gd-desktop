@@ -560,12 +560,16 @@ private slots:
  // Asked for where it can't happen, or at a stale revision, it is refused before anything is
  // exported or sent, and it leaves the toggle as it was: a later upload from the window follows it.
  void refusedEncryptRequestsChangeNothing_data(){
-  QTest::addColumn<bool>("canEncrypt");QTest::addColumn<int>("revision");QTest::addColumn<QString>("code");
-  QTest::newRow("destination can't encrypt")<<false<<1<<"encrypt_unavailable";QTest::newRow("stale revision")<<true<<7<<"recording_stale";
+  QTest::addColumn<bool>("canEncrypt");QTest::addColumn<int>("revision");QTest::addColumn<QString>("code");QTest::addColumn<bool>("checked");
+  QTest::newRow("destination can't encrypt")<<false<<1<<"encrypt_unavailable"<<true;QTest::newRow("stale revision")<<true<<7<<"recording_stale"<<true;
+  // #2118: only the encrypted-page check missing is said as on every other path.
+  QTest::newRow("destination not checked")<<true<<1<<"encrypt_check_required"<<false;
  }
  void refusedEncryptRequestsChangeNothing(){
-  QFETCH(bool,canEncrypt);QFETCH(int,revision);QFETCH(QString,code);
-  Harness h(false);uploadRecordings(h,QJsonObject{{"mode","off"}});if(canEncrypt)encryptable(h);PUTGD_TRY_VERIFY(h.operations->ready());
+  QFETCH(bool,canEncrypt);QFETCH(int,revision);QFETCH(QString,code);QFETCH(bool,checked);
+  Harness h(false);uploadRecordings(h,QJsonObject{{"mode","off"}});if(canEncrypt)encryptable(h);
+  if(!checked)h.operations->setEncryptHooks([](const QString&,const QJsonObject&){return QJsonObject{{"state","untested"}};},[](const QString&,const QJsonObject&){return QString();});
+  PUTGD_TRY_VERIFY(h.operations->ready());
   const auto id=reviewing(h);QVERIFY(!id.isEmpty());
   QCOMPARE(h.rec("upload",{{"id",id},{"revision",revision},{"encrypt",true}}).error.code,code);
   QCOMPARE(h.backend->exports,0);QCOMPARE(h.state(id),QString("reviewing"));QVERIFY(noToggleCommands(h));

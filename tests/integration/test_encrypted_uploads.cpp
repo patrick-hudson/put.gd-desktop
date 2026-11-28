@@ -6,6 +6,9 @@
 #include "core/EncryptJob.h"
 #include "app/DestinationStatus.h"
 #include "app/SetupService.h"
+#include "app/LocalServer.h"
+#include "app/HistoryService.h"
+#include "core/HistoryStore.h"
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -204,6 +207,27 @@ private slots:
   QCOMPARE(op.items.first().error.code,QString("encrypt_check_required"));QCOMPARE(op.items.first().error.message,label+" "+says+" Or turn off Encrypt to upload it as an ordinary link.");
   QCOMPARE(f.provider->count(),0);
   f.checkState="passed";QVERIFY(!f.operations->encryptRefusal(QString::fromLatin1(OperationService::fileManagerAction),"test"));
+ }
+ // #2118, through the session socket as putgd-cli and MCP send them: a request that asks to encrypt
+ // where the check hasn't passed gets its error envelope, and no operation, History row or capture
+ // starts. Another installation is refused for that first; a recording asking to encrypt keeps its
+ // own invalid_request.
+ void encryptRequestsAreRefusedAtTheSocket() {
+  Fixture f({});f.checkState="untested";f.operations->setInstallation("appimage");PUTGD_TRY_VERIFY(f.operations->ready());
+  HistoryService history(*f.operations);LocalServer server(*f.settings,*f.operations,history);QVERIFY(server.listen(f.dir.filePath("runtime")));
+  const auto call=[&](const QString& method,const QJsonObject& params){auto answer=std::make_shared<std::pair<bool,Error>>();
+   server.dispatch({{"schemaVersion",1},{"requestId","encrypt-refusal"},{"session",server.socketPath()},{"method",method},{"params",params}},[answer](Error e,QJsonObject){answer->first=true;answer->second=e;});
+   (void)waitFor([&]{return answer->first;});return answer->second;};
+  const auto path=fixture(f.dir.path(),"r.txt","stays home");const QJsonObject encrypt{{"enabled",true}};
+  const auto says=QString("Synthetic opaque provider needs one passed Test upload and link before it can encrypt.");
+  auto e=call("upload.files",{{"paths",QJsonArray{path}},{"profileId","test"},{"encrypt",encrypt}});
+  QCOMPARE(e.code,QString("encrypt_check_required"));QVERIFY2(e.message.startsWith(says),qPrintable(e.message));QVERIFY(e.message.endsWith("Or upload it without encryption."));
+  e=call("upload.files",{{"paths",QJsonArray{path}},{"encrypt",encrypt}});QCOMPARE(e.code,QString("encrypt_check_required"));
+  e=call("upload.files",{{"paths",QJsonArray{path}},{"installation","system"},{"encrypt",encrypt}});QCOMPARE(e.code,QString("installation_mismatch"));
+  e=call("action.invoke",{{"action","region"},{"encrypt",true}});QCOMPARE(e.code,QString("encrypt_check_required"));QVERIFY(e.message.startsWith(says));
+  e=call("action.invoke",{{"action","record"},{"encrypt",true}});QCOMPARE(e.code,QString("invalid_request"));
+  QCOMPARE(f.source.reads,0);QCOMPARE(f.operations->diagnostics()["activeOperations"].toInt(),0);
+  HistoryStore journal(f.operations->databasePath());QCOMPARE(journal.list({}).total,qint64(0));QCOMPARE(f.provider->count(),0);
  }
  // Another installation's file-manager entry is refused as installation_mismatch before anything
  // about this resident's destinations, so it never learns or opens them.

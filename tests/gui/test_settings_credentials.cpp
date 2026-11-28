@@ -161,7 +161,9 @@ private slots:
   UiSessionFixture fixture(service,secrets);DestinationStatus checks(dir.filePath("destination-status.json"),service);fixture.server.setDestinationStatus(&checks);
   MainWindow window(fixture.session);window.resize(1100,640);
   // As UiApplicationController opens it: the destination, then the card, then the window.
-  window.showDestination("synthetic-third");window.settings()->showEncryptedLinks();window.show();
+  // A destination that isn't there reveals nothing.
+  window.showDestination("no-such-destination");QVERIFY(!window.settings()->showEncryptedLinks("no-such-destination"));
+  window.showDestination("synthetic-third");QVERIFY(window.settings()->showEncryptedLinks("synthetic-third"));window.show();
   auto* test=window.findChild<QPushButton*>("encryptedLinksTest");QVERIFY(test);
   const auto inView=[&]{
    if(!test->isVisible())return false;

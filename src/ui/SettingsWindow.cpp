@@ -1629,6 +1629,7 @@ const QList<SettingsWindow::DestinationType>& SettingsWindow::destinationTypes()
 SettingsWindow::~SettingsWindow(){
  revealUpdates_=false;
  for(auto& wait:std::exchange(encryptWaits_,{}))wait.reply({"ui_view_closed","Settings closed before Encrypted links was saved.",{}},{});
+ if(auto pending=std::exchange(encryptTestReply_,{}))pending({"ui_view_closed","Settings closed before Test upload and link started.",{}},{});
  for(auto* child:findChildren<QObject*>())disconnect(child,nullptr,this,nullptr);
  if(destinationPage_)for(auto* child:destinationPage_->findChildren<QObject*>())disconnect(child,nullptr,this,nullptr);
  disconnect(&settings_,nullptr,this,nullptr);
@@ -3038,9 +3039,10 @@ void SettingsWindow::showCaptureSettings(const QStringList& affectedActions){
  captureExceptions_->setChecked(overriding);
  revealAndFocus(target);
 }
-void SettingsWindow::showEncryptedLinks(){
+bool SettingsWindow::showEncryptedLinks(const QString& profileId){
+ if(profileId.isEmpty()||profileIndex_<0||profileId_->text()!=profileId)return false;
  // Kept until the card is on screen: a fresh window shows its page, and lays it out, only later.
- revealEncryptFor_=profileId_->text();revealEncryptedLinks();
+ revealEncryptFor_=profileId;revealEncryptedLinks();return true;
 }
 void SettingsWindow::revealEncryptedLinks(){
  if(revealEncryptFor_.isEmpty())return;
@@ -3835,7 +3837,9 @@ void SettingsWindow::beginSetup(const QString& kind,const QJsonObject& input){
  const auto sftpInspect=kind=="inspectAccount"&&providerType_->currentData()==SftpPanel::provider()?sftpInspectKey():QString();
  settings_.request("setup."+kind,params,this,[this,kind,profileId,revision,testMessage,sftpClear,sftpInspect](Error e,QJsonObject data){
   folderRequests_.remove(profileId);--setupAccepting_;if(kind=="testDestination")testAccepting_=false;
-  if(e){updateSetupButton();status(e);if(kind=="connectAccount"&&profileId==profileId_->text()){protonAccount_->setText("Connection failed: "+e.message);dav_->setSignIn(DavDestinationPanel::SignIn::Idle);davCancelPending_=false;}emit viewStateChanged();return;}
+  // #2118: ui.encryptedLinks test answers once the resident took or refused the test.
+  const auto answerTest=[this,kind](const Error& error){if(kind!="testDestination")return;if(auto reply=std::exchange(encryptTestReply_,{})){if(error)reply(error,{});else reply({},encryptState());}};
+  if(e){updateSetupButton();status(e);answerTest(e);if(kind=="connectAccount"&&profileId==profileId_->text()){protonAccount_->setText("Connection failed: "+e.message);dav_->setSignIn(DavDestinationPanel::SignIn::Idle);davCancelPending_=false;}emit viewStateChanged();return;}
   if(kind=="connectAccount"&&dav::isDav(providerType_->currentData().toString())&&profileId==profileId_->text()){davSignInSetup_=data["setupId"].toString();
    // Cancel was pressed before the sign-in was accepted: it is cancelled now, and no browser opens.
    if(davCancelPending_){davCancelPending_=false;davAdoptedSetup_=davSignInSetup_;cancelDavSignIn();}}
@@ -3858,7 +3862,7 @@ void SettingsWindow::beginSetup(const QString& kind,const QJsonObject& input){
   static const QHash<QString,QString> progress{{"connectAccount","Connecting account…"},{"storeCredentials","Storing credentials…"},{"unlockCredentials","Unlocking saved credentials…"},{"createFolder","Creating folder…"},{"storeSharePassword","Storing link password…"},{"signOut","Signing out…"}};
   updateSetupButton();if(kind=="inspectAccount")Ui::feedback(plain(destinationStatus_),{});else setupFeedback(kind=="testDestination"?testMessage:progress.value(kind,"Working…"));
   if(kind=="connectAccount"&&profileId==profileId_->text())protonAccount_->setText("Connecting to Proton…");
-  emit viewStateChanged();setupTimer_->start();pollSetup();
+  emit viewStateChanged();setupTimer_->start();pollSetup();answerTest({});
  });
 }
 // ui.customUploader (#1361): the open Custom uploader form, driven as a user drives it.
@@ -4092,6 +4096,8 @@ void SettingsWindow::pollSetup(){
    if(e&&sftpShown&&data["kind"]=="testDestination"&&currentTest){sftpPanel_->showTestError(e.code,e.message,e.details);
     // #1892: the host key box shows the fingerprint; the status line only says where to look.
     if(!sftpPanel_->offeredFingerprint().isEmpty())e.message=e.code=="ssh_trusted_key_changed"?QStringLiteral("The server's host key changed. Compare the new key above before you trust it."):QStringLiteral("put.gd doesn't know this server's host key yet. Compare it above before you trust it.");}
+   // #2118: how the last Test of each destination ended, for ui.encryptedLinks inspect.
+   if(job["kind"]=="testDestination"){QJsonObject outcome{{"state",e?"failed":"passed"}};if(e){outcome["code"]=e.code;outcome["message"]=e.message;}else if(data["result"].toObject().contains("encrypt"))outcome["encrypt"]=data["result"].toObject()["encrypt"].toObject()["state"];testOutcomes_.insert(job["profileId"].toString(),outcome);}
    if(e){if(job["kind"]=="testDestination"&&!currentTest)e.message="Connection test failed for the original destination settings. "+e.message;
     // A custom uploader's test shows the start of a reply it could not read, so the Response fields can be fixed.
     if(const auto excerpt=data["result"].toObject()["replyExcerpt"].toString();!excerpt.isEmpty())e.message+=" The reply began: "+excerpt;
@@ -4224,6 +4230,8 @@ void SettingsWindow::loadEncryptPanel(bool edited){
  // offered, and the card says the destination changed after its check (#2118).
  const auto check=status["encrypt"].toObject();
  if(check.contains("fingerprint")&&check["fingerprint"].toString()!=destinationcheck::fingerprint(profile))status["encrypt"]=QJsonObject{{"state","changed"}};
+ // The connection's own check, likewise, so "Uploads work here" is said only of the connection shown.
+ status["state"]=checkState(profile);
  encryptPanel_->load(profile,status,false,edited);
  loading_=previous;
 }
@@ -4235,9 +4243,11 @@ void SettingsWindow::encryptedLinksCommand(const QJsonObject& params,std::functi
  if(!requested.isEmpty()&&requested!=profileId_->text()){const int index=profile_->findData(requested);if(index<0){reply({"profile_not_found","No destination has this ID.",{}},{});return;}profile_->setCurrentIndex(index);}
  if(profileIndex_<0||!encryptPanel_){reply({"profile_not_found","Select a destination first.",{}},{});return;}
  const auto action=params["action"].toString();
- if(action!="inspect"){QString refusal;if(!encryptPanel_->drive(params,&refusal)){reply({action=="test"?"control_unavailable":"encrypt_unavailable",refusal,{}},{});return;}}
- // #2118: a test Settings refused (an edit still saving, say) is answered with what Settings shows.
- if(action=="test"&&!encryptPanel_->viewState()["testing"].toBool()){const auto shown=status_->text();reply({"setup_busy",shown.isEmpty()?QStringLiteral("Test upload and link couldn't start."):shown,{}},{});return;}
+ // #2118: test answers once the resident took or refused it (beginSetup's request).
+ if(action=="test"){if(encryptTestReply_){reply({"setup_busy","Test upload and link is already starting.",{}},{});return;}encryptTestReply_=reply;}
+ if(action!="inspect"){QString refusal;if(!encryptPanel_->drive(params,&refusal)){if(action=="test")encryptTestReply_={};reply({action=="test"?"control_unavailable":"encrypt_unavailable",refusal,{}},{});return;}}
+ // A test Settings refused before asking the resident (an edit still saving, say) is answered with what Settings shows.
+ if(action=="test"){if(!testAccepting_)if(auto pending=std::exchange(encryptTestReply_,{})){const auto shown=status_->text();pending({"setup_busy",shown.isEmpty()?QStringLiteral("Test upload and link couldn't start."):shown,{}},{});}return;}
  if(action!="mode"){reply({},encryptState());return;}
  // #2103: a mode change answers once the file has it, never while it is only queued: an agent's
  // next call, such as setup.storeEncryptPassphrase, reads the saved mode.
@@ -4257,6 +4267,8 @@ QString SettingsWindow::savedEncryptMode(const QString& profileId)const{
 // saved: the file has the mode shown, with nothing for this destination still waiting to be sent.
 QJsonObject SettingsWindow::encryptState()const{
  auto state=encryptPanel_->viewState();const auto id=profileId_->text();state["profileId"]=id;
+ // #2118: how this destination's last Test upload and link ended, while this window watched it.
+ if(testOutcomes_.contains(id))state["lastTest"]=testOutcomes_.value(id);
  state["saved"]=savedEncryptMode(id)==encryptPanel_->mode()&&!queued("destination:"+id);return state;
 }
 // Each waiting mode change is answered once the file has it, or with settings_not_saved once it can't

@@ -2,6 +2,9 @@
 #include "OperationService.h"
 #include "core/DestinationCheck.h"
 #include "core/Log.h"
+#include "storage/dav/DavCommon.h"
+#include "storage/s3/R2Settings.h"
+#include "storage/sftp/SftpCommon.h"
 #include <QFile>
 #include <QFileInfo>
 #include <QDir>
@@ -10,6 +13,10 @@
 #include <QSaveFile>
 #include <cmath>
 namespace putgd {
+bool DestinationStatus::storesKeys(const QJsonObject& profile) {
+ const auto provider=profile.value("provider").toString();
+ return provider=="s3"||provider=="backblaze-b2"||provider==r2::providerId||dav::isDav(provider)||provider==sftp::providerId;
+}
 namespace {
 // The keychain entries configured destinations own, in any credentials mode: the reference each
 // names, and putgd/<id> (what Settings writes when it switches to the keychain) and

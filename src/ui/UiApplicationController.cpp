@@ -93,7 +93,8 @@ QWidget* UiApplicationController::view(const QString& name){
   if(name=="captureSettings"){main_->navigate("settings");QTimer::singleShot(0,main_.get(),[main=QPointer<MainWindow>(main_.get())]{if(main)main->showCaptureSettings();});return main_.get();}
   if(name=="updates"){main_->navigate("settings");QTimer::singleShot(0,main_.get(),[main=QPointer<MainWindow>(main_.get())]{if(main)main->settings()->showUpdates();});return main_.get();}
   // #2118: "encryptedLinks:<profile id>" opens that destination at its Encrypted links card and its Test.
-  if(name.startsWith("encryptedLinks:")){const auto id=name.mid(15);main_->showDestination(id);QTimer::singleShot(0,main_.get(),[main=QPointer<MainWindow>(main_.get())]{if(main)main->settings()->showEncryptedLinks();});return main_.get();}
+  // A destination that isn't there (removed meanwhile) refuses the activation rather than show another.
+  if(name.startsWith("encryptedLinks:")){const auto id=name.mid(15);main_->showDestination(id);if(!main_->settings()->showEncryptedLinks(id))return nullptr;return main_.get();}
   if(name=="historyFailed"){main_->navigate("history");main_->history()->showFailedUploads();return main_.get();}
   // Settings → Error log (#1753); "errors:<target JSON>" opens it on one entry.
   if(name=="errors"||name.startsWith("errors:")){const auto target=name=="errors"?QJsonObject{}:QJsonDocument::fromJson(name.mid(7).toUtf8()).object();main_->navigate("settings");QTimer::singleShot(0,main_.get(),[main=QPointer<MainWindow>(main_.get()),target]{if(main)main->showErrorLog(target);});return main_.get();}
