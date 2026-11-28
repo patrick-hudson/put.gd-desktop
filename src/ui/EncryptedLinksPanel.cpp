@@ -29,7 +29,9 @@ void EncryptedLinksPanel::build(QFormLayout* form,const Setting& setting) {
  // #2118: the one test On needs, right where it is missing; the header's Test upload and link does the same.
  test_=new QPushButton("Test upload and link",parent);test_->setObjectName("encryptedLinksTest");test_->setSizePolicy(QSizePolicy::Maximum,QSizePolicy::Fixed);
  test_->setToolTip(QStringLiteral("Test this destination, including encrypted pages"));
- {auto* holder=new QWidget(parent);auto* line=new QHBoxLayout(holder);line->setContentsMargins(0,0,0,0);line->addWidget(test_);line->addStretch(1);row->layout()->addWidget(holder);}
+ // Left-aligned under the words that ask for it, as wide as its label: Settings' row layout drops
+ // stretches from a choice row's lines, so the alignment is the button's own.
+ {auto* holder=new QWidget(parent);holder->setSizePolicy(QSizePolicy::Expanding,QSizePolicy::Fixed);auto* line=new QHBoxLayout(holder);line->setContentsMargins(0,0,0,0);line->addWidget(test_,0,Qt::AlignLeft|Qt::AlignVCenter);row->layout()->addWidget(holder);}
  passphrase_=new QLineEdit(parent);passphrase_->setObjectName("encryptedLinksPassphrase");passphrase_->setEchoMode(QLineEdit::Password);passphrase_->setPlaceholderText("Type a new passphrase");
  const auto passHint=QStringLiteral("Needed beside the link to open it. Send it to recipients separately. Kept in the keychain like the destination's keys.");
  passphrase_->setToolTip(passHint);passphrase_->setAccessibleDescription(passHint);

@@ -139,6 +139,9 @@ private slots:
   QVERIFY(waitFor([&]{return inspect()["check"]=="untested";}));
   auto state=inspect();QVERIFY(state["testOffered"].toBool());QVERIFY(!state["available"].toBool());QVERIFY(state["reason"].toString().startsWith("Needs one passed Test upload and link first."));
   auto* card=window.findChild<QPushButton*>("encryptedLinksTest");auto* header=window.findChild<QPushButton*>("testDestination");QVERIFY(card&&header);QVERIFY(card->isVisibleTo(&window));
+  // Left-aligned under the words that ask for it.
+  auto* words=window.findChild<QLabel*>("encryptedLinksState");QVERIFY(words);
+  QVERIFY(waitFor([&]{return card->mapTo(&window,QPoint(0,0)).x()==words->mapTo(&window,QPoint(0,0)).x();}));
   QSignalSpy started(header,&QPushButton::clicked);card->click();QCOMPARE(started.size(),1);
   QVERIFY(waitFor([&]{return header->isEnabled();},10000));
   checks.encryptChecked(saved()["id"].toString(),destinationcheck::fingerprint(saved()),true,{});fixture.session.invalidate();
